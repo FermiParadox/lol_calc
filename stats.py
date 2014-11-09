@@ -124,46 +124,28 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
         self.set_active_buffs()
         self.set_current_stats()
 
-    def set_current_stats(self):
+    def base_stats_dct(self):
         """
-        Inserts current_hp in current_stats of each target and current resource (e.g. mana, rage, etc) for player.
+        Creates a dict containing champion base stats for all targets.
 
-        If the current_stats dict is empty, or if the value doesnt exist it creates the value.
-
-        Modifies:
-            current_stats
         Returns:
-            (None)
+            (dict) Base stats of all targets.
         """
 
-        # Checks if there are any preset values for current_stats.
-        if self.initial_current_stats:
-            self.current_stats = copy.deepcopy(self.initial_current_stats)
+        dct = {}
 
-        for tar in self.selected_champions_dct:
+        # For each target..
+        for tar_name in self.selected_champions_dct:
+            # .. updates base_stats_dct with his base stats.
+            dct.update(
+                {tar_name: database_champion_stats.CHAMPION_BASE_STATS[self.selected_champions_dct[tar_name]]})
 
-            # If the target's current_hp has not been set, it creates it.
-            if tar not in self.current_stats:
-                self.current_stats.update({tar: {}})
-
-                self.current_stats.update(
-                    {tar: dict(current_hp=self.request_stat(target_name=tar, stat_name='hp'))})
-
-            # Also creates the player's 'current_'resource.
-            if tar == 'player':
-                resource_used = self.base_stats_dct()['player']['resource_used']
-
-                if ('current_' + resource_used) not in self.current_stats[tar]:
-
-                    self.current_stats['player'].update(
-
-                        {('current_' + resource_used): self.request_stat(target_name=tar,
-                                                                         stat_name=resource_used)})
+        return dct
 
     def place_tar_and_empty_dct_in_dct(self, dct):
         """
         Inserts into a dct target names as keywords, and empty dict as value for each targets.
-        Not to be used for non-empty dicts
+        To be used for empty dicts only.
 
         Modifies:
             dct
@@ -181,9 +163,8 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
 
     def set_active_buffs(self):
         """
-
         Sets active_buffs to initial_active_buffs if any.
-        Then inserts target in active buffs if it's not already there.
+        Then inserts target in active buffs if not already there.
 
         Modifies:
             active_buffs
@@ -200,29 +181,21 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
             if tar not in self.active_buffs:
                 self.active_buffs.update({tar: {}})
 
-    def base_stats_dct(self):
-        """
-        Returns dictionary containing the base stats of all targets.
-        """
-
-        dct = {}
-
-        # For each target..
-        for tar_name in self.selected_champions_dct:
-            # .. updates base_stats_dct with his base stats.
-            dct.update(
-                {tar_name: database_champion_stats.CHAMPION_BASE_STATS[self.selected_champions_dct[tar_name]]})
-
-        return dct
-
     def standard_stat(self, requested_stat, tar_name):
         """
-        Returns the value of a stat after calculating all its bonuses.
+        Calculates the value of a stat after applying all its bonuses.
 
-        Not to be used for att_speed, or ad.
+        Not to be used for special stats like att_speed, or ad.
         Not to be used for filtered stats.
 
-        If stat doesnt exist it returns 0.
+        If stat doesnt exist it returns 0 since some stats (e.g. lifesteal)
+        might not always be present in base_stats_dct.
+
+        Args:
+            requested_stat: (str)
+            tar_name: (str)
+        Returns:
+            (float) unfiltered stat value after bonuses
         """
 
         value = 0
@@ -244,30 +217,36 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
 
         # ITEM AND BUFF BONUSES
         # If the requested_stat has bonuses..
-        bonuses_tar = self.bonuses_dct[tar_name]
-        if requested_stat in bonuses_tar:
+        tar_bonuses = self.bonuses_dct[tar_name]
+        if requested_stat in tar_bonuses:
 
             # .. if there are additive bonuses..
-            if 'additive' in bonuses_tar[requested_stat]:
+            if 'additive' in tar_bonuses[requested_stat]:
                 # .. adds each bonus.
-                for bonus_name in bonuses_tar[requested_stat]['additive']:
-                    value += bonuses_tar[requested_stat]['additive'][bonus_name]
+                for bonus_name in tar_bonuses[requested_stat]['additive']:
+                    value += tar_bonuses[requested_stat]['additive'][bonus_name]
 
             # if there are percent bonuses..
-            if 'percent' in bonuses_tar[requested_stat]:
-                multiplicative_mod = 1
+            if 'percent' in tar_bonuses[requested_stat]:
+                multiplication_mod = 1
                 # .. adds each bonus modifier..
-                for bonus_name in bonuses_tar[requested_stat]['percent']:
-                    multiplicative_mod += bonuses_tar[requested_stat]['percent'][bonus_name]
+                for bonus_name in tar_bonuses[requested_stat]['percent']:
+                    multiplication_mod += tar_bonuses[requested_stat]['percent'][bonus_name]
 
                 # .. and applies the modifier to the value.
-                value *= multiplicative_mod
+                value *= multiplication_mod
 
         return value
 
     def base_ad_stat(self, tar_name):
         """
-        Returns the value of base ad.
+        Calculates the value of base ad.
+
+        Base ad is the champion's ad at lvl 1 without any bonuses,
+        plus the per lvl bonus.
+
+        Returns:
+            (float)
         """
 
         return self.base_stats_dct()[tar_name]['ad'] + (self.champion_lvls_dct[tar_name] *
@@ -279,46 +258,57 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
         return self.standard_stat(requested_stat='ad', tar_name=tar_name) - self.base_ad_stat(tar_name=tar_name)
 
     def att_speed_stat(self, tar_name):
-        """Returns att_speed after all bonuses have been applied, and it has been filtered.
+        """
+        Calculates final value of att_speed, after all bonuses and filters have been applied.
 
-        -Bonuses to att_speed are always percent, including the '_per_lvl' bonus.
-            Therefor they are applied simultaneously. Also _per_lvl bonus is applied at lvl 2.
-        -att_speed has a hard cap.
-        -Each reduction of att_speed is applied after all other bonuses have been applied,
-            by multiplying the pre-final value with each reduction.
+        Bonuses to att_speed are always percent, including the '_per_lvl' bonus.
+        Therefor they are applied simultaneously (to preserve base value until calculation).
+        Unlike other stats, _per_lvl bonus is applied at lvl 2.
+
+        Filter applies att_speed's hard cap.
+
+        Each reduction of att_speed is applied after all other bonuses have been applied,
+        by multiplying the pre-final value with each reduction.
+
+        Returns:
+            (float)
         """
 
         value = self.base_stats_dct()[tar_name]['base_att_speed']
 
         # _PER_LVL
         # Adds _per_lvl bonus of att_speed to the modifier.
-        multiplicative_mod = (
+        multiplication_mod = (
             1 + self.base_stats_dct()[tar_name]['att_speed_per_lvl'] * (self.champion_lvls_dct[tar_name] - 1)
         )
 
         # ITEM AND BUFF BONUSES
         # Adds item and buff bonuses of att_speed to the modifier.
-        bonuses_tar = self.bonuses_dct[tar_name]
-        if 'att_speed' in bonuses_tar:       # 'multi..' not checked since it can only be that.
-            for bonus_name in bonuses_tar['att_speed']['percent']:
-                multiplicative_mod += bonuses_tar['att_speed']['percent'][bonus_name]
+        tar_bonuses = self.bonuses_dct[tar_name]
+        if 'att_speed' in tar_bonuses:       # 'percent..' not checked since it can only be that.
+            for bonus_name in tar_bonuses['att_speed']['percent']:
+                multiplication_mod += tar_bonuses['att_speed']['percent'][bonus_name]
 
-        value *= multiplicative_mod
+        value *= multiplication_mod
 
         # REDUCTIONS
-        if 'att_speed_reduction' in bonuses_tar:
-            for bonus_name in bonuses_tar['att_speed_reduction']['percent']:
-                value *= 1 - bonuses_tar['att_speed_reduction']['percent'][bonus_name]
+        if 'att_speed_reduction' in tar_bonuses:
+            for bonus_name in tar_bonuses['att_speed_reduction']['percent']:
+                value *= 1 - tar_bonuses['att_speed_reduction']['percent'][bonus_name]
 
         return value
 
     def move_speed_stat(self, tar_name):
-        """Returns movement speed after all bonuses and soft caps are applied.
+        """
+        Calculates final value of movement speed, after all bonuses and soft caps are applied.
 
-        -Additive bonuses to speed are applied.
+        -Additive bonuses are applied.
         -Multiplicative bonuses are applied by a single modifier for all bonuses.
         -Strongest speed reduction effected is fully applied.
         -The other speed reductions are applied at 35% of their max.
+
+        Returns:
+            (float)
         """
 
         # BASE VALUE AND BONUSES
@@ -327,42 +317,50 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
 
         # SLOW REDUCTIONS
         # Calculates the modifier that dampens slow effects (e.g. boots of swiftness)
-        bonuses_tar = self.bonuses_dct[tar_name]
+        tar_bonuses = self.bonuses_dct[tar_name]
         slow_mod = 1
-        if 'slow_reduction' in bonuses_tar:
-            for slow_red_bonus in bonuses_tar['slow_reduction']['percent']:
+        if 'slow_reduction' in tar_bonuses:
+            for slow_red_bonus in tar_bonuses['slow_reduction']['percent']:
                 slow_mod -= slow_red_bonus
 
         # SPEED REDUCTIONS
-        if 'move_speed_reduction' in bonuses_tar:
+        if 'move_speed_reduction' in tar_bonuses:
             max_reduction_bonus_name = ''
             reductions_values_dct = {}
             # Creates a reverse dictionary with stat_value as key (some keys might be overwritten without problem).
-            for bonus in bonuses_tar['move_speed_reduction']['percent']:
+            for bonus in tar_bonuses['move_speed_reduction']['percent']:
                 reductions_values_dct.update(
-                    {bonuses_tar['move_speed_reduction']['percent'][bonus]: bonus})
+                    {tar_bonuses['move_speed_reduction']['percent'][bonus]: bonus})
 
                 # Bonus name of max value is stored.
                 max_value = max(reductions_values_dct.keys())
-                max_reduction_bonus_name = bonuses_tar['move_speed_reduction']['percent'][max_value]
+                max_reduction_bonus_name = tar_bonuses['move_speed_reduction']['percent'][max_value]
 
-            for bonus in bonuses_tar['move_speed_reduction']['percent']:
+            for bonus in tar_bonuses['move_speed_reduction']['percent']:
                 if bonus == max_reduction_bonus_name:
-                    value *= 1-bonuses_tar['move_speed_reduction']['percent'][bonus]*(1-slow_mod)
+                    value *= 1-tar_bonuses['move_speed_reduction']['percent'][bonus]*(1-slow_mod)
                 else:
-                    value *= 1-bonuses_tar['move_speed_reduction']['percent'][bonus]*(1-slow_mod)*0.35
+                    value *= 1-tar_bonuses['move_speed_reduction']['percent'][bonus]*(1-slow_mod)*0.35
 
         return self.filtered_move_speed(unfiltered_stat=value)
 
     def crit_stat(self, tar_name):
-        """Returns filtered value of crit.
+        """
+        Returns filtered value of crit.
+
+        Returns:
+            (float)
         """
 
         return self.filtered_crit(self.standard_stat(requested_stat='crit',
                                                      tar_name=tar_name))
 
     def cdr_stat(self, tar_name):
-        """Returns filtered value of cdr.
+        """
+        Returns filtered value of cdr.
+
+        Returns:
+            (float)
         """
 
         return self.filtered_cdr(self.standard_stat(requested_stat='cdr',
@@ -616,6 +614,41 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
 
         if return_value:
             return self.stored_stats[target_name][stat_name]
+
+    def set_current_stats(self):
+        """
+        Inserts current_hp in current_stats of each target and current resource (e.g. mana, rage, etc) for player.
+        If the current_stats dict is empty, or if the value doesnt exist it creates the value.
+
+        Modifies:
+            current_stats
+        Returns:
+            (None)
+        """
+
+        # Checks if there are any preset values for current_stats.
+        if self.initial_current_stats:
+            self.current_stats = copy.deepcopy(self.initial_current_stats)
+
+        for tar in self.selected_champions_dct:
+
+            # If the target's current_hp has not been set, it creates it.
+            if tar not in self.current_stats:
+                self.current_stats.update({tar: {}})
+
+                self.current_stats.update(
+                    {tar: dict(current_hp=self.request_stat(target_name=tar, stat_name='hp'))})
+
+            # Also creates the player's 'current_'resource.
+            if tar == 'player':
+                resource_used = self.base_stats_dct()['player']['resource_used']
+
+                if ('current_' + resource_used) not in self.current_stats[tar]:
+
+                    self.current_stats['player'].update(
+
+                        {('current_' + resource_used): self.request_stat(target_name=tar,
+                                                                         stat_name=resource_used)})
 
 
 if __name__ == '__main__':
