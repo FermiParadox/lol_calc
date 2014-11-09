@@ -100,14 +100,14 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
                  initial_current_stats=None):
 
         self.champion_lvls_dct = champion_lvls_dct
-        self.selected_champions_dct = selected_champions_dct
+        self.selected_champions_dct = selected_champions_dct    # (Dependency of many methods.)
 
-        self.initial_active_buffs = initial_active_buffs
+        self.initial_active_buffs = initial_active_buffs    # Can contain 0 to all targets and their buffs.
         self.bonuses_dct = {}   # e.g. {target: {stat: {bonus type: {bonus name: }, }, }, }
 
-        self.initial_current_stats = initial_current_stats
+        self.initial_current_stats = initial_current_stats  # Can contain 0 to all targets and their stats.
 
-        self.active_buffs = None
+        self.active_buffs = {}
 
         self.current_stats = {}
         self.stat_dependencies = {}     # e.g. {tar_name: {stat_1: [stat_2, stat_3], }, }
@@ -126,16 +126,23 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
 
     def set_current_stats(self):
         """
-        Modifies current_stats dict by inserting target's current_hp and current resource (e.g. mana, rage, etc).
+        Inserts current_hp in current_stats of each target and current resource (e.g. mana, rage, etc) for player.
 
         If the current_stats dict is empty, or if the value doesnt exist it creates the value.
+
+        Modifies:
+            current_stats
+        Returns:
+            (None)
         """
 
+        # Checks if there are any preset values for current_stats.
         if self.initial_current_stats:
             self.current_stats = copy.deepcopy(self.initial_current_stats)
 
         for tar in self.selected_champions_dct:
 
+            # If the target's current_hp has not been set, it creates it.
             if tar not in self.current_stats:
                 self.current_stats.update({tar: {}})
 
@@ -155,21 +162,37 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
 
     def place_tar_and_empty_dct_in_dct(self, dct):
         """
-        Modifies a dict by inserting target names as keywords, and empty dict as value for all targets.
+        Inserts into a dct target names as keywords, and empty dict as value for each targets.
+        Not to be used for non-empty dicts
+
+        Modifies:
+            dct
+        Returns:
+            (None)
+        Raises:
+            (BaseException) If dict is not empty.
         """
+
+        if dct:
+            raise BaseException('Target will be replaced.')
 
         for tar in self.selected_champions_dct:
             dct.update({tar: {}})
 
     def set_active_buffs(self):
         """
-        Modifies active_buffs, by adding the target to the dictionary if it's not already there.
+
+        Sets active_buffs to initial_active_buffs if any.
+        Then inserts target in active buffs if it's not already there.
+
+        Modifies:
+            active_buffs
+        Returns:
+            (None)
         """
 
-        # If active_buffs is None, it makes it a dict.
-        if not self.initial_active_buffs:
-            self.active_buffs = {}
-        else:
+        # Checks if there are initial_active_buffs.
+        if self.initial_active_buffs:
             self.active_buffs = copy.deepcopy(self.initial_active_buffs)
 
         # Fills with targets that have not been set.
