@@ -6,16 +6,18 @@ import copy
 class StatFilters(object):
 
     """
-    Contains functions that filter stats that can exceed their thresholds.
+    Contains functions that filter stats to prevent them exceeding their thresholds.
     """
 
     @staticmethod
     def filtered_crit(unfiltered_stat):
         """
-        (float)->float
+        Applies threshold on crit.
 
-        Returns the final crit value,
-        by applying threshold on crit.
+        Args:
+            unfiltered_stat: (float)
+        Returns:
+            (float) final stat value
 
         >>>StatFilters().filtered_crit(1.2)
         1.
@@ -28,10 +30,13 @@ class StatFilters(object):
     @staticmethod
     def filtered_att_speed(unfiltered_stat):
         """
-        (float)->float
+        Applies threshold on att_speed.
 
-        Returns the final att_speed value,
-        by applying thresholds on att_speed.
+        Args:
+            unfiltered_stat: (float)
+        Returns:
+            (float) final stat value
+
         >>>StatFilters().filtered_att_speed(3.2)
         2.5
         >>>StatFilters().filtered_att_speed(0.1)
@@ -43,15 +48,17 @@ class StatFilters(object):
     @staticmethod
     def filtered_move_speed(unfiltered_stat):
         """
-        (float)->float
+        Applies threshold on move_speed.
 
-        Returns the final move_speed value,
-        by applying thresholds on move_speed.
+        Args:
+            unfiltered_stat: (float)
+        Returns:
+            (float) final stat value
 
         >>>StatFilters().filtered_move_speed(300)
         300
         """
-
+        # TODO avoid copyrighted formula
         if (415 < unfiltered_stat) and (unfiltered_stat < 490):
             return unfiltered_stat*0.8 + 83
         elif unfiltered_stat > 490:
@@ -64,10 +71,12 @@ class StatFilters(object):
     @staticmethod
     def filtered_cdr(unfiltered_stat):
         """
-        (float)->float
+        Applies threshold on cdr.
 
-        Returns the final cdr value,
-        by applying thresholds on cdr.
+        Args:
+            unfiltered_stat: (float)
+        Returns:
+            (float) final stat value
 
         >>>StatFilters().filtered_cdr(0.1)
         0.1
