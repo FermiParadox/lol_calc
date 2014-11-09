@@ -1025,8 +1025,8 @@ if __name__ == '__main__':
                 enemy_3='jax')
 
             self.champion_lvls_dct = dict(
-                player=1,
-                enemy_1=1,
+                player=18,
+                enemy_1=18,
                 enemy_2=17,
                 enemy_3=18
             )
@@ -1222,7 +1222,7 @@ if __name__ == '__main__':
 
             return msg
 
-    #print(TestCounters())
+    print(TestCounters())
 
     rot1 = ['q', 'AA', 'w', 'AA', 'AA', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA', 'AA']
     rot2 = ['w', 'AA', 'e', 'AA', 'AA', 'AA']
@@ -1233,7 +1233,7 @@ if __name__ == '__main__':
     itemLst2 = ['gunblade']
     itemLst3 = ['gunblade', 'gunblade']
 
-    TestCounters().test_dmg_graphs(rotation_lst=rot4, item_lst=itemLst1)
+    TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst3)
 
     # Crude time testing.
     import cProfile
@@ -1243,3 +1243,4 @@ if __name__ == '__main__':
 #rot1, itemLst3
 #dps: 368.394550825117 (before bug/functionality fix/changes)
 #dps: 360.32183952512594
+#dps: 351.267126306867

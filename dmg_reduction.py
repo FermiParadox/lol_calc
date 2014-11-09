@@ -1,4 +1,4 @@
-class ArmorMRReduction(object):
+class DmgMitigation(object):
 
     @staticmethod
     def reduced_armor(request_stat, bonuses_dct, target, stat='armor'):
@@ -65,8 +65,6 @@ class ArmorMRReduction(object):
         (float) -> float
 
         Returns dmg_taken after armor.
-        >>>ArmorMRReduction().physical_dmg_taken(-25.)
-        1.2
         """
         return 1. - self.percent_physical_reduction_by_armor(request_stat, bonuses_dct, target)
 
@@ -75,66 +73,8 @@ class ArmorMRReduction(object):
         (float) -> float
 
         Returns dmg_taken after mr.
-
-        >>>ArmorMRReduction().magic_dmg_taken(-25.)
-        1.2
         """
         return 1. - self.percent_magic_reduction_by_mr(request_stat, bonuses_dct, target)
-
-
-class DmgMitigation(ArmorMRReduction):
-
-    @staticmethod
-    def mitigated_dmg(dmg_value, dmg_type, request_stat, bonuses_dct, target):
-        """
-        (float, str, dict) -> float
-
-        Returns mitigated dmg based on its type (magic, physical, AA).
-        True dmg doesn't reach this method.
-        """
-
-        if dmg_type == 'health_regen':
-            return dmg_value
-
-        # Checks if there is any percent dmg reduction and applies it.
-        if 'percent_dmg_reduction' in bonuses_dct[target]:
-            dmg_value *= 1-request_stat(target, 'percent_dmg_reduction')
-
-        # Magic dmg.
-        if dmg_type == 'magic':
-            # Checks if there is any percent magic reduction and applies it.
-            dmg_value *= 1-request_stat(target, 'percent_magic_reduction')
-
-            # Checks if there is flat magic reduction
-            if 'flat_magic_reduction' in bonuses_dct[target]:
-                dmg_value -= request_stat(target, 'flat_magic_reduction')
-
-            # Checks if there is flat reduction
-            if 'flat_reduction' in bonuses_dct[target]:
-                dmg_value -= request_stat(target, 'flat_reduction')
-
-            return max(dmg_value, 0)
-
-        # Physical (AA or non-AA)..
-        else:
-            # Checks if there is any percent physical reduction and applies it.
-            dmg_value *= 1-request_stat(target, 'percent_physical_reduction')
-
-            # Checks if there is flat physical reduction
-            if 'flat_physical_reduction' in bonuses_dct[target]:
-                dmg_value -= request_stat(target, 'flat_physical_reduction')
-
-            # Checks if there is flat reduction
-            if 'flat_reduction' in bonuses_dct[target]:
-                dmg_value -= request_stat(target, 'flat_reduction')
-
-            # AA reduction.
-            if dmg_type == 'AA':
-                if 'flat_AA_reduction' in bonuses_dct[target]:
-                    dmg_value -= request_stat(target, 'flat_AA_reduction')
-                return dmg_value
-            else:
-                return dmg_value
 
 
 if __name__ == '__main__':

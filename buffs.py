@@ -198,6 +198,52 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
         self.set_dmg_history()
 
+    def mitigated_dmg(self, dmg_value, dmg_type, target):
+        """
+        (float, str, dict) -> float
+
+        Returns mitigated dmg based on its type (magic, physical, AA).
+        True dmg doesn't reach this method.
+        """
+
+        tar_bonuses = self.bonuses_dct[target]
+        # Checks if there is any percent dmg reduction and applies it.
+        if 'percent_dmg_reduction' in tar_bonuses:
+            dmg_value *= 1-self.request_stat(target, 'percent_dmg_reduction')
+
+        # Magic dmg.
+        if dmg_type == 'magic':
+            # Checks if there is any percent magic reduction and applies it.
+            dmg_value *= 1-self.request_stat(target, 'percent_magic_reduction')
+
+            # Checks if there is flat magic reduction
+            if 'flat_magic_reduction' in tar_bonuses:
+                dmg_value -= self.request_stat(target, 'flat_magic_reduction')
+
+            # Checks if there is flat reduction
+            if 'flat_reduction' in tar_bonuses:
+                dmg_value -= self.request_stat(target, 'flat_reduction')
+
+        # Physical (AA or non-AA)..
+        else:
+            # Checks if there is any percent physical reduction and applies it.
+            dmg_value *= 1-self.request_stat(target, 'percent_physical_reduction')
+
+            # Checks if there is flat physical reduction
+            if 'flat_physical_reduction' in tar_bonuses:
+                dmg_value -= self.request_stat(target, 'flat_physical_reduction')
+
+            # Checks if there is flat reduction
+            if 'flat_reduction' in tar_bonuses:
+                dmg_value -= self.request_stat(target, 'flat_reduction')
+
+            # AA reduction.
+            if dmg_type == 'AA':
+                if 'flat_AA_reduction' in tar_bonuses:
+                    dmg_value -= self.request_stat(target, 'flat_AA_reduction')
+
+        return max(dmg_value, 0)
+
     def set_dmg_history(self):
         """
         Modifies dmg_history dict.
@@ -541,8 +587,6 @@ class DmgApplicationAndCounters(BuffsGeneral):
         else:
             final_dmg_value = self.mitigated_dmg(dmg_value=getattr(self, dmg_name + '_value')(),
                                                  dmg_type=dmg_type,
-                                                 request_stat=self.request_stat,
-                                                 bonuses_dct=self.bonuses_dct,
                                                  target=target_name)
 
         # VALUE APPLICATION
