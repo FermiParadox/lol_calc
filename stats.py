@@ -9,18 +9,18 @@ class StatFilters(object):
     """
 
     @staticmethod
-    def filtered_crit(unfiltered_stat):
+    def filtered_crit_chance(unfiltered_stat):
         """
-        Applies threshold on crit.
+        Applies threshold on crit_chance.
 
         Args:
             unfiltered_stat: (float)
         Returns:
             (float) final stat value
 
-        >>>StatFilters().filtered_crit(1.2)
+        >>>StatFilters().filtered_crit_chance(1.2)
         1.
-        >>>StatFilters().filtered_crit(0.1)
+        >>>StatFilters().filtered_crit_chance(0.1)
         0.1
         """
 
@@ -182,7 +182,7 @@ class StatCalculation(StatFilters):
 
     def standard_stat(self, requested_stat, tar_name):
         """
-        Calculates the value of a stat after applying all its bonuses.
+        Calculates the value of a stat after applying all its bonuses to its base value found in base_stats_dct.
 
         Not to be used for special stats like att_speed, or ad.
         Not to be used for filtered stats.
@@ -237,7 +237,7 @@ class StatCalculation(StatFilters):
 
         return value
 
-    def base_ad_stat(self, tar_name):
+    def base_ad(self, tar_name):
         """
         Calculates the value of base ad.
 
@@ -251,12 +251,12 @@ class StatCalculation(StatFilters):
         return self.base_stats_dct()[tar_name]['ad'] + (self.champion_lvls_dct[tar_name] *
                                                         self.base_stats_dct()[tar_name]['ad_per_lvl'])
 
-    def bonus_ad_stat(self, tar_name):
+    def bonus_ad(self, tar_name):
         """Returns the value of bonus ad.
         """
-        return self.standard_stat(requested_stat='ad', tar_name=tar_name) - self.base_ad_stat(tar_name=tar_name)
+        return self.standard_stat(requested_stat='ad', tar_name=tar_name) - self.base_ad(tar_name=tar_name)
 
-    def att_speed_stat(self, tar_name):
+    def att_speed(self, tar_name):
         """
         Calculates final value of att_speed, after all bonuses and filters have been applied.
 
@@ -297,7 +297,7 @@ class StatCalculation(StatFilters):
 
         return value
 
-    def move_speed_stat(self, tar_name):
+    def move_speed(self, tar_name):
         """
         Calculates final value of movement speed, after all bonuses and soft caps are applied.
 
@@ -343,18 +343,18 @@ class StatCalculation(StatFilters):
 
         return self.filtered_move_speed(unfiltered_stat=value)
 
-    def crit_stat(self, tar_name):
+    def crit_chance(self, tar_name):
         """
-        Returns filtered value of crit.
+        Returns filtered value of crit_chance.
 
         Returns:
             (float)
         """
 
-        return self.filtered_crit(self.standard_stat(requested_stat='crit',
-                                                     tar_name=tar_name))
+        return self.filtered_crit_chance(self.standard_stat(requested_stat='crit_chance',
+                                                            tar_name=tar_name))
 
-    def cdr_stat(self, tar_name):
+    def cdr(self, tar_name):
         """
         Returns filtered value of cdr.
 
@@ -364,127 +364,6 @@ class StatCalculation(StatFilters):
 
         return self.filtered_cdr(self.standard_stat(requested_stat='cdr',
                                                     tar_name=tar_name))
-
-    def reduced_armor(self, target, stat='armor'):
-        """
-        Returns the armor a dmg "sees".
-
-        Order of application is: 'flat armor reduction', 'percent armor reduction', 'percent armor penetration',
-        'flat armor penetration'.
-
-        Reductions are target based bonuses. Penetrations are player based.
-        """
-
-        tar_bonuses = self.bonuses_dct[target]
-        # Checks if stat is inside target's bonuses dict,
-        # .. since some stats don't exist in base_stats they can only be created by bonuses.
-        if ('percent_'+stat+'_reduction') in tar_bonuses:
-            percent_reduction = self.request_stat(target_name=target,
-                                                  stat_name='percent_'+stat+'_reduction')
-        else:
-            percent_reduction = 0
-
-        if ('percent_'+stat+'_penetration') in self.bonuses_dct['player']:
-            percent_penetration = self.request_stat(target_name='player',
-                                                    stat_name='percent_'+stat+'_penetration')
-        else:
-            percent_penetration = 0
-
-        armor_after_reductions = self.request_stat(target_name=target,
-                                                   stat_name=stat)
-        # Applies flat reduction
-        if ('flat_'+stat+'_reduction') in tar_bonuses:
-            armor_after_reductions -= self.request_stat(target_name=target,
-                                                        stat_name='flat_'+stat+'_reduction')
-
-        # Applies percent reduction and percent penetration
-        if armor_after_reductions <= 0:
-            return armor_after_reductions                               # Armor can't be reduced further if negative
-        else:
-            armor_after_reductions *= (1-percent_reduction) * (1-percent_penetration)
-
-        # Applies flat penetration
-        if ('flat_'+stat+'_penetration') in self.bonuses_dct['player']:
-            if armor_after_reductions > self.request_stat(target_name='player',
-                                                          stat_name='flat_'+stat+'_penetration'):
-                return armor_after_reductions - self.request_stat(target_name='player',
-                                                                  stat_name='flat_'+stat+'_penetration')
-
-            else:
-                return 0.
-        else:
-            return armor_after_reductions
-
-    def reduced_mr(self, target):
-        """Returns the magic resist a dmg "sees".
-
-        Same as reduced_armor().
-        """
-        return self.reduced_armor(target, stat='mr')
-
-    def percent_physical_reduction_by_armor(self, target, stat='armor'):
-        """Returns percentage dmg reduction caused by armor.
-        """
-        return self.reduced_armor(target=target, stat=stat) / (100.+abs(self.reduced_armor(target=target, stat=stat)))
-
-    def percent_magic_reduction_by_mr(self, target):
-        """Returns percentage reduction caused by mr.
-        """
-        return self.percent_physical_reduction_by_armor(target=target, stat='mr')
-
-    def physical_dmg_taken(self, target):
-        """
-        (float) -> float
-
-        Returns dmg_taken after armor.
-        """
-        return 1. - self.percent_physical_reduction_by_armor(target=target)
-
-    def magic_dmg_taken(self, target):
-        """
-        (float) -> float
-
-        Returns dmg_taken after mr.
-        """
-        return 1. - self.percent_magic_reduction_by_mr(target=target)
-
-    def percent_physical_reduction(self, tar_name):
-        """
-        Returns percent physical reduction.
-
-        Initial bonus is equal to reduction from armor. Then each other bonus is multiplied to it.
-        """
-
-        # Initially it's set to physical reduction by armor.
-        value = 1 - self.percent_physical_reduction_by_armor(tar_name)
-
-        # If there are any bonuses to physical reduction..
-        if 'percent_physical_reduction' in self.bonuses_dct[tar_name]:
-
-            for bonus_name in self.bonuses_dct[tar_name]['percent_physical_reduction']['percent']:
-                # .. they are multiplied.
-                value *= 1 - self.bonuses_dct[tar_name]['percent_physical_reduction']['percent'][bonus_name]
-
-        return 1-value
-
-    def percent_magic_reduction(self, tar_name):
-        """
-        Returns percent magic reduction.
-
-        Initial bonus is equal to reduction from mr. Then each other bonus is multiplied to it.
-        """
-
-        # Initially it's set to physical reduction by mr.
-        value = 1 - self.percent_magic_reduction_by_mr(tar_name)
-
-        # If there are any bonuses to magic dmg reduction..
-        if 'percent_magic_reduction' in self.bonuses_dct[tar_name]:
-
-            for bonus_name in self.bonuses_dct[tar_name]['percent_magic_reduction']['percent']:
-                # .. they are multiplied.
-                value *= 1 - self.bonuses_dct[tar_name]['percent_magic_reduction']['percent'][bonus_name]
-
-        return 1-value
 
     def evaluate_stat(self, target_name, stat_name):
         """
@@ -496,25 +375,25 @@ class StatCalculation(StatFilters):
                             'bonus_ad',
                             'att_speed',
                             'move_speed',
-                            'crit',
+                            'crit_chance',
                             'cdr',
                             'physical_reduction_by_armor',
-                            'magic_reduction_by_mr',)
-
-        special_stat_tpl_2 = ('percent_physical_reduction',
-                              'percent_magic_reduction',)
-
-        # Most stats can be calculated using the 'standard_stat' method.
-        if stat_name in special_stat_tpl:
-            self.stored_stats[target_name][stat_name] = getattr(self, stat_name + '_stat')(target_name)
+                            'magic_reduction_by_mr',
+                            'reduced_armor',
+                            'reduced_mr',
+                            'percent_physical_reduction',
+                            'percent_magic_reduction',)
 
         # Special stats have their own methods.
-        elif stat_name in special_stat_tpl_2:
+        if stat_name in special_stat_tpl:
             self.stored_stats[target_name][stat_name] = getattr(self, stat_name)(target_name)
+
+        # Most stats can be calculated using the 'standard_stat' method.
         else:
             self.stored_stats[target_name][stat_name] = self.standard_stat(stat_name, target_name)
 
-        # Creates stat_changes for given stat (if not created yet) and sets it to False.
+        # Sets stat_changes for given stat and target to false.
+        # (if not created yet, creates stat_changes for given stat and target)
         self.stat_changes[target_name][stat_name] = False
 
     def check_and_update_stored_buff(self, tar_name, buff_name):
@@ -678,6 +557,129 @@ class StatCalculation(StatFilters):
 
         if return_value:
             return self.stored_stats[target_name][stat_name]
+
+    def reduced_armor(self, target, stat='armor'):
+        """
+        Returns the armor a dmg "sees".
+
+        Order of application is: 'flat armor reduction', 'percent armor reduction', 'percent armor penetration',
+        'flat armor penetration'.
+
+        Reductions are target based bonuses. Penetrations are player based.
+        """
+
+        tar_bonuses = self.bonuses_dct[target]
+        # Checks if stat is inside target's bonuses dict,
+        # .. since some stats don't exist in base_stats they can only be created by bonuses.
+        if ('percent_'+stat+'_reduction') in tar_bonuses:
+            percent_reduction = self.request_stat(target_name=target,
+                                                  stat_name='percent_'+stat+'_reduction')
+        else:
+            percent_reduction = 0
+
+        if ('percent_'+stat+'_penetration') in self.bonuses_dct['player']:
+            percent_penetration = self.request_stat(target_name='player',
+                                                    stat_name='percent_'+stat+'_penetration')
+        else:
+            percent_penetration = 0
+
+        armor_after_reductions = self.request_stat(target_name=target,
+                                                   stat_name=stat)
+        # Applies flat reduction
+        if ('flat_'+stat+'_reduction') in tar_bonuses:
+            armor_after_reductions -= self.request_stat(target_name=target,
+                                                        stat_name='flat_'+stat+'_reduction')
+
+        # Applies percent reduction and percent penetration
+        if armor_after_reductions <= 0:
+            return armor_after_reductions                               # Armor can't be reduced further if negative
+        else:
+            armor_after_reductions *= (1-percent_reduction) * (1-percent_penetration)
+
+        # Applies flat penetration
+        if ('flat_'+stat+'_penetration') in self.bonuses_dct['player']:
+            if armor_after_reductions > self.request_stat(target_name='player',
+                                                          stat_name='flat_'+stat+'_penetration'):
+                return armor_after_reductions - self.request_stat(target_name='player',
+                                                                  stat_name='flat_'+stat+'_penetration')
+
+            else:
+                return 0.
+        else:
+            return armor_after_reductions
+
+    def reduced_mr(self, target):
+        """Returns the magic resist a dmg "sees".
+
+        Same as reduced_armor().
+        """
+        return self.reduced_armor(target, stat='mr')
+
+    def percent_physical_reduction_by_armor(self, target, stat='armor'):
+        """Returns percentage dmg reduction caused by armor.
+        """
+        return self.reduced_armor(target=target, stat=stat) / (100.+abs(self.reduced_armor(target=target, stat=stat)))
+
+    def percent_magic_reduction_by_mr(self, target):
+        """Returns percentage reduction caused by mr.
+        """
+        return self.percent_physical_reduction_by_armor(target=target, stat='mr')
+
+    def physical_dmg_taken(self, target):
+        """
+        (float) -> float
+
+        Returns dmg_taken after armor.
+        """
+        return 1. - self.percent_physical_reduction_by_armor(target=target)
+
+    def magic_dmg_taken(self, target):
+        """
+        (float) -> float
+
+        Returns dmg_taken after mr.
+        """
+        return 1. - self.percent_magic_reduction_by_mr(target=target)
+
+    def percent_physical_reduction(self, tar_name):
+        """
+        Returns percent physical reduction.
+
+        Initial bonus is equal to reduction from armor. Then each other bonus is multiplied to it.
+        """
+
+        # Initially it's set to physical reduction by armor.
+        value = 1 - self.percent_physical_reduction_by_armor(tar_name)
+
+        # If there are any bonuses to physical reduction..
+        if 'percent_physical_reduction' in self.bonuses_dct[tar_name]:
+
+            for bonus_name in self.bonuses_dct[tar_name]['percent_physical_reduction']['percent']:
+                # .. they are multiplied.
+                value *= 1 - self.bonuses_dct[tar_name]['percent_physical_reduction']['percent'][bonus_name]
+
+        return 1-value
+
+    def percent_magic_reduction(self, tar_name):
+        """
+        Returns percent magic reduction.
+
+        Initial bonus is equal to reduction from mr. Then each other bonus is multiplied to it.
+        """
+
+        # Initially it's set to physical reduction by mr.
+        value = 1 - self.percent_magic_reduction_by_mr(tar_name)
+
+        # If there are any bonuses to magic dmg reduction..
+        if 'percent_magic_reduction' in self.bonuses_dct[tar_name]:
+
+            for bonus_name in self.bonuses_dct[tar_name]['percent_magic_reduction']['percent']:
+                # .. they are multiplied.
+                value *= 1 - self.bonuses_dct[tar_name]['percent_magic_reduction']['percent'][bonus_name]
+
+        return 1-value
+
+
 
     def set_current_stats(self):
         """

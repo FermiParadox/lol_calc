@@ -128,13 +128,14 @@ class Categories(InnateListValue):
             return self.chain_decay(ability_dct, ability_lvl)
 
     def aa_dmg_value(self, critable_bonus=None, aa_reduction_mod=None):
-        """Returns average AA dmg after applying crit.
+        """
+        Returns average AA dmg after applying crit_chance.
 
         -Extra bonuses that can crit are applied as well.
         -Modifiers can be applied as well (e.g. Runaan's Hurricane, Miss Fortune's Q etc).
         """
 
-        crit_chance = self.tot_stats('player', 'crit')
+        crit_chance = self.tot_stats('player', 'crit_chance')
 
         crit_mod_val = self.tot_stats('player', 'crit_modifier')
 
@@ -230,7 +231,7 @@ if __name__ == '__main__':
                     ap=100,
                     ad=200,
                     hp=2000,
-                    crit=0.,
+                    crit_chance=0.,
                     crit_modifier=2.),
                 enemy_1=dict(
                     hp=2500),
@@ -514,7 +515,7 @@ if __name__ == '__main__':
         def test_aa_dmg_value(self, crit_change, crit_mod):
             self.set_up()
 
-            self.tot_stats_dct['player']['crit'] = crit_change
+            self.tot_stats_dct['player']['crit_chance'] = crit_change
             self.tot_stats_dct['player']['crit_modifier'] = crit_mod
 
             inst = Categories(**self.init_args)
@@ -523,7 +524,7 @@ if __name__ == '__main__':
                    '\nAA dmg')
 
             msg += "\ntotal ad: %s" % self.tot_stats('player', 'ad')
-            msg += "\ncrit chance: %s" % self.tot_stats('player', 'crit')
+            msg += "\ncrit chance: %s" % self.tot_stats('player', 'crit_chance')
             msg += "\ncrit modifier: %s" % self.tot_stats('player', 'crit_modifier')
 
             msg += ('\ndmg value: %s'
