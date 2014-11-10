@@ -123,6 +123,23 @@ class StatCalculation(StatFilters):
         self.set_active_buffs()
         self.set_current_stats()
 
+    # Stat names contains 2 stat variants of a defense reducing stat; armor and mr.
+    # e.g. percent_armor_reduction and percent_mr_reduction
+    DEFENSE_REDUCING_STATS = dict(
+        armor=dict(
+            percent_reduction='percent_armor_reduction',
+            percent_penetration='percent_armor_penetration',
+            flat_reduction='flat_armor_reduction',
+            flat_penetration='flat_armor_penetration',
+        ),
+        mr=dict(
+            percent_reduction='percent_mr_reduction',
+            percent_penetration='percent_mr_penetration',
+            flat_reduction='flat_mr_reduction',
+            flat_penetration='flat_mr_penetration',
+        )
+    )
+
     def base_stats_dct(self):
         """
         Creates a dict containing champion base stats for all targets.
@@ -367,7 +384,8 @@ class StatCalculation(StatFilters):
 
     def evaluate_stat(self, target_name, stat_name):
         """
-        Calculates a target's final stat value and stores it. Then marks it as "unchanged".
+        Calculates a target's final stat value and stores it.
+        Then notes that it has not changed since last calculation.
 
         Modifies:
             stored_stats: stores new value of a target's stat
@@ -567,35 +585,49 @@ class StatCalculation(StatFilters):
 
     def reduced_armor(self, target, stat='armor'):
         """
-        Returns the armor a dmg "sees".
+        Calculates the armor a dmg "sees".
+
+
 
         Order of application is: 'flat armor reduction', 'percent armor reduction', 'percent armor penetration',
         'flat armor penetration'.
 
         Reductions are target based bonuses. Penetrations are player based.
+
+        Args:
+            target: (str)
+            stat: (str) 'armor' or 'mr'. Used for creation of mr-equivalent method.
+        Returns:
+            (float) final value of armor that attacker sees
         """
 
+        # Checks if stat is inside target's bonuses dict
+        # Since some stats don't exist in base_stats they can only be created by bonuses.
         tar_bonuses = self.bonuses_dct[target]
-        # Checks if stat is inside target's bonuses dict,
-        # .. since some stats don't exist in base_stats they can only be created by bonuses.
-        if ('percent_'+stat+'_reduction') in tar_bonuses:
+
+        # percent_reduction calculation
+        percent_reduction_name = self.DEFENSE_REDUCING_STATS[stat]['percent_reduction']
+        if percent_reduction_name in tar_bonuses:
             percent_reduction = self.request_stat(target_name=target,
-                                                  stat_name='percent_'+stat+'_reduction')
+                                                  stat_name=percent_reduction_name)
         else:
             percent_reduction = 0
 
-        if ('percent_'+stat+'_penetration') in self.bonuses_dct['player']:
+        # percent_penetration calculation
+        percent_penetration_name = self.DEFENSE_REDUCING_STATS[stat]['percent_penetration']
+        if percent_penetration_name in self.bonuses_dct['player']:
             percent_penetration = self.request_stat(target_name='player',
-                                                    stat_name='percent_'+stat+'_penetration')
+                                                    stat_name=percent_penetration_name)
         else:
             percent_penetration = 0
 
         armor_after_reductions = self.request_stat(target_name=target,
                                                    stat_name=stat)
-        # Applies flat reduction
-        if ('flat_'+stat+'_reduction') in tar_bonuses:
+        # flat_reduction calculation
+        flat_reduction_name = self.DEFENSE_REDUCING_STATS[stat]['flat_reduction']
+        if flat_reduction_name in tar_bonuses:
             armor_after_reductions -= self.request_stat(target_name=target,
-                                                        stat_name='flat_'+stat+'_reduction')
+                                                        stat_name=flat_reduction_name)
 
         # Applies percent reduction and percent penetration
         if armor_after_reductions <= 0:
@@ -603,12 +635,13 @@ class StatCalculation(StatFilters):
         else:
             armor_after_reductions *= (1-percent_reduction) * (1-percent_penetration)
 
-        # Applies flat penetration
-        if ('flat_'+stat+'_penetration') in self.bonuses_dct['player']:
+        # flat_penetration
+        flat_penetration_name = self.DEFENSE_REDUCING_STATS[stat]['flat_penetration']
+        if flat_penetration_name in self.bonuses_dct['player']:
             if armor_after_reductions > self.request_stat(target_name='player',
-                                                          stat_name='flat_'+stat+'_penetration'):
+                                                          stat_name=flat_penetration_name):
                 return armor_after_reductions - self.request_stat(target_name='player',
-                                                                  stat_name='flat_'+stat+'_penetration')
+                                                                  stat_name=flat_penetration_name)
 
             else:
                 return 0.
