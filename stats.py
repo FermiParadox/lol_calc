@@ -1,5 +1,4 @@
 import database_champion_stats
-import dmg_reduction
 import copy
 
 
@@ -87,7 +86,7 @@ class StatFilters(object):
         return min(0.4, unfiltered_stat)
 
 
-class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
+class StatCalculation(StatFilters):
 
     """
     Contains methods for the calculation of each stat.
@@ -366,23 +365,88 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
         return self.filtered_cdr(self.standard_stat(requested_stat='cdr',
                                                     tar_name=tar_name))
 
-    def physical_reduction_by_armor_stat(self, tar_name):
+    def reduced_armor(self, target, stat='armor'):
         """
-        Returns physical dmg reduction caused by armor.
+        Returns the armor a dmg "sees".
+
+        Order of application is: 'flat armor reduction', 'percent armor reduction', 'percent armor penetration',
+        'flat armor penetration'.
+
+        Reductions are target based bonuses. Penetrations are player based.
         """
 
-        return self.percent_physical_reduction_by_armor(request_stat=self.request_stat,
-                                                        bonuses_dct=self.bonuses_dct,
-                                                        target=tar_name)
+        tar_bonuses = self.bonuses_dct[target]
+        # Checks if stat is inside target's bonuses dict,
+        # .. since some stats don't exist in base_stats they can only be created by bonuses.
+        if ('percent_'+stat+'_reduction') in tar_bonuses:
+            percent_reduction = self.request_stat(target_name=target,
+                                                  stat_name='percent_'+stat+'_reduction')
+        else:
+            percent_reduction = 0
 
-    def magic_reduction_by_mr_stat(self, tar_name):
-        """
-        Returns magic dmg reduction caused by mr.
-        """
+        if ('percent_'+stat+'_penetration') in self.bonuses_dct['player']:
+            percent_penetration = self.request_stat(target_name='player',
+                                                    stat_name='percent_'+stat+'_penetration')
+        else:
+            percent_penetration = 0
 
-        return self.percent_magic_reduction_by_mr(request_stat=self.request_stat,
-                                                  bonuses_dct=self.bonuses_dct,
-                                                  target=tar_name)
+        armor_after_reductions = self.request_stat(target_name=target,
+                                                   stat_name=stat)
+        # Applies flat reduction
+        if ('flat_'+stat+'_reduction') in tar_bonuses:
+            armor_after_reductions -= self.request_stat(target_name=target,
+                                                        stat_name='flat_'+stat+'_reduction')
+
+        # Applies percent reduction and percent penetration
+        if armor_after_reductions <= 0:
+            return armor_after_reductions                               # Armor can't be reduced further if negative
+        else:
+            armor_after_reductions *= (1-percent_reduction) * (1-percent_penetration)
+
+        # Applies flat penetration
+        if ('flat_'+stat+'_penetration') in self.bonuses_dct['player']:
+            if armor_after_reductions > self.request_stat(target_name='player',
+                                                          stat_name='flat_'+stat+'_penetration'):
+                return armor_after_reductions - self.request_stat(target_name='player',
+                                                                  stat_name='flat_'+stat+'_penetration')
+
+            else:
+                return 0.
+        else:
+            return armor_after_reductions
+
+    def reduced_mr(self, target):
+        """Returns the magic resist a dmg "sees".
+
+        Same as reduced_armor().
+        """
+        return self.reduced_armor(target, stat='mr')
+
+    def percent_physical_reduction_by_armor(self, target, stat='armor'):
+        """Returns percentage dmg reduction caused by armor.
+        """
+        return self.reduced_armor(target=target, stat=stat) / (100.+abs(self.reduced_armor(target=target, stat=stat)))
+
+    def percent_magic_reduction_by_mr(self, target):
+        """Returns percentage reduction caused by mr.
+        """
+        return self.percent_physical_reduction_by_armor(target=target, stat='mr')
+
+    def physical_dmg_taken(self, target):
+        """
+        (float) -> float
+
+        Returns dmg_taken after armor.
+        """
+        return 1. - self.percent_physical_reduction_by_armor(target=target)
+
+    def magic_dmg_taken(self, target):
+        """
+        (float) -> float
+
+        Returns dmg_taken after mr.
+        """
+        return 1. - self.percent_magic_reduction_by_mr(target=target)
 
     def percent_physical_reduction(self, tar_name):
         """
@@ -392,7 +456,7 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
         """
 
         # Initially it's set to physical reduction by armor.
-        value = 1 - self.physical_reduction_by_armor_stat(tar_name)
+        value = 1 - self.percent_physical_reduction_by_armor(tar_name)
 
         # If there are any bonuses to physical reduction..
         if 'percent_physical_reduction' in self.bonuses_dct[tar_name]:
@@ -410,10 +474,10 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
         Initial bonus is equal to reduction from mr. Then each other bonus is multiplied to it.
         """
 
-        # Initially it's set to physical reduction by armor.
-        value = 1 - self.magic_reduction_by_mr_stat(tar_name)
+        # Initially it's set to physical reduction by mr.
+        value = 1 - self.percent_magic_reduction_by_mr(tar_name)
 
-        # If there are any bonuses to physical reduction..
+        # If there are any bonuses to magic dmg reduction..
         if 'percent_magic_reduction' in self.bonuses_dct[tar_name]:
 
             for bonus_name in self.bonuses_dct[tar_name]['percent_magic_reduction']['percent']:
@@ -653,236 +717,4 @@ class StatCalculation(StatFilters, dmg_reduction.DmgMitigation):
 
 if __name__ == '__main__':
 
-    class TestStatCalculation(object):
-
-        def __init__(self):
-
-            self.DELIMITER = '\n--------------------------------'
-            self.filtered_stats_max = {'crit': 1., 'move_speed': None, 'att_speed': 2.5, 'cdr': 0.4}
-
-            self.selected_champions_dct = None
-            self.champion_lvls_dct = None
-            self.initial_active_buffs = None
-            self.initial_current_stats = None
-            self.items_stats_bonuses = None
-
-        def set_up(self):
-
-            self.selected_champions_dct = dict(
-                player='jax',
-                enemy_1='jax',
-                enemy_2='jax',
-                enemy_3='jax')
-
-            self.champion_lvls_dct = dict(
-                player=1,
-                enemy_1=1,
-                enemy_2=1,
-                enemy_3=1
-            )
-
-            self.initial_active_buffs = None
-            self.initial_current_stats = {'player': {'current_mana': 100}}
-
-        @staticmethod
-        def combiner_class():
-
-            class BuffClass(object):
-
-                @staticmethod
-                def buff_att_speed_percent():
-                    return dict(
-                        stats=dict(
-                            att_speed=dict(
-                                percent=0.5)))
-
-                @staticmethod
-                def buff_ad_flat():
-                    return dict(
-                        stats=dict(
-                            ad=dict(
-                                additive=10)))
-
-                @staticmethod
-                def buff_kass_reduction():
-                    return dict(
-                        stats=dict(
-                            percent_magic_reduction=dict(
-                                percent=0.15)))
-
-            class CombinerClass(StatCalculation, BuffClass):
-
-                def __init__(self,
-                             champion_lvls_dct,
-                             selected_champions_dct,
-                             active_buffs):
-
-                    StatCalculation.__init__(self,
-                                             champion_lvls_dct=champion_lvls_dct,
-                                             selected_champions_dct=selected_champions_dct,
-                                             initial_active_buffs=active_buffs)
-
-            return CombinerClass
-
-        def test_standard_stat_no_bonuses(self, player_lvl):
-            self.set_up()
-
-            self.champion_lvls_dct['player'] = player_lvl
-
-            inst = StatCalculation(champion_lvls_dct=self.champion_lvls_dct,
-                                   selected_champions_dct=self.selected_champions_dct,
-                                   initial_active_buffs=self.initial_active_buffs)
-
-            msg = self.DELIMITER
-            msg += '\nTesting method: standard_stats'
-            msg += '(no bonuses)\n\n'
-            msg += 'player lvl: %s\n' % self.champion_lvls_dct['player']
-
-            for stat_name in ('ad', 'mr', 'armor', 'move_speed', 'range', 'mp5', 'hp5'):
-                msg += str(stat_name) + ': ' + str(inst.standard_stat(stat_name, 'player')) + '\n'
-
-            return msg
-
-        def test_request_stat_no_bonuses(self, enemy_1_lvl):
-            self.set_up()
-
-            self.champion_lvls_dct['enemy_1'] = enemy_1_lvl
-
-            inst = StatCalculation(champion_lvls_dct=self.champion_lvls_dct,
-                                   selected_champions_dct=self.selected_champions_dct)
-
-            msg = self.DELIMITER
-            msg += '\nTesting method: request_stat (special stats)'
-            msg += '(no bonuses)\n\n'
-            msg += 'enemy_1 lvl: %s\n' % self.champion_lvls_dct['enemy_1']
-
-            for stat_name in ('base_ad',
-                              'bonus_ad',
-                              'att_speed',
-                              'move_speed',
-                              'cdr',
-                              'physical_reduction_by_armor',
-                              'magic_reduction_by_mr'):
-                msg += str(stat_name) + ': ' + str(inst.request_stat('enemy_1', stat_name)) + '\n'
-
-            return msg
-
-        def test_current_stats(self, target):
-            self.set_up()
-
-            msg = ''
-
-            init_curr_stats_1 = None
-            init_curr_stats_2 = dict(player=dict(current_hp=100,
-                                                 current_mp=50),
-                                     enemy_1={'current_hp': 100})
-
-            for dct in (init_curr_stats_1, init_curr_stats_2):
-                inst = StatCalculation(champion_lvls_dct=self.champion_lvls_dct,
-                                       selected_champions_dct=self.selected_champions_dct,
-                                       initial_current_stats=dct)
-
-                msg += self.DELIMITER
-                msg += '\nTesting method: set_current_stats \n\n'
-                if not dct:
-                    msg += '(initial stats not set)\n\n'
-
-                msg += '%s max hp: %s\n' % (target, inst.request_stat(target, 'hp'))
-                msg += '%s current hp: %s\n' % (target, inst.current_stats[target]['current_hp'])
-
-                if target == 'player':
-                    msg += '%s max mp: %s\n' % (target, inst.request_stat(target, 'mp'))
-                    msg += '%s current mp: %s\n' % (target, inst.current_stats['player']['current_mp'])
-
-            return msg
-
-        def test_request_stat_plus_bonuses(self, enemy_1_lvl):
-            self.set_up()
-
-            self.champion_lvls_dct['enemy_1'] = enemy_1_lvl
-
-            self.initial_active_buffs = dict(
-                player={},
-                enemy_1={'buff_ad_flat': None, 'buff_att_speed_percent': None})
-
-            inst = self.combiner_class()(champion_lvls_dct=self.champion_lvls_dct,
-                                         selected_champions_dct=self.selected_champions_dct,
-                                         active_buffs=self.initial_active_buffs)
-
-            inst.buffs_to_bonuses()
-
-            msg = self.DELIMITER
-            msg += '\nTesting method: request_stat (special stats)'
-            msg += '\nbonuses:\n'
-
-            msg += 'ad: 10 flat)\n'
-            msg += 'att_speed: 50%\n\n'
-
-            msg += 'enemy_1 lvl: %s\n' % self.champion_lvls_dct['enemy_1']
-
-            for stat_name in ('base_ad',
-                              'bonus_ad',
-                              'ad',
-                              'att_speed',
-                              'move_speed'):
-                msg += str(stat_name) + ': ' + str(inst.request_stat('enemy_1', stat_name)) + '\n'
-
-            return msg
-
-        def test_percent_magic_reduction(self, tar_name):
-            self.set_up()
-
-            self.initial_active_buffs = dict(
-                player={'buff_kass_reduction': None},
-                enemy_1={})
-
-            inst = self.combiner_class()(champion_lvls_dct=self.champion_lvls_dct,
-                                         selected_champions_dct=self.selected_champions_dct,
-                                         active_buffs=self.initial_active_buffs)
-
-            inst.buffs_to_bonuses()
-
-            msg = ''
-
-            msg += self.DELIMITER
-
-            msg += '\nTesting method: percent_magic_reduction \n'
-
-            msg += ('\npercent magic reduction from buff: %s\n'
-                    '') % self.initial_active_buffs[tar_name]
-
-            msg += 'target: %s, \nmagic reduction: %s' % (tar_name, inst.percent_magic_reduction(tar_name=tar_name))
-
-            return msg
-
-        def __repr__(self):
-
-            msg = ''
-            for player_lvl in (1, 2, 18):
-                msg += self.test_standard_stat_no_bonuses(player_lvl)
-
-            msg += self.DELIMITER
-
-            for enemy_1_lvl in (1, 2):
-                msg += self.test_request_stat_no_bonuses(enemy_1_lvl)
-
-            msg += self.DELIMITER
-
-            for tar_name in ('player', 'enemy_1'):
-                msg += self.test_current_stats(tar_name)
-
-            msg += self.DELIMITER
-
-            for tar_name in ('player', 'enemy_1'):
-                msg += self.test_percent_magic_reduction(tar_name)
-
-            msg += self.DELIMITER
-
-            for enemy_1_lvl in (1, 2):
-                msg += self.test_request_stat_plus_bonuses(enemy_1_lvl)
-
-            msg += self.DELIMITER
-
-            return msg
-
-    print(TestStatCalculation())
+    pass

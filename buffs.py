@@ -209,38 +209,38 @@ class DmgApplicationAndCounters(BuffsGeneral):
         tar_bonuses = self.bonuses_dct[target]
         # Checks if there is any percent dmg reduction and applies it.
         if 'percent_dmg_reduction' in tar_bonuses:
-            dmg_value *= 1-self.request_stat(target, 'percent_dmg_reduction')
+            dmg_value *= 1-self.request_stat(target_name=target, stat_name='percent_dmg_reduction')
 
         # Magic dmg.
         if dmg_type == 'magic':
             # Checks if there is any percent magic reduction and applies it.
-            dmg_value *= 1-self.request_stat(target, 'percent_magic_reduction')
+            dmg_value *= 1-self.request_stat(target_name=target, stat_name='percent_magic_reduction')
 
             # Checks if there is flat magic reduction
             if 'flat_magic_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target, 'flat_magic_reduction')
+                dmg_value -= self.request_stat(target_name=target, stat_name='flat_magic_reduction')
 
             # Checks if there is flat reduction
             if 'flat_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target, 'flat_reduction')
+                dmg_value -= self.request_stat(target_name=target, stat_name='flat_reduction')
 
         # Physical (AA or non-AA)..
         else:
             # Checks if there is any percent physical reduction and applies it.
-            dmg_value *= 1-self.request_stat(target, 'percent_physical_reduction')
+            dmg_value *= 1-self.request_stat(target_name=target, stat_name='percent_physical_reduction')
 
             # Checks if there is flat physical reduction
             if 'flat_physical_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target, 'flat_physical_reduction')
+                dmg_value -= self.request_stat(target_name=target, stat_name='flat_physical_reduction')
 
             # Checks if there is flat reduction
             if 'flat_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target, 'flat_reduction')
+                dmg_value -= self.request_stat(target_name=target, stat_name='flat_reduction')
 
             # AA reduction.
             if dmg_type == 'AA':
                 if 'flat_AA_reduction' in tar_bonuses:
-                    dmg_value -= self.request_stat(target, 'flat_AA_reduction')
+                    dmg_value -= self.request_stat(target_name=target, stat_name='flat_AA_reduction')
 
         return max(dmg_value, 0)
 
