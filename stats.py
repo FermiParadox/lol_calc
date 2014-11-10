@@ -655,15 +655,29 @@ class StatCalculation(StatFilters):
         """
         return self.reduced_armor(target, stat='mr')
 
-    def percent_physical_reduction_by_armor(self, target, stat='armor'):
-        """Returns percentage dmg reduction caused by armor.
+    @staticmethod
+    def percent_dmg_taken_by_defensive_stat(stat_value):
         """
-        return self.reduced_armor(target=target, stat=stat) / (100.+abs(self.reduced_armor(target=target, stat=stat)))
+        Calculates percent dmg reduction caused by armor or mr.
+        """
+
+        return stat_value / (100.+abs(stat_value))
+
+    def percent_physical_reduction_by_armor(self, target, stat='reduced_armor'):
+        """
+        Calculates percent dmg reduction caused by armor.
+        """
+
+        stat_val = self.request_stat(target_name=target, stat_name=stat)
+
+        return self.percent_dmg_taken_by_defensive_stat(stat_value=stat_val)
 
     def percent_magic_reduction_by_mr(self, target):
-        """Returns percentage reduction caused by mr.
         """
-        return self.percent_physical_reduction_by_armor(target=target, stat='mr')
+        Calculates percent dmg reduction caused by mr.
+        """
+
+        return self.percent_physical_reduction_by_armor(target=target, stat='reduced_mr')
 
     def physical_dmg_taken(self, target):
         """
