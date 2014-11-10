@@ -109,7 +109,7 @@ class StatCalculation(StatFilters):
         self.active_buffs = {}
 
         self.current_stats = {}
-        self.stat_dependencies = {}     # e.g. {tar_name: {stat_1: [stat_2, stat_3], }, }
+        self.stat_dependencies = {}     # e.g. {tar_name: {stat_1: [controller_stat_1, controller_stat_2,], }, }
         self.stored_stats = {}
         self.stat_changes = {}
         self.stored_buffs = {}  # Used for storing buff (that affects stats) and its stacks, of a target.
@@ -367,8 +367,13 @@ class StatCalculation(StatFilters):
 
     def evaluate_stat(self, target_name, stat_name):
         """
-        -Modifies stored_stats by storing the new value of a stat of target.
-        -Modifies stat_changes by setting it False for given stat of target.
+        Calculates a target's final stat value and stores it. Then marks it as "unchanged".
+
+        Modifies:
+            stored_stats: stores new value of a target's stat
+            stat_changes: sets to False for target's stat
+        Returns:
+            (None)
         """
 
         special_stat_tpl = ('base_ad',
@@ -392,8 +397,8 @@ class StatCalculation(StatFilters):
         else:
             self.stored_stats[target_name][stat_name] = self.standard_stat(stat_name, target_name)
 
-        # Sets stat_changes for given stat and target to false.
-        # (if not created yet, creates stat_changes for given stat and target)
+        # Sets stat_changes for given target's stat to false.
+        # (if not created yet, it creates it)
         self.stat_changes[target_name][stat_name] = False
 
     def check_and_update_stored_buff(self, tar_name, buff_name):
@@ -517,7 +522,7 @@ class StatCalculation(StatFilters):
 
     def request_stat(self, target_name, stat_name, return_value=True):
         """
-        Returns the value of a stat, and modifies bonuses_dct and stat_dct.
+        Calculates the final value of a stat, and modifies bonuses_dct and stat_dct.
 
         A stat (dependent) might depend on the value of other stats (controllers).
         If a dependent stat is requested,
@@ -525,11 +530,13 @@ class StatCalculation(StatFilters):
 
         If the stat or its controllers have not been modified, its stored value is returned.
 
+        Modifies:
+
         Args:
             return_value: Set to false when function used only for refreshing a stat value.
         Returns:
-            float (stat value)
-            None
+            (float) final value of stat
+            (None)
         """
 
         # If the stat is being controlled by other stat..
@@ -662,9 +669,12 @@ class StatCalculation(StatFilters):
 
     def percent_magic_reduction(self, tar_name):
         """
-        Returns percent magic reduction.
+        Calculates total percent magic reduction.
 
         Initial bonus is equal to reduction from mr. Then each other bonus is multiplied to it.
+
+        Returns:
+            (float)
         """
 
         # Initially it's set to physical reduction by mr.
@@ -678,8 +688,6 @@ class StatCalculation(StatFilters):
                 value *= 1 - self.bonuses_dct[tar_name]['percent_magic_reduction']['percent'][bonus_name]
 
         return 1-value
-
-
 
     def set_current_stats(self):
         """
