@@ -214,7 +214,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
         # Magic dmg.
         if dmg_type == 'magic':
             # Checks if there is any percent magic reduction and applies it.
-            dmg_value *= 1-self.request_stat(target_name=target, stat_name='percent_magic_reduction')
+            dmg_value *= self.request_stat(target_name=target, stat_name='magic_dmg_taken')
 
             # Checks if there is flat magic reduction
             if 'flat_magic_reduction' in tar_bonuses:
@@ -226,8 +226,8 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
         # Physical (AA or non-AA)..
         else:
-            # Checks if there is any percent physical reduction and applies it.
-            dmg_value *= 1-self.request_stat(target_name=target, stat_name='percent_physical_reduction')
+            # Applies physical dmg reduction.
+            dmg_value *= self.request_stat(target_name=target, stat_name='physical_dmg_taken')
 
             # Checks if there is flat physical reduction
             if 'flat_physical_reduction' in tar_bonuses:
