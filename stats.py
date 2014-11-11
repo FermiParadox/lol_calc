@@ -5,7 +5,8 @@ import copy
 class StatFilters(object):
 
     """
-    Contains functions that filter stats to prevent them exceeding their thresholds.
+    Contains functions that filter stats to prevent them exceeding their thresholds,
+    and functions that reduce stat values that exceed their soft-caps.
     """
 
     @staticmethod
@@ -89,7 +90,7 @@ class StatFilters(object):
 class StatCalculation(StatFilters):
 
     """
-    Contains methods for the calculation of each stat.
+    Contains methods for the calculation of some stats' values.
     """
 
     def __init__(self,
@@ -121,37 +122,6 @@ class StatCalculation(StatFilters):
         self.place_tar_and_empty_dct_in_dct(self.stored_buffs)
 
         self.set_active_buffs()
-        self.set_current_stats()
-
-    # Stat names contains 2 stat variants of a defense reducing stat; armor and mr.
-    # e.g. percent_armor_reduction and percent_mr_reduction
-    DEFENSE_REDUCING_STATS = dict(
-        armor=dict(
-            percent_reduction='percent_armor_reduction',
-            percent_penetration='percent_armor_penetration',
-            flat_reduction='flat_armor_reduction',
-            flat_penetration='flat_armor_penetration',
-        ),
-        mr=dict(
-            percent_reduction='percent_mr_reduction',
-            percent_penetration='percent_mr_penetration',
-            flat_reduction='flat_mr_reduction',
-            flat_penetration='flat_mr_penetration',
-        )
-    )
-
-    SPECIAL_STATS_LST = ('base_ad',
-                         'bonus_ad',
-                         'att_speed',
-                         'move_speed',
-                         'crit_chance',
-                         'cdr',
-                         'physical_reduction_by_armor',
-                         'magic_reduction_by_mr',
-                         'reduced_armor',
-                         'reduced_mr',
-                         'physical_dmg_taken',
-                         'magic_dmg_taken',)
 
     def base_stats_dct(self):
         """
@@ -395,6 +365,41 @@ class StatCalculation(StatFilters):
         return self.filtered_cdr(self.standard_stat(requested_stat='cdr',
                                                     tar_name=tar_name))
 
+
+class StatRequest(StatCalculation):
+
+    """
+    Contains methods for calcul
+    """
+
+    def __init__(self,
+                 champion_lvls_dct,
+                 selected_champions_dct,
+                 initial_active_buffs=None,
+                 initial_current_stats=None):
+
+        StatCalculation.__init__(self,
+                                 champion_lvls_dct=champion_lvls_dct,
+                                 selected_champions_dct=selected_champions_dct,
+                                 initial_active_buffs=initial_active_buffs,
+                                 initial_current_stats=initial_current_stats)
+
+        self.set_current_stats()    # (placed here since it requires request_stat method)
+
+    # Contains stats that are not included in base_stats_dct and are calculated separately by their own methods.
+    SPECIAL_STATS_LST = ('base_ad',
+                         'bonus_ad',
+                         'att_speed',
+                         'move_speed',
+                         'crit_chance',
+                         'cdr',
+                         'physical_reduction_by_armor',
+                         'magic_reduction_by_mr',
+                         'reduced_armor',
+                         'reduced_mr',
+                         'physical_dmg_taken',
+                         'magic_dmg_taken',)
+
     def evaluate_stat(self, target_name, stat_name):
         """
         Calculates a target's final stat value and stores it.
@@ -583,6 +588,65 @@ class StatCalculation(StatFilters):
         if return_value:
             return self.stored_stats[target_name][stat_name]
 
+    def set_current_stats(self):
+        """
+        Inserts current_hp in current_stats of each target and current resource (e.g. mana, rage, etc) for player.
+        If the current_stats dict is empty, or if the value doesnt exist it creates the value.
+
+        Modifies:
+            current_stats
+        Returns:
+            (None)
+        """
+
+        # Checks if there are any preset values for current_stats.
+        if self.initial_current_stats:
+            self.current_stats = copy.deepcopy(self.initial_current_stats)
+
+        for tar in self.selected_champions_dct:
+
+            # If the target's current_hp has not been set, it creates it.
+            if tar not in self.current_stats:
+                self.current_stats.update({tar: {}})
+
+                self.current_stats.update(
+                    {tar: dict(current_hp=self.request_stat(target_name=tar, stat_name='hp'))})
+
+            # Also creates the player's 'current_'resource.
+            if tar == 'player':
+                resource_used = self.base_stats_dct()['player']['resource_used']
+
+                if ('current_' + resource_used) not in self.current_stats[tar]:
+
+                    self.current_stats['player'].update(
+
+                        {('current_' + resource_used): self.request_stat(target_name=tar,
+                                                                         stat_name=resource_used)})
+
+
+class DmgReductionStats(StatRequest):
+
+    """
+    Contains methods for the calculation of dmg reduction related stats' values.
+    """
+
+    # Stat names contains 2 stat variants of a defense reducing stat; armor and mr.
+    # e.g. percent_armor_reduction and percent_mr_reduction
+    DEFENSE_REDUCING_STATS = dict(
+        armor=dict(
+            percent_reduction='percent_armor_reduction',
+            percent_penetration='percent_armor_penetration',
+            flat_reduction='flat_armor_reduction',
+            flat_penetration='flat_armor_penetration',
+        ),
+        mr=dict(
+            percent_reduction='percent_mr_reduction',
+            percent_penetration='percent_mr_penetration',
+            flat_reduction='flat_mr_reduction',
+            flat_penetration='flat_mr_penetration',
+        )
+    )
+
     def reduced_armor(self, target, stat='armor'):
         """
         Calculates the armor a dmg "sees".
@@ -647,7 +711,8 @@ class StatCalculation(StatFilters):
             return armor_after_reductions
 
     def reduced_mr(self, target):
-        """Returns the magic resist a dmg "sees".
+        """
+        Calculates the magic resist a dmg "sees".
 
         Same as reduced_armor().
         """
@@ -727,41 +792,6 @@ class StatCalculation(StatFilters):
                 value *= 1 - tar_percent_red_bonuses[bonus_name]
 
         return value
-
-    def set_current_stats(self):
-        """
-        Inserts current_hp in current_stats of each target and current resource (e.g. mana, rage, etc) for player.
-        If the current_stats dict is empty, or if the value doesnt exist it creates the value.
-
-        Modifies:
-            current_stats
-        Returns:
-            (None)
-        """
-
-        # Checks if there are any preset values for current_stats.
-        if self.initial_current_stats:
-            self.current_stats = copy.deepcopy(self.initial_current_stats)
-
-        for tar in self.selected_champions_dct:
-
-            # If the target's current_hp has not been set, it creates it.
-            if tar not in self.current_stats:
-                self.current_stats.update({tar: {}})
-
-                self.current_stats.update(
-                    {tar: dict(current_hp=self.request_stat(target_name=tar, stat_name='hp'))})
-
-            # Also creates the player's 'current_'resource.
-            if tar == 'player':
-                resource_used = self.base_stats_dct()['player']['resource_used']
-
-                if ('current_' + resource_used) not in self.current_stats[tar]:
-
-                    self.current_stats['player'].update(
-
-                        {('current_' + resource_used): self.request_stat(target_name=tar,
-                                                                         stat_name=resource_used)})
 
 
 if __name__ == '__main__':

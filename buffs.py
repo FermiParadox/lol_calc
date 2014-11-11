@@ -3,7 +3,7 @@ import targeting
 import items
 
 
-class BuffsGeneral(stats.StatCalculation, targeting.Targeting, items.AllItems):
+class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems):
 
     def __init__(self,
                  current_time,
@@ -17,11 +17,11 @@ class BuffsGeneral(stats.StatCalculation, targeting.Targeting, items.AllItems):
         self.current_time = current_time
         self.selected_champions_dct = selected_champions_dct
 
-        stats.StatCalculation.__init__(self,
-                                       champion_lvls_dct=champion_lvls_dct,
-                                       selected_champions_dct=selected_champions_dct,
-                                       initial_active_buffs=initial_active_buffs,
-                                       initial_current_stats=initial_current_stats)
+        stats.DmgReductionStats.__init__(self,
+                                         champion_lvls_dct=champion_lvls_dct,
+                                         selected_champions_dct=selected_champions_dct,
+                                         initial_active_buffs=initial_active_buffs,
+                                         initial_current_stats=initial_current_stats)
 
         items.AllItems.__init__(self,
                                 items_lst=items_lst,
