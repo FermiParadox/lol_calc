@@ -436,21 +436,24 @@ class StatRequest(StatCalculation):
             (None)
         """
 
+        # Checks if buff exists in targets dict.
         try:
             self.stored_buffs[tar_name][buff_name]
 
         except KeyError:
             buff_dct = getattr(self, buff_name)()
 
-            # Checks if buff modifies stats and if it's not permanent.
-            if ('stats' in buff_dct) and ('duration' != 'permanent'):
+            # Checks if buff modifies stats.
+            if 'stats' in buff_dct:
 
+                # If so stores each stat that gets modified by it.
                 self.stored_buffs[tar_name][buff_name] = {'stats_it_mods': []}
 
                 for stat_name in buff_dct['stats']:
                     self.stored_buffs[tar_name][buff_name]['stats_it_mods'].append(stat_name)
                     self.stat_changes[tar_name][stat_name] = True
 
+                # If it can stack marks its current stacks.
                 if 'max_stacks' in buff_dct:
                     self.stored_buffs[tar_name][buff_name].update(
                         {'stacks': self.active_buffs[tar_name][buff_name]['current_stacks']})
@@ -500,63 +503,73 @@ class StatRequest(StatCalculation):
 
                     self.check_and_update_stored_buff(tar_name=tar_name, buff_name=buff)
 
+    def update_tar_bonuses_dct(self, stat_name, bonus_type, buff_dct, tar_name, buff_name):
+        """
+        Updates a target's bonuses_dct by adding the name and value of a bonus.
+
+        Modifies:
+            bonuses_dct
+        Returns:
+            (None)
+        """
+
+        value = buff_dct['stats'][stat_name][bonus_type]
+        # Stacks.
+        if 'current_stacks' in self.active_buffs[tar_name][buff_name]:
+            value *= self.active_buffs[tar_name][buff_name]['current_stacks']
+
+        # Inserts bonus_name and its value in bonuses_dct.
+        self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: value})
+
     def buffs_to_bonuses(self, stat_name, tar_name):
         """
-        Modifies bonuses_dct by inserting a stat's bonuses caused by buffs.
+        Stores a stat's bonuses caused by buffs.
 
-        Bonuses dict structure: {target: {stat: {bonus type: {bonus name: }, }, }, }
-        Buff dict structure: { , , 'stats': {stat_name: {'additive': value}, }, .. }
+        Structure:
+            bonuses_dct: {target: {stat: {bonus type: {bonus name: }, }, }, }
+            buff dct: { , , 'stats': {stat_name: {'additive': value}, }, .. }
+        Modifies:
+            bonuses_dct
+
+        Returns:
+            (None)
         """
 
-        tar_act_buffs = self.active_buffs[tar_name]
-
-        for buff_name in tar_act_buffs:
+        for buff_name in self.active_buffs[tar_name]:
             self.check_and_update_stored_buff(tar_name=tar_name, buff_name=buff_name)
 
             buff_dct = getattr(self, buff_name)()
             # Checks if the buff has stat bonuses.
             if 'stats' in buff_dct:
+
                 if stat_name in buff_dct['stats']:
-                    if stat_name in self.bonuses_dct[tar_name]:
+
+                    tar_bonuses = self.bonuses_dct[tar_name]
+
+                    if stat_name in tar_bonuses:
                         # Iterates through types. (additive, percent or both)
                         for bonus_type in buff_dct['stats'][stat_name]:
-                            if bonus_type in self.bonuses_dct[tar_name][stat_name]:
+                            if bonus_type in tar_bonuses[stat_name]:
 
-                                # Value
-                                value = buff_dct['stats'][stat_name][bonus_type]
-                                # If the buff has stacks, multiplies value with stacks.
-                                if 'current_stacks' in tar_act_buffs[buff_name]:
-                                    value *= tar_act_buffs[buff_name]['current_stacks']
-
-                                # Inserts bonus_name and its value in bonuses_dct.
-                                self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: value})
+                                self.update_tar_bonuses_dct(stat_name=stat_name, bonus_type=bonus_type,
+                                                            buff_dct=buff_dct, tar_name=tar_name, buff_name=buff_name)
 
                             else:
                                 # Inserts bonus_type in bonuses_dct.
-                                self.bonuses_dct[tar_name][stat_name].update({bonus_type: {}})
-                                # Value
-                                value = buff_dct['stats'][stat_name][bonus_type]
-                                # If the buff has stacks, multiplies value with stacks.
-                                if 'current_stacks' in tar_act_buffs[buff_name]:
-                                    value *= tar_act_buffs[buff_name]['current_stacks']
+                                tar_bonuses[stat_name].update({bonus_type: {}})
 
-                                # Inserts bonus_name and its value in bonuses_dct.
-                                self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: value})
+                                self.update_tar_bonuses_dct(stat_name=stat_name, bonus_type=bonus_type,
+                                                            buff_dct=buff_dct, tar_name=tar_name, buff_name=buff_name)
 
                     else:
                         for bonus_type in buff_dct['stats'][stat_name]:
                             # Inserts stat_name in bonuses_dct.
-                            self.bonuses_dct[tar_name].update({stat_name: {}})
+                            tar_bonuses.update({stat_name: {}})
                             # Inserts bonus_type in bonuses_dct.
-                            self.bonuses_dct[tar_name][stat_name].update({bonus_type: {}})
-                            # Value
-                            value = buff_dct['stats'][stat_name][bonus_type]
-                            # If the buff has stacks, multiplies value with stacks.
-                            if 'current_stacks' in tar_act_buffs[buff_name]:
-                                value *= tar_act_buffs[buff_name]['current_stacks']
+                            tar_bonuses[stat_name].update({bonus_type: {}})
 
-                            # Inserts bonus_name and its value in bonuses_dct.
-                            self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: value})
+                            self.update_tar_bonuses_dct(stat_name=stat_name, bonus_type=bonus_type,
+                                                        buff_dct=buff_dct, tar_name=tar_name, buff_name=buff_name)
 
     def request_stat(self, target_name, stat_name, return_value=True):
         """
