@@ -198,7 +198,6 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
         self.max_combat_time = max_combat_time
         self.rotation_lst = rotation_lst
-        self.actions_dct = {}
         self.current_target_num = None
         self.everyone_dead = None
 
@@ -1245,3 +1244,4 @@ if __name__ == '__main__':
 #dps: 368.394550825117 (before bug/functionality fix/changes)
 #dps: 360.32183952512594
 #dps: 351.267126306867
+#dps: 331.07415420245394 (after changing dps method)

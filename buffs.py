@@ -36,17 +36,17 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
         """Modifies the active_buffs dictionary by applying a new single buff.
         """
 
-        buff_dct = None
+        buff_dct = getattr(self, buff_name)
 
         self.active_buffs[tar_name].update(
             {buff_name: dict(
                 starting_time=self.current_time)})
 
         # If non permanent buff.
-        if getattr(self, buff_name)()['duration'] != 'permanent':
+        if buff_dct()['duration'] != 'permanent':
 
             self.active_buffs[tar_name][buff_name].update(dict(
-                ending_time=self.current_time + getattr(self, buff_name)()['duration']))
+                ending_time=self.current_time + buff_dct()['duration']))
 
         else:
 
@@ -54,7 +54,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
                 ending_time='unlimited'))
 
         # If it can stack...
-        if 'max_stacks' in getattr(self, buff_name)():
+        if 'max_stacks' in buff_dct():
             # ...adds current_stacks keyword.
             self.active_buffs[tar_name][buff_name].update(dict(current_stacks=initial_stacks_increment))
 
@@ -62,30 +62,29 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
         """Modifies the active_buffs dictionary by applying an already active buff.
         """
 
-        # If non permanent buff, refreshes its duration.
-        if getattr(self, buff_name)()['duration'] != 'permanent':
+        buff_dct = getattr(self, buff_name)
+        tar_buff_dct_in_act_buffs = self.active_buffs[tar_name][buff_name]
 
-            self.active_buffs[tar_name][buff_name]['ending_time'] = (
-                self.current_time + getattr(self, buff_name)()['duration'])
+        # If non permanent buff, refreshes its duration.
+        if buff_dct()['duration'] != 'permanent':
+
+            tar_buff_dct_in_act_buffs['ending_time'] = self.current_time + buff_dct()['duration']
 
         # If the applied buff can stack....
-        if 'current_stacks' in self.active_buffs[tar_name][buff_name]:
+        if 'current_stacks' in tar_buff_dct_in_act_buffs:
 
             # ...and if max_stacks have not been reached...
-            if (self.active_buffs[tar_name][buff_name]['current_stacks'] <
-                    getattr(self, buff_name)()['max_stacks']):
+            if tar_buff_dct_in_act_buffs['current_stacks'] < buff_dct()['max_stacks']:
 
                 # ...adds +1 to the stacks (unless increment is different).
-                self.active_buffs[tar_name][buff_name]['current_stacks'] += stack_increment
+                tar_buff_dct_in_act_buffs['current_stacks'] += stack_increment
 
                 # Ensures max_stacks aren't exceeded for stack_increments larger than 1.
                 if stack_increment > 1:
 
-                    if (self.active_buffs[tar_name][buff_name]['current_stacks'] >
-                            getattr(self, buff_name)()['max_stacks']):
+                    if tar_buff_dct_in_act_buffs['current_stacks'] > buff_dct()['max_stacks']:
                         # If max_stacks exceeded, set to max_stacks.
-                        self.active_buffs[tar_name][buff_name]['current_stacks'] = \
-                            getattr(self, buff_name)()['max_stacks']
+                        tar_buff_dct_in_act_buffs['current_stacks'] = buff_dct()['max_stacks']
 
     def add_buff(self, buff_name, tar_name, stack_increment=1, initial_stacks_increment=1):
         """
@@ -116,16 +115,17 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
         """
 
         for tar_name in self.active_buffs:
-            active_buffs_tar = self.active_buffs[tar_name]
+            tar_act_buffs = self.active_buffs[tar_name]
 
-            for buff_name in sorted(active_buffs_tar):
+            for buff_name in sorted(tar_act_buffs):
+                tar_buff_dct_in_act_buffs = tar_act_buffs[buff_name]
 
-                if 'ending_time' in active_buffs_tar[buff_name]:
-                    if active_buffs_tar[buff_name]['ending_time'] != 'unlimited':
-                        if active_buffs_tar[buff_name]['ending_time'] < self.current_time:
+                if 'ending_time' in tar_buff_dct_in_act_buffs:
+                    if tar_buff_dct_in_act_buffs['ending_time'] != 'unlimited':
+                        if tar_buff_dct_in_act_buffs['ending_time'] < self.current_time:
 
                             # Removes the buffs.
-                            del active_buffs_tar[buff_name]
+                            del tar_buff_dct_in_act_buffs
 
     def add_single_ability_passive_buff(self, ability_name, target_type, effects_dct, tar_name):
         """
@@ -199,6 +199,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
                               initial_active_buffs=initial_active_buffs,
                               items_lst=items_lst)
         self.dmg_history = {}
+        self.actions_dct = {}
 
         self.set_dmg_history()
 
@@ -297,19 +298,21 @@ class DmgApplicationAndCounters(BuffsGeneral):
         for target_name in self.dmg_history:
             if target_name != 'player':
 
-                for dmg_type in self.dmg_history[target_name]:
-                    if dmg_type not in ('total', 'current_hp'):
-                        for dmg_time in self.dmg_history[target_name][dmg_type]:
+                tar_dmg_hist = self.dmg_history[target_name]
 
-                            dmg_value = self.dmg_history[target_name][dmg_type][dmg_time]
+                for dmg_type in tar_dmg_hist:
+                    if dmg_type not in ('total', 'current_hp'):
+                        for dmg_time in tar_dmg_hist[dmg_type]:
+
+                            dmg_value = tar_dmg_hist[dmg_type][dmg_time]
 
                             # Checks if event's time doesn't exist in 'total'.
-                            if dmg_time not in self.dmg_history[target_name]['total']:
-                                self.dmg_history[target_name]['total'].update({dmg_time: dmg_value})
+                            if dmg_time not in tar_dmg_hist['total']:
+                                tar_dmg_hist['total'].update({dmg_time: dmg_value})
 
                             else:
                                 # If it exists, it adds the dmg value to the previous.
-                                self.dmg_history[target_name]['total'][dmg_time] += dmg_value
+                                tar_dmg_hist['total'][dmg_time] += dmg_value
 
     def refined_dmg_history(self):
         """
@@ -654,7 +657,9 @@ class DmgApplicationAndCounters(BuffsGeneral):
         Healing and regeneration of enemy targets, not taken into account.
         """
 
-        last_cast_completion = max(self.actions_dct) + 0.00001
+        last_action_time = max(self.actions_dct)
+
+        last_cast_completion = self.actions_dct[last_action_time]['cast_end']
 
         return self.refined_dmg_history()['all_targets']['total_dmg'] / last_cast_completion
 
