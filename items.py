@@ -65,7 +65,8 @@ class Gunblade(ItemsBase):
 
             # (up to 6 gunblades can provide this bonus)
             max_stacks=6,
-            target='player')
+            target='player',
+            duration='permanent',)
 
     def gunblade_unique_passive_buff(self):
         return dict(
@@ -73,7 +74,8 @@ class Gunblade(ItemsBase):
                 spellvamp=dict(
                     additive=self.GUNBLADE_ATTRIBUTES['passive']['spellvamp']),),
 
-            target='player')
+            target='player',
+            duration='permanent',)
 
     def gunblade_dmg(self):
 

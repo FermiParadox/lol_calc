@@ -46,7 +46,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
         on_hit=dict(apply_buff=['innate_att_speed_buff'],
                     cause_dmg=[],
                     remove_buff=[]),
-        target='player'
+        target='player',
+        duration='permanent',
     )
 
     def innate_initiator_buff(self):
@@ -295,7 +296,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
             on_hit=dict(apply_buff=['r_counter_buff'],
                         cause_dmg=[],
                         remove_buff=[]),
-            target='player'
+            target='player',
+            duration='permanent',
         )
 
         #... otherwise it causes the dmg and resets the counter.

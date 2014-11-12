@@ -369,7 +369,9 @@ class StatCalculation(StatFilters):
 class StatRequest(StatCalculation):
 
     """
-    Contains methods for calcul
+    Contains methods for handing requests to a stat's calculation.
+
+    Stats are calculated once and then stored until they or their controllers (stats or buffs) change.
     """
 
     def __init__(self,
@@ -426,7 +428,12 @@ class StatRequest(StatCalculation):
 
     def check_and_update_stored_buff(self, tar_name, buff_name):
         """
-        Modifies stored_buffs, by adding a buff which affects stats (if not already added).
+        Adds a buff which affects stats (if not already added).
+
+        Modifies:
+            stored_buffs
+        Returns:
+            (None)
         """
 
         try:
@@ -436,7 +443,7 @@ class StatRequest(StatCalculation):
             buff_dct = getattr(self, buff_name)()
 
             # Checks if buff modifies stats and if it's not permanent.
-            if ('stats' in buff_dct) and ('duration' in buff_dct):
+            if ('stats' in buff_dct) and ('duration' != 'permanent'):
 
                 self.stored_buffs[tar_name][buff_name] = {'stats_it_mods': []}
 
@@ -450,8 +457,14 @@ class StatRequest(StatCalculation):
 
     def compare_stored_buffs(self, tar_name, stat_name):
         """
-        Modifies stat_changes and stored_buffs, by marking modified stats when a buff that affects them has been removed
+        Marks modified stats when a buff that affects them has been removed
         or its stacks changed, and then updating the stored_buffs.
+
+        Modifies:
+            stat_changes
+            stored_buffs
+        Returns:
+            (None)
         """
 
         tar_stored_buffs = self.stored_buffs[tar_name]
@@ -471,12 +484,14 @@ class StatRequest(StatCalculation):
                     del tar_stored_buffs[buff_name]
 
                 # If its stacks changed..
-                elif tar_act_buffs[buff_name]['current_stacks'] != tar_stored_buffs[buff_name]['stacks']:
+                elif 'current_stacks' in tar_act_buffs[buff_name]:
 
-                    # .. marks stats the buff affects as changed.
-                    self.stat_changes[tar_name][stat_name] = True
-                    # .. and updates the stacks in the stored_buffs dict.
-                    tar_stored_buffs[buff_name]['stacks'] = tar_act_buffs[buff_name]['current_stacks']
+                    if tar_act_buffs[buff_name]['current_stacks'] != tar_stored_buffs[buff_name]['stacks']:
+
+                        # .. marks stats the buff affects as changed.
+                        self.stat_changes[tar_name][stat_name] = True
+                        # .. and updates the stacks in the stored_buffs dict.
+                        tar_stored_buffs[buff_name]['stacks'] = tar_act_buffs[buff_name]['current_stacks']
 
         # Checks if there is a new active buff (that modifies stats).
         for buff in tar_act_buffs:

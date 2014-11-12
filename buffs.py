@@ -35,11 +35,15 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
     def add_new_buff(self, buff_name, tar_name, initial_stacks_increment=1):
         """Modifies the active_buffs dictionary by applying a new single buff.
         """
+
+        buff_dct = None
+
         self.active_buffs[tar_name].update(
             {buff_name: dict(
                 starting_time=self.current_time)})
 
-        if 'duration' in getattr(self, buff_name)():
+        # If non permanent buff.
+        if getattr(self, buff_name)()['duration'] != 'permanent':
 
             self.active_buffs[tar_name][buff_name].update(dict(
                 ending_time=self.current_time + getattr(self, buff_name)()['duration']))
@@ -58,8 +62,8 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
         """Modifies the active_buffs dictionary by applying an already active buff.
         """
 
-        # ...it refreshes its duration (if it has one).
-        if 'duration' in getattr(self, buff_name)():
+        # If non permanent buff, refreshes its duration.
+        if getattr(self, buff_name)()['duration'] != 'permanent':
 
             self.active_buffs[tar_name][buff_name]['ending_time'] = (
                 self.current_time + getattr(self, buff_name)()['duration'])
@@ -659,7 +663,8 @@ class DeathAndRegen(DmgApplicationAndCounters):
 
     @staticmethod
     def dead_buff():
-        return {}   # Permanent buff
+        return dict(
+            duration='permanent',)
 
     def apply_death(self, tar_name):
         """
@@ -688,11 +693,13 @@ class DeathAndRegen(DmgApplicationAndCounters):
             period=0.5,
             dmg_type='true',
             target='enemy',
-            special={'dot': None},)
+            special={'dot': None},
+            duration='permanent',)
 
     @staticmethod
     def enemy_hp5_buff():
-        return dict()
+        return dict(
+            duration='permanent',)
 
     def enemy_hp5_dmg_value(self):
         """
@@ -707,11 +714,13 @@ class DeathAndRegen(DmgApplicationAndCounters):
             period=0.5,
             dmg_type='true',
             target='player',
-            special={'dot': None},)
+            special={'dot': None},
+            duration='permanent',)
 
     @staticmethod
     def player_hp5_buff():
-        return dict()
+        return dict(
+            duration='permanent',)
 
     def player_hp5_dmg_value(self):
         """
@@ -721,7 +730,8 @@ class DeathAndRegen(DmgApplicationAndCounters):
 
     @staticmethod
     def mp5_buff():
-        return dict()
+        return dict(
+            duration='permanent',)
 
     @staticmethod
     def mp5_dmg():
@@ -730,6 +740,7 @@ class DeathAndRegen(DmgApplicationAndCounters):
             resource_type='mp',
             target='player',
             special={'dot': None},
+            duration='permanent',
         )
 
     def mp5_dmg_value(self):

@@ -171,8 +171,8 @@ class EventsGeneral(buffs.DeathAndRegen):
             if 'dot' in dmg_dct['special']:
                 # If only temporary periodic events are re-applied..
                 if only_temporary:
-                    # ..checks if their duration is not unlimited (exists).
-                    if 'duration' in dmg_dct:
+                    # ..checks if their duration is not unlimited.
+                    if dmg_dct['duration'] != 'permanent':
                         event_refresher()
 
                 # Otherwise checks both permanent and temporary dots.

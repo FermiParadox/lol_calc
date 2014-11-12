@@ -101,6 +101,8 @@ class RunesFinal(object):
         Dict structure Color -> stat_name -> {'rune_name': '', 'stat_value': ''}
         """
 
+        self.runes_buff_store['duration'] = 'permanent'
+
         if self.selected_runes:
 
             for rune_color in self.selected_runes:
