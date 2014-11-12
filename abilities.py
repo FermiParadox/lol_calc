@@ -1245,3 +1245,4 @@ if __name__ == '__main__':
 #dps: 360.32183952512594
 #dps: 351.267126306867
 #dps: 331.07415420245394 (after changing dps method)
+#dps: 338.4234113818222 (unexpected change, after changing bonus_ad method to get stats by 'evaluate' instead of direct)

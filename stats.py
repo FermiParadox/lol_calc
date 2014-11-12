@@ -251,11 +251,6 @@ class StatCalculation(StatFilters):
         return self.base_stats_dct()[tar_name]['ad'] + (self.champion_lvls_dct[tar_name] *
                                                         self.base_stats_dct()[tar_name]['ad_per_lvl'])
 
-    def bonus_ad(self, tar_name):
-        """Returns the value of bonus ad.
-        """
-        return self.standard_stat(requested_stat='ad', tar_name=tar_name) - self.base_ad(tar_name=tar_name)
-
     def att_speed(self, tar_name):
         """
         Calculates final value of att_speed, after all bonuses and filters have been applied.
@@ -458,10 +453,10 @@ class StatRequest(StatCalculation):
                     self.stored_buffs[tar_name][buff_name].update(
                         {'stacks': self.active_buffs[tar_name][buff_name]['current_stacks']})
 
-    def compare_stored_buffs(self, tar_name, stat_name):
+    def compare_and_update_stored_buffs(self, tar_name, stat_name):
         """
         Marks modified stats when a buff that affects them has been removed
-        or its stacks changed, and then updating the stored_buffs.
+        or its stacks changed, and then updates stored_buffs.
 
         Modifies:
             stat_changes
@@ -503,7 +498,7 @@ class StatRequest(StatCalculation):
 
                     self.check_and_update_stored_buff(tar_name=tar_name, buff_name=buff)
 
-    def update_tar_bonuses_dct(self, stat_name, bonus_type, buff_dct, tar_name, buff_name):
+    def insert_bonus_to_tar_bonuses(self, stat_name, bonus_type, buff_dct, tar_name, buff_name):
         """
         Updates a target's bonuses_dct by adding the name and value of a bonus.
 
@@ -551,15 +546,17 @@ class StatRequest(StatCalculation):
                         for bonus_type in buff_dct['stats'][stat_name]:
                             if bonus_type in tar_bonuses[stat_name]:
 
-                                self.update_tar_bonuses_dct(stat_name=stat_name, bonus_type=bonus_type,
-                                                            buff_dct=buff_dct, tar_name=tar_name, buff_name=buff_name)
+                                self.insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
+                                                                 buff_dct=buff_dct, tar_name=tar_name,
+                                                                 buff_name=buff_name)
 
                             else:
                                 # Inserts bonus_type in bonuses_dct.
                                 tar_bonuses[stat_name].update({bonus_type: {}})
 
-                                self.update_tar_bonuses_dct(stat_name=stat_name, bonus_type=bonus_type,
-                                                            buff_dct=buff_dct, tar_name=tar_name, buff_name=buff_name)
+                                self.insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
+                                                                 buff_dct=buff_dct, tar_name=tar_name,
+                                                                 buff_name=buff_name)
 
                     else:
                         for bonus_type in buff_dct['stats'][stat_name]:
@@ -568,8 +565,9 @@ class StatRequest(StatCalculation):
                             # Inserts bonus_type in bonuses_dct.
                             tar_bonuses[stat_name].update({bonus_type: {}})
 
-                            self.update_tar_bonuses_dct(stat_name=stat_name, bonus_type=bonus_type,
-                                                        buff_dct=buff_dct, tar_name=tar_name, buff_name=buff_name)
+                            self.insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
+                                                             buff_dct=buff_dct, tar_name=tar_name,
+                                                             buff_name=buff_name)
 
     def request_stat(self, target_name, stat_name, return_value=True):
         """
@@ -596,13 +594,13 @@ class StatRequest(StatCalculation):
             # ..for each controller..
             for controller in self.stat_dependencies[target_name][stat_name]:
 
-                #.. requests its value (that is, refreshes or fetches its value).
+                #.. requests its value (that is, refreshes its value or fetches the stored value).
                 # Recursive calls force controllers to refresh if needed.
                 # (controllers' buffs to bonuses are refreshed first)
                 self.request_stat(target_name=target_name, stat_name=controller, return_value=False)
 
         # Check if target's buff affecting given stat have changed.
-        self.compare_stored_buffs(tar_name=target_name, stat_name=stat_name)
+        self.compare_and_update_stored_buffs(tar_name=target_name, stat_name=stat_name)
 
         # Evaluates the stat if it hasn't been evaluated before or if it has changed.
         if stat_name not in self.stat_changes[target_name] or self.stat_changes[target_name][stat_name] is True:
@@ -650,6 +648,15 @@ class StatRequest(StatCalculation):
 
                         {('current_' + resource_used): self.request_stat(target_name=tar,
                                                                          stat_name=resource_used)})
+
+    def bonus_ad(self, tar_name):
+        """
+        Calculates the value of bonus ad (that is, total ad minus base_ad).
+
+        Returns:
+            (float)
+        """
+        return self.request_stat(target_name=tar_name, stat_name='ad') - self.base_ad(tar_name=tar_name)
 
 
 class DmgReductionStats(StatRequest):
