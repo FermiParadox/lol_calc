@@ -107,7 +107,7 @@ class EventsGeneral(buffs.DeathAndRegen):
         if effect_name in self.max_targets_dct:
             # Until the rest of the targets are affected or no targets are left..
             while self.targets_already_hit < self.max_targets_dct[effect_name]:
-                self.next_target()
+                self.next_target(selected_champs=self.selected_champions_dct)
                 self.event_times[start_time][self.current_target].append(effect_name)
 
         # Otherwise if it has max_targets (therefor it's aoe).
@@ -119,7 +119,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                 while self.targets_already_hit < len(self.champion_lvls_dct):
                     # Switches to next target.
                     # If next target is None (because no valid targets exist) the loop breaks.
-                    self.next_target()
+                    self.next_target(selected_champs=self.selected_champions_dct)
                     if not self.current_target:
                         break
                     # .. checks if the target is inside the time.
@@ -132,7 +132,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                 while self.targets_already_hit < getattr(self, effect_name)()['max_targets']:
                     # Switches to next target.
                     # If next target is None (because no valid targets exist) the loop breaks.
-                    self.next_target()
+                    self.next_target(selected_champs=self.selected_champions_dct)
                     if not self.current_target:
                         break
 
@@ -244,7 +244,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                 cost_dct = {resource_used: resource_cost}
 
             # STACK COST
-            # (e.g. akali R stacks)
+            # (e.g. Akali R stacks)
             if 'stack_cost' in ability_stats_dct['general']:
                 stack_name = ability_stats_dct['general']['stack_cost']
                 cost_dct.update({stack_name: ability_stats_dct['general']['stack_cost'][stack_name]})
@@ -1000,7 +1000,7 @@ if __name__ == '__main__':
 
             self.player_champ = player_champ
 
-            self.DELIMITER = '\n--------------------------------'
+            self.DELIMITER = '\n' + '-'*100
             self.filtered_stats_max = {'crit': 1., 'speed': None, 'att_speed': 2.5, 'cdr': 0.4}
 
             self.rotation_lst = None
