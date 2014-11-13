@@ -1,9 +1,17 @@
-def f(x):
+class ClassA(object):
 
-    x += 2
+    def _f(self):
+
+        return 5
 
 
-def g():
-    a=0
-    f(a)
-    return a
+class ClassB(ClassA):
+
+    def f(self):
+        self._f()
+        return 7
+
+
+if __name__ == '__main__':
+
+    print (ClassB()._f())

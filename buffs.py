@@ -15,7 +15,6 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
                  ):
 
         self.current_time = current_time
-        self.selected_champions_dct = selected_champions_dct
 
         stats.DmgReductionStats.__init__(self,
                                          champion_lvls_dct=champion_lvls_dct,
@@ -33,50 +32,69 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
                                             current_target_num=self.current_target_num))
 
     def add_new_buff(self, buff_name, tar_name, initial_stacks_increment=1):
-        """Modifies the active_buffs dictionary by applying a new single buff.
+        """
+        Inserts a new buff in active_buffs dictionary.
+
+        Modifies:
+            active_buffs
+        Returns:
+            (None)
         """
 
         buff_dct = getattr(self, buff_name)
 
+        # Inserts the new buff.
         self.active_buffs[tar_name].update(
             {buff_name: dict(
                 starting_time=self.current_time)})
 
+        # DURATION
         # If non permanent buff.
         if buff_dct()['duration'] != 'permanent':
 
+            # ..creates and inserts its duration.
             self.active_buffs[tar_name][buff_name].update(dict(
                 ending_time=self.current_time + buff_dct()['duration']))
 
         else:
-
+            # ..otherwise sets its duration to 'unlimited'.
             self.active_buffs[tar_name][buff_name].update(dict(
                 ending_time='unlimited'))
 
+        # STACKS
         # If it can stack...
         if 'max_stacks' in buff_dct():
             # ...adds current_stacks keyword.
             self.active_buffs[tar_name][buff_name].update(dict(current_stacks=initial_stacks_increment))
 
     def add_already_active_buff(self, buff_name, tar_name, stack_increment=1):
-        """Modifies the active_buffs dictionary by applying an already active buff.
+        """
+        Changes an existing buff in active_buffs dictionary,
+        by refreshing its duration and increasing its stacks.
+
+        Modifies:
+            active_buffs
+        Returns:
+            (None)
         """
 
         buff_dct = getattr(self, buff_name)
         tar_buff_dct_in_act_buffs = self.active_buffs[tar_name][buff_name]
 
+        # DURATION
         # If non permanent buff, refreshes its duration.
         if buff_dct()['duration'] != 'permanent':
 
             tar_buff_dct_in_act_buffs['ending_time'] = self.current_time + buff_dct()['duration']
 
-        # If the applied buff can stack....
+        # STACKS
+        # If the applied buff can stack..
         if 'current_stacks' in tar_buff_dct_in_act_buffs:
 
-            # ...and if max_stacks have not been reached...
+            # ..and if max_stacks have not been reached..
             if tar_buff_dct_in_act_buffs['current_stacks'] < buff_dct()['max_stacks']:
 
-                # ...adds +1 to the stacks (unless increment is different).
+                # ..adds +1 to the stacks (unless increment is different).
                 tar_buff_dct_in_act_buffs['current_stacks'] += stack_increment
 
                 # Ensures max_stacks aren't exceeded for stack_increments larger than 1.
@@ -88,30 +106,35 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
 
     def add_buff(self, buff_name, tar_name, stack_increment=1, initial_stacks_increment=1):
         """
-        Modifies the active_buffs dictionary by applying a single buff.
-        Modifies bonuses_dict afterwards.
+        Inserts a new buff or refreshes an existing buff (duration and stacks).
 
-        If applied buff is already active it changes its ending_time,
-        and its current stacks if it can stack.
+        Modifies:
+            active_buffs
+        Returns:
+            (None)
         """
 
-        # If it's a new buff ...
+        # NEW BUFF
         if buff_name not in self.active_buffs[tar_name]:
 
             self.add_new_buff(buff_name=buff_name,
                               tar_name=tar_name,
                               initial_stacks_increment=initial_stacks_increment)
 
-        # If the buff is already inside the active_buffs...
+        # EXISTING BUFF
         else:
-
             self.add_already_active_buff(buff_name=buff_name,
                                          tar_name=tar_name,
                                          stack_increment=stack_increment)
 
     def remove_expired_buffs(self):
         """
-        Modifies active_buffs by removing expired buffs from it.
+        Removes all expired buffs.
+
+        Modifies:
+            active_buffs
+        Return:
+            (None)
         """
 
         for tar_name in self.active_buffs:
@@ -120,16 +143,20 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
             for buff_name in sorted(tar_act_buffs):
                 tar_buff_dct_in_act_buffs = tar_act_buffs[buff_name]
 
-                if 'ending_time' in tar_buff_dct_in_act_buffs:
-                    if tar_buff_dct_in_act_buffs['ending_time'] != 'unlimited':
-                        if tar_buff_dct_in_act_buffs['ending_time'] < self.current_time:
+                if tar_buff_dct_in_act_buffs['ending_time'] != 'unlimited':
+                    if tar_buff_dct_in_act_buffs['ending_time'] < self.current_time:
 
-                            # Removes the buffs.
-                            del tar_buff_dct_in_act_buffs
+                        # Removes the buff.
+                        del tar_buff_dct_in_act_buffs
 
     def add_single_ability_passive_buff(self, ability_name, target_type, effects_dct, tar_name):
         """
-        Modifies active_buffs, by adding passive buffs for a single ability on a target.
+        Adds passive buffs of a single ability on a target.
+
+        Modifies:
+            active_buffs
+        Returns:
+            (None)
         """
 
         #... and for each of its passive buffs...
@@ -666,6 +693,8 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
 class DeathAndRegen(DmgApplicationAndCounters):
 
+    PER_5_DIVISOR = 10  # Divides "per 5" stats. Used to create per tick value (ticks have 0.5s period)
+
     @staticmethod
     def dead_buff():
         return dict(
@@ -710,7 +739,7 @@ class DeathAndRegen(DmgApplicationAndCounters):
         """
         Returns healing per 0.5 seconds by regeneration.
         """
-        return -self.request_stat(stat_name='hp5', target_name=self.current_target)/10
+        return -self.request_stat(stat_name='hp5', target_name=self.current_target)/self.PER_5_DIVISOR
 
     @staticmethod
     def player_hp5_dmg():
@@ -731,7 +760,7 @@ class DeathAndRegen(DmgApplicationAndCounters):
         """
         Returns healing per 0.5 seconds by regeneration.
         """
-        return -self.request_stat(stat_name='hp5', target_name='player')/10
+        return -self.request_stat(stat_name='hp5', target_name='player')/self.PER_5_DIVISOR
 
     @staticmethod
     def mp5_buff():
@@ -749,7 +778,7 @@ class DeathAndRegen(DmgApplicationAndCounters):
         )
 
     def mp5_dmg_value(self):
-        return -self.request_stat(stat_name='mp5', target_name='player')/10
+        return -self.request_stat(stat_name='mp5', target_name='player')/self.PER_5_DIVISOR
 
 
 if __name__ == '__main__':
