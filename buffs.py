@@ -159,23 +159,26 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
             (None)
         """
 
-        #... and for each of its passive buffs...
+        # Checks if selected ability has passive buffs.
         if target_type in effects_dct[ability_name]:
             if 'passives' in effects_dct[ability_name][target_type]:
                 if 'buffs' in effects_dct[ability_name][target_type]['passives']:
+                    # Applies all passive buffs.
                     for buff_name in effects_dct[ability_name][target_type]['passives']['buffs']:
-
-                        #... applies the buffs.
                         self.add_buff(buff_name, tar_name)
 
     def add_passive_buffs(self, abilities_effects_dct, abilities_lvls):
         """
-        Modifies active_buffs,
-        by adding passive buffs from all champion abilities (that apply on ability lvling) on all targets.
+        Adds passive buffs from champion abilities (that apply on ability lvling) on all targets.
+
+        Modifies:
+            active_buffs
+        Returns:
+            (None)
         """
 
         for tar_name in self.champion_lvls_dct:
-            # Checks if target is player or any enemy
+            # (player or enemy)
             target_type = self.target_type(tar_name=tar_name)
 
             # For Q,W,E and R...
@@ -190,15 +193,14 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
                                                          effects_dct=abilities_effects_dct,
                                                          tar_name=tar_name)
 
-            # Applies all passive innate buffs.
+            # Innate passive buffs.
             self.add_single_ability_passive_buff(ability_name='inn',
                                                  target_type=target_type,
                                                  effects_dct=abilities_effects_dct,
                                                  tar_name=tar_name)
 
-            # For each item..
+            # Item passive buffs.
             for item_name in self.items_lst:
-                # ..applies item passive buffs.
                 # (If item is bought multiple times, all stacks are applied)
                 self.add_single_ability_passive_buff(ability_name=item_name,
                                                      target_type=target_type,
@@ -232,11 +234,15 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
     def mitigated_dmg(self, dmg_value, dmg_type, target):
         """
-        (float, str, dict) -> float
+        Calculates the dmg value based on its type (magic, physical, AA, true).
 
-        Returns mitigated dmg based on its type (magic, physical, AA).
-        True dmg doesn't reach this method.
+        Returns:
+            (float)
         """
+
+        # True dmg remains unmitigated.
+        if dmg_type == 'true':
+            return dmg_value
 
         tar_bonuses = self.bonuses_dct[target]
         # Checks if there is any percent dmg reduction and applies it.
@@ -274,48 +280,50 @@ class DmgApplicationAndCounters(BuffsGeneral):
                 if 'flat_AA_reduction' in tar_bonuses:
                     dmg_value -= self.request_stat(target_name=target, stat_name='flat_AA_reduction')
 
-        return max(dmg_value, 0)
+        return max(dmg_value, 0.)
 
     def set_dmg_history(self):
         """
-        Modifies dmg_history dict.
+        Sets up dmg_history by inserting history blueprints for all targets.
 
-        -Adds all targets.
-        -Adds the time and dmg occurrences for each target.
+        Modifies:
+            dmg_history dict.
+
+        Returns:
+            (None)
         """
 
-        if not self.dmg_history:
-            for tar in self.selected_champions_dct:
+        for tar in self.selected_champions_dct:
 
-                self.dmg_history.update(
-                    {tar: dict(
-                        true={},
-                        magic={},
-                        physical={},
-                        total={},
-                        current_hp={},)})
+            self.dmg_history.update(
+                {tar: dict(
+                    true={},
+                    magic={},
+                    physical={},
+                    total={},
+                    current_hp={},)})
 
-                if tar == 'player':
-                    self.dmg_history['player'].update(dict(
-                        # Each dmg_name and its values
-                        # (e.g. {'AA': [56.1, ], 'w_dmg': [],})
-                        source={},
+            if tar == 'player':
+                self.dmg_history['player'].update(dict(
+                    # Each dmg_name and its values
+                    # (e.g. {'AA': [56.1, ], 'w_dmg': [],})
+                    source={},
 
-                        # AA related dmg, including on_hit dmg.
-                        # (e.g. {'AA': [56.1, ], 'w_dmg': [],})
-                        AA_related={},
+                    # AA related dmg, including on_hit dmg.
+                    # (e.g. {'AA': [56.1, ], 'w_dmg': [],})
+                    AA_related={},
 
-                        ability=dict(
-                            inn=[],
-                            q=[],
-                            w=[],
-                            e=[],
-                            r=[]
-                        ),
+                    ability=dict(
+                        inn=[],
+                        q=[],
+                        w=[],
+                        e=[],
+                        r=[]
+                    ),
 
-                        lifesteal={},
-                        spellvamp={},
-                        resource={},))
+                    lifesteal={},
+                    spellvamp={},
+                    resource={},))
 
     def add_dmg_history_tot(self):
         """
@@ -615,13 +623,9 @@ class DmgApplicationAndCounters(BuffsGeneral):
         dmg_type = getattr(self, dmg_name)()['dmg_type']
 
         # EFFECT VALUE CALCULATION
-        if dmg_type == 'true':
-            final_dmg_value = getattr(self, dmg_name + '_value')()
-
-        else:
-            final_dmg_value = self.mitigated_dmg(dmg_value=getattr(self, dmg_name + '_value')(),
-                                                 dmg_type=dmg_type,
-                                                 target=target_name)
+        final_dmg_value = self.mitigated_dmg(dmg_value=getattr(self, dmg_name + '_value')(),
+                                             dmg_type=dmg_type,
+                                             target=target_name)
 
         # VALUE APPLICATION
         # If it's a dmg.
@@ -693,7 +697,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
 class DeathAndRegen(DmgApplicationAndCounters):
 
-    PER_5_DIVISOR = 10  # Divides "per 5" stats. Used to create per tick value (ticks have 0.5s period)
+    PER_5_DIVISOR = 10.  # Divides "per 5" stats. Used to create per tick value (ticks have 0.5s period)
 
     @staticmethod
     def dead_buff():

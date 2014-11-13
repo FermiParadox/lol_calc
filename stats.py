@@ -665,7 +665,7 @@ class DmgReductionStats(StatRequest):
     Contains methods for the calculation of dmg reduction related stats' values.
     """
 
-    # Stat names contains 2 stat variants of a defense reducing stat; armor and mr.
+    # Contains 2 stat variants of a defense reducing stat; one for armor and one for mr.
     # e.g. percent_armor_reduction and percent_mr_reduction
     DEFENSE_REDUCING_STATS = dict(
         armor=dict(
@@ -681,6 +681,12 @@ class DmgReductionStats(StatRequest):
             flat_penetration='flat_mr_penetration',
         )
     )
+
+    # structure: {tar_name: {stat_1: [controller_stat_1, controller_stat_2,], }, }
+    DMG_REDUCTION_STAT_DEPENDENCIES = {
+        'all_targets': dict(
+            reduced_armor=list(DEFENSE_REDUCING_STATS['armor'].keys()),
+            reduced_mr=list(DEFENSE_REDUCING_STATS['mr'].keys())), }
 
     def reduced_armor(self, target, stat='armor'):
         """
@@ -727,8 +733,9 @@ class DmgReductionStats(StatRequest):
                                                         stat_name=flat_reduction_name)
 
         # Applies percent reduction and percent penetration
+        # (Armor can't be reduced further if negative)
         if armor_after_reductions <= 0:
-            return armor_after_reductions                               # Armor can't be reduced further if negative
+            return armor_after_reductions
         else:
             armor_after_reductions *= (1-percent_reduction) * (1-percent_penetration)
 

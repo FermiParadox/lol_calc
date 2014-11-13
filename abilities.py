@@ -1233,12 +1233,14 @@ if __name__ == '__main__':
     itemLst3 = ['gunblade', 'gunblade']
 
     TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst3)
-    """
-    # Crude time testing.
-    import cProfile
-    test_text = 'TestCounters().test_loop(rotation=rot1*4, use_runes=True)\n' * 100
-    cProfile.run(test_text, sort='cumtime')
-    """
+
+    run_time_test = True
+    if run_time_test:
+        # Crude time testing.
+        import cProfile
+        test_text = 'TestCounters().test_loop(rotation=rot1*4, use_runes=True)\n' * 100
+        cProfile.run(test_text, sort='cumtime')
+
 
 #rot1, itemLst3
 #dps: 368.394550825117 (before bug/functionality fix/changes)
