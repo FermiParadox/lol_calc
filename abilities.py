@@ -1152,7 +1152,7 @@ if __name__ == '__main__':
                                                initial_current_stats=self.initial_current_stats)
 
             inst.combat_loop()
-            inst.add_dmg_history_tot()
+            inst.add_dmg_tot_history()
 
             inst.subplot_pie_chart(plt.figure(1).add_subplot(222))
             inst.subplot_dmg_graph(plt.figure(1).add_subplot(221))
@@ -1232,7 +1232,9 @@ if __name__ == '__main__':
     itemLst2 = ['gunblade']
     itemLst3 = ['gunblade', 'gunblade']
 
-    TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst3)
+    run_graph_test = True
+    if run_graph_test:
+        TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst3)
 
     run_time_test = True
     if run_time_test:

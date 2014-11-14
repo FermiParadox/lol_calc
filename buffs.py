@@ -305,29 +305,36 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
             if tar == 'player':
                 self.dmg_history['player'].update(dict(
-                    # Each dmg_name and its values
-                    # (e.g. {'AA': [56.1, ], 'w_dmg': [],})
+                    # Each dmg_name and its value
+                    # (e.g. {'AA': 56.1, 'w_dmg': 20.,})
                     source={},
 
                     # AA related dmg, including on_hit dmg.
                     # (e.g. {'AA': [56.1, ], 'w_dmg': [],})
-                    AA_related={},
+                    AA_related=0.,
 
                     ability=dict(
-                        inn=[],
-                        q=[],
-                        w=[],
-                        e=[],
-                        r=[]
+                        inn=0.,
+                        q=0.,
+                        w=0.,
+                        e=0.,
+                        r=0.
                     ),
 
                     lifesteal={},
                     spellvamp={},
                     resource={},))
 
-    def add_dmg_history_tot(self):
+    def add_dmg_tot_history(self):
         """
-        Modifies dmg_history, by adding all dmg events regardless of type for each target.
+        Inserts a single dmg event (total dmg done during a given moment) regardless of type for each target.
+
+        That is, if multiple dmg events occur simultaneously they are stored as a single dmg event.
+
+        Modifies:
+            dmg_history
+        Returns:
+            (None)
         """
 
         for target_name in self.dmg_history:
@@ -483,7 +490,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
     def apply_spellvamp_or_lifesteal(self, dmg_name, dmg_value, dmg_type):
         """
-        Applies lifesteal or spellvamp to the player.
+        Applies lifesteal or spellvamp to the player and notes it in history.
 
         Lifesteal is applied on AAs or dmg effects marked in their dict.
 
@@ -542,15 +549,23 @@ class DmgApplicationAndCounters(BuffsGeneral):
                     self.note_lifesteal_or_spellvamp_in_history(value=lifesteal_value, heal_type='lifesteal')
 
     def dmg_related_counters(self, dmg_type, final_dmg_value, target_name):
+        """
+        Calculates and stores total dmg of a particular type, at a each moment,
+        and stores current_hp at a each moment for a target.
+
+        Modifies:
+            dmg_history
+        Returns:
+            (None)
+        """
 
         # Modifies dmg_history.
         if dmg_type == 'AA':
             # AA type is converted to physical before being stored.
             dmg_type = 'physical'
 
-        # If it's not heal..
+        # Filters out heals.
         if final_dmg_value > 0:
-            # ..sums dmg value of dmg type at a specific moment.
             if self.current_time in self.dmg_history[target_name][dmg_type]:
                 self.dmg_history[target_name][dmg_type][self.current_time] += final_dmg_value
             else:
@@ -563,7 +578,12 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
     def apply_heal_value(self, tar_name, heal_value):
         """
-        Modifies current_stats of a target by applying a heal.
+        Applies a heal to a target.
+
+        Modifies:
+            current_stats
+        Returns:
+            (None)
         """
 
         # Applies heal_reduction.
@@ -585,12 +605,17 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
     def apply_resource_dmg_or_heal(self, dmg_name):
         """
-        Modifies current_stats of player by reducing or increasing his resource.
-        Modifies dmg_history by inserting player's current resource.
+        Reduces or increases player's 'current_'resource and stores it in dmg_history.
 
         Regen events can be natural (e.g. mp5) or buff based (e.g. Jayce's W) or item based (e.g. AA with Muramana).
 
         This method is NOT used for ability cost.
+
+        Modifies:
+            current_stats
+            dmg_history
+        Returns:
+            (None)
         """
 
         dmg_value = getattr(self, dmg_name + '_value')()
@@ -616,13 +641,19 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
     def apply_hp_dmg_or_heal(self, dmg_name, target_name):
         """
+        Applies a dmg or heal value to a target, along with lifesteal or spellvamp, and notes in history.
+
         -Modifies current_stats of a target by applying a dmg/heal value to his current_hp.
-        -Modifies dmg_history.
+
+        Modifies:
+            current_stats
+            dmg_history
+        Returns:
+            (None)
         """
 
         dmg_type = getattr(self, dmg_name)()['dmg_type']
 
-        # EFFECT VALUE CALCULATION
         final_dmg_value = self.mitigated_dmg(dmg_value=getattr(self, dmg_name + '_value')(),
                                              dmg_type=dmg_type,
                                              target=target_name)
@@ -638,21 +669,22 @@ class DmgApplicationAndCounters(BuffsGeneral):
             self.apply_heal_value(tar_name=target_name,
                                   heal_value=-final_dmg_value)
 
-        # LIFESTEAL/SPELLVAMP APPLICATION
+        # LIFESTEAL/SPELLVAMP
         self.apply_spellvamp_or_lifesteal(dmg_name=dmg_name,
                                           dmg_value=final_dmg_value,
                                           dmg_type=dmg_type)
 
-        # COUNTERS.
+        # COUNTERS
         self.dmg_related_counters(dmg_type=dmg_type,
                                   final_dmg_value=final_dmg_value,
                                   target_name=target_name)
 
     def apply_dmg_or_heal(self, dmg_name, target_name):
         """
-        Modifies current_stats and dmg_history.
+        Applies dmg or heal to either current_hp or the player's resource.
 
-        The effect can modify either current_hp or the player's resource.
+        Returns:
+            (None)
         """
 
         # Checks if the effect is affecting a resource or hp.
@@ -665,9 +697,10 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
     def times_of_death(self):
         """
-        Returns dict containing times of death for each target.
+        Creates a dict containing all dead targets and their time of death.
 
-        Alive targets are not included.
+        Returns:
+            (dict)
         """
         dct = {}
 
@@ -683,9 +716,13 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
     def dps(self):
         """
-        Returns dps of player.
+        Calculates dps of player.
 
-        Healing and regeneration of enemy targets, not taken into account.
+        Healing and regeneration of enemy targets, not taken into account
+        (might want to take into account to make dots after death have more "correct" effect on dps).
+
+        Returns:
+            (float)
         """
 
         last_action_time = max(self.actions_dct)
@@ -706,11 +743,12 @@ class DeathAndRegen(DmgApplicationAndCounters):
 
     def apply_death(self, tar_name):
         """
-        Modifies active_buffs dct upon death by:
+        Checks if the target is dead. If dead, removes its other buffs and marks it as dead.
 
-        -checking if target is dead
-        -removing all other buffs
-        -adding 'dead_buff'
+        Modifies:
+            active_buffs
+        Returns:
+            (None)
         """
 
         # If target is already dead, it doesnt check it.
