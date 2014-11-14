@@ -6,13 +6,22 @@ class Timers(object):
         self.ability_lvls_dct = ability_lvls_dct  # e.g. {'q': 1, }
         self.current_target = None     # e.g. player, enemy_1, enemy_2
 
+    ABILITIES_STATS_NAMES = dict(
+        q='Q_STATS',
+        w='W_STATS',
+        e='E_STATS',
+        r='R_STATS',)
+
     def request_ability_stats(self, ability_name):
         """Returns ability_dict for selected ability.
 
         Ability dict must have the following structure:
             {'q': {'general': {'cast_time': ,},}, 'w':{}}
         """
-        return getattr(self, ability_name.upper() + '_STATS')
+
+        dct_name = self.ABILITIES_STATS_NAMES[ability_name]
+
+        return getattr(self, dct_name)
 
     def cast_end(self, ability_name, action_cast_start):
         """Returns the time an action's cast ends.

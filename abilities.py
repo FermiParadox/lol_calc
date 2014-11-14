@@ -194,10 +194,12 @@ class EventsGeneral(buffs.DeathAndRegen):
         """
 
         tar_act_buffs = self.active_buffs[tar_name]
+        buff_name = dmg_name[:-3]+'buff'
 
         # Checks dot's buff.
-        if dmg_name[:-3]+'buff' in tar_act_buffs:
-            if (tar_act_buffs['ending_time'] == ' ') or (tar_act_buffs['ending_time'] > self.current_time):
+        if buff_name in tar_act_buffs:
+            if ((tar_act_buffs[buff_name]['ending_time'] == 'permanent') or
+                    (tar_act_buffs[buff_name]['ending_time'] > self.current_time)):
 
                 # If so, adds event.
                 self.add_events(effect_name=dmg_name,
@@ -223,7 +225,7 @@ class EventsGeneral(buffs.DeathAndRegen):
             if 'dot' in dmg_dct['special']:
                 # If only temporary periodic events are re-applied..
                 if only_temporary:
-                    # ..checks if their duration is not unlimited.
+                    # ..checks if their duration is not permanent.
                     if dmg_dct['duration'] != 'permanent':
                         self.refresh_periodic_event(dmg_name=dmg_name, tar_name=tar_name, dmg_dct=dmg_dct)
 

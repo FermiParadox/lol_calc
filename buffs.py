@@ -41,7 +41,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
             (None)
         """
 
-        buff_dct = getattr(self, buff_name)
+        buff_dct = getattr(self, buff_name)()
 
         # Inserts the new buff.
         self.active_buffs[tar_name].update(
@@ -50,20 +50,20 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
 
         # DURATION
         # If non permanent buff.
-        if buff_dct()['duration'] != 'permanent':
+        if buff_dct['duration'] != 'permanent':
 
             # ..creates and inserts its duration.
             self.active_buffs[tar_name][buff_name].update(dict(
-                ending_time=self.current_time + buff_dct()['duration']))
+                ending_time=self.current_time + buff_dct['duration']))
 
         else:
-            # ..otherwise sets its duration to 'unlimited'.
+            # ..otherwise sets its duration to 'permanent'.
             self.active_buffs[tar_name][buff_name].update(dict(
-                ending_time='unlimited'))
+                ending_time='permanent'))
 
         # STACKS
         # If it can stack...
-        if 'max_stacks' in buff_dct():
+        if 'max_stacks' in buff_dct:
             # ...adds current_stacks keyword.
             self.active_buffs[tar_name][buff_name].update(dict(current_stacks=initial_stacks_increment))
 
@@ -143,7 +143,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
             for buff_name in sorted(tar_act_buffs):
                 tar_buff_dct_in_act_buffs = tar_act_buffs[buff_name]
 
-                if tar_buff_dct_in_act_buffs['ending_time'] != 'unlimited':
+                if tar_buff_dct_in_act_buffs['ending_time'] != 'permanent':
                     if tar_buff_dct_in_act_buffs['ending_time'] < self.current_time:
 
                         # Removes the buff.
