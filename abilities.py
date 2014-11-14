@@ -182,29 +182,41 @@ class EventsGeneral(buffs.DeathAndRegen):
         except EnemyTargetsDeadException:
             pass
 
+    def refresh_periodic_event(self, dmg_name, tar_name, dmg_dct):
+        """
+        Re-adds a periodic effect.
+
+        Refreshed only if buff ending time is higher than event ending time,
+        or if it's a permanent buff.
+
+        Returns:
+            (None)
+        """
+
+        tar_act_buffs = self.active_buffs[tar_name]
+
+        # Checks dot's buff.
+        if dmg_name[:-3]+'buff' in tar_act_buffs:
+            if (tar_act_buffs['ending_time'] == ' ') or (tar_act_buffs['ending_time'] > self.current_time):
+
+                # If so, adds event.
+                self.add_events(effect_name=dmg_name,
+                                start_time=self.current_time + dmg_dct['period'])
+
     def add_next_periodic_event(self, tar_name, dmg_name, only_temporary=False):
         """
-        Modifies event_times, by adding next periodic tick.
+        Adds next periodic tick.
 
-        If non permanent dots are of interest, ignores dots with unlimited duration.
+        Checks active_buffs for the dot buff, then adds event if the buff still exists.
 
-        -Checks active_buffs for the buff.
-        -Adds event if the buff still exists.
+        Modifies:
+            event_times
+
+        Args:
+            only_temporary: (boolean) Used for filtering out permanent dots (e.g. sunfire) if needed.
         """
 
         dmg_dct = getattr(self, dmg_name)()
-
-        def event_refresher():
-            # Checks if the dot's buff is still active.
-            # (Refreshed only if buff ending time is higher than event ending time,)
-            # (or if ending_time doesn't exist meaning its a permanent buff.)
-            if dmg_name[:-3]+'buff' in self.active_buffs[tar_name]:
-                if (('ending_time' not in self.active_buffs[tar_name]) or
-                        (self.active_buffs[tar_name]['ending_time'] > self.current_time)):
-
-                    # If so, adds event.
-                    self.add_events(effect_name=dmg_name,
-                                    start_time=self.current_time + dmg_dct['period'])
 
         # Checks if event is periodic.
         if 'special' in dmg_dct:
@@ -213,11 +225,11 @@ class EventsGeneral(buffs.DeathAndRegen):
                 if only_temporary:
                     # ..checks if their duration is not unlimited.
                     if dmg_dct['duration'] != 'permanent':
-                        event_refresher()
+                        self.refresh_periodic_event(dmg_name=dmg_name, tar_name=tar_name, dmg_dct=dmg_dct)
 
                 # Otherwise checks both permanent and temporary dots.
                 else:
-                    event_refresher()
+                    self.refresh_periodic_event(dmg_name=dmg_name, tar_name=tar_name, dmg_dct=dmg_dct)
 
 
 class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
