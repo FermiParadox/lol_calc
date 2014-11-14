@@ -52,11 +52,8 @@ class Targeting(object):
 
             # Checks if target is alive.
             elif 'dead' not in self.active_buffs[next_tar_name]:
-                # Adds 1 to target number and creates the next target name.
+                # Sets next target name.
                 self.current_target = next_tar_name
-
-                self.targets_already_hit += 1
-
                 break
 
     def target_type(self, tar_name=None):

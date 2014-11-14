@@ -5,6 +5,13 @@ import database_champion_stats
 import matplotlib.pyplot as plt
 
 
+class EnemyTargetsDeadException(BaseException):
+    """
+    To be used (and handled) when no other valid targets are available for an event application.
+    """
+    pass
+
+
 class EventsGeneral(buffs.DeathAndRegen):
 
     NATURAL_REGEN_START_TIME = 0.5
@@ -96,20 +103,53 @@ class EventsGeneral(buffs.DeathAndRegen):
                     self.add_event_to_first_tar(effect_name=regen_event_name,
                                                 start_time=self.NATURAL_REGEN_START_TIME)
 
+    def add_splash_events(self, effect_name, start_time):
+        """
+        Adds an aoe dmg event to affected target. If all unaffected targets are dead raises exception.
+
+        Modifies:
+            event_times
+            targets_already_hit
+            current_target
+        Returns:
+            (None)
+        Raises:
+            EnemyTargetsDeadException: No viable targets exist.
+        """
+
+        # NEXT TARGET
+        # If next target is None (because no valid targets exist) the loop breaks.
+        self.next_target(selected_champs=self.selected_champions_dct)
+        if self.current_target is None:
+            raise EnemyTargetsDeadException
+
+        self.targets_already_hit += 1
+
+        # ADD EVENT
+        # Checks if the target is inside the time.
+        if self.current_target in self.event_times[start_time]:
+            self.event_times[start_time][self.current_target].append(effect_name)
+        else:
+            self.event_times[start_time].update({self.current_target: [effect_name]})
+
     def add_events(self, effect_name, start_time):
         """
         Adds a dmg event (e.g. Brand W) to all affected targets.
 
         Modifies:
             event_times
-
+            targets_already_hit
+            current_target
         Structure:
             event_times: {0.: {'player': ['w_dmg',],},}
+        Returns:
+            (None)
         """
 
+        effect_dct = getattr(self, effect_name)()
         # Changes event start if needed.
-        if 'delay' in getattr(self, effect_name)():
-            start_time += getattr(self, effect_name)()['delay']
+        if 'delay' in effect_dct:
+            start_time += effect_dct['delay']
 
         # Adds event to first target.
         self.add_event_to_first_tar(effect_name=effect_name, start_time=start_time)
@@ -117,44 +157,30 @@ class EventsGeneral(buffs.DeathAndRegen):
         self.targets_already_hit = 1
 
         # AOE DMG
-        # If the effect has an externally set max number of targets (therefor it's aoe).
-        if effect_name in self.max_targets_dct:
-            # Until the rest of the targets are affected or no targets are left..
-            while self.targets_already_hit < self.max_targets_dct[effect_name]:
-                self.next_target(selected_champs=self.selected_champions_dct)
-                self.event_times[start_time][self.current_target].append(effect_name)
+        # Aoe dmg has 'max_targets' in dmg dct. It can also additionally have externally set max_targets.
+        # Tries to add events to targets.
+        try:
+            # External max targets.
+            if effect_name in self.max_targets_dct:
 
-        # Otherwise if it has max_targets (therefor it's aoe).
-        elif 'max_targets' in getattr(self, effect_name)():
+                # While the last target number is less than max targets, adds event.
+                while self.targets_already_hit < self.max_targets_dct[effect_name]:
+                    self.add_splash_events(effect_name=effect_name, start_time=start_time)
 
-            # If it has unlimited targets applies to every alive target.
-            if getattr(self, effect_name)()['max_targets'] == 'unlimited':
+            # If it has max_targets (implying it's aoe).
+            elif 'max_targets' in effect_dct:
+                if effect_dct['max_targets'] == 'unlimited':
 
-                while self.targets_already_hit < len(self.champion_lvls_dct):
-                    # Switches to next target.
-                    # If next target is None (because no valid targets exist) the loop breaks.
-                    self.next_target(selected_champs=self.selected_champions_dct)
-                    if not self.current_target:
-                        break
-                    # .. checks if the target is inside the time.
-                    if self.current_target in self.event_times[start_time]:
-                        self.event_times[start_time][self.current_target].append(effect_name)
-                    else:
-                        self.event_times[start_time].update({self.current_target: [effect_name]})
+                    # While the last target number is less than max targets, adds event.
+                    while self.targets_already_hit < len(self.selected_champions_dct):
+                        self.add_splash_events(effect_name=effect_name, start_time=start_time)
 
-            else:
-                while self.targets_already_hit < getattr(self, effect_name)()['max_targets']:
-                    # Switches to next target.
-                    # If next target is None (because no valid targets exist) the loop breaks.
-                    self.next_target(selected_champs=self.selected_champions_dct)
-                    if not self.current_target:
-                        break
+                else:
+                    while self.targets_already_hit < effect_dct['max_targets']:
+                        self.add_splash_events(effect_name=effect_name, start_time=start_time)
 
-                    # .. checks if the target is inside the time.
-                    if self.current_target in self.event_times[start_time]:
-                        self.event_times[start_time][self.current_target].append(effect_name)
-                    else:
-                        self.event_times[start_time].update({self.current_target: [effect_name]})
+        except EnemyTargetsDeadException:
+            pass
 
     def add_next_periodic_event(self, tar_name, dmg_name, only_temporary=False):
         """
@@ -1041,7 +1067,7 @@ if __name__ == '__main__':
                 player=18,
                 enemy_1=18,
                 enemy_2=17,
-                enemy_3=18
+                enemy_3=16
             )
 
             self.ability_lvls_dct = dict(
@@ -1237,19 +1263,19 @@ if __name__ == '__main__':
 
     print(TestCounters())
 
-    rot1 = ['q', 'AA', 'w', 'AA', 'AA', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA', 'AA']
+    rot1 = ['e', 'r', 'q', 'AA', 'w', 'AA', 'AA', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA', 'AA']
     rot2 = ['w', 'AA', 'e', 'AA', 'AA', 'AA']
     rot3 = ['AA', 'AA', 'AA']
     rot4 = ['AA']
     rot5 = ['e', 'e']
 
-    itemLst1 = []
-    itemLst2 = ['gunblade']
-    itemLst3 = ['gunblade', 'gunblade']
+    itemLst0 = []
+    itemLst1 = ['gunblade']
+    itemLst2 = ['gunblade', 'gunblade']
 
     run_graph_test = True
     if run_graph_test:
-        TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst3)
+        TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst2)
 
     run_time_test = False
     if run_time_test:
@@ -1259,9 +1285,7 @@ if __name__ == '__main__':
         cProfile.run(test_text, sort='cumtime')
 
 
-#rot1, itemLst3
-#dps: 368.394550825117 (before bug/functionality fix/changes)
-#dps: 360.32183952512594
-#dps: 351.267126306867
+#rot1, itemLst2
 #dps: 331.07415420245394 (after changing dps method)
 #dps: 338.4234113818222 (unexpected change, after changing bonus_ad method to get stats by 'evaluate' instead of direct)
+#dps: 387.03171211475785 (rotation and targets changed)
