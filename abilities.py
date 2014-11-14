@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 
 class EventsGeneral(buffs.DeathAndRegen):
 
+    NATURAL_REGEN_START_TIME = 0.5
+
     def __init__(self,
                  champion_lvls_dct,
                  selected_champions_dct,
@@ -32,19 +34,21 @@ class EventsGeneral(buffs.DeathAndRegen):
 
     def add_event_to_first_tar(self, effect_name, start_time):
         """
-        Modifies event_times by applying the event to the first target.
+        Applies a dmg event to the first target.
+
+        Modifies:
+            event_times
+        Returns:
+            (None)
         """
 
-        if 'delay' in getattr(self, effect_name)():
-            start_time += getattr(self, effect_name)()['delay']
-
-        # If the event's time doesnt exist it creates it.
+        # If the event's time doesn't exist it creates it.
         if start_time not in self.event_times:
             self.event_times.update({start_time: {self.current_target: [effect_name]}})
 
         else:
-            # If the time exists in the dictionary..
-            # .. checks if the target is inside the time.
+            # If the time exists in the dictionary,
+            # checks if the target is inside the time.
             if self.current_target in self.event_times[start_time]:
                 self.event_times[start_time][self.current_target].append(effect_name)
             else:
@@ -53,25 +57,31 @@ class EventsGeneral(buffs.DeathAndRegen):
 
     def add_regenerations(self):
         """
-        Modifies event_times and active_buffs, by applying hp5 for all targets and resource per 5 for player.
+        Adds hp5 (both event and buff) for all targets, and resource per 5 for player.
+
+        Modifies:
+            event_times
+            active_buffs
+        Returns:
+            (None)
         """
 
-        # For each target..
         for self.current_target in self.selected_champions_dct:
-            # .. if target is enemy..
+            # ENEMY
             if self.current_target != 'player':
                 self.add_buff(buff_name='enemy_hp5_buff', tar_name=self.current_target)
-                # ..adds hp5 event.
+                # HP5
                 self.add_event_to_first_tar(effect_name='enemy_hp5_dmg',
-                                            start_time=0.5)
+                                            start_time=self.NATURAL_REGEN_START_TIME)
 
-            # ..if target is player, adds his hp5 and resource per 5.
+            # PLAYER
             else:
                 self.add_buff(buff_name='player_hp5_buff', tar_name=self.current_target)
-                # ..adds hp5 event.
+                # HP5
                 self.add_event_to_first_tar(effect_name='player_hp5_dmg',
-                                            start_time=0.5)
+                                            start_time=self.NATURAL_REGEN_START_TIME)
 
+                # RESOURCE
                 regen_event_name = None
                 if self.resource_used == 'energy':
                     regen_event_name = 'ep5_dmg'
@@ -81,24 +91,28 @@ class EventsGeneral(buffs.DeathAndRegen):
                     regen_event_name = 'mp5_dmg'
                     self.add_buff(buff_name='mp5_buff', tar_name=self.current_target)
 
-                # Checks if player's resource can regenerate.
+                # Checks if player's resource can regenerate per 5.
                 if regen_event_name:
-                    # Regen starts being applied at 0.5sec.
                     self.add_event_to_first_tar(effect_name=regen_event_name,
-                                                start_time=0.5)
+                                                start_time=self.NATURAL_REGEN_START_TIME)
 
     def add_events(self, effect_name, start_time):
         """
-        Modifies event_times by applying the event (e.g. Brand W) to all affected targets.
+        Adds a dmg event (e.g. Brand W) to all affected targets.
 
-        event_times dict structure: {0.: {'player': ['w_dmg',],},}
+        Modifies:
+            event_times
+
+        Structure:
+            event_times: {0.: {'player': ['w_dmg',],},}
         """
 
-        # Adds event to first target.
-        self.add_event_to_first_tar(effect_name=effect_name, start_time=start_time)
         # Changes event start if needed.
         if 'delay' in getattr(self, effect_name)():
             start_time += getattr(self, effect_name)()['delay']
+
+        # Adds event to first target.
+        self.add_event_to_first_tar(effect_name=effect_name, start_time=start_time)
 
         self.targets_already_hit = 1
 
@@ -1227,6 +1241,7 @@ if __name__ == '__main__':
     rot2 = ['w', 'AA', 'e', 'AA', 'AA', 'AA']
     rot3 = ['AA', 'AA', 'AA']
     rot4 = ['AA']
+    rot5 = ['e', 'e']
 
     itemLst1 = []
     itemLst2 = ['gunblade']
@@ -1236,7 +1251,7 @@ if __name__ == '__main__':
     if run_graph_test:
         TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst3)
 
-    run_time_test = True
+    run_time_test = False
     if run_time_test:
         # Crude time testing.
         import cProfile

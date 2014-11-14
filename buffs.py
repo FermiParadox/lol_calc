@@ -734,6 +734,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
 class DeathAndRegen(DmgApplicationAndCounters):
 
+    NATURAL_REGEN_PERIOD = 0.5  # Tick period of hp5, mp5,
     PER_5_DIVISOR = 10.  # Divides "per 5" stats. Used to create per tick value (ticks have 0.5s period)
 
     @staticmethod
@@ -751,7 +752,7 @@ class DeathAndRegen(DmgApplicationAndCounters):
             (None)
         """
 
-        # If target is already dead, it doesnt check it.
+        # Checks if target has already died (earlier).
         if 'dead_buff' not in self.active_buffs[tar_name]:
             # Checks if target died.
             if self.current_stats[tar_name]['current_hp'] <= 0:
@@ -762,11 +763,10 @@ class DeathAndRegen(DmgApplicationAndCounters):
                 # Adds 'dead_buff'.
                 self.add_buff(buff_name='dead_buff', tar_name=tar_name)
 
-    @staticmethod
-    def enemy_hp5_dmg():
+    def enemy_hp5_dmg(self):
 
         return dict(
-            period=0.5,
+            period=self.NATURAL_REGEN_PERIOD,
             dmg_type='true',
             target='enemy',
             special={'dot': None},
@@ -774,20 +774,20 @@ class DeathAndRegen(DmgApplicationAndCounters):
 
     @staticmethod
     def enemy_hp5_buff():
+        # Used only as a marker.
         return dict(
             duration='permanent',)
 
     def enemy_hp5_dmg_value(self):
         """
-        Returns healing per 0.5 seconds by regeneration.
+        Calculates healing per 0.5 seconds by regeneration.
         """
         return -self.request_stat(stat_name='hp5', target_name=self.current_target)/self.PER_5_DIVISOR
 
-    @staticmethod
-    def player_hp5_dmg():
+    def player_hp5_dmg(self):
 
         return dict(
-            period=0.5,
+            period=self.NATURAL_REGEN_PERIOD,
             dmg_type='true',
             target='player',
             special={'dot': None},
@@ -809,10 +809,9 @@ class DeathAndRegen(DmgApplicationAndCounters):
         return dict(
             duration='permanent',)
 
-    @staticmethod
-    def mp5_dmg():
+    def mp5_dmg(self):
         return dict(
-            period=0.5,
+            period=self.NATURAL_REGEN_PERIOD,
             resource_type='mp',
             target='player',
             special={'dot': None},
