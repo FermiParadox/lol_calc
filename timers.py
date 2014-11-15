@@ -49,11 +49,9 @@ class Timers(object):
         """
 
         time = self.cast_end(ability_name=ability_name, action_cast_start=action_cast_start)
-
         ability_stats_dct = self.request_ability_stats(ability_name=ability_name)
 
-        if 'channel_time' in ability_stats_dct['general']:
-            time += ability_stats_dct['general']['channel_time']
+        time += ability_stats_dct['general']['channel_time']
 
         return time
 

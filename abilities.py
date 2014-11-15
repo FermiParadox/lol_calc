@@ -375,6 +375,17 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             (float)
         """
 
+        def end_name(action_dct):
+            """
+            Returns:
+                (str)
+            """
+            if 'channel_end' in action_dct:
+                string = 'channel_end'
+            else:
+                string = 'cast_end'
+            return string
+
         cast_start = self.current_time
 
         # If a previous action exists...
@@ -385,23 +396,27 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             #...checks all actions inside dict from last to first.
             for action_time in sorted(self.actions_dct, reverse=True):
 
+                name = end_name(action_dct=self.actions_dct[action_time])
+
                 # If the examined action has been casted earlier...
                 if action_name == self.actions_dct[action_time]['action_name']:
 
                     #..compare which ends last;
-                    # the examined action's cd or or the last action's cast_end.
+                    # the examined action's cd or or the last action's cast end.
                     cast_start = max(
                         self.actions_dct[action_time]['cd_end'],
                         # (tiny amount added to avoid action overwriting)
-                        self.actions_dct[max(self.actions_dct)]['cast_end']) + 0.00000001
+                        self.actions_dct[max(self.actions_dct)][name]) + 0.00000001
 
                     casted_earlier = True
                     break
 
             # If it hasn't been casted earlier, it starts when last action's cast ends.
             if not casted_earlier:
+                last_action_time = max(self.actions_dct)
+                name = end_name(action_dct=self.actions_dct[last_action_time])
                 # (tiny amount added to avoid action overwriting)
-                cast_start = self.actions_dct[max(self.actions_dct)]['cast_end'] + 0.00000001
+                cast_start = self.actions_dct[last_action_time][name] + 0.00000001
 
         return cast_start
 
@@ -420,8 +435,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         Returns:
             (None)
         """
-        # TODO: insert 'channel_time', check that instead of cast_end for new ability start
-        # TODO: check cast_end for effect application
+
         # (cast_start is the moment the action is 'clicked')
         cast_start = self.action_cast_start(action_name=action_name)
 
@@ -432,12 +446,17 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                     cast_end=self.cast_end(action_name, cast_start),
                     action_name=action_name,)})
 
+            # (cd_end is applied later since it requires cast_end)
             self.actions_dct[cast_start].update(dict(
                 cd_end=self.ability_cd_end(ability_name=action_name,
                                            cast_start=cast_start,
                                            stats_function=self.request_stat,
                                            actions_dct=self.actions_dct)))
 
+            if 'channel_time' in self.request_ability_stats(ability_name=action_name)['general']:
+                self.actions_dct[cast_start].update(dict(
+                    channel_end=self.channel_end(ability_name=action_name,
+                                                 action_cast_start=cast_start)))
 
             # Checks if ability resets AA's cd_end, and applies it.
             self.apply_aa_cd_reset(action_name=action_name)
