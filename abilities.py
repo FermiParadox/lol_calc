@@ -367,64 +367,6 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                         self.actions_dct[action_time]['cd_end'] = self.current_time
                         break
 
-    def add_new_action(self, action_name, cast_start):
-        """
-        Inserts a new action.
-
-        Modifies:
-            actions_dct
-        Returns:
-            (None)
-        """
-
-        # CHAMPION ABILITIES
-        if action_name in 'qwer':
-            self.actions_dct.update({cast_start: dict(
-                cast_end=self.cast_end(action_name, cast_start),
-                action_name=action_name
-            )})
-
-            action_stats_dct = self.request_ability_stats(ability_name=action_name)['general']
-            # Extendable abilities
-            if ('special' in action_stats_dct) and ('cd_extendable' in action_stats_dct['special']):
-
-                # Cooldown starts after the cast of the action ends plus the extender buff's duration.
-                # (If the buff is removed earlier, cd_end is modified to the normal cd in appropriate method.)
-                extender_buff_dct = getattr(self, action_stats_dct['special']['cd_extendable'])()
-                self.actions_dct[cast_start].update(
-                    dict(
-                        cd_end=(self.actions_dct[cast_start]['cast_end'] +
-                                self.ability_cooldown(action_name, self.request_stat) +
-                                extender_buff_dct['duration'])))
-
-            # Non extendable abilities
-            else:
-                # The action's cooldown starts after the same action's previous cast ends.
-                self.actions_dct[cast_start].update(
-                    dict(
-                        cd_end=(self.actions_dct[cast_start]['cast_end'] +
-                                self.ability_cooldown(action_name, self.request_stat))))
-
-            # Checks if ability resets AA's cd_end, and applies it.
-            self.apply_aa_cd_reset(action_name=action_name)
-
-        # AAs
-        elif action_name == 'AA':
-            self.actions_dct.update({
-                cast_start: dict(
-                    cd_end=cast_start + 1./self.request_stat(target_name='player', stat_name='att_speed'),
-                    action_name=action_name,
-                    cast_end=cast_start + self.AA_COOLDOWN)})
-
-        # ITEM ACTIVES OR SUMMONER SPELLS
-        else:
-            # (cast_end is the same as cast_start)
-            # (item actives and summoner spells have too high cooldowns, so they are set to a high value)
-            self.actions_dct.update({cast_start: dict(
-                cast_end=cast_start,
-                cd_end=360,
-                action_name=action_name)})
-
     def action_cast_start(self, action_name):
         """
         Calculates cast_start of an action, based on other actions' cast_end and this action's cd.
@@ -446,7 +388,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                 # If the examined action has been casted earlier...
                 if action_name == self.actions_dct[action_time]['action_name']:
 
-                    #...compare which ends last;
+                    #..compare which ends last;
                     # the examined action's cd or or the last action's cast_end.
                     cast_start = max(
                         self.actions_dct[action_time]['cd_end'],
@@ -463,42 +405,59 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
         return cast_start
 
-    def add_action(self, action_name):
+    def add_new_action(self, action_name):
         """
-        Modifies action_dct by inserting the time the current action starts being casted as keyword,
+        Inserts a new action.
+
+        First dictionary has current action's cast start as keyword,
         and a dictionary as value.
 
-        The second dictionary contains the time the action is applied, the action's name and the time its cooldown ends.
+        The second dictionary contains the time the action's animation ends (cast_end),
+        the time the action's application ends, the action's name and the time its cooldown ends.
 
-        e.g. action_dct = { 0: {'cd_end': 2.1, 'action_name': 'q', 'cast_end': 1, .. }, 0.3: {..} ..}
-
-                            ________
-         ___|    ___| _____|||||||||
-        |___|___|___||_____|_______|
-        '   '   '   '      '       '
-        0   1   2   3      5     / 7.5
-                    |     /     /
-                    |   /     /
-              cast  | /     /
-              start *     /
-                    |   /
-                    | /
-                    *
-                cast
-                end
-
-        For channeled abilities, it disallows queueing another action,
-        while allowing effect application.
+        Modifies:
+            actions_dct
+        Returns:
+            (None)
         """
-
-        # TODO: insert flow control for channeled abilities (when 'channel_time' exists, check that instead of cast_end)
-
-        # Sets cast_start.
+        # TODO: insert 'channel_time', check that instead of cast_end for new ability start
+        # TODO: check cast_end for effect application
+        # (cast_start is the moment the action is 'clicked')
         cast_start = self.action_cast_start(action_name=action_name)
-                                                    # cast_start is the moment the action is 'clicked'
 
-        # Adds the action based on
-        self.add_new_action(action_name=action_name, cast_start=cast_start)
+        # CHAMPION ABILITIES
+        if action_name in 'qwer':
+            self.actions_dct.update(
+                {cast_start: dict(
+                    cast_end=self.cast_end(action_name, cast_start),
+                    action_name=action_name,)})
+
+            self.actions_dct[cast_start].update(dict(
+                cd_end=self.ability_cd_end(ability_name=action_name,
+                                           cast_start=cast_start,
+                                           stats_function=self.request_stat,
+                                           actions_dct=self.actions_dct)))
+
+
+            # Checks if ability resets AA's cd_end, and applies it.
+            self.apply_aa_cd_reset(action_name=action_name)
+
+        # AAs
+        elif action_name == 'AA':
+            self.actions_dct.update({
+                cast_start: dict(
+                    cd_end=cast_start + 1./self.request_stat(target_name='player', stat_name='att_speed'),
+                    action_name=action_name,
+                    cast_end=cast_start + self.AA_COOLDOWN)})
+
+        # ITEM ACTIVES OR SUMMONER SPELLS
+        else:
+            # (cast_end is the same as cast_start)
+            # (item actives and summoner spells have too high cooldowns, so they are set to a high value)
+            self.actions_dct.update({cast_start: dict(
+                cast_end=cast_start,
+                cd_end=360,
+                action_name=action_name)})
 
     def remove_buff_on_action(self, buff_name):
         """
@@ -753,7 +712,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         -Repeats above steps.
         -Changes current_time in between.
 
-        Note: remove_expired_buffs should also be called before add_action for some champions.
+        Note: remove_expired_buffs should also be called before add_new_action for some champions.
         """
 
         for new_action in rotation_lst:
@@ -763,7 +722,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             if self.cost_sufficiency(action_name=new_action):
                 self.apply_action_cost(action_name=new_action)
 
-                self.add_action(new_action)
+                self.add_new_action(new_action)
 
                 self.apply_pre_action_events()
 

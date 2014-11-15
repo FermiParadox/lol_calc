@@ -33,10 +33,27 @@ class Timers(object):
         Returns:
             (float)
         """
-        time = action_cast_start + self.request_ability_stats(ability_name)['general']['cast_time']
+        time = action_cast_start + self.request_ability_stats(ability_name=ability_name)['general']['cast_time']
 
-        if 'channel_time' in self.request_ability_stats(ability_name)['general']:
-            time += self.request_ability_stats(ability_name)['general']['channel_time']
+        if 'channel_time' in self.request_ability_stats(ability_name=ability_name)['general']:
+            time += self.request_ability_stats(ability_name=ability_name)['general']['channel_time']
+
+        return time
+
+    def channel_end(self, ability_name, action_cast_start):
+        """
+        Calculates the time an action's channel ends.
+
+        Returns:
+            (float)
+        """
+
+        time = self.cast_end(ability_name=ability_name, action_cast_start=action_cast_start)
+
+        ability_stats_dct = self.request_ability_stats(ability_name=ability_name)
+
+        if 'channel_time' in ability_stats_dct['general']:
+            time += ability_stats_dct['general']['channel_time']
 
         return time
 
@@ -57,6 +74,28 @@ class Timers(object):
 
                 self.request_ability_stats(ability_name)['general']['base_cd_tpl'][self.ability_lvls_dct[ability_name]-1]
             )
+
+    def ability_cd_end(self, ability_name, cast_start, stats_function, actions_dct):
+        """
+        Calculates the time an action's cd ends.
+
+        Returns:
+            (float)
+        """
+
+        time = actions_dct[cast_start]['cast_end'] + self.ability_cooldown(ability_name=ability_name,
+                                                                           stats_function=stats_function)
+
+        ability_special_dct = self.request_ability_stats(ability_name=ability_name)
+
+        if 'special' in ability_special_dct['general']:
+            if 'cd_extendable' in ability_special_dct['general']['special']:
+                # Cooldown starts after the cast of the action ends plus the extender buff's duration.
+                # (If the buff is removed earlier, cd_end is modified to the normal cd in appropriate method.)
+                extender_name = ability_special_dct['general']['special']['cd_extendable']
+                time += getattr(self, extender_name)()['duration']
+
+        return time
 
     def first_dot_tick(self, current_time, ability_name, travel_time=None):
         """
