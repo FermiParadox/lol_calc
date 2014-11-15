@@ -427,7 +427,10 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
     def action_cast_start(self, action_name):
         """
-        Returns cast_start of an action, based on other actions' cast_end and this action's cd.
+        Calculates cast_start of an action, based on other actions' cast_end and this action's cd.
+
+        Returns:
+            (float)
         """
 
         cast_start = self.current_time
@@ -443,27 +446,20 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                 # If the examined action has been casted earlier...
                 if action_name == self.actions_dct[action_time]['action_name']:
 
-                    #...compare which ends last; ..
+                    #...compare which ends last;
+                    # the examined action's cd or or the last action's cast_end.
                     cast_start = max(
-
-                        # ..the examined action's cd ..
                         self.actions_dct[action_time]['cd_end'],
-
-                        # .. or the last action's cast_end.
+                        # (tiny amount added to avoid action overwriting)
                         self.actions_dct[max(self.actions_dct)]['cast_end']) + 0.00000001
-                                                                        # Tiny amount added to avoid action overwriting.
 
                     casted_earlier = True
-
                     break
 
-            # If it hasn't been casted earlier...
+            # If it hasn't been casted earlier, it starts when last action's cast ends.
             if not casted_earlier:
-
-                #... it starts when last action's cast ends.
+                # (tiny amount added to avoid action overwriting)
                 cast_start = self.actions_dct[max(self.actions_dct)]['cast_end'] + 0.00000001
-                                                                    # Tiny amount added to avoid action start ..
-                                                                    # .. overwriting.
 
         return cast_start
 
