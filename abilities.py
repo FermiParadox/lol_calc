@@ -213,9 +213,10 @@ class EventsGeneral(buffs.DeathAndRegen):
 
         Modifies:
             event_times
-
         Args:
             only_temporary: (boolean) Used for filtering out permanent dots (e.g. sunfire) if needed.
+        Returns:
+            (None)
         """
 
         dmg_dct = getattr(self, dmg_name)()
@@ -270,13 +271,15 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         timers.Timers.__init__(self,
                                ability_lvls_dct=ability_lvls_dct)
 
-    def action_cost_dct(self, action_name):
+    def ability_cost_dct(self, action_name):
         """
-        Returns dict containing:
-            -resource used and it's value.
-            -stack name and number of stacks.
+        Creates a dict containing each resource used,
+        it's value cost, buff name cost and number of buff's stacks.
 
-        Used for abilities with normal or toggled cost.
+        Not to be used for abilities with toggled cost.
+
+        Returns:
+            (dict)
         """
 
         cost_dct = {}
@@ -284,7 +287,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         # ACTIVATED ABILITIES
         if action_name in 'qwer':
             # NORMAL COST
-            ability_stats_dct = getattr(self, action_name.upper()+'_STATS')
+            ability_stats_dct = self.request_ability_stats(ability_name=action_name)
             resource_used = ability_stats_dct['general']['resource_used']
 
             # Check if ability has a fixed cost,
@@ -307,13 +310,14 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
     def cost_sufficiency(self, action_name):
         """
-        Returns boolean, depending on whether there are enough resources to cast the action or not.
+        Returns:
+            (boolean) depending on whether there are enough resources to cast the action or not.
         """
 
         sufficiency = True
 
-        for cost_name in self.action_cost_dct(action_name):
-            cost_value = self.action_cost_dct(action_name)[cost_name]
+        for cost_name in self.ability_cost_dct(action_name):
+            cost_value = self.ability_cost_dct(action_name)[cost_name]
 
             if cost_name in ('mp', 'energy', 'hp'):
                 if self.current_stats['player']['current_'+cost_name] < cost_value:
@@ -332,8 +336,8 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         The cost may be a stat and/or buff stacks.
         """
 
-        for cost_name in self.action_cost_dct(action_name):
-            cost_value = self.action_cost_dct(action_name)[cost_name]
+        for cost_name in self.ability_cost_dct(action_name):
+            cost_value = self.ability_cost_dct(action_name)[cost_name]
 
             if cost_name in ('mp', 'energy', 'hp', 'rage'):
                 self.current_stats['player']['current_' + cost_name] -= cost_value
@@ -1277,7 +1281,7 @@ if __name__ == '__main__':
 
     print(TestCounters())
 
-    rot1 = ['e', 'r', 'q', 'AA', 'w', 'AA', 'AA', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA', 'AA']
+    rot1 = ['e', 'r', 'q', 'AA', 'w', 'AA', 'AA', 'gunblade', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA', 'AA']
     rot2 = ['w', 'AA', 'e', 'AA', 'AA', 'AA']
     rot3 = ['AA', 'AA', 'AA']
     rot4 = ['AA']
@@ -1302,4 +1306,4 @@ if __name__ == '__main__':
 #rot1, itemLst2
 #dps: 331.07415420245394 (after changing dps method)
 #dps: 338.4234113818222 (unexpected change, after changing bonus_ad method to get stats by 'evaluate' instead of direct)
-#dps: 387.03171211475785 (rotation and targets changed)
+#dps: 406.06856388086914 (rotation and targets changed)

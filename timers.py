@@ -13,10 +13,13 @@ class Timers(object):
         r='R_STATS',)
 
     def request_ability_stats(self, ability_name):
-        """Returns ability_dict for selected ability.
+        """
+        Returns ability_dict for selected ability.
 
-        Ability dict must have the following structure:
-            {'q': {'general': {'cast_time': ,},}, 'w':{}}
+        Structure:
+            Q_STATS: {'q': {'general': {'cast_time': ,},}, 'w':{}}
+        Returns:
+            (dict)
         """
 
         dct_name = self.ABILITIES_STATS_NAMES[ability_name]
@@ -24,7 +27,11 @@ class Timers(object):
         return getattr(self, dct_name)
 
     def cast_end(self, ability_name, action_cast_start):
-        """Returns the time an action's cast ends.
+        """
+        Calculates the time an action's cast ends.
+
+        Returns:
+            (float)
         """
         time = action_cast_start + self.request_ability_stats(ability_name)['general']['cast_time']
 
@@ -34,7 +41,11 @@ class Timers(object):
         return time
 
     def ability_cooldown(self, ability_name, stats_function):
-        """Returns cd from an ability's base cooldown.
+        """
+        Calculates cd from an ability's base cooldown.
+
+        Returns:
+            (float)
         """
         if 'fixed_base_cd' in self.request_ability_stats(ability_name)['general']:
             return (1-stats_function(target_name='player',
@@ -42,14 +53,17 @@ class Timers(object):
 
         else:
             return (
-                (1-stats_function(target_name='player',
-                                  stat_name='cdr')) *
+                (1-stats_function(target_name='player', stat_name='cdr')) *
 
                 self.request_ability_stats(ability_name)['general']['base_cd_tpl'][self.ability_lvls_dct[ability_name]-1]
             )
 
     def first_dot_tick(self, current_time, ability_name, travel_time=None):
-        """Returns time of first dot tick.
+        """
+        Calculates time of first dot tick.
+
+        Returns:
+            (float)
         """
         start = current_time
 
@@ -62,6 +76,10 @@ class Timers(object):
         return start
 
     def next_dot_tick(self, previous_tick, ability_name):
-        """Returns time of next dot tick.
+        """
+        Calculates time of next dot tick.
+
+        Returns:
+            (float)
         """
         return previous_tick + self.request_ability_stats(ability_name)['general']['period']
