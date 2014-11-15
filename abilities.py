@@ -310,8 +310,10 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
     def cost_sufficiency(self, action_name):
         """
+        Determines whether there are enough resources to cast the action or not.
+
         Returns:
-            (boolean) depending on whether there are enough resources to cast the action or not.
+            (boolean)
         """
 
         sufficiency = True
@@ -331,9 +333,13 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
     def apply_action_cost(self, action_name):
         """
-        Modifies player's current_stats, and/or active_buffs, deducting the cost of an action.
+        Deducts the cost of an action (resource and/or buff stack).
 
-        The cost may be a stat and/or buff stacks.
+        Modifies:
+            current_stats['player']
+            active_buffs
+        Returns:
+            (None)
         """
 
         for cost_name in self.ability_cost_dct(action_name):
@@ -363,61 +369,60 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
     def add_new_action(self, action_name, cast_start):
         """
-        Modifies actions_dct, by inserting a new action.
+        Inserts a new action.
 
-        Used by add_action.
+        Modifies:
+            actions_dct
+        Returns:
+            (None)
         """
 
-        # Checks if action is a champion ability.
+        # CHAMPION ABILITIES
         if action_name in 'qwer':
             self.actions_dct.update({cast_start: dict(
                 cast_end=self.cast_end(action_name, cast_start),
                 action_name=action_name
             )})
 
-            action_stats_dct = getattr(self, action_name.upper()+'_STATS')['general']
+            action_stats_dct = self.request_ability_stats(ability_name=action_name)['general']
+            # Extendable abilities
             if ('special' in action_stats_dct) and ('cd_extendable' in action_stats_dct['special']):
-                # Cooldown starts after the cast of the action ends plus the duration the extender buff.
-                # (If the buff is removed earlier it sets to the normal cd in appropriate method.)
 
-                self.actions_dct[cast_start].update(dict(
-                    cd_end=(self.actions_dct[cast_start]['cast_end'] +
-                            self.ability_cooldown(action_name, self.request_stat) +
-                            getattr(self, action_stats_dct['special']['cd_extendable'])()['duration']
-                            )
-                ))
+                # Cooldown starts after the cast of the action ends plus the extender buff's duration.
+                # (If the buff is removed earlier, cd_end is modified to the normal cd in appropriate method.)
+                extender_buff_dct = getattr(self, action_stats_dct['special']['cd_extendable'])()
+                self.actions_dct[cast_start].update(
+                    dict(
+                        cd_end=(self.actions_dct[cast_start]['cast_end'] +
+                                self.ability_cooldown(action_name, self.request_stat) +
+                                extender_buff_dct['duration'])))
 
+            # Non extendable abilities
             else:
-                # Cooldown starts after the cast of the action ends.
-                self.actions_dct[cast_start].update(dict(
-                    cd_end=(self.actions_dct[cast_start]['cast_end'] +
-                            self.ability_cooldown(action_name, self.request_stat))
-                ))
+                # The action's cooldown starts after the same action's previous cast ends.
+                self.actions_dct[cast_start].update(
+                    dict(
+                        cd_end=(self.actions_dct[cast_start]['cast_end'] +
+                                self.ability_cooldown(action_name, self.request_stat))))
 
             # Checks if ability resets AA's cd_end, and applies it.
             self.apply_aa_cd_reset(action_name=action_name)
 
-        # Checks if action is an AA
+        # AAs
         elif action_name == 'AA':
-            self.actions_dct.update({cast_start: dict(
-                cd_end=cast_start + 1./self.request_stat(target_name='player', stat_name='att_speed'),
+            self.actions_dct.update({
+                cast_start: dict(
+                    cd_end=cast_start + 1./self.request_stat(target_name='player', stat_name='att_speed'),
+                    action_name=action_name,
+                    cast_end=cast_start + self.AA_COOLDOWN)})
 
-                action_name=action_name,
-
-                cast_end=cast_start + self.AA_COOLDOWN
-            )})
-
+        # ITEM ACTIVES OR SUMMONER SPELLS
         else:
-
-            # Otherwise action is an item's active or summoner's spell
+            # (cast_end is the same as cast_start)
+            # (item actives and summoner spells have too high cooldowns, so they are set to a high value)
             self.actions_dct.update({cast_start: dict(
-                cast_end=cast_start,                        # cast_end is the same as..
-                                                            # ..cast_start for non ..
-                                                            # ..champion abilities.
-
-                cd_end=360,                                         # Their cooldowns are too high..
-                                                                    # ..to have an effect,
-                                                                    # ..so they are set to a high value.
+                cast_end=cast_start,
+                cd_end=360,
                 action_name=action_name)})
 
     def action_cast_start(self, action_name):
