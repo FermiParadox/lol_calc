@@ -480,10 +480,16 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
     def remove_buff_on_action(self, buff_name):
         """
-        Modifies active_buffs and actions_dict, by removing a player's buff on_hit or on_cast,
-        and starting corresponding action's cd if buff delays the cd start.
+        Removes a player's buff on_hit or on_cast,
+        and starts corresponding action's cd if buff delays the cd start.
 
         (e.g. Jax w_buff delays start of W cd)
+
+        Modifies:
+            active_buffs
+            actions_dict
+        Return:
+            (None)
         """
 
         buff_dct = getattr(self, buff_name)()
@@ -508,7 +514,13 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
     def apply_on_hit_effects(self):
         """
-        Modifies active_buffs and event_times, by applying dmg and buffs or removing buffs.
+        Applies on hit effects. On hit effects can be dmg and buffs application, or buff removal.
+
+        Modifies:
+            active_buffs
+            event_times
+        Returns:
+            (None)
         """
 
         add_buff_function = self.add_buff
@@ -1048,7 +1060,7 @@ if __name__ == '__main__':
             self.initial_active_buffs = None
             self.initial_current_stats = None
             self.current_target_num = None
-            self.items_lst = []
+            self.items_lst = ['gunblade', 'gunblade']
             self.selected_runes = None
             self.max_combat_time = None
 
@@ -1270,11 +1282,11 @@ if __name__ == '__main__':
     itemLst1 = ['gunblade']
     itemLst2 = ['gunblade', 'gunblade']
 
-    run_graph_test = True
+    run_graph_test = False
     if run_graph_test:
         TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst2)
 
-    run_time_test = False
+    run_time_test = True
     if run_time_test:
         # Crude time testing.
         import cProfile
