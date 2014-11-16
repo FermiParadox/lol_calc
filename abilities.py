@@ -271,6 +271,33 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         timers.Timers.__init__(self,
                                ability_lvls_dct=ability_lvls_dct)
 
+    def add_buff(self, buff_name, tar_name, stack_increment=1, initial_stacks_increment=1):
+        """
+        (Overrides previous method)
+
+        Additionally, checks if buff applied is a dot buff and adds periodic event (unless dot already active).
+
+        Returns:
+            (None)
+        """
+
+        # Checks if dot already applied.
+        new_periodic_event = True
+        if buff_name in self.active_buffs[tar_name]:
+            new_periodic_event = False
+
+        super().add_buff(buff_name=buff_name, tar_name=tar_name,
+                         stack_increment=stack_increment, initial_stacks_increment=initial_stacks_increment)
+
+        # If it's a new dot..
+        if new_periodic_event:
+            # If the buff is a dot, applies event as well.
+            if 'period' in getattr(self, buff_name)():
+
+                first_tick = self.first_dot_tick(current_time=self.current_time, ability_name=buff_name)
+
+                self.add_events(effect_name=buff_name, start_time=first_tick)
+
     def ability_cost_dct(self, action_name):
         """
         Creates a dict containing each resource used,
@@ -353,11 +380,16 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
     def apply_aa_cd_reset(self, action_name):
         """
-        Modifies actions_dict, by removing an AA's cd after an AA-resetting ability is casted.
+        Removes an AA's cd after an AA-resetting ability is casted.
+
+        Modifies:
+            actions_dict
+        Returns:
+            (None)
         """
 
-        if 'special' in getattr(self, action_name.upper()+'_STATS')['general']:
-            if 'resets_aa' in getattr(self, action_name.upper()+'_STATS')['general']['special']:
+        if 'special' in self.request_ability_stats(ability_name=action_name)['general']:
+            if 'resets_aa' in self.request_ability_stats(ability_name=action_name)['general']['special']:
 
                 for action_time in sorted(self.actions_dct, reverse=True):
 
@@ -523,8 +555,6 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        add_buff_function = self.add_buff
-
         player_active_buffs = sorted(self.active_buffs['player'])
 
         for buff_name in player_active_buffs:
@@ -535,21 +565,14 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                 # Buffs applied on hit.
                 for buff_applied_on_hit in buff_dct['on_hit']['apply_buff']:
 
-                    add_buff_function(buff_name=buff_applied_on_hit,
-                                      tar_name=getattr(self, buff_applied_on_hit)()['target'])
-
-                # If the buff is a dot, applies event as well.
-                if 'period' in buff_dct:
-
-                    first_tick = self.first_dot_tick(self.current_time,                # First tick start
-                                                     buff_name)
-                    self.add_events(buff_name, first_tick)
+                    self.add_buff(buff_name=buff_applied_on_hit,
+                                  tar_name=getattr(self, buff_applied_on_hit)()['target'])
 
                 # Dmg caused on hit.
                 for dmg_name in buff_dct['on_hit']['cause_dmg']:
 
                     self.switch_to_first_alive_enemy()
-                    self.add_events(dmg_name, self.current_time)
+                    self.add_events(effect_name=dmg_name, start_time=self.current_time)
 
                 # BUFFS REMOVED ON HIT.
                 # For each buff that is removed on hit..
@@ -595,12 +618,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                     for buff_name in effects_dct[action_name]['player']['actives']['buffs']:
                         # Buffs.
                         self.add_buff(buff_name, self.current_target)
-                        # If the buff is a dot, applies event as well.
-                        if 'period' in getattr(self, buff_name)():
 
-                            first_tick = self.first_dot_tick(current_time,                # First tick start
-                                                             buff_name)
-                            self.add_events(buff_name, first_tick)
                 # .. dmg.
                 if 'dmg' in effects_dct[action_name]['player']['actives']:
                     for dmg_name in effects_dct[action_name]['player']['actives']['dmg']:
@@ -622,12 +640,6 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                     for buff_name in effects_dct[action_name][self.target_type()]['actives']['buffs']:
                         # Buffs.
                         self.add_buff(buff_name, self.current_target)
-                        # If the buff is a dot, applies event as well.
-                        if 'period' in getattr(self, buff_name)():
-
-                            first_tick = self.first_dot_tick(current_time,                # First tick start
-                                                             buff_name)
-                            self.add_events(buff_name, first_tick)
 
                 # .. dmg.
                 if 'dmg' in effects_dct[action_name][self.target_type()]['actives']:
@@ -1290,7 +1302,7 @@ if __name__ == '__main__':
     if run_time_test:
         # Crude time testing.
         import cProfile
-        test_text = 'TestCounters().test_loop(rotation=rot1*4, use_runes=True)\n' * 100
+        test_text = 'TestCounters().test_loop(rotation=rot1*4, use_runes=True)\n'
         cProfile.run(test_text, sort='cumtime')
 
 
