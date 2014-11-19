@@ -611,9 +611,9 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         self.switch_to_first_alive_enemy()
         self.add_events('aa_dmg', current_time)
 
-    def apply_ability_effects_on_tar(self, tar_type, effects_dct, action_name):
+    def apply_ability_actives_on_tar(self, tar_type, effects_dct, action_name):
         """
-        Applies an action's effect on target.
+        Applies an action's effect on target, if action has actives.
 
         Target is automatically chosen.
 
@@ -640,92 +640,73 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                 for buff_name_to_remove in effects_dct[action_name][tar_type]['actives']['remove_buff']:
                     del self.active_buffs[tar_type][buff_name_to_remove]
 
-    def apply_ability_effects(self, action_name, effects_dct, current_time):
+    def apply_ability_effects(self, action_name, effects_dct):
         """
         Applies an action's effects.
 
         Used for abilities, item actives or summoner actives.
 
+        Chooses the first viable enemy for actives on enemies.
+
         Modifies:
             active_buffs
             event_times
+            current_target
+        Returns:
+            (None)
         """
 
         if 'player' in effects_dct[action_name]:
             self.current_target = 'player'
-            # Checks if the ability has any active effects.
-            if 'actives' in effects_dct[action_name]['player']:
-                # BUFFS
-                if 'buffs' in effects_dct[action_name]['player']['actives']:
-                    for buff_name in effects_dct[action_name]['player']['actives']['buffs']:
-                        self.add_buff(buff_name, self.current_target)
 
-                # DMG
-                if 'dmg' in effects_dct[action_name]['player']['actives']:
-                    for dmg_name in effects_dct[action_name]['player']['actives']['dmg']:
-                        self.add_events(dmg_name, current_time)
-
-                # BUFF REMOVAL
-                if 'remove_buff' in effects_dct[action_name]['player']['actives']:
-                    for buff_name_to_remove in effects_dct[action_name]['player']['actives']['remove_buff']:
-                        del self.active_buffs['player'][buff_name_to_remove]
+            self.apply_ability_actives_on_tar(tar_type='player', effects_dct=effects_dct, action_name=action_name)
 
         if 'enemy' in effects_dct[action_name]:
 
             self.switch_to_first_alive_enemy()
 
-            # Checks if the ability has any active..
-            if 'actives' in effects_dct[action_name][self.target_type()]:
-                # .. buffs.
-                if 'buffs' in effects_dct[action_name][self.target_type()]['actives']:
-                    for buff_name in effects_dct[action_name][self.target_type()]['actives']['buffs']:
-                        # Buffs.
-                        self.add_buff(buff_name, self.current_target)
-
-                # .. dmg.
-                if 'dmg' in effects_dct[action_name][self.target_type()]['actives']:
-                    for dmg_name in effects_dct[action_name][self.target_type()]['actives']['dmg']:
-                        self.add_events(dmg_name, current_time)
-
-                # .. buff removal.
-                if 'remove_buff' in effects_dct[action_name][self.target_type()]['actives']:
-                    for buff_name_to_remove in effects_dct[action_name][self.target_type()]['actives']['remove_buff']:
-                        del self.active_buffs[self.current_target][buff_name_to_remove]
+            self.apply_ability_actives_on_tar(tar_type='enemy', effects_dct=effects_dct, action_name=action_name)
 
     def apply_action_effects(self, action_name, abilities_effects, items_effects):
         """
-        Modifies active_buffs and event_times by applying an action's effects (buffs and dmg).
+        Applies an action's effects (buffs, dmg, buff removal).
+
+        Modifies:
+            active_buffs
+            event_times
+        Returns:
+            (None)
         """
 
-        # If the action is an AA...
+        # AA
         if action_name == 'AA':
             #..applies AA physical dmg, and applies (or removes) on_hit buffs and dmg.
-            self.apply_aa_effects(self.current_time)
+            self.apply_aa_effects(current_time=self.current_time)
 
-        # If the action is an ability...
+        # ABILITY
         elif action_name in 'qwer':
-
-            #..applies its active buffs and dmg.
             self.apply_ability_effects(action_name=action_name,
-                                       effects_dct=abilities_effects,
-                                       current_time=self.current_time)
+                                       effects_dct=abilities_effects)
 
-        # If the action is an item active or summoner spell..
+        # ITEM ACTIVE - SUMMONER SPELL
         else:
-            #..applies its active buffs and dmg.
             self.apply_ability_effects(action_name=action_name,
-                                       effects_dct=items_effects,
-                                       current_time=self.current_time)
+                                       effects_dct=items_effects)
 
     def apply_pre_action_events(self):
         """
-        Modifies current_time, event_times and active_buffs.
-
         Applies all events preceding an action's application start.
 
         If a periodic event is refreshed and ticks before the the last action,
         then event_times changes and is checked again.
         If all targets die, the loop stops.
+
+        Modifies:
+            current_time
+            event_times
+            active_buffs
+        Returns:
+            (None)
         """
 
         not_all_events_checked = True
@@ -743,31 +724,31 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                 # Checks if event start exceeds last action's cast end.
                 if event <= self.actions_dct[max(self.actions_dct)]['cast_end']:
 
-                        self.current_time = event   # Must change to ensure buffs are checked.
+                    self.current_time = event   # Must change to ensure buffs are checked.
 
-                        # Removes expired buffs,...
-                        self.remove_expired_buffs()
+                    # Removes expired buffs,...
+                    self.remove_expired_buffs()
 
-                        # Applies all dmg effects for all targets.
-                        for self.current_target in self.event_times[self.current_time]:
-                            for dmg_name in self.event_times[self.current_time][self.current_target]:
-                                self.apply_dmg_or_heal(dmg_name, self.current_target)
-                                self.add_next_periodic_event(tar_name=self.current_target, dmg_name=dmg_name)
+                    # Applies all dmg effects for all targets.
+                    for self.current_target in self.event_times[self.current_time]:
+                        for dmg_name in self.event_times[self.current_time][self.current_target]:
+                            self.apply_dmg_or_heal(dmg_name, self.current_target)
+                            self.add_next_periodic_event(tar_name=self.current_target, dmg_name=dmg_name)
 
-                                # Checks after each periodic application if new events have been added.
-                                # (Doesn't set to true if already true.)
-                                if not not_all_events_checked and initial_events != sorted(self.event_times):
-                                    not_all_events_checked = True
+                            # Checks after each periodic application if new events have been added.
+                            # (Doesn't set to true if already true.)
+                            if not not_all_events_checked and initial_events != sorted(self.event_times):
+                                not_all_events_checked = True
 
-                            # After dmg has been applied checks if target has died.
-                            self.apply_death(tar_name=self.current_target)
+                        # After dmg has been applied checks if target has died.
+                        self.apply_death(tar_name=self.current_target)
 
-                        # Deletes the event after it's applied.
-                        del self.event_times[self.current_time]
+                    # Deletes the event after it's applied.
+                    del self.event_times[self.current_time]
 
-                        # If new events are added it exits and checks them all over again.
-                        if not_all_events_checked:
-                            break
+                    # If new events are added it exits and checks them all over again.
+                    if not_all_events_checked:
+                        break
 
                 # Exits loop after all events prior to an action are applied.
                 else:
