@@ -546,7 +546,15 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
     def apply_on_hit_effects(self):
         """
-        Applies on hit effects. On hit effects can be dmg and buffs application, or buff removal.
+        Applies on hit effects.
+
+        On hit effects can be dmg and buffs application, or buff removal.
+
+        Iterates throughout all active buffs, and applies:
+            -on_hit dmg (e.g. Warwick's innate dmg),
+            -on_hit buffs (e.g. Black Cleaver armor reduction),
+            -and finally removes buffs that are removed on hit.
+
 
         Modifies:
             active_buffs
@@ -562,20 +570,19 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
             if 'on_hit' in buff_dct:
 
-                # Buffs applied on hit.
-                for buff_applied_on_hit in buff_dct['on_hit']['apply_buff']:
-
-                    self.add_buff(buff_name=buff_applied_on_hit,
-                                  tar_name=getattr(self, buff_applied_on_hit)()['target'])
-
-                # Dmg caused on hit.
+                # DMG CAUSED ON HIT.
                 for dmg_name in buff_dct['on_hit']['cause_dmg']:
 
                     self.switch_to_first_alive_enemy()
                     self.add_events(effect_name=dmg_name, start_time=self.current_time)
 
+                # BUFFS APPLIED ON HIT.
+                for buff_applied_on_hit in buff_dct['on_hit']['apply_buff']:
+
+                    self.add_buff(buff_name=buff_applied_on_hit,
+                                  tar_name=getattr(self, buff_applied_on_hit)()['target'])
+
                 # BUFFS REMOVED ON HIT.
-                # For each buff that is removed on hit..
                 for buff_removed_on_hit in buff_dct['on_hit']['remove_buff']:
 
                     # Checks if the buff exists on the player.
@@ -588,11 +595,13 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
     def apply_aa_effects(self, current_time):
         """
-        Modifies active_buffs and event_times by applying AA effects from buffs and AA dmg event.
+        Applies AA effects from buffs and AA dmg event.
 
-        Iterates throughout all active buffs,
-        applies on_hit buffs (e.g. Black Cleaver armor reduction), then on_hit dmg (e.g. Warwick's innate dmg),
-        and then removes buffs that are removed on hit.
+        Modifies:
+            active_buffs
+            event_times
+        Returns:
+            (None)
         """
 
         # Applies on_hit effects.
@@ -602,29 +611,61 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         self.switch_to_first_alive_enemy()
         self.add_events('aa_dmg', current_time)
 
+    def apply_ability_effects_on_tar(self, tar_type, effects_dct, action_name):
+        """
+        Applies an action's effect on target.
+
+        Target is automatically chosen.
+
+        Args:
+            tar_type: (str) 'player' or 'enemy'
+        Returns:
+            (None)
+        """
+
+        # Checks if the ability has any active effects.
+        if 'actives' in effects_dct[action_name][tar_type]:
+            # BUFFS
+            if 'buffs' in effects_dct[action_name][tar_type]['actives']:
+                for buff_name in effects_dct[action_name][tar_type]['actives']['buffs']:
+                    self.add_buff(buff_name=buff_name, tar_name=self.current_target)
+
+            # DMG
+            if 'dmg' in effects_dct[action_name][tar_type]['actives']:
+                for dmg_name in effects_dct[action_name][tar_type]['actives']['dmg']:
+                    self.add_events(effect_name=dmg_name, start_time=self.current_time)
+
+            # BUFF REMOVAL
+            if 'remove_buff' in effects_dct[action_name][tar_type]['actives']:
+                for buff_name_to_remove in effects_dct[action_name][tar_type]['actives']['remove_buff']:
+                    del self.active_buffs[tar_type][buff_name_to_remove]
+
     def apply_ability_effects(self, action_name, effects_dct, current_time):
         """
-        Modifies active buffs and event times, by applying an actions effects.
+        Applies an action's effects.
 
         Used for abilities, item actives or summoner actives.
+
+        Modifies:
+            active_buffs
+            event_times
         """
 
         if 'player' in effects_dct[action_name]:
             self.current_target = 'player'
-            # Checks if the ability has any active..
+            # Checks if the ability has any active effects.
             if 'actives' in effects_dct[action_name]['player']:
-                # .. buffs.
+                # BUFFS
                 if 'buffs' in effects_dct[action_name]['player']['actives']:
                     for buff_name in effects_dct[action_name]['player']['actives']['buffs']:
-                        # Buffs.
                         self.add_buff(buff_name, self.current_target)
 
-                # .. dmg.
+                # DMG
                 if 'dmg' in effects_dct[action_name]['player']['actives']:
                     for dmg_name in effects_dct[action_name]['player']['actives']['dmg']:
                         self.add_events(dmg_name, current_time)
 
-                # .. buff removal.
+                # BUFF REMOVAL
                 if 'remove_buff' in effects_dct[action_name]['player']['actives']:
                     for buff_name_to_remove in effects_dct[action_name]['player']['actives']['remove_buff']:
                         del self.active_buffs['player'][buff_name_to_remove]
@@ -866,6 +907,9 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
 class VisualRepresentation(Actions):
 
+    OFFENSIVE_PRE_COMBAT_STATS = ('ap', 'ad', 'base_ad', 'bonus_ad', 'crit_chance')
+    DEFENSIVE_PRE_COMBAT_STATS = ()
+
     def subplot_pie_chart(self, subplot_name):
 
         dmg_values = []
@@ -1024,7 +1068,7 @@ class VisualRepresentation(Actions):
             'ad',
             'ap',
             'att_speed',
-            'crit',
+            'crit_chance',
             'armor',
             'mr'
         ]
@@ -1062,7 +1106,7 @@ if __name__ == '__main__':
             self.player_champ = player_champ
 
             self.DELIMITER = '\n' + '-'*100
-            self.filtered_stats_max = {'crit': 1., 'speed': None, 'att_speed': 2.5, 'cdr': 0.4}
+            self.filtered_stats_max = {'crit_chance': 1., 'speed': None, 'att_speed': 2.5, 'cdr': 0.4}
 
             self.rotation_lst = None
             self.max_targets_dct = None
@@ -1294,7 +1338,7 @@ if __name__ == '__main__':
     itemLst1 = ['gunblade']
     itemLst2 = ['gunblade', 'gunblade']
 
-    run_graph_test = False
+    run_graph_test = True
     if run_graph_test:
         TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst2)
 
@@ -1303,10 +1347,18 @@ if __name__ == '__main__':
         # Crude time testing.
         import cProfile
         test_text = 'TestCounters().test_loop(rotation=rot1*4, use_runes=True)\n'
-        cProfile.run(test_text, sort='cumtime')
+        cProfile.run(test_text, 'cprof_results', sort='cumtime')
+
+        import pstats
+        runned_res = pstats.Stats('cprof_results').sort_stats('cumtime')
+        runned_res.strip_dirs().sort_stats('cumtime').print_stats(15)
+        print(runned_res.strip_dirs().sort_stats('cumtime').stats)
 
 
 #rot1, itemLst2
 #dps: 331.07415420245394 (after changing dps method)
 #dps: 338.4234113818222 (unexpected change, after changing bonus_ad method to get stats by 'evaluate' instead of direct)
 #dps: 406.06856388086914 (rotation and targets changed)
+
+#time increased 10fold with addition of 'r' and 'gunblade' in rotation
+# (both have high cd, reducing their cd reduces time)
