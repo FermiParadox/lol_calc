@@ -643,8 +643,6 @@ class DmgApplicationAndCounters(BuffsGeneral):
         """
         Applies a dmg or heal value to a target, along with lifesteal or spellvamp, and notes in history.
 
-        -Modifies current_stats of a target by applying a dmg/heal value to his current_hp.
-
         Modifies:
             current_stats
             dmg_history

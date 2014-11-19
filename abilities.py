@@ -28,6 +28,8 @@ class EventsGeneral(buffs.DeathAndRegen):
         self.event_times = {}
         self.current_time = 0
         self.current_target = None
+        self.intermediate_events_changed = None     # Used to note that a periodic event might have been added between
+                                                    # current events and last action.
 
         buffs.DeathAndRegen.__init__(self,
                                      current_time=self.current_time,
@@ -184,7 +186,7 @@ class EventsGeneral(buffs.DeathAndRegen):
 
     def refresh_periodic_event(self, dmg_name, tar_name, dmg_dct):
         """
-        Re-adds a periodic effect.
+        Re-adds a periodic effect and notes the change.
 
         Refreshed only if buff ending time is higher than event ending time,
         or if it's a permanent buff.
@@ -201,9 +203,10 @@ class EventsGeneral(buffs.DeathAndRegen):
             if ((tar_act_buffs[buff_name]['ending_time'] == 'permanent') or
                     (tar_act_buffs[buff_name]['ending_time'] > self.current_time)):
 
-                # If so, adds event.
                 self.add_events(effect_name=dmg_name,
                                 start_time=self.current_time + dmg_dct['period'])
+
+                self.intermediate_events_changed = True
 
     def add_next_periodic_event(self, tar_name, dmg_name, only_temporary=False):
         """
@@ -693,11 +696,21 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             self.apply_ability_effects(action_name=action_name,
                                        effects_dct=items_effects)
 
+    def apply_current_events(self):
+        """
+        Applies events at current_time on each affected target.
+
+
+
+        Returns:
+            (None)
+        """
+
     def apply_pre_action_events(self):
         """
-        Applies all events preceding an action's application start.
+        Applies all events preceding last action's application start.
 
-        If a periodic event is refreshed and ticks before the the last action,
+        If a periodic event is refreshed and ticks before the last action,
         then event_times changes and is checked again.
         If all targets die, the loop stops.
 
@@ -705,28 +718,30 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             current_time
             event_times
             active_buffs
+            intermediate_events_changed
         Returns:
             (None)
         """
 
-        not_all_events_checked = True
+        self.intermediate_events_changed = True
 
-        while not_all_events_checked:
+        while self.intermediate_events_changed:
+            
+            self.intermediate_events_changed = False
 
             # If for loop ends with new events being added,
-            # then 'not_all_events_checked' will be set to true,
-            # and the for loop will repeat.
-            not_all_events_checked = False
+            # then intermediate_events_changed will be set to true,
+            # and the for loop will repeat.          
 
             initial_events = sorted(self.event_times)
 
             for event in initial_events:
-                # Checks if event start exceeds last action's cast end.
+                # Checks if event's application time exceeds last action's cast end.
                 if event <= self.actions_dct[max(self.actions_dct)]['cast_end']:
 
-                    self.current_time = event   # Must change to ensure buffs are checked.
+                    # (must change to ensure buffs are checked)
+                    self.current_time = event
 
-                    # Removes expired buffs,...
                     self.remove_expired_buffs()
 
                     # Applies all dmg effects for all targets.
@@ -735,11 +750,6 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                             self.apply_dmg_or_heal(dmg_name, self.current_target)
                             self.add_next_periodic_event(tar_name=self.current_target, dmg_name=dmg_name)
 
-                            # Checks after each periodic application if new events have been added.
-                            # (Doesn't set to true if already true.)
-                            if not not_all_events_checked and initial_events != sorted(self.event_times):
-                                not_all_events_checked = True
-
                         # After dmg has been applied checks if target has died.
                         self.apply_death(tar_name=self.current_target)
 
@@ -747,14 +757,15 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                     del self.event_times[self.current_time]
 
                     # If new events are added it exits and checks them all over again.
-                    if not_all_events_checked:
+                    if self.intermediate_events_changed:
                         break
 
                 # Exits loop after all events prior to an action are applied.
                 else:
                     break
 
-                self.everyone_dead = True  # Must be set here as True since first action doesn't enter this loop at all.
+                # (must be set here as True since first action doesn't enter this loop at all)
+                self.everyone_dead = True
                 # Checks if alive targets exist.
                 for tar_name in self.champion_lvls_dct:
                     if tar_name != 'player':
@@ -815,50 +826,48 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
     def apply_events_after_actions(self):
         """
-        Modifies event_times, active_buffs and current_time.
+        Applies events after all actions have finished.
 
-        -Applies events after all actions have finished.
-        -Non permanent dots are refreshed and their events fully applied.
-        -Applies death to each target.
+        Non permanent dots are refreshed and their events fully applied.
+        Applies death to each viable target.
+
+        Modifies:
+            current_time
+            event_times
+            active_buffs
+            intermediate_events_changed
+        Returns:
+            (None)
         """
 
         # Applies events after all actions have finished.
-        not_all_events_checked = True
+        self.intermediate_events_changed = True
 
-        while not_all_events_checked:
+        while self.intermediate_events_changed:
 
             # If for loop ends with new events being added,
-            # then 'not_all_events_checked' will be set to true,
+            # then 'self.intermediate_events_changed' will be set to true,
             # and the for loop will repeat.
             # Above process will repeat until all events have been marked as applied.
-            not_all_events_checked = False
+            self.intermediate_events_changed = False
 
             initial_events = sorted(self.event_times)
 
             for event in initial_events:
 
-                    self.current_time = event   # Must change to ensure buffs are checked.
+                # (must change to ensure buffs are checked)
+                self.current_time = event
 
-                    # Removes expired buffs,...
-                    self.remove_expired_buffs()
-                    # Applies all dmg effects for all targets..
-                    for self.current_target in self.event_times[self.current_time]:
-                        # ..if they are alive.
-                        if self.current_stats[self.current_target]['current_hp'] > 0:
-                            for dmg_name in self.event_times[self.current_time][self.current_target]:
-                                self.apply_dmg_or_heal(dmg_name, self.current_target)
-                                self.add_next_periodic_event(tar_name=self.current_target,
-                                                             dmg_name=dmg_name,
-                                                             only_temporary=True)
+                self.remove_expired_buffs()
 
-                                # Checks after each periodic application if new events have been added.
-                                # (Doesn't set to true if already true.)
-                                if not not_all_events_checked and initial_events != sorted(self.event_times):
-                                    not_all_events_checked = True
-
-                            # If new events are added it exits and checks them all over again.
-                            if not_all_events_checked:
-                                break
+                # Applies all dmg effects to alive targets.
+                for self.current_target in self.event_times[self.current_time]:
+                    if self.current_stats[self.current_target]['current_hp'] > 0:
+                        for dmg_name in self.event_times[self.current_time][self.current_target]:
+                            self.apply_dmg_or_heal(dmg_name=dmg_name, target_name=self.current_target)
+                            self.add_next_periodic_event(tar_name=self.current_target,
+                                                         dmg_name=dmg_name,
+                                                         only_temporary=True)
 
         for tar_name in self.selected_champions_dct:
             self.apply_death(tar_name=tar_name)
