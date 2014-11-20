@@ -777,22 +777,19 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                 if self.everyone_dead:
                     break
 
-    def apply_action_or_event(self, rotation_lst, max_time):
+    def apply_all_actions(self, rotation_lst, max_time):
         """
-        Modifies current_time, active_buffs and event_times.
+        Applies all actions, and events in between,
+        until everyone is dead or the max_time is exceeded.
 
-        Applies each action and event, based on which comes first.
-
-        -Starts by applying the first action.
-        -Then applies events preceding next action (if there are any).
-        -Repeats above steps.
-        -Changes current_time in between.
-
-        Note: remove_expired_buffs should also be called before add_new_action for some champions.
+        Returns:
+            (None)
         """
 
         for new_action in rotation_lst:
-            # Applies next action..
+
+            # (used for champions that action application is affected by existing buffs)
+            self.remove_expired_buffs()
 
             # Checks if action meets the cost requirements.
             if self.cost_sufficiency(action_name=new_action):
@@ -820,9 +817,9 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                                           items_effects=self.items_effects
                                           )
 
-            # If the cost is too high..
+            # If the cost is too high, action is skipped.
             else:
-                pass  # TODO
+                pass  # TODO: Make it a new method (ignore mode, wait mode)
 
     def apply_events_after_actions(self):
         """
@@ -889,7 +886,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         self.add_passive_buffs(self.abilities_effects(), self.ability_lvls_dct)
 
         # Applies actions or events based on which occurs first.
-        self.apply_action_or_event(self.rotation_lst, self.max_combat_time)
+        self.apply_all_actions(self.rotation_lst, self.max_combat_time)
 
         # Applies events after all actions have finished.
         self.apply_events_after_actions()
