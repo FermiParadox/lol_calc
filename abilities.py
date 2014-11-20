@@ -696,16 +696,6 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             self.apply_ability_effects(action_name=action_name,
                                        effects_dct=items_effects)
 
-    def apply_current_events(self):
-        """
-        Applies events at current_time on each affected target.
-
-
-
-        Returns:
-            (None)
-        """
-
     def apply_pre_action_events(self):
         """
         Applies all events preceding last action's application start.
@@ -735,8 +725,10 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
             initial_events = sorted(self.event_times)
 
+            # EVENTS BEFORE ACTION
             for event in initial_events:
-                # Checks if event's application time exceeds last action's cast end.
+                # Checks if event's application time exceeds last action's application start.
+                # (cast_end and application start are different for channelled abilities)
                 if event <= self.actions_dct[max(self.actions_dct)]['cast_end']:
 
                     # (must change to ensure buffs are checked)
@@ -760,27 +752,35 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                     if self.intermediate_events_changed:
                         break
 
+                # EXIT INNER LOOP
                 # Exits loop after all events prior to an action are applied.
                 else:
                     break
 
-                # (must be set here as True since first action doesn't enter this loop at all)
+                # DEATHS
                 self.everyone_dead = True
                 # Checks if alive targets exist.
                 for tar_name in self.champion_lvls_dct:
                     if tar_name != 'player':
-                        if self.current_stats[tar_name]['current_hp'] > 0:
+                        if 'dead_buff' not in self.active_buffs[tar_name]:
                             self.everyone_dead = False
                             break
 
+                # EXIT METHOD
                 # If everyone has died, stops applying following events.
                 if self.everyone_dead:
+                    # TODO: check if "return" can replace below code
+                    # (break outer loop)
+                    self.intermediate_events_changed = False
+                    # (break inner loop)
                     break
 
     def apply_all_actions(self, rotation_lst, max_time):
         """
         Applies all actions, and events in between,
         until everyone is dead or the max_time is exceeded.
+
+        NOTE: To be overridden by a method that chooses "preferred" action.
 
         Returns:
             (None)
@@ -821,7 +821,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             else:
                 pass  # TODO: Make it a new method (ignore mode, wait mode)
 
-    def apply_events_after_actions(self):
+    def apply_events_after_actions(self, fully_apply_dots=False):
         """
         Applies events after all actions have finished.
 
@@ -837,7 +837,6 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        # Applies events after all actions have finished.
         self.intermediate_events_changed = True
 
         while self.intermediate_events_changed:
@@ -862,10 +861,13 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                     if self.current_stats[self.current_target]['current_hp'] > 0:
                         for dmg_name in self.event_times[self.current_time][self.current_target]:
                             self.apply_dmg_or_heal(dmg_name=dmg_name, target_name=self.current_target)
-                            self.add_next_periodic_event(tar_name=self.current_target,
-                                                         dmg_name=dmg_name,
-                                                         only_temporary=True)
 
+                            # Extends dots.
+                            if fully_apply_dots:
+                                self.add_next_periodic_event(tar_name=self.current_target,
+                                                             dmg_name=dmg_name,
+                                                             only_temporary=True)
+        # DEATHS
         for tar_name in self.selected_champions_dct:
             self.apply_death(tar_name=tar_name)
 
@@ -1315,7 +1317,8 @@ if __name__ == '__main__':
 
     print(TestCounters())
 
-    rot1 = ['e', 'r', 'q', 'AA', 'w', 'AA', 'AA', 'gunblade', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA', 'AA']
+    rot1 = ['e', 'r', 'q', 'AA', 'w', 'AA', 'AA', 'gunblade', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA', 'AA',
+            'AA', 'AA', 'w', 'AA', 'q']
     rot2 = ['w', 'AA', 'e', 'AA', 'AA', 'AA']
     rot3 = ['AA', 'AA', 'AA']
     rot4 = ['AA']
@@ -1346,6 +1349,7 @@ if __name__ == '__main__':
 #dps: 331.07415420245394 (after changing dps method)
 #dps: 338.4234113818222 (unexpected change, after changing bonus_ad method to get stats by 'evaluate' instead of direct)
 #dps: 406.06856388086914 (rotation and targets changed)
+#dps: 414.08610981856975 (rotation and targets changed)
 
 #time increased 10fold with addition of 'r' and 'gunblade' in rotation
 # (both have high cd, reducing their cd reduces time)
