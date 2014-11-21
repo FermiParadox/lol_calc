@@ -230,7 +230,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
         self.combat_history = {}
         self.actions_dct = {}
 
-        self.set_dmg_history()
+        self.set_combat_history()
 
     def mitigated_dmg(self, dmg_value, dmg_type, target):
         """
@@ -282,12 +282,12 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
         return max(dmg_value, 0.)
 
-    def set_dmg_history(self):
+    def set_combat_history(self):
         """
-        Sets up dmg_history by inserting history blueprints for all targets.
+        Sets up combat_history by inserting history blueprints for all targets.
 
         Modifies:
-            dmg_history dict.
+            combat_history dict.
 
         Returns:
             (None)
@@ -332,7 +332,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
         That is, if multiple dmg events occur simultaneously they are stored as a single dmg event.
 
         Modifies:
-            dmg_history
+            combat_history
         Returns:
             (None)
         """
@@ -356,7 +356,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
                                 # If it exists, it adds the dmg value to the previous.
                                 tar_dmg_hist['total'][dmg_time] += dmg_value
 
-    def refined_dmg_history(self):
+    def refined_combat_history(self):
         """
         Returns dict containing dmg history types as keywords and total dmg as values, for all enemy targets.
 
@@ -473,7 +473,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
         Inserts spellvamp or lifesteal of an effect, on a particular time.
 
         Modifies:
-            dmg_history
+            combat_history
         Args:
             heal_type: (string)
                 'lifesteal'
@@ -488,6 +488,25 @@ class DmgApplicationAndCounters(BuffsGeneral):
         else:
             self.combat_history['player'][heal_type].update({self.current_time: value})
 
+    def note_current_hp_in_history(self, target_name):
+        """
+        Stores current_hp of a target.
+
+        Replaces previous value for specific time if events occur simultaneously.
+
+        Returns:
+            (None)
+        """
+
+        self.combat_history[target_name]['current_hp'].update(
+            {self.current_time: self.current_stats[target_name]['current_hp']})
+
+    def note(self):
+        """
+        Returns:
+            (None)
+        """
+
     def apply_spellvamp_or_lifesteal(self, dmg_name, dmg_value, dmg_type):
         """
         Applies lifesteal or spellvamp to the player and notes it in history.
@@ -499,7 +518,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
         Modifies:
             current_stats
-            dmg_history
+            combat_history
         """
 
         # Checks if the event is not a heal.
@@ -554,14 +573,14 @@ class DmgApplicationAndCounters(BuffsGeneral):
         and stores current_hp at a each moment for a target.
 
         Modifies:
-            dmg_history
+            combat_history
         Returns:
             (None)
         """
 
-        # Modifies dmg_history.
+        # DMG HISTORY
+        # (AA type is converted to physical before being stored.)
         if dmg_type == 'AA':
-            # AA type is converted to physical before being stored.
             dmg_type = 'physical'
 
         # Filters out heals.
@@ -571,10 +590,8 @@ class DmgApplicationAndCounters(BuffsGeneral):
             else:
                 self.combat_history[target_name][dmg_type].update({self.current_time: final_dmg_value})
 
-        # Stores current_hp.
-        # Replaces previous value for specific time if events occur simultaneously.
-        self.combat_history[target_name]['current_hp'].update(
-            {self.current_time: self.current_stats[target_name]['current_hp']})
+        # HP HISTORY
+        self.note_current_hp_in_history(target_name=target_name)
 
     def apply_heal_value(self, tar_name, heal_value):
         """
@@ -605,7 +622,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
     def apply_resource_dmg_or_heal(self, dmg_name):
         """
-        Reduces or increases player's 'current_'resource and stores it in dmg_history.
+        Reduces or increases player's 'current_'resource and stores it in combat_history.
 
         Regen events can be natural (e.g. mp5) or buff based (e.g. Jayce's W) or item based (e.g. AA with Muramana).
 
@@ -613,7 +630,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
         Modifies:
             current_stats
-            dmg_history
+            combat_history
         Returns:
             (None)
         """
@@ -635,7 +652,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
             else:
                 self.current_stats['player'][curr_resource_string] -= dmg_value
 
-        # Adds time and current resource value in dmg_history.
+        # Adds time and current resource value in combat_history.
         self.combat_history['player']['resource'].update(
             {self.current_time: self.current_stats['player'][curr_resource_string]})
 
@@ -645,7 +662,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
         Modifies:
             current_stats
-            dmg_history
+            combat_history
         Returns:
             (None)
         """
@@ -727,7 +744,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
         last_cast_completion = self.actions_dct[last_action_time]['cast_end']
 
-        return self.refined_dmg_history()['all_targets']['total_dmg'] / last_cast_completion
+        return self.refined_combat_history()['all_targets']['total_dmg'] / last_cast_completion
 
 
 class DeathAndRegen(DmgApplicationAndCounters):

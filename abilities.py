@@ -909,16 +909,16 @@ class VisualRepresentation(Actions):
 
         counter_var = 1
 
-        for dmg_type in self.refined_dmg_history()['all_targets']:
+        for dmg_type in self.refined_combat_history()['all_targets']:
             # Filters out non used keywords.
             if ('heal' not in dmg_type) and ('total' not in dmg_type):
 
                 # Filters out 0 value dmg.
-                if self.refined_dmg_history()['all_targets'][dmg_type] > 0:
+                if self.refined_combat_history()['all_targets'][dmg_type] > 0:
 
                     slice_distance.append(0.02 * counter_var)
                     slice_names.append(dmg_type)
-                    dmg_values.append(self.refined_dmg_history()['all_targets'][dmg_type])
+                    dmg_values.append(self.refined_combat_history()['all_targets'][dmg_type])
 
                     counter_var += 1
 
@@ -1225,9 +1225,9 @@ if __name__ == '__main__':
 
             msg += '\nr_dmg_initiator: %s' % inst.r_dmg_initiator()
 
-            msg += '\ndmg_history: %s' % inst.combat_history
+            msg += '\ncombat_history: %s' % inst.combat_history
 
-            msg += '\ntotal dmg types: %s' % inst.refined_dmg_history()
+            msg += '\ntotal dmg types: %s' % inst.refined_combat_history()
 
             msg += '\ntimes of death: %s' % inst.times_of_death()
 
@@ -1256,7 +1256,7 @@ if __name__ == '__main__':
             inst.subplot_table_of_setup(plt.figure(1).add_subplot(224))
 
             msg = '\nrotation: %s\n' % inst.rotation_lst
-            msg += '\ntotal dmg types: %s' % inst.refined_dmg_history()
+            msg += '\ntotal dmg types: %s' % inst.refined_combat_history()
             msg += '\ntimes of death: %s' % inst.times_of_death()
             msg += '\nactions: %s' % sorted(inst.actions_dct)
             msg += '\ndps: %s' % inst.dps()
