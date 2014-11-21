@@ -227,7 +227,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
                               initial_current_stats=initial_current_stats,
                               initial_active_buffs=initial_active_buffs,
                               items_lst=items_lst)
-        self.dmg_history = {}
+        self.combat_history = {}
         self.actions_dct = {}
 
         self.set_dmg_history()
@@ -295,7 +295,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
         for tar in self.selected_champions_dct:
 
-            self.dmg_history.update(
+            self.combat_history.update(
                 {tar: dict(
                     true={},
                     magic={},
@@ -304,7 +304,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
                     current_hp={},)})
 
             if tar == 'player':
-                self.dmg_history['player'].update(dict(
+                self.combat_history['player'].update(dict(
                     # Each dmg_name and its value
                     # (e.g. {'AA': 56.1, 'w_dmg': 20.,})
                     source={},
@@ -337,10 +337,10 @@ class DmgApplicationAndCounters(BuffsGeneral):
             (None)
         """
 
-        for target_name in self.dmg_history:
+        for target_name in self.combat_history:
             if target_name != 'player':
 
-                tar_dmg_hist = self.dmg_history[target_name]
+                tar_dmg_hist = self.combat_history[target_name]
 
                 for dmg_type in tar_dmg_hist:
                     if dmg_type not in ('total', 'current_hp'):
@@ -383,7 +383,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
         tot_physical = 0
         tot_magic = 0
 
-        for tar_name in self.dmg_history:
+        for tar_name in self.combat_history:
 
             # Total for each target separately.
             tot_true_tar = 0
@@ -393,14 +393,14 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
             if tar_name != 'player':
 
-                for hist_cat in self.dmg_history[tar_name]:
+                for hist_cat in self.combat_history[tar_name]:
 
-                    for dmg_event in self.dmg_history[tar_name][hist_cat]:
+                    for dmg_event in self.combat_history[tar_name][hist_cat]:
 
                         # Handles true, magic, and physical history.
                         if hist_cat in ('true', 'magic', 'physical'):
 
-                            dmg_value = self.dmg_history[tar_name][hist_cat][dmg_event]
+                            dmg_value = self.combat_history[tar_name][hist_cat][dmg_event]
 
                             # If it's dmg:
                             if dmg_value > 0:
@@ -422,8 +422,8 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
                         # Handles source related dmg history.
                         elif hist_cat == 'source':
-                            for source_name in self.dmg_history[tar_name][hist_cat]:
-                                source_sum = sum(self.dmg_history[tar_name][hist_cat][source_name])
+                            for source_name in self.combat_history[tar_name][hist_cat]:
+                                source_sum = sum(self.combat_history[tar_name][hist_cat][source_name])
 
                                 # Updates with sum of each source.
                                 dct.update(dict(source={source_name: source_sum}))
@@ -432,17 +432,17 @@ class DmgApplicationAndCounters(BuffsGeneral):
                         elif hist_cat == 'ability':
 
                             # For Q, W, E, R..
-                            for ability_name in self.dmg_history[tar_name][hist_cat]:
-                                for dmg_name in self.dmg_history[tar_name][hist_cat][ability_name]:
+                            for ability_name in self.combat_history[tar_name][hist_cat]:
+                                for dmg_name in self.combat_history[tar_name][hist_cat][ability_name]:
 
-                                    dmg_sum = sum(self.dmg_history[tar_name][hist_cat][dmg_name])
+                                    dmg_sum = sum(self.combat_history[tar_name][hist_cat][dmg_name])
 
                                     # ..updates with sum for each ability.
                                     dct.update(dict(ability={dmg_name: dmg_sum}))
 
                         elif hist_cat in ('lifesteal', 'spellvamp'):
-                            for heal_type in self.dmg_history[tar_name][hist_cat]:
-                                heal_sum = sum(self.dmg_history[tar_name][hist_cat][heal_type])
+                            for heal_type in self.combat_history[tar_name][hist_cat]:
+                                heal_sum = sum(self.combat_history[tar_name][hist_cat][heal_type])
 
                                 # Updates with sum of each source.
                                 dct.update({hist_cat: {heal_type: heal_sum}})
@@ -483,10 +483,10 @@ class DmgApplicationAndCounters(BuffsGeneral):
         """
 
         # Checks if time already exists in history.
-        if self.current_time in self.dmg_history['player'][heal_type]:
-            self.dmg_history['player'][heal_type][self.current_time] += value
+        if self.current_time in self.combat_history['player'][heal_type]:
+            self.combat_history['player'][heal_type][self.current_time] += value
         else:
-            self.dmg_history['player'][heal_type].update({self.current_time: value})
+            self.combat_history['player'][heal_type].update({self.current_time: value})
 
     def apply_spellvamp_or_lifesteal(self, dmg_name, dmg_value, dmg_type):
         """
@@ -566,14 +566,14 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
         # Filters out heals.
         if final_dmg_value > 0:
-            if self.current_time in self.dmg_history[target_name][dmg_type]:
-                self.dmg_history[target_name][dmg_type][self.current_time] += final_dmg_value
+            if self.current_time in self.combat_history[target_name][dmg_type]:
+                self.combat_history[target_name][dmg_type][self.current_time] += final_dmg_value
             else:
-                self.dmg_history[target_name][dmg_type].update({self.current_time: final_dmg_value})
+                self.combat_history[target_name][dmg_type].update({self.current_time: final_dmg_value})
 
         # Stores current_hp.
         # Replaces previous value for specific time if events occur simultaneously.
-        self.dmg_history[target_name]['current_hp'].update(
+        self.combat_history[target_name]['current_hp'].update(
             {self.current_time: self.current_stats[target_name]['current_hp']})
 
     def apply_heal_value(self, tar_name, heal_value):
@@ -636,7 +636,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
                 self.current_stats['player'][curr_resource_string] -= dmg_value
 
         # Adds time and current resource value in dmg_history.
-        self.dmg_history['player']['resource'].update(
+        self.combat_history['player']['resource'].update(
             {self.current_time: self.current_stats['player'][curr_resource_string]})
 
     def apply_hp_dmg_or_heal(self, dmg_name, target_name):

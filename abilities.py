@@ -939,10 +939,10 @@ class VisualRepresentation(Actions):
 
         color_lst = ('b', 'g', 'y', 'r')
 
-        for tar_name in sorted(self.dmg_history):
+        for tar_name in sorted(self.combat_history):
             if tar_name != 'player':
 
-                hp_change_times = sorted(self.dmg_history[tar_name]['current_hp'])
+                hp_change_times = sorted(self.combat_history[tar_name]['current_hp'])
                 max_hp = self.request_stat(target_name=tar_name, stat_name='hp')
 
                 # Inserts initial point.
@@ -964,7 +964,7 @@ class VisualRepresentation(Actions):
                         x_values.append(x_element/100)
                         y_values.append(current_hp)
 
-                    current_hp = self.dmg_history[tar_name]['current_hp'][event_time]
+                    current_hp = self.combat_history[tar_name]['current_hp'][event_time]
                     x_1 = event_time
 
                 subplot_name.plot(x_values, y_values, color=color_lst[color_counter_var], alpha=0.7)
@@ -1042,9 +1042,9 @@ class VisualRepresentation(Actions):
                 x_val = []
                 y_val = []
 
-            for event_time in sorted(self.dmg_history['player'][examined]):
+            for event_time in sorted(self.combat_history['player'][examined]):
                 x_val.append(event_time)
-                y_val.append(self.dmg_history['player'][examined][event_time])
+                y_val.append(self.combat_history['player'][examined][event_time])
 
             subplot_name.plot(x_val, y_val, color=stat_color[examined], marker='.', label=examined)
 
@@ -1225,7 +1225,7 @@ if __name__ == '__main__':
 
             msg += '\nr_dmg_initiator: %s' % inst.r_dmg_initiator()
 
-            msg += '\ndmg_history: %s' % inst.dmg_history
+            msg += '\ndmg_history: %s' % inst.combat_history
 
             msg += '\ntotal dmg types: %s' % inst.refined_dmg_history()
 
@@ -1266,7 +1266,7 @@ if __name__ == '__main__':
             msg += '\nlifesteal: %s, spellvamp: %s' % (inst.request_stat('player', 'lifesteal'),
                                                        inst.request_stat('player', 'spellvamp'))
 
-            msg += '\nlifesteal history: %s' % inst.dmg_history['player']['lifesteal']
+            msg += '\nlifesteal history: %s' % inst.combat_history['player']['lifesteal']
 
             msg += str(inst.active_buffs['player'])
 
