@@ -208,7 +208,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
                                                      tar_name=tar_name)
 
 
-class DmgApplicationAndCounters(BuffsGeneral):
+class Counters(BuffsGeneral):
 
     AOE_SPELLVAMP_MOD = 30/100
 
@@ -228,59 +228,8 @@ class DmgApplicationAndCounters(BuffsGeneral):
                               initial_active_buffs=initial_active_buffs,
                               items_lst=items_lst)
         self.combat_history = {}
-        self.actions_dct = {}
 
         self.set_combat_history()
-
-    def mitigated_dmg(self, dmg_value, dmg_type, target):
-        """
-        Calculates the dmg value based on its type (magic, physical, AA, true).
-
-        Returns:
-            (float)
-        """
-
-        # True dmg remains unmitigated.
-        if dmg_type == 'true':
-            return dmg_value
-
-        tar_bonuses = self.bonuses_dct[target]
-        # Checks if there is any percent dmg reduction and applies it.
-        if 'percent_dmg_reduction' in tar_bonuses:
-            dmg_value *= 1-self.request_stat(target_name=target, stat_name='percent_dmg_reduction')
-
-        # Magic dmg.
-        if dmg_type == 'magic':
-            # Checks if there is any percent magic reduction and applies it.
-            dmg_value *= self.request_stat(target_name=target, stat_name='magic_dmg_taken')
-
-            # Checks if there is flat magic reduction
-            if 'flat_magic_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target_name=target, stat_name='flat_magic_reduction')
-
-            # Checks if there is flat reduction
-            if 'flat_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target_name=target, stat_name='flat_reduction')
-
-        # Physical (AA or non-AA)..
-        else:
-            # Applies physical dmg reduction.
-            dmg_value *= self.request_stat(target_name=target, stat_name='physical_dmg_taken')
-
-            # Checks if there is flat physical reduction
-            if 'flat_physical_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target_name=target, stat_name='flat_physical_reduction')
-
-            # Checks if there is flat reduction
-            if 'flat_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target_name=target, stat_name='flat_reduction')
-
-            # AA reduction.
-            if dmg_type == 'AA':
-                if 'flat_AA_reduction' in tar_bonuses:
-                    dmg_value -= self.request_stat(target_name=target, stat_name='flat_AA_reduction')
-
-        return max(dmg_value, 0.)
 
     def set_combat_history(self):
         """
@@ -470,7 +419,7 @@ class DmgApplicationAndCounters(BuffsGeneral):
 
     def note_lifesteal_or_spellvamp_in_history(self, value, heal_type='lifesteal'):
         """
-        Inserts spellvamp or lifesteal of an effect, on a particular time.
+        Notes spellvamp or lifesteal of an effect, on a particular time in history.
 
         Modifies:
             combat_history
@@ -501,11 +450,62 @@ class DmgApplicationAndCounters(BuffsGeneral):
         self.combat_history[target_name]['current_hp'].update(
             {self.current_time: self.current_stats[target_name]['current_hp']})
 
-    def note(self):
+    def note_resource_in_history(self, curr_resource_str):
         """
+        Stores player's 'current_'resource value in history.
+
+        Replaces previous value, if one exists.
+
+        Args:
+            current_resource_name: (str) e.g. "current_rage"
         Returns:
             (None)
         """
+
+        # Adds time and current resource value
+        self.combat_history['player']['resource'][self.current_time] = self.current_stats['player'][curr_resource_str]
+
+    def note_dmg_in_history(self, dmg_type, final_dmg_value, target_name):
+        """
+        Calculates and stores total dmg of a particular type, at a each moment,
+        and stores current_hp at a each moment for a target.
+
+        Modifies:
+            combat_history
+        Returns:
+            (None)
+        """
+
+        # (AA type is converted to physical before being stored.)
+        if dmg_type == 'AA':
+            dmg_type = 'physical'
+
+        # Filters out heals.
+        if final_dmg_value > 0:
+            if self.current_time in self.combat_history[target_name][dmg_type]:
+                self.combat_history[target_name][dmg_type][self.current_time] += final_dmg_value
+            else:
+                self.combat_history[target_name][dmg_type].update({self.current_time: final_dmg_value})
+
+
+class DmgApplication(Counters):
+
+    def __init__(self,
+                 current_time,
+                 selected_champions_dct,
+                 champion_lvls_dct,
+                 initial_current_stats=None,
+                 initial_active_buffs=None,
+                 items_lst=None):
+
+        Counters.__init__(self,
+                          current_time,
+                          selected_champions_dct,
+                          champion_lvls_dct,
+                          initial_current_stats=initial_current_stats,
+                          initial_active_buffs=initial_active_buffs,
+                          items_lst=items_lst)
+        self.actions_dct = {}
 
     def apply_spellvamp_or_lifesteal(self, dmg_name, dmg_value, dmg_type):
         """
@@ -567,32 +567,6 @@ class DmgApplicationAndCounters(BuffsGeneral):
                     # NOTE IN HISTORY
                     self.note_lifesteal_or_spellvamp_in_history(value=lifesteal_value, heal_type='lifesteal')
 
-    def dmg_related_counters(self, dmg_type, final_dmg_value, target_name):
-        """
-        Calculates and stores total dmg of a particular type, at a each moment,
-        and stores current_hp at a each moment for a target.
-
-        Modifies:
-            combat_history
-        Returns:
-            (None)
-        """
-
-        # DMG HISTORY
-        # (AA type is converted to physical before being stored.)
-        if dmg_type == 'AA':
-            dmg_type = 'physical'
-
-        # Filters out heals.
-        if final_dmg_value > 0:
-            if self.current_time in self.combat_history[target_name][dmg_type]:
-                self.combat_history[target_name][dmg_type][self.current_time] += final_dmg_value
-            else:
-                self.combat_history[target_name][dmg_type].update({self.current_time: final_dmg_value})
-
-        # HP HISTORY
-        self.note_current_hp_in_history(target_name=target_name)
-
     def apply_heal_value(self, tar_name, heal_value):
         """
         Applies a heal to a target.
@@ -652,9 +626,58 @@ class DmgApplicationAndCounters(BuffsGeneral):
             else:
                 self.current_stats['player'][curr_resource_string] -= dmg_value
 
-        # Adds time and current resource value in combat_history.
-        self.combat_history['player']['resource'].update(
-            {self.current_time: self.current_stats['player'][curr_resource_string]})
+        # RESOURCE HISTORY
+        self.note_resource_in_history(curr_resource_str=curr_resource_string)
+
+    def mitigated_dmg(self, dmg_value, dmg_type, target):
+        """
+        Calculates the dmg value based on its type (magic, physical, AA, true).
+
+        Returns:
+            (float)
+        """
+
+        # True dmg remains unmitigated.
+        if dmg_type == 'true':
+            return dmg_value
+
+        tar_bonuses = self.bonuses_dct[target]
+        # Checks if there is any percent dmg reduction and applies it.
+        if 'percent_dmg_reduction' in tar_bonuses:
+            dmg_value *= 1-self.request_stat(target_name=target, stat_name='percent_dmg_reduction')
+
+        # Magic dmg.
+        if dmg_type == 'magic':
+            # Checks if there is any percent magic reduction and applies it.
+            dmg_value *= self.request_stat(target_name=target, stat_name='magic_dmg_taken')
+
+            # Checks if there is flat magic reduction
+            if 'flat_magic_reduction' in tar_bonuses:
+                dmg_value -= self.request_stat(target_name=target, stat_name='flat_magic_reduction')
+
+            # Checks if there is flat reduction
+            if 'flat_reduction' in tar_bonuses:
+                dmg_value -= self.request_stat(target_name=target, stat_name='flat_reduction')
+
+        # Physical (AA or non-AA)..
+        else:
+            # Applies physical dmg reduction.
+            dmg_value *= self.request_stat(target_name=target, stat_name='physical_dmg_taken')
+
+            # Checks if there is flat physical reduction
+            if 'flat_physical_reduction' in tar_bonuses:
+                dmg_value -= self.request_stat(target_name=target, stat_name='flat_physical_reduction')
+
+            # Checks if there is flat reduction
+            if 'flat_reduction' in tar_bonuses:
+                dmg_value -= self.request_stat(target_name=target, stat_name='flat_reduction')
+
+            # AA reduction.
+            if dmg_type == 'AA':
+                if 'flat_AA_reduction' in tar_bonuses:
+                    dmg_value -= self.request_stat(target_name=target, stat_name='flat_AA_reduction')
+
+        return max(dmg_value, 0.)
 
     def apply_hp_dmg_or_heal(self, dmg_name, target_name):
         """
@@ -690,9 +713,10 @@ class DmgApplicationAndCounters(BuffsGeneral):
                                           dmg_type=dmg_type)
 
         # COUNTERS
-        self.dmg_related_counters(dmg_type=dmg_type,
-                                  final_dmg_value=final_dmg_value,
-                                  target_name=target_name)
+        self.note_dmg_in_history(dmg_type=dmg_type,
+                                 final_dmg_value=final_dmg_value,
+                                 target_name=target_name)
+        self.note_current_hp_in_history(target_name=target_name)
 
     def apply_dmg_or_heal(self, dmg_name, target_name):
         """
@@ -743,11 +767,13 @@ class DmgApplicationAndCounters(BuffsGeneral):
         last_action_time = max(self.actions_dct)
 
         last_cast_completion = self.actions_dct[last_action_time]['cast_end']
+        if last_cast_completion == 0:
+            last_cast_completion += 0.2
 
         return self.refined_combat_history()['all_targets']['total_dmg'] / last_cast_completion
 
 
-class DeathAndRegen(DmgApplicationAndCounters):
+class DeathAndRegen(DmgApplication):
 
     NATURAL_REGEN_PERIOD = 0.5  # Tick period of hp5, mp5,
     PER_5_DIVISOR = 10.  # Divides "per 5" stats. Used to create per tick value (ticks have 0.5s period)
