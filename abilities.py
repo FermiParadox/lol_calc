@@ -887,6 +887,8 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         # Adds passive buffs from abilities.
         self.add_passive_buffs(self.abilities_effects(), self.ability_lvls_dct)
 
+        # TODO: store "precombat stats"
+
         # Applies actions or events based on which occurs first.
         self.apply_all_actions(self.rotation_lst, self.max_combat_time)
 
