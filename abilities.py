@@ -274,33 +274,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         timers.Timers.__init__(self,
                                ability_lvls_dct=ability_lvls_dct)
 
-    def add_buff(self, buff_name, tar_name, stack_increment=1, initial_stacks_increment=1):
-        """
-        (Overrides previous method)
-
-        Additionally, checks if buff applied is a dot buff and adds periodic event (unless dot already active).
-
-        Returns:
-            (None)
-        """
-
-        # Checks if dot already applied.
-        new_periodic_event = True
-        if buff_name in self.active_buffs[tar_name]:
-            new_periodic_event = False
-
-        super().add_buff(buff_name=buff_name, tar_name=tar_name,
-                         stack_increment=stack_increment, initial_stacks_increment=initial_stacks_increment)
-
-        # If it's a new dot..
-        if new_periodic_event:
-            # If the buff is a dot, applies event as well.
-            if 'period' in getattr(self, buff_name)():
-
-                first_tick = self.first_dot_tick(current_time=self.current_time, ability_name=buff_name)
-
-                self.add_events(effect_name=buff_name, start_time=first_tick)
-
+    # COSTS
     def ability_cost_dct(self, action_name):
         """
         Creates a dict containing each resource used,
@@ -381,6 +355,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             else:
                 del self.active_buffs['player'][cost_name]
 
+    # ABILITIES
     def apply_aa_cd_reset(self, action_name):
         """
         Removes an AA's cd after an AA-resetting ability is casted.
@@ -512,6 +487,33 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                 cast_end=cast_start,
                 cd_end=360,
                 action_name=action_name)})
+
+    def add_buff(self, buff_name, tar_name, stack_increment=1, initial_stacks_increment=1):
+        """
+        (Overrides previous method)
+
+        Additionally, checks if buff applied is a dot buff and adds periodic event (unless dot already active).
+
+        Returns:
+            (None)
+        """
+
+        # Checks if dot already applied.
+        new_periodic_event = True
+        if buff_name in self.active_buffs[tar_name]:
+            new_periodic_event = False
+
+        super().add_buff(buff_name=buff_name, tar_name=tar_name,
+                         stack_increment=stack_increment, initial_stacks_increment=initial_stacks_increment)
+
+        # If it's a new dot..
+        if new_periodic_event:
+            # If the buff is a dot, applies event as well.
+            if 'period' in getattr(self, buff_name)():
+
+                first_tick = self.first_dot_tick(current_time=self.current_time, ability_name=buff_name)
+
+                self.add_events(effect_name=buff_name, start_time=first_tick)
 
     def remove_buff_on_action(self, buff_name):
         """
@@ -897,7 +899,322 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         self.apply_events_after_actions()
 
 
-class VisualRepresentation(Actions):
+class Counters(Actions):
+
+    AOE_SPELLVAMP_MOD = 30/100
+
+    def __init__(self,
+                 rotation_lst,
+                 max_targets_dct,
+                 selected_champions_dct,
+                 champion_lvls_dct,
+                 ability_lvls_dct,
+                 max_combat_time=None,
+                 items_lst=None,
+                 initial_active_buffs=None,
+                 initial_current_stats=None,
+                 selected_runes=None):
+
+        Actions.__init__(self,
+                         rotation_lst=rotation_lst,
+                         max_targets_dct=max_targets_dct,
+                         selected_champions_dct=selected_champions_dct,
+                         champion_lvls_dct=champion_lvls_dct,
+                         ability_lvls_dct=ability_lvls_dct,
+                         max_combat_time=max_combat_time,
+                         items_lst=items_lst,
+                         initial_active_buffs=initial_active_buffs,
+                         initial_current_stats=initial_current_stats,
+                         selected_runes=selected_runes)
+
+        self.combat_history = {}
+        self.combat_results = {}
+        self.place_tar_and_empty_dct_in_dct(self.combat_results)
+
+        self.set_combat_history()
+
+    def set_combat_history(self):
+        """
+        Sets up combat_history by inserting history blueprints for all targets.
+
+        Modifies:
+            combat_history dict.
+
+        Returns:
+            (None)
+        """
+
+        for tar in self.all_target_names:
+
+            self.combat_history.update(
+                {tar: dict(
+                    true={},
+                    magic={},
+                    physical={},
+                    total={},
+                    current_hp={},)})
+
+        self.combat_history['player'].update(dict(
+            # Each dmg_name and its value
+            # (e.g. {'AA': 56.1, 'w_dmg': 20.,})
+            source={},
+
+            # AA related dmg, including on_hit dmg.
+            # (e.g. {'AA': [56.1, ], 'w_dmg': [],})
+            AA_related=0.,
+
+            ability=dict(
+                inn=0.,
+                q=0.,
+                w=0.,
+                e=0.,
+                r=0.
+            ),
+
+            lifesteal={},
+            spellvamp={},
+            resource={},))
+
+    def add_dmg_tot_history(self):
+        """
+        Inserts a single dmg event (total dmg done during a given moment) regardless of type for each target.
+
+        That is, if multiple dmg events occur simultaneously they are stored as a single dmg event.
+
+        Modifies:
+            combat_history
+        Returns:
+            (None)
+        """
+
+        for target_name in self.combat_history:
+            if target_name != 'player':
+
+                tar_dmg_hist = self.combat_history[target_name]
+
+                for dmg_type in tar_dmg_hist:
+                    if dmg_type not in ('total', 'current_hp'):
+                        for dmg_time in tar_dmg_hist[dmg_type]:
+
+                            dmg_value = tar_dmg_hist[dmg_type][dmg_time]
+
+                            # Checks if event's time doesn't exist in 'total'.
+                            if dmg_time not in tar_dmg_hist['total']:
+                                tar_dmg_hist['total'].update({dmg_time: dmg_value})
+
+                            else:
+                                # If it exists, it adds the dmg value to the previous.
+                                tar_dmg_hist['total'][dmg_time] += dmg_value
+
+    def refined_combat_history(self):
+        """
+        Returns dict containing dmg history types as keywords and total dmg as values, for all enemy targets.
+
+        History types:
+            -true
+            -physical
+            -magic
+            -healing (not included in 'all_targets')
+
+            -lifesteal
+            -spellvamp
+
+            -aa_related
+            -ability
+
+        Dict format:
+            {'enemy_1': {'true': 10.2, 'magic': ..}, 'enemy_2': .. , 'all_targets': {'true': ..} }
+        """
+
+        dct = {}
+
+        # Total for all targets
+        tot_true = 0
+        tot_physical = 0
+        tot_magic = 0
+
+        for tar_name in self.combat_history:
+
+            # Total for each target separately.
+            tot_true_tar = 0
+            tot_physical_tar = 0
+            tot_magic_tar = 0
+            tot_healing_tar = 0
+
+            if tar_name != 'player':
+                for hist_cat in self.combat_history[tar_name]:
+                    for dmg_event in self.combat_history[tar_name][hist_cat]:
+                        # Handles true, magic, and physical history.
+                        if hist_cat in ('true', 'magic', 'physical'):
+                            dmg_value = self.combat_history[tar_name][hist_cat][dmg_event]
+
+                            # If it's dmg:
+                            if dmg_value > 0:
+                                if hist_cat == 'true':
+                                    tot_true_tar += dmg_value
+                                    tot_true += dmg_value
+
+                                elif hist_cat == 'magic':
+                                    tot_magic_tar += dmg_value
+                                    tot_magic += dmg_value
+
+                                elif hist_cat == 'physical':
+                                    tot_physical_tar += dmg_value
+                                    tot_physical += dmg_value
+
+                            # Else it's a healing.
+                            else:
+                                tot_healing_tar += dmg_value
+
+                        # Handles source related dmg history.
+                        elif hist_cat == 'source':
+                            for source_name in self.combat_history[tar_name][hist_cat]:
+                                source_sum = sum(self.combat_history[tar_name][hist_cat][source_name])
+                                # Updates with sum of each source.
+                                dct.update(dict(source={source_name: source_sum}))
+
+                        # Handles ability related dmg history.
+                        elif hist_cat == 'ability':
+
+                            # For Q, W, E, R..
+                            for ability_name in self.combat_history[tar_name][hist_cat]:
+                                for dmg_name in self.combat_history[tar_name][hist_cat][ability_name]:
+                                    dmg_sum = sum(self.combat_history[tar_name][hist_cat][dmg_name])
+                                    # ..updates with sum for each ability.
+                                    dct.update(dict(ability={dmg_name: dmg_sum}))
+
+                        elif hist_cat in ('lifesteal', 'spellvamp'):
+                            for heal_type in self.combat_history[tar_name][hist_cat]:
+                                heal_sum = sum(self.combat_history[tar_name][hist_cat][heal_type])
+                                # Updates with sum of each source.
+                                dct.update({hist_cat: {heal_type: heal_sum}})
+
+                # Updates with values for each target.
+                dct.update({tar_name: dict(true=tot_true_tar,
+                                           magic=tot_magic_tar,
+                                           physical=tot_physical_tar,
+                                           healing=tot_healing_tar,
+                                           )})
+
+            # Updates with total values for each type.
+            dct.update(dict(all_targets=dict(true=tot_true,
+                                             magic=tot_magic,
+                                             physical=tot_physical,
+                                             )))
+
+            # Updates with total dmg.
+            tot_dmg = 0
+            for dmg_type in dct['all_targets']:
+                tot_dmg += dct['all_targets'][dmg_type]
+            dct['all_targets'].update(dict(total_dmg=tot_dmg))
+
+        return dct
+
+    def note_lifesteal_or_spellvamp_in_history(self, value, heal_type='lifesteal'):
+        """
+        Notes spellvamp or lifesteal of an effect, on a particular time in history.
+
+        Modifies:
+            combat_history
+        Args:
+            heal_type: (string)
+                'lifesteal'
+                'spellvamp'
+        Returns:
+            None
+        """
+
+        # Checks if time already exists in history.
+        if self.current_time in self.combat_history['player'][heal_type]:
+            self.combat_history['player'][heal_type][self.current_time] += value
+        else:
+            self.combat_history['player'][heal_type].update({self.current_time: value})
+
+    def note_current_hp_in_history(self, target_name):
+        """
+        Stores current_hp of a target.
+
+        Replaces previous value for specific time if events occur simultaneously.
+
+        Returns:
+            (None)
+        """
+
+        self.combat_history[target_name]['current_hp'].update(
+            {self.current_time: self.current_stats[target_name]['current_hp']})
+
+    def note_resource_in_history(self, curr_resource_str):
+        """
+        Stores player's 'current_'resource value in history.
+
+        Replaces previous value, if one exists.
+
+        Args:
+            current_resource_name: (str) e.g. "current_rage"
+        Returns:
+            (None)
+        """
+
+        # Adds time and current resource value
+        self.combat_history['player']['resource'][self.current_time] = self.current_stats['player'][curr_resource_str]
+
+    def note_dmg_in_history(self, dmg_type, final_dmg_value, target_name):
+        """
+        Calculates and stores total dmg of a particular type, at a moment,
+        and stores current_hp at a each moment for a target.
+
+        Modifies:
+            combat_history
+        Returns:
+            (None)
+        """
+
+        # (AA type is converted to physical before being stored.)
+        if dmg_type == 'AA':
+            dmg_type = 'physical'
+
+        # Filters out heals.
+        if final_dmg_value > 0:
+            if self.current_time in self.combat_history[target_name][dmg_type]:
+                self.combat_history[target_name][dmg_type][self.current_time] += final_dmg_value
+            else:
+                self.combat_history[target_name][dmg_type].update({self.current_time: final_dmg_value})
+
+    def note_dmg_totals_in_results(self):
+        """
+        Calculates total dmg for each dmg type and stores it. Then stores total overall dmg.
+
+        Returns:
+            (None)
+        """
+
+        tot_value = 0
+        self.combat_results['player']['total_dmg'] = 0
+
+        for tar_name in self.enemy_target_names:
+            for dmg_type in ('true', 'physical', 'magic'):
+                for event_time in self.combat_history[tar_name][dmg_type]:
+                    tot_value += self.combat_history[tar_name][dmg_type][event_time]
+
+                # TYPE TOTALS
+                self.combat_results[tar_name][dmg_type] = tot_value
+
+            # OVERALL TOTALS
+            self.combat_results['player']['total_dmg'] += tot_value
+
+    def note_regen_totals_in_results(self):
+        """
+        Calculates and stores total values of lifesteal, spellvamp, hp5 and resource regen.
+
+        Returns:
+            (None)
+        """
+
+        for tar_name in self.all_target_names:
+            for regen_type in ('lifesteal', 'spellvamp', 'hp5', self.player_resource): pass
+
+
+class VisualRepresentation(Counters):
 
     OFFENSIVE_PRE_COMBAT_STATS = ('ap', 'ad', 'base_ad', 'bonus_ad', 'crit_chance')
     DEFENSIVE_PRE_COMBAT_STATS = ()
