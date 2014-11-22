@@ -228,6 +228,7 @@ class Counters(BuffsGeneral):
                               initial_active_buffs=initial_active_buffs,
                               items_lst=items_lst)
         self.combat_history = {}
+        self.combat_results = {}
 
         self.set_combat_history()
 
@@ -341,14 +342,10 @@ class Counters(BuffsGeneral):
             tot_healing_tar = 0
 
             if tar_name != 'player':
-
                 for hist_cat in self.combat_history[tar_name]:
-
                     for dmg_event in self.combat_history[tar_name][hist_cat]:
-
                         # Handles true, magic, and physical history.
                         if hist_cat in ('true', 'magic', 'physical'):
-
                             dmg_value = self.combat_history[tar_name][hist_cat][dmg_event]
 
                             # If it's dmg:
@@ -373,7 +370,6 @@ class Counters(BuffsGeneral):
                         elif hist_cat == 'source':
                             for source_name in self.combat_history[tar_name][hist_cat]:
                                 source_sum = sum(self.combat_history[tar_name][hist_cat][source_name])
-
                                 # Updates with sum of each source.
                                 dct.update(dict(source={source_name: source_sum}))
 
@@ -383,16 +379,13 @@ class Counters(BuffsGeneral):
                             # For Q, W, E, R..
                             for ability_name in self.combat_history[tar_name][hist_cat]:
                                 for dmg_name in self.combat_history[tar_name][hist_cat][ability_name]:
-
                                     dmg_sum = sum(self.combat_history[tar_name][hist_cat][dmg_name])
-
                                     # ..updates with sum for each ability.
                                     dct.update(dict(ability={dmg_name: dmg_sum}))
 
                         elif hist_cat in ('lifesteal', 'spellvamp'):
                             for heal_type in self.combat_history[tar_name][hist_cat]:
                                 heal_sum = sum(self.combat_history[tar_name][hist_cat][heal_type])
-
                                 # Updates with sum of each source.
                                 dct.update({hist_cat: {heal_type: heal_sum}})
 
@@ -467,7 +460,7 @@ class Counters(BuffsGeneral):
 
     def note_dmg_in_history(self, dmg_type, final_dmg_value, target_name):
         """
-        Calculates and stores total dmg of a particular type, at a each moment,
+        Calculates and stores total dmg of a particular type, at a moment,
         and stores current_hp at a each moment for a target.
 
         Modifies:
@@ -486,6 +479,35 @@ class Counters(BuffsGeneral):
                 self.combat_history[target_name][dmg_type][self.current_time] += final_dmg_value
             else:
                 self.combat_history[target_name][dmg_type].update({self.current_time: final_dmg_value})
+
+    def note_total_dmg_type_in_results(self):
+        """
+        Calculates total dmg for each dmg type and stores it.
+
+        Returns:
+            (None)
+        """
+
+        # Enemy target names
+        viable_tar_names = list(self.selected_champions_dct)
+        viable_tar_names.remove('player')
+
+        tot_value = 0
+
+        for tar_name in viable_tar_names:
+            for dmg_type in ('true', 'physical', 'magic'):
+                for event_time in self.combat_history[tar_name][dmg_type]:
+                    tot_value += self.combat_history[tar_name][dmg_type][event_time]
+
+    def note_total_dmg_in_results(self):
+        """
+        Calculates total dmg for each dmg type and stores it.
+
+        Returns:
+            (None)
+        """
+
+
 
 
 class DmgApplication(Counters):

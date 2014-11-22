@@ -775,7 +775,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                     # (break inner loop)
                     break
 
-    def apply_all_actions(self, rotation_lst, max_time):
+    def apply_all_actions(self):
         """
         Applies all actions, and events in between,
         until everyone is dead or the max_time is exceeded.
@@ -786,7 +786,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        for new_action in rotation_lst:
+        for new_action in self.rotation_lst:
 
             # (used for champions that action application is affected by existing buffs)
             self.remove_expired_buffs()
@@ -807,8 +807,8 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                 self.current_time = self.actions_dct[max(self.actions_dct)]['cast_end']
 
                 # If max time exceeded, exits loop.
-                if max_time:
-                    if self.current_time > max_time:
+                if self.max_combat_time:
+                    if self.current_time > self.max_combat_time:
                         break
 
                 # After previous events are applied, applies action effects.
@@ -873,7 +873,8 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
     def combat_loop(self):
         """
-        Modifies active_buffs, event_times,
+        Returns:
+            (None)
         """
 
         self.current_time = 0
@@ -890,7 +891,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         # TODO: store "precombat stats"
 
         # Applies actions or events based on which occurs first.
-        self.apply_all_actions(self.rotation_lst, self.max_combat_time)
+        self.apply_all_actions()
 
         # Applies events after all actions have finished.
         self.apply_events_after_actions()
@@ -1342,9 +1343,9 @@ if __name__ == '__main__':
         cProfile.run(test_text, 'cprof_results', sort='cumtime')
 
         import pstats
-        runned_res = pstats.Stats('cprof_results').sort_stats('cumtime')
-        runned_res.strip_dirs().sort_stats('cumtime').print_stats(15)
-        print(runned_res.strip_dirs().sort_stats('cumtime').stats)
+        results_run = pstats.Stats('cprof_results').sort_stats('cumtime')
+        results_run.strip_dirs().sort_stats('cumtime').print_stats(15)
+        print(results_run.strip_dirs().sort_stats('cumtime').stats)
 
 
 #rot1, itemLst2

@@ -100,7 +100,13 @@ class StatCalculation(StatFilters):
                  initial_current_stats=None):
 
         self.champion_lvls_dct = champion_lvls_dct
+
         self.selected_champions_dct = selected_champions_dct    # (Dependency of many methods.)
+
+        self.all_target_names = list(self.selected_champions_dct)
+
+        self.enemy_target_names = list(self.selected_champions_dct)
+        self.enemy_target_names.remove('player')
 
         self.initial_active_buffs = initial_active_buffs    # Can contain 0 to all targets and their buffs.
         self.bonuses_dct = {}   # e.g. {target: {stat: {bonus type: {bonus name: }, }, }, }
@@ -157,7 +163,7 @@ class StatCalculation(StatFilters):
         if dct:
             raise BaseException('Target will be replaced.')
 
-        for tar in self.selected_champions_dct:
+        for tar in self.all_target_names:
             dct.update({tar: {}})
 
     def set_active_buffs(self):
@@ -176,7 +182,7 @@ class StatCalculation(StatFilters):
             self.active_buffs = copy.deepcopy(self.initial_active_buffs)
 
         # Fills with targets that have not been set.
-        for tar in self.selected_champions_dct:
+        for tar in self.all_target_names:
             if tar not in self.active_buffs:
                 self.active_buffs.update({tar: {}})
 
@@ -629,7 +635,7 @@ class StatRequest(StatCalculation):
         if self.initial_current_stats:
             self.current_stats = copy.deepcopy(self.initial_current_stats)
 
-        for tar in self.selected_champions_dct:
+        for tar in self.all_target_names:
 
             # If the target's current_hp has not been set, it creates it.
             if tar not in self.current_stats:
@@ -638,16 +644,16 @@ class StatRequest(StatCalculation):
                 self.current_stats.update(
                     {tar: dict(current_hp=self.request_stat(target_name=tar, stat_name='hp'))})
 
-            # Also creates the player's 'current_'resource.
-            if tar == 'player':
-                resource_used = self.base_stats_dct()['player']['resource_used']
+                # Also creates the player's 'current_'resource.
+                if tar == 'player':
+                    resource_used = self.base_stats_dct()['player']['resource_used']
 
-                if ('current_' + resource_used) not in self.current_stats[tar]:
+                    if ('current_' + resource_used) not in self.current_stats[tar]:
 
-                    self.current_stats['player'].update(
+                        self.current_stats['player'].update(
 
-                        {('current_' + resource_used): self.request_stat(target_name=tar,
-                                                                         stat_name=resource_used)})
+                            {('current_' + resource_used): self.request_stat(target_name=tar,
+                                                                             stat_name=resource_used)})
 
     def bonus_ad(self, tar_name):
         """
