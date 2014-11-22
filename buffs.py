@@ -243,7 +243,7 @@ class Counters(BuffsGeneral):
             (None)
         """
 
-        for tar in self.selected_champions_dct:
+        for tar in self.all_target_names:
 
             self.combat_history.update(
                 {tar: dict(
@@ -253,27 +253,26 @@ class Counters(BuffsGeneral):
                     total={},
                     current_hp={},)})
 
-            if tar == 'player':
-                self.combat_history['player'].update(dict(
-                    # Each dmg_name and its value
-                    # (e.g. {'AA': 56.1, 'w_dmg': 20.,})
-                    source={},
+        self.combat_history['player'].update(dict(
+            # Each dmg_name and its value
+            # (e.g. {'AA': 56.1, 'w_dmg': 20.,})
+            source={},
 
-                    # AA related dmg, including on_hit dmg.
-                    # (e.g. {'AA': [56.1, ], 'w_dmg': [],})
-                    AA_related=0.,
+            # AA related dmg, including on_hit dmg.
+            # (e.g. {'AA': [56.1, ], 'w_dmg': [],})
+            AA_related=0.,
 
-                    ability=dict(
-                        inn=0.,
-                        q=0.,
-                        w=0.,
-                        e=0.,
-                        r=0.
-                    ),
+            ability=dict(
+                inn=0.,
+                q=0.,
+                w=0.,
+                e=0.,
+                r=0.
+            ),
 
-                    lifesteal={},
-                    spellvamp={},
-                    resource={},))
+            lifesteal={},
+            spellvamp={},
+            resource={},))
 
     def add_dmg_tot_history(self):
         """
@@ -488,13 +487,9 @@ class Counters(BuffsGeneral):
             (None)
         """
 
-        # Enemy target names
-        viable_tar_names = list(self.selected_champions_dct)
-        viable_tar_names.remove('player')
-
         tot_value = 0
 
-        for tar_name in viable_tar_names:
+        for tar_name in self.enemy_target_names:
             for dmg_type in ('true', 'physical', 'magic'):
                 for event_time in self.combat_history[tar_name][dmg_type]:
                     tot_value += self.combat_history[tar_name][dmg_type][event_time]

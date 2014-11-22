@@ -75,7 +75,7 @@ class EventsGeneral(buffs.DeathAndRegen):
             (None)
         """
 
-        for self.current_target in self.selected_champions_dct:
+        for self.current_target in self.all_target_names:
             # ENEMY
             if self.current_target != 'player':
                 self.add_buff(buff_name='enemy_hp5_buff', tar_name=self.current_target)
@@ -121,7 +121,7 @@ class EventsGeneral(buffs.DeathAndRegen):
 
         # NEXT TARGET
         # If next target is None (because no valid targets exist) the loop breaks.
-        self.next_target(selected_champs=self.selected_champions_dct)
+        self.next_target(enemy_tar_names=self.enemy_target_names)
         if self.current_target is None:
             raise EnemyTargetsDeadException
 
@@ -174,7 +174,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                 if effect_dct['max_targets'] == 'unlimited':
 
                     # While the last target number is less than max targets, adds event.
-                    while self.targets_already_hit < len(self.selected_champions_dct):
+                    while self.targets_already_hit < len(self.enemy_target_names):
                         self.add_splash_events(effect_name=effect_name, start_time=start_time)
 
                 else:
@@ -868,7 +868,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                                                              dmg_name=dmg_name,
                                                              only_temporary=True)
         # DEATHS
-        for tar_name in self.selected_champions_dct:
+        for tar_name in self.enemy_target_names:
             self.apply_death(tar_name=tar_name)
 
     def combat_loop(self):
@@ -1344,7 +1344,7 @@ if __name__ == '__main__':
 
         import pstats
         results_run = pstats.Stats('cprof_results').sort_stats('cumtime')
-        results_run.strip_dirs().sort_stats('cumtime').print_stats(15)
+        results_run.strip_dirs().sort_stats('cumtime').print_stats(5)
         print(results_run.strip_dirs().sort_stats('cumtime').stats)
 
 

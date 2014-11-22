@@ -32,9 +32,9 @@ class Targeting(object):
         else:
             self.switch_to_first_alive_enemy()
 
-    def next_target(self, selected_champs):
+    def next_target(self, enemy_tar_names):
         """
-        Modifies current_target and increases targets_already_hit by 1,
+        Modifies current_target,
         if there are available (and alive) enemy targets.
 
         If there are no valid targets, sets current_target to None.
@@ -45,7 +45,7 @@ class Targeting(object):
             next_tar_name = 'enemy_%s' % (int(self.current_target[6:]) + 1)
 
             # Checks if target exists.
-            if next_tar_name not in selected_champs:
+            if next_tar_name not in enemy_tar_names:
 
                 self.current_target = None
                 break
