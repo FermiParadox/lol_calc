@@ -101,9 +101,9 @@ class StatCalculation(StatFilters):
 
         self.champion_lvls_dct = champion_lvls_dct
 
-        self.selected_champions_dct = selected_champions_dct    # (Dependency of many methods.)
+        self.selected_champions_dct = selected_champions_dct
 
-        self.all_target_names = list(self.selected_champions_dct)
+        self.all_target_names = tuple(self.selected_champions_dct)   # e.g.('player', 'enemy_1', )}
 
         self.enemy_target_names = list(self.selected_champions_dct)
         self.enemy_target_names.remove('player')

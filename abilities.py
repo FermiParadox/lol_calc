@@ -1210,8 +1210,21 @@ class Counters(Actions):
             (None)
         """
 
+        player_curr_resource = 'current_' + self.player_resource
+
+        # HP5 (EVERYONE)
+        tot_val = 0
         for tar_name in self.all_target_names:
-            for regen_type in ('lifesteal', 'spellvamp', 'hp5', self.player_resource): pass
+            for event_time in self.combat_history[tar_name]['hp5']:
+                tot_val += self.combat_history['player']['hp5'][event_time]
+
+        # PLAYER
+        for regen_type in ('lifesteal', 'spellvamp', player_curr_resource):
+            # (resets tot_val for each regen type)
+            tot_val = 0
+            for event_time in self.combat_history['player'][regen_type]:
+                tot_val += self.combat_history['player'][regen_type][event_time]
+
 
 
 class VisualRepresentation(Counters):
