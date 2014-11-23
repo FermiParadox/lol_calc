@@ -93,6 +93,8 @@ class StatCalculation(StatFilters):
     Contains methods for the calculation of some stats' values.
     """
 
+    ALL_RESOURCE_NAMES = ('mp', 'energy', 'rage', None, 'flow')
+
     def __init__(self,
                  champion_lvls_dct,
                  selected_champions_dct,
@@ -102,6 +104,9 @@ class StatCalculation(StatFilters):
         self.champion_lvls_dct = champion_lvls_dct
 
         self.selected_champions_dct = selected_champions_dct
+
+        self.player_resource_name = ''
+        self.player_current_resource_name = ''
 
         self.all_target_names = tuple(self.selected_champions_dct)   # e.g.('player', 'enemy_1', )}
 
@@ -128,6 +133,31 @@ class StatCalculation(StatFilters):
         self.place_tar_and_empty_dct_in_dct(self.stored_buffs)
 
         self.set_active_buffs()
+        self.set_player_resource_name()
+        self.set_player_current_resource_name()
+
+    def set_player_resource_name(self):
+        """
+        Creates player's resource name and stores it.
+
+        Returns:
+            (None)
+        """
+        player_champ_stats = database_champion_stats.CHAMPION_BASE_STATS[self.selected_champions_dct['player']]
+
+        for res_name in self.ALL_RESOURCE_NAMES:
+            if res_name in player_champ_stats:
+                self.player_resource_name = res_name
+
+    def set_player_current_resource_name(self):
+        """
+        Creates player's current resource name and stores it.
+
+        Returns:
+            (None)
+        """
+
+        self.player_current_resource_name = 'current_' + self.player_resource_name
 
     def base_stats_dct(self):
         """
@@ -622,7 +652,7 @@ class StatRequest(StatCalculation):
 
     def set_current_stats(self):
         """
-        Inserts current_hp in current_stats of each target and current resource (e.g. mana, rage, etc) for player.
+        Inserts current_hp in current_stats of each target and current resource (e.g. mp, rage, etc) for player.
         If the current_stats dict is empty, or if the value doesnt exist it creates the value.
 
         Modifies:

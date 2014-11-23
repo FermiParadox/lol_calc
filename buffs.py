@@ -511,8 +511,6 @@ class Counters(BuffsGeneral):
             (None)
         """
 
-        player_curr_resource = 'current_' + self.player_resource
-
         # HP5 (EVERYONE)
         tot_hp5_val = 0
         for tar_name in self.all_target_names:
@@ -523,7 +521,7 @@ class Counters(BuffsGeneral):
             self.combat_results[tar_name]['total_hp5'] = tot_hp5_val
 
         # PLAYER
-        for regen_type in ('lifesteal', 'spellvamp', player_curr_resource):
+        for regen_type in ('lifesteal', 'spellvamp', self.player_current_resource_name):
             # (resets tot_val for each regen type)
             tot_regen_val = 0
             for event_time in self.combat_history['player'][regen_type]:
@@ -639,23 +637,22 @@ class DmgApplication(Counters):
 
         dmg_value = getattr(self, dmg_name + '_value')()
         resource_type = getattr(self, dmg_name)()['resource_type']
-        curr_resource_string = 'current_'+resource_type
 
         if dmg_value >= 0:
-            self.current_stats['player'][curr_resource_string] -= dmg_value
+            self.current_stats['player'][self.player_current_resource_name] -= dmg_value
 
         # (If the value is negative it's a resource replenish effect.)
         else:
             # Checks if resource heal exceeds max possible value.
             max_value = self.request_stat(target_name='player', stat_name=resource_type)
 
-            if self.current_stats['player'][curr_resource_string] - dmg_value > max_value:
-                self.current_stats['player'][curr_resource_string] = max_value
+            if self.current_stats['player'][self.player_current_resource_name] - dmg_value > max_value:
+                self.current_stats['player'][self.player_current_resource_name] = max_value
             else:
-                self.current_stats['player'][curr_resource_string] -= dmg_value
+                self.current_stats['player'][self.player_current_resource_name] -= dmg_value
 
         # RESOURCE HISTORY
-        self.note_resource_in_history(curr_resource_str=curr_resource_string)
+        self.note_resource_in_history(curr_resource_str=self.player_current_resource_name)
 
     def mitigated_dmg(self, dmg_value, dmg_type, target):
         """
