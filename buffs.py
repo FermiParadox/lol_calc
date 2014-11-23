@@ -210,11 +210,13 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
 class Counters(BuffsGeneral):
 
     AOE_SPELLVAMP_MOD = 30/100
+    LOWEST_MEANINGFUL_COMBAT_TIME = 5
 
     def __init__(self,
                  current_time,
                  selected_champions_dct,
                  champion_lvls_dct,
+                 max_combat_time=20,
                  initial_current_stats=None,
                  initial_active_buffs=None,
                  items_lst=None):
@@ -227,6 +229,8 @@ class Counters(BuffsGeneral):
                               initial_active_buffs=initial_active_buffs,
                               items_lst=items_lst)
 
+        self.max_combat_time = max_combat_time
+
         self.actions_dct = {}
         self.combat_history = {}
         self.combat_results = {}
@@ -234,6 +238,7 @@ class Counters(BuffsGeneral):
 
         self.set_combat_history()
 
+    # HISTORY ---------------------------------------------------------------------------------------------------------
     def set_combat_history(self):
         """
         Sets up combat_history by inserting history blueprints for all targets.
@@ -481,16 +486,18 @@ class Counters(BuffsGeneral):
             else:
                 self.combat_history[target_name][dmg_type].update({self.current_time: final_dmg_value})
 
+    # RESULTS ---------------------------------------------------------------------------------------------------------
     def note_dmg_totals_in_results(self):
         """
-        Calculates total dmg for each dmg type and stores it. Then stores total overall dmg.
+        Calculates total dmg for each dmg type and stores it,
+        and total overall dmg.
 
         Returns:
             (None)
         """
 
         tot_value = 0
-        self.combat_results['player']['total_dmg'] = 0
+        self.combat_results['player']['total_dmg_done'] = 0
 
         for tar_name in self.enemy_target_names:
             for dmg_type in ('true', 'physical', 'magic'):
@@ -501,7 +508,7 @@ class Counters(BuffsGeneral):
                 self.combat_results[tar_name][dmg_type] = tot_value
 
             # OVERALL TOTALS
-            self.combat_results['player']['total_dmg'] += tot_value
+            self.combat_results['player']['total_dmg_done'] += tot_value
 
     def note_regen_totals_in_results(self):
         """
@@ -529,6 +536,41 @@ class Counters(BuffsGeneral):
 
             # Stores regen_type.
             self.combat_results['player'][regen_type] = tot_regen_val
+
+    def dps_result(self):
+        """
+        Calculates player's dps value if combat time is higher than threshold.
+
+        Returns:
+            (float)
+            (str) 'Not available'
+        """
+
+        # COMBAT DURATION
+        last_action_time = max(self.actions_dct)
+        last_action_dct = self.actions_dct[last_action_time]
+        if 'channel_end' in last_action_dct:
+            last_action_end = self.actions_dct[last_action_time]['channel_end']
+
+        else:
+            last_action_end = self.actions_dct[last_action_time]['cast_end']
+
+        # DPS
+        # (if time is too short for dps to be meaningful, returns message)
+        if last_action_end >= self.LOWEST_MEANINGFUL_COMBAT_TIME:
+            return self.combat_history['player']['total_dmg_done'] / last_action_end
+        else:
+            return 'Not available (combat time too short).'
+
+    def note_dps_in_results(self):
+        """
+        Stores player's dps.
+
+        Returns:
+            (None)
+        """
+
+        self.combat_results['player']['dps'] = self.dps_result()
 
 
 class DmgApplication(Counters):

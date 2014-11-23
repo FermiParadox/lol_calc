@@ -20,6 +20,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                  champion_lvls_dct,
                  selected_champions_dct,
                  max_targets_dct,
+                 max_combat_time,
                  initial_active_buffs=None,
                  initial_current_stats=None,
                  items_lst=None):
@@ -35,6 +36,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                                      current_time=self.current_time,
                                      selected_champions_dct=selected_champions_dct,
                                      champion_lvls_dct=champion_lvls_dct,
+                                     max_combat_time=max_combat_time,
                                      initial_active_buffs=initial_active_buffs,
                                      initial_current_stats=initial_current_stats,
                                      items_lst=items_lst)
@@ -248,13 +250,12 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                  selected_champions_dct,
                  champion_lvls_dct,
                  ability_lvls_dct,
-                 max_combat_time=None,
+                 max_combat_time,
                  items_lst=None,
                  initial_active_buffs=None,
                  initial_current_stats=None,
                  selected_runes=None):
 
-        self.max_combat_time = max_combat_time
         self.rotation_lst = rotation_lst
         self.current_target_num = None
         self.everyone_dead = None
@@ -267,6 +268,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                                champion_lvls_dct=champion_lvls_dct,
                                selected_champions_dct=selected_champions_dct,
                                max_targets_dct=max_targets_dct,
+                               max_combat_time=max_combat_time,
                                initial_active_buffs=initial_active_buffs,
                                initial_current_stats=initial_current_stats,
                                items_lst=items_lst)
@@ -795,9 +797,10 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
             # Checks if action meets the cost requirements.
             if self.cost_sufficiency(action_name=new_action):
-                self.apply_action_cost(action_name=new_action)
 
                 self.add_new_action(new_action)
+
+                self.apply_action_cost(action_name=new_action)
 
                 self.apply_pre_action_events()
 
@@ -816,8 +819,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                 # After previous events are applied, applies action effects.
                 self.apply_action_effects(action_name=self.actions_dct[max(self.actions_dct)]['action_name'],
                                           abilities_effects=self.abilities_effects(),
-                                          items_effects=self.items_effects
-                                          )
+                                          items_effects=self.items_effects)
 
             # If the cost is too high, action is skipped.
             else:

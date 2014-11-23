@@ -108,9 +108,9 @@ class StatCalculation(StatFilters):
         self.player_resource_name = ''
         self.player_current_resource_name = ''
 
-        self.all_target_names = tuple(self.selected_champions_dct)   # e.g.('player', 'enemy_1', )}
+        self.all_target_names = sorted(self.selected_champions_dct)   # e.g. ['player', 'enemy_1', ]
 
-        self.enemy_target_names = list(self.selected_champions_dct)
+        self.enemy_target_names = sorted(self.selected_champions_dct)
         self.enemy_target_names.remove('player')
 
         self.initial_active_buffs = initial_active_buffs    # Can contain 0 to all targets and their buffs.
