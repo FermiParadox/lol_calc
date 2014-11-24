@@ -211,6 +211,7 @@ class Counters(BuffsGeneral):
 
     AOE_SPELLVAMP_MOD = 30/100
     LOWEST_MEANINGFUL_COMBAT_TIME = 5
+    EXTRA_STATS_LST = ('lifesteal', 'spellvamp', )
 
     def __init__(self,
                  current_time,
@@ -237,6 +238,20 @@ class Counters(BuffsGeneral):
         self.place_tar_and_empty_dct_in_dct(self.combat_results)
 
         self.set_combat_history()
+
+    def all_precombat_stat_names(self):
+        """
+        Creates and returns all stats to be stored before the combat stats.
+
+        Returns:
+            (list)
+        """
+
+        lst = list(self.base_stats_dct())
+        lst.append(self.SPECIAL_STATS_LST)
+        lst.append(self.EXTRA_STATS_LST)
+
+        return lst
 
     # HISTORY ---------------------------------------------------------------------------------------------------------
     def set_combat_history(self):
@@ -545,6 +560,7 @@ class Counters(BuffsGeneral):
             (float)
             (str) 'Not available'
         """
+        # TODO change method name after other method is removed.
 
         # COMBAT DURATION
         last_action_time = max(self.actions_dct)
@@ -571,6 +587,37 @@ class Counters(BuffsGeneral):
         """
 
         self.combat_results['player']['dps'] = self.dps_result()
+
+    def note_all_precombat_stats_in_results(self, stats_category_name='all_precombat_stats'):
+        """
+        Stores all precombat stats for all targets.
+
+        Stats must be stored after application of passive effects.
+
+        Args:
+            stats_category_name: (str) Used for similar method below.
+                'all_precombat_stats'
+                'all_post_combat_stats'
+        Returns:
+            (None)
+        """
+
+        for tar_name in self.all_target_names:
+            for stat_name in self.all_precombat_stat_names():
+                self.combat_results[tar_name][stats_category_name].update(
+                    {stat_name: self.request_stat(target_name=tar_name, stat_name=stat_name)})
+
+    def note_all_postcombat_stats_in_results(self):
+        """
+        Stores all postcombat stats for all targets.
+
+        Stats must be stored after combat ends.
+
+        Returns:
+            (None)
+        """
+
+        self.note_all_precombat_stats_in_results(stats_category_name='all_post_combat_stats')
 
 
 class DmgApplication(Counters):

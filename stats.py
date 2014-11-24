@@ -169,7 +169,7 @@ class StatCalculation(StatFilters):
 
         dct = {}
 
-        # For each target..
+        # For each selected champion..
         for tar_name in self.selected_champions_dct:
             # .. updates base_stats_dct with his base stats.
             dct.update(
