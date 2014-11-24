@@ -541,25 +541,16 @@ class Counters(BuffsGeneral):
             # OVERALL TOTALS
             self.combat_results['player']['total_dmg_done'] += tot_value
 
-    def note_regen_totals_in_results(self):
+    def note_lifesteal_spellvamp_totals_in_results(self):
         """
-        Calculates and stores total values of lifesteal, spellvamp, hp5 and resource regen.
+        Calculates and stores total values of lifesteal and spellvamp.
 
         Returns:
             (None)
         """
 
-        # HP5 (EVERYONE)
-        tot_hp5_val = 0
-        for tar_name in self.all_target_names:
-            for event_time in self.combat_history[tar_name]['hp5']:
-                tot_hp5_val += self.combat_history['player']['hp5'][event_time]
-
-            # Stores total hp5 of a target.
-            self.combat_results[tar_name]['total_hp5'] = tot_hp5_val
-
         # PLAYER
-        for regen_type in ('lifesteal', 'spellvamp', self.player_current_resource_name):
+        for regen_type in ('lifesteal', 'spellvamp'):
             # (resets tot_val for each regen type)
             tot_regen_val = 0
             for event_time in self.combat_history['player'][regen_type]:
@@ -611,11 +602,11 @@ class Counters(BuffsGeneral):
         Returns:
             (None)
         """
-        source_name = dmg_dct['source']
+        source_name = dmg_dct['special']['dmg_source']
         if source_name in self.combat_results:
-            self.combat_results[dmg_dct['source']] += final_dmg_value
+            self.combat_results[source_name] += final_dmg_value
         else:
-            self.combat_results[dmg_dct['source']] = final_dmg_value
+            self.combat_results[source_name] = final_dmg_value
 
     def note_all_precombat_stats_in_results(self, stats_category_name='all_precombat_stats'):
         """
@@ -655,6 +646,7 @@ class Counters(BuffsGeneral):
         """
 
         self.note_all_precombat_stats_in_results(stats_category_name='all_post_combat_stats')
+        self.note_lifesteal_spellvamp_totals_in_results()
         self.note_dps_in_results()
 
 
@@ -842,7 +834,8 @@ class DmgApplication(Counters):
             (None)
         """
 
-        dmg_type = getattr(self, dmg_name)()['dmg_type']
+        dmg_dct = getattr(self, dmg_name)()
+        dmg_type = dmg_dct['dmg_type']
 
         final_dmg_value = self.mitigated_dmg(dmg_value=getattr(self, dmg_name + '_value')(),
                                              dmg_type=dmg_type,
@@ -852,6 +845,13 @@ class DmgApplication(Counters):
         # If it's a dmg.
         if final_dmg_value >= 0:
             self.current_stats[target_name]['current_hp'] -= final_dmg_value
+
+            # DMG COUNTERS
+            self.note_dmg_in_history(dmg_type=dmg_type,
+                                     final_dmg_value=final_dmg_value,
+                                     target_name=target_name)
+            self.note_source_dmg_in_results(dmg_dct=dmg_dct, final_dmg_value=final_dmg_value)
+            self.note_current_hp_in_history(target_name=target_name)
 
         # Otherwise it's a heal.
         else:
@@ -863,12 +863,6 @@ class DmgApplication(Counters):
         self.apply_spellvamp_or_lifesteal(dmg_name=dmg_name,
                                           dmg_value=final_dmg_value,
                                           dmg_type=dmg_type)
-
-        # COUNTERS
-        self.note_dmg_in_history(dmg_type=dmg_type,
-                                 final_dmg_value=final_dmg_value,
-                                 target_name=target_name)
-        self.note_current_hp_in_history(target_name=target_name)
 
     def apply_dmg_or_heal(self, dmg_name, target_name):
         """

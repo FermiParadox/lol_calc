@@ -3,17 +3,17 @@ import abilities
 
 class UserInstance(object):
 
-    def __init__(self):
+    def __init__(self, input_dct):
+        self.input_dct = input_dct
+        self.instances_results = {}
 
-        self.instance_results = {}
+    def champion_instance(self):
 
-    def champion_instance(self, kwargs):
-
-        player_champ_name = kwargs['selected_champions_dct']['player']
+        player_champ_name = self.input_dct['selected_champions_dct']['player']
         player_champ_module = __import__(player_champ_name)
-        player_champ_tot_attr_class = getattr(player_champ_module, 'TotalChampionAttributes')
+        player_champ_class = getattr(player_champ_module, 'TotalChampionAttributes')
 
-        class CombinerClass(player_champ_tot_attr_class, abilities.VisualRepresentation):
+        class CombinerClass(player_champ_class, abilities.VisualRepresentation):
 
             def __init__(self,
                          rotation_lst,
@@ -24,7 +24,7 @@ class UserInstance(object):
                          max_combat_time,
                          initial_active_buffs=None,
                          initial_current_stats=None,
-                         items_lst=kwargs['items_lst'],
+                         items_lst=None,
                          selected_runes=None):
 
                 abilities.VisualRepresentation.__init__(self,
@@ -48,7 +48,5 @@ class UserInstance(object):
                                                                      champion_lvls_dct=champion_lvls_dct,
                                                                      current_target_num=self.current_target_num)
 
-        return CombinerClass(**kwargs)
+        return CombinerClass(**self.input_dct)
 
-    def store_instance_results(self):
-        pass

@@ -932,13 +932,10 @@ class VisualRepresentation(Actions):
                          initial_current_stats=initial_current_stats,
                          selected_runes=selected_runes)
 
-
     def subplot_pie_chart(self, subplot_name):
 
         dmg_values = []
         slice_names = []
-
-        counter_var = 1
 
         for dmg_type in self.refined_combat_history()['all_targets']:
             # Filters out non used keywords.
@@ -949,8 +946,6 @@ class VisualRepresentation(Actions):
 
                     slice_names.append(dmg_type)
                     dmg_values.append(self.refined_combat_history()['all_targets'][dmg_type])
-
-                    counter_var += 1
 
         subplot_name.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
 
@@ -1008,7 +1003,6 @@ class VisualRepresentation(Actions):
         # ACTIONS IN PLOT
         x_actions = []
         y_actions = []
-        counter_var = 1
         previous_action_name_x = -100
         prev_high = False
 
@@ -1040,7 +1034,6 @@ class VisualRepresentation(Actions):
 
             # Action vertical lines
             plt.axvline(x=x_var, color='grey', linestyle='dashed', alpha=0.6)
-            counter_var += 1
 
     def subplot_resource_vamp_lifesteal_graph(self, subplot_name):
 
