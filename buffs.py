@@ -211,7 +211,8 @@ class Counters(BuffsGeneral):
 
     AOE_SPELLVAMP_MOD = 30/100
     LOWEST_MEANINGFUL_COMBAT_TIME = 5
-    EXTRA_STATS_LST = ('lifesteal', 'spellvamp', )
+    BASE_STATS_TPL = ()
+    EXTRA_STATS_TPL = ('lifesteal', 'spellvamp', )
 
     def __init__(self,
                  current_time,
@@ -239,17 +240,31 @@ class Counters(BuffsGeneral):
 
         self.set_combat_history()
 
-    def all_precombat_stat_names(self):
+    def internally_displayed_player_stat_names(self):
         """
-        Creates and returns all stats to be stored before the combat stats.
+        Creates and returns all player stats to be stored (for internal display and testing purposes).
 
         Returns:
             (list)
         """
 
-        lst = list(self.base_stats_dct())
-        lst.append(self.SPECIAL_STATS_LST)
-        lst.append(self.EXTRA_STATS_LST)
+        lst = list(self.base_stats_dct()['player'])
+        lst += self.SPECIAL_STATS_LST
+        lst += self.EXTRA_STATS_TPL
+
+        return lst
+
+    def internally_displayed_enemy_stat_names(self):
+        """
+        Creates and returns all enemy stats to be stored (for internal display and testing purposes).
+
+        Returns:
+            (list)
+        """
+
+        lst = ['armor', 'mr', 'ap', ]
+
+        lst += self.DEFENSIVE_SPECIAL_STATS
 
         return lst
 
@@ -511,10 +526,11 @@ class Counters(BuffsGeneral):
             (None)
         """
 
-        tot_value = 0
         self.combat_results['player']['total_dmg_done'] = 0
 
         for tar_name in self.enemy_target_names:
+            tot_value = 0
+
             for dmg_type in ('true', 'physical', 'magic'):
                 for event_time in self.combat_history[tar_name][dmg_type]:
                     tot_value += self.combat_history[tar_name][dmg_type][event_time]
@@ -574,7 +590,7 @@ class Counters(BuffsGeneral):
         # DPS
         # (if time is too short for dps to be meaningful, returns message)
         if last_action_end >= self.LOWEST_MEANINGFUL_COMBAT_TIME:
-            return self.combat_history['player']['total_dmg_done'] / last_action_end
+            return self.combat_results['player']['total_dmg_done'] / last_action_end
         else:
             return 'Not available (combat time too short).'
 
@@ -616,9 +632,17 @@ class Counters(BuffsGeneral):
         """
 
         for tar_name in self.all_target_names:
-            for stat_name in self.all_precombat_stat_names():
-                self.combat_results[tar_name][stats_category_name].update(
-                    {stat_name: self.request_stat(target_name=tar_name, stat_name=stat_name)})
+            self.combat_results[tar_name].update({stats_category_name: {}})
+
+            if tar_name == 'player':
+                for stat_name in self.internally_displayed_player_stat_names():
+                    self.combat_results[tar_name][stats_category_name].update(
+                        {stat_name: self.request_stat(target_name=tar_name, stat_name=stat_name)})
+
+            else:
+                for stat_name in self.internally_displayed_enemy_stat_names():
+                    self.combat_results[tar_name][stats_category_name].update(
+                        {stat_name: self.request_stat(target_name=tar_name, stat_name=stat_name)})
 
     def note_all_postcombat_stats_in_results(self):
         """
@@ -631,6 +655,7 @@ class Counters(BuffsGeneral):
         """
 
         self.note_all_precombat_stats_in_results(stats_category_name='all_post_combat_stats')
+        self.note_dps_in_results()
 
 
 class DmgApplication(Counters):

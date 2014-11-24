@@ -892,7 +892,8 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         # Adds passive buffs from abilities.
         self.add_passive_buffs(self.abilities_effects(), self.ability_lvls_dct)
 
-        # TODO: store "precombat stats"
+        # Stores precombat stats.
+        self.note_all_precombat_stats_in_results()
 
         # Applies actions or events based on which occurs first.
         self.apply_all_actions()
@@ -900,8 +901,219 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         # Applies events after all actions have finished.
         self.apply_events_after_actions()
 
+        # Stores postcombat stats.
+        self.note_dmg_totals_in_results()
+        self.note_all_postcombat_stats_in_results()
+
 
 class VisualRepresentation(Actions):
+
+    def __init__(self,
+                 rotation_lst,
+                 max_targets_dct,
+                 selected_champions_dct,
+                 champion_lvls_dct,
+                 ability_lvls_dct,
+                 max_combat_time,
+                 items_lst=None,
+                 initial_active_buffs=None,
+                 initial_current_stats=None,
+                 selected_runes=None):
+
+        Actions.__init__(self,
+                         rotation_lst=rotation_lst,
+                         max_targets_dct=max_targets_dct,
+                         selected_champions_dct=selected_champions_dct,
+                         champion_lvls_dct=champion_lvls_dct,
+                         ability_lvls_dct=ability_lvls_dct,
+                         max_combat_time=max_combat_time,
+                         items_lst=items_lst,
+                         initial_active_buffs=initial_active_buffs,
+                         initial_current_stats=initial_current_stats,
+                         selected_runes=selected_runes)
+
+
+    def subplot_pie_chart(self, subplot_name):
+
+        dmg_values = []
+        slice_names = []
+
+        counter_var = 1
+
+        for dmg_type in self.refined_combat_history()['all_targets']:
+            # Filters out non used keywords.
+            if ('heal' not in dmg_type) and ('total' not in dmg_type):
+
+                # Filters out 0 value dmg.
+                if self.refined_combat_history()['all_targets'][dmg_type] > 0:
+
+                    slice_names.append(dmg_type)
+                    dmg_values.append(self.refined_combat_history()['all_targets'][dmg_type])
+
+                    counter_var += 1
+
+        subplot_name.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
+
+    def subplot_dmg_graph(self, subplot_name):
+
+        subplot_name.grid(b=True)
+
+        # Line at y=0.
+        plt.axhline(y=0, color='black')
+        # Line at x=0.
+        plt.axvline(x=0, color='black')
+
+        plt.ylabel('health')
+
+        color_counter_var = 0
+
+        color_lst = ('b', 'g', 'y', 'r')
+
+        for tar_name in sorted(self.combat_history):
+            if tar_name != 'player':
+
+                hp_change_times = sorted(self.combat_history[tar_name]['current_hp'])
+                max_hp = self.request_stat(target_name=tar_name, stat_name='hp')
+
+                # Inserts initial point.
+                subplot_name.plot([0], max_hp, color=color_lst[color_counter_var], alpha=0.8,
+                                  label=tar_name)
+
+                # Left boundary is initially set to max hp.
+                x_1 = 0
+                current_hp = max_hp
+
+                x_values = []
+                y_values = []
+
+                for event_time in hp_change_times:
+
+                    x_area_lst = [i for i in range(int(x_1 / 0.01), int((event_time + 0.01) / 0.01))]
+
+                    for x_element in x_area_lst:
+                        x_values.append(x_element/100)
+                        y_values.append(current_hp)
+
+                    current_hp = self.combat_history[tar_name]['current_hp'][event_time]
+                    x_1 = event_time
+
+                subplot_name.plot(x_values, y_values, color=color_lst[color_counter_var], alpha=0.7)
+                color_counter_var += 1
+
+        plt.legend(prop={'size': 10},
+                   bbox_to_anchor=(1.0, 1),
+                   loc=2,
+                   )
+
+        # ACTIONS IN PLOT
+        x_actions = []
+        y_actions = []
+        counter_var = 1
+        previous_action_name_x = -100
+        prev_high = False
+
+        for x_var in sorted(self.actions_dct):
+            x_actions.append(x_var)
+            y_actions.append(0)
+
+            # If names are too close..
+            if x_var - previous_action_name_x < 1:
+
+                # ..and if previous was low..
+                if not prev_high:
+
+                    # ..increases the height of the name.
+                    higher_y = 40
+                    prev_high = True
+
+                else:
+                    prev_high = False
+                    higher_y = 0
+            else:
+                # If names are too far, it sets it on the lowest height.
+                prev_high = False
+                higher_y = 0
+
+            subplot_name.annotate(self.actions_dct[x_var]['action_name'], xy=(x_var, -70 + higher_y), color='grey')
+
+            previous_action_name_x = x_var
+
+            # Action vertical lines
+            plt.axvline(x=x_var, color='grey', linestyle='dashed', alpha=0.6)
+            counter_var += 1
+
+    def subplot_resource_vamp_lifesteal_graph(self, subplot_name):
+
+        subplot_name.grid(b=True)
+
+        # Line at y=0.
+        plt.axhline(y=0, color='black')
+        # Line at x=0.
+        plt.axvline(x=0, color='black')
+
+        plt.xlabel('time')
+        plt.ylabel('value')
+
+        # LIFESTEAL, SPELLVAMP, RESOURCE
+        stat_color = {'lifesteal': 'y', 'spellvamp': 'g', 'resource': 'b'}
+
+        # Places initial resource.
+        subplot_name.plot([0], self.request_stat(target_name='player', stat_name=self.resource_used),
+                          color=stat_color['resource'], marker='.')
+
+        for examined in stat_color:
+            # Inserts each time and value into graph.
+            if examined == 'resource':
+                # (Sets initial value of resource)
+                x_val = [0, ]
+                y_val = [self.request_stat(target_name='player', stat_name=self.resource_used), ]
+
+            else:
+                x_val = []
+                y_val = []
+
+            for event_time in sorted(self.combat_history['player'][examined]):
+                x_val.append(event_time)
+                y_val.append(self.combat_history['player'][examined][event_time])
+
+            subplot_name.plot(x_val, y_val, color=stat_color[examined], marker='.', label=examined)
+
+        plt.legend(prop={'size': 10},
+                   bbox_to_anchor=(1.01, 1),
+                   loc=2,
+                   )
+
+    def subplot_table_of_setup(self, subplot_name):
+
+        stat_names_lst = [
+            'ad',
+            'ap',
+            'att_speed',
+            'crit_chance',
+            'armor',
+            'mr'
+        ]
+
+        couple_lst = []
+
+        # BASE STATS
+        # Creates stat_values and inserts them in corresponding order of stat_names.
+        for stat_name in stat_names_lst:
+            couple_lst.append((stat_name, self.request_stat(target_name='player',
+                                                            stat_name=stat_name)))
+
+        # AFTERMATH STATS
+        couple_lst.append(('dps', "{0:.3f}".format(self.dps())))
+
+        subplot_name.axis('off')
+        subplot_name.table(
+            cellText=couple_lst,
+            cellLoc='left',
+            loc='center'
+        )
+
+
+class OldVisualRepresentation(Actions):
 
     def subplot_pie_chart(self, subplot_name):
 
@@ -1084,7 +1296,6 @@ class VisualRepresentation(Actions):
             loc='center'
         )
 
-
 if __name__ == '__main__':
 
     class TestCounters(object):
@@ -1157,16 +1368,16 @@ if __name__ == '__main__':
                              selected_runes=None):
 
                     VisualRepresentation.__init__(self,
-                                                  rotation_lst=rotation_lst,
-                                                  max_targets_dct=max_targets_dct,
-                                                  selected_champions_dct=selected_champions_dct,
-                                                  champion_lvls_dct=champion_lvls_dct,
-                                                  ability_lvls_dct=ability_lvls_dct,
-                                                  max_combat_time=max_combat_time,
-                                                  initial_active_buffs=initial_active_buffs,
-                                                  initial_current_stats=initial_current_stats,
-                                                  items_lst=items_lst,
-                                                  selected_runes=selected_runes)
+                                                     rotation_lst=rotation_lst,
+                                                     max_targets_dct=max_targets_dct,
+                                                     selected_champions_dct=selected_champions_dct,
+                                                     champion_lvls_dct=champion_lvls_dct,
+                                                     ability_lvls_dct=ability_lvls_dct,
+                                                     max_combat_time=max_combat_time,
+                                                     initial_active_buffs=initial_active_buffs,
+                                                     initial_current_stats=initial_current_stats,
+                                                     items_lst=items_lst,
+                                                     selected_runes=selected_runes)
 
                     player_champ_module.TotalChampionAttributes.__init__(self,
                                                                          ability_lvls_dct=ability_lvls_dct,
@@ -1270,7 +1481,7 @@ if __name__ == '__main__':
 
             msg += '\nlifesteal history: %s' % inst.combat_history['player']['lifesteal']
 
-            msg += str(inst.active_buffs['player'])
+            msg += '\ncombat result: %s' % str(inst.combat_results)
 
             print(msg)
 
@@ -1305,16 +1516,16 @@ if __name__ == '__main__':
             msg += self.test_loop(['AA', 'AA', 'e'])
             msg += self.DELIMITER
 
-            # When a target dies it switches to next target until all targets are dead.
-            msg += self.test_loop(['AA', 'w', 'AA', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA', 'AA', 'AA'])
-            msg += self.DELIMITER
-
             # Since Jax's E is AoE it causes dmg to other targets as well.
             # Also, its total dmg is 3 times greater than single.
             msg += self.test_loop(['e'])
             msg += self.DELIMITER
 
             msg += self.test_loop(['e'], use_runes=True)
+            msg += self.DELIMITER
+
+            # When a target dies it switches to next target until all targets are dead.
+            msg += self.test_loop(['AA', 'w', 'AA', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA', 'AA', 'AA'])
             msg += self.DELIMITER
 
             return msg

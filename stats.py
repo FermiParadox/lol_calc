@@ -419,19 +419,20 @@ class StatRequest(StatCalculation):
 
         self.set_current_stats()    # (placed here since it requires request_stat method)
 
+    DEFENSIVE_SPECIAL_STATS = ('percent_physical_reduction_by_armor',
+                               'percent_magic_reduction_by_mr',
+                               'reduced_armor',
+                               'reduced_mr',
+                               'physical_dmg_taken',
+                               'magic_dmg_taken',)
+
     # Contains stats that are not included in base_stats_dct and are calculated separately by their own methods.
     SPECIAL_STATS_LST = ('base_ad',
                          'bonus_ad',
                          'att_speed',
                          'move_speed',
                          'crit_chance',
-                         'cdr',
-                         'physical_reduction_by_armor',
-                         'magic_reduction_by_mr',
-                         'reduced_armor',
-                         'reduced_mr',
-                         'physical_dmg_taken',
-                         'magic_dmg_taken',)
+                         'cdr',) + DEFENSIVE_SPECIAL_STATS
 
     def evaluate_stat(self, target_name, stat_name):
         """
@@ -451,7 +452,8 @@ class StatRequest(StatCalculation):
 
         # Most stats can be calculated using the 'standard_stat' method.
         else:
-            self.stored_stats[target_name][stat_name] = self.standard_stat(stat_name, target_name)
+            self.stored_stats[target_name][stat_name] = self.standard_stat(requested_stat=stat_name,
+                                                                           tar_name=target_name)
 
         # Sets stat_changes for given target's stat to false.
         # (if not created yet, it creates it)
