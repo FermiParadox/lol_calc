@@ -94,7 +94,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dmg_category='standard_dmg',
         dmg_type=Q_STATS['general']['dmg_type'],
         target='enemy',
-        special={'spellvamp': None},)
+        special={'spellvamp': None, 'dmg_source': 'q'},)
 
     def q_dmg(self):
         return self.Q_DMG
@@ -145,7 +145,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dmg_type=W_STATS['general']['dmg_type'],
         dmg_category='standard_dmg',
         target='enemy',
-        special={'spellvamp': None}
+        special={'spellvamp': None, 'dmg_source': 'w'}
     )
 
     def w_dmg(self):
@@ -216,7 +216,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         target='enemy',
         max_targets=E_STATS['general']['max_targets'],
         delay=E_STATS['general']['delay'],
-        special={'spellvamp': None, 'aoe': None},)
+        special={'spellvamp': None, 'aoe': None, 'dmg_source': 'e'},)
 
     def e_dmg(self):
         return self.E_DMG
@@ -272,7 +272,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dmg_type=R_STATS['general']['dmg_type'],
         dmg_category='standard_dmg',
         target='enemy',
-        special={'spellvamp': None},)
+        special={'spellvamp': None, 'dmg_source': 'r'},)
 
     def r_dmg(self):
         return self.R_DMG

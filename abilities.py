@@ -358,7 +358,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                 del self.active_buffs['player'][cost_name]
 
     # ABILITIES
-    def apply_aa_cd_reset(self, action_name):
+    def reset_aa_cd(self, action_name):
         """
         Removes an AA's cd after an AA-resetting ability is casted.
 
@@ -471,7 +471,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                                                  action_cast_start=cast_start)))
 
             # Checks if ability resets AA's cd_end, and applies it.
-            self.apply_aa_cd_reset(action_name=action_name)
+            self.reset_aa_cd(action_name=action_name)
 
         # AAs
         elif action_name == 'AA':
@@ -902,9 +902,6 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
 
 class VisualRepresentation(Actions):
-
-    OFFENSIVE_PRE_COMBAT_STATS = ('ap', 'ad', 'base_ad', 'bonus_ad', 'crit_chance')
-    DEFENSIVE_PRE_COMBAT_STATS = ()
 
     def subplot_pie_chart(self, subplot_name):
 

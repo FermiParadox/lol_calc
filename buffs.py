@@ -588,6 +588,19 @@ class Counters(BuffsGeneral):
 
         self.combat_results['player']['dps'] = self.dps_result()
 
+    def note_source_dmg_in_results(self, dmg_dct, final_dmg_value):
+        """
+        Stores a source's total dmg.
+
+        Returns:
+            (None)
+        """
+        source_name = dmg_dct['source']
+        if source_name in self.combat_results:
+            self.combat_results[dmg_dct['source']] += final_dmg_value
+        else:
+            self.combat_results[dmg_dct['source']] = final_dmg_value
+
     def note_all_precombat_stats_in_results(self, stats_category_name='all_precombat_stats'):
         """
         Stores all precombat stats for all targets.
