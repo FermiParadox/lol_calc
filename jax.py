@@ -94,7 +94,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dmg_category='standard_dmg',
         dmg_type=Q_STATS['general']['dmg_type'],
         target='enemy',
-        special={'spellvamp': None, 'dmg_source': 'q'},)
+        special={'spellvamp': None, 'dmg_source': 'q', 'dash_distance': Q_STATS['general']['range']},)
 
     def q_dmg(self):
         return self.Q_DMG

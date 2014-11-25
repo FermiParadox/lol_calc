@@ -259,6 +259,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         self.rotation_lst = rotation_lst
         self.current_target_num = None
         self.everyone_dead = None
+        self.total_movement = 0
 
         runes.RunesFinal.__init__(self,
                                   player_lvl=champion_lvls_dct['player'],
@@ -356,6 +357,55 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
             else:
                 del self.active_buffs['player'][cost_name]
+
+    # MOVEMENT
+    def between_action_walking(self):
+        """
+        Calculates movement between actions and adds them to distance player moved.
+
+        Returns:
+            (None)
+        """
+
+        sorted_action_times = sorted(self.actions_dct, reverse=True)
+
+        # Last action's cast start.
+        upper_limit = sorted_action_times[0]
+
+        # Checks if there was only one action (therefor lower limit should be 0)
+        if len(sorted_action_times) == 1:
+            pre_last_action_start = 0
+        else:
+            pre_last_action_start = sorted_action_times[1]
+
+        # Movement starts after cast (or channelling) ends.
+        if 'channel_end' in self.actions_dct[pre_last_action_start]:
+            lower_limit = self.actions_dct[pre_last_action_start]['channel_end']
+        else:
+            lower_limit = self.actions_dct[pre_last_action_start]['cast_end']
+
+        # Calculates and adds meaningful values.
+        move_value = (upper_limit-lower_limit) * self.request_stat(target_name='player', stat_name='move_speed')
+        if move_value > 0.1:
+            self.total_movement += move_value
+
+    def previous_action_dash(self):
+
+        previous_action_time = sorted(self.actions_dct, reverse=True)[0]
+        previous_action_name = self.actions_dct[previous_action_time]['action_name']
+
+        # Abilities
+        if previous_action_name in 'qwer':
+            ability_stats = self.request_ability_stats(ability_name=previous_action_name)
+
+            try:
+                self.total_movement += ability_stats['special']['dashed_distance']
+            except KeyError:
+                pass
+
+        # Kalista has dash after each aa.
+        if self.selected_champions_dct['player'] == 'kalista':
+            self.total_movement += database_champion_stats.CHAMPION_BASE_STATS['kalista']['dashed_distance_on_aa']
 
     # ABILITIES
     def reset_aa_cd(self, action_name):
@@ -798,9 +848,13 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             # Checks if action meets the cost requirements.
             if self.cost_sufficiency(action_name=new_action):
 
+                self.apply_action_cost(action_name=new_action)
+
                 self.add_new_action(new_action)
 
-                self.apply_action_cost(action_name=new_action)
+                # (movement distance)
+                self.previous_action_dash()
+                self.between_action_walking()
 
                 self.apply_pre_action_events()
 
@@ -1437,6 +1491,8 @@ if __name__ == '__main__':
 
             msg += '\ntimes of death: %s' % inst.times_of_death()
 
+            msg += '\ntotal movement distance: %s' % str(inst.total_movement)
+
             return msg
 
         def test_dmg_graphs(self, rotation_lst, item_lst):
@@ -1474,7 +1530,7 @@ if __name__ == '__main__':
 
             msg += '\nlifesteal history: %s' % inst.combat_history['player']['lifesteal']
 
-            msg += '\ncombat result: %s' % str(inst.combat_results)
+            msg += '\ntotal movement distance: %s' % str(inst.total_movement)
 
             print(msg)
 
