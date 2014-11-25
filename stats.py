@@ -128,7 +128,6 @@ class StatCalculation(StatFilters):
 
         self.place_tar_and_empty_dct_in_dct(self.stored_stats)
         self.place_tar_and_empty_dct_in_dct(self.stat_changes)
-        self.place_tar_and_empty_dct_in_dct(self.stat_dependencies)
         self.place_tar_and_empty_dct_in_dct(self.bonuses_dct)
         self.place_tar_and_empty_dct_in_dct(self.stored_buffs)
 
@@ -416,8 +415,6 @@ class StatRequest(StatCalculation):
                                  selected_champions_dct=selected_champions_dct,
                                  initial_active_buffs=initial_active_buffs,
                                  initial_current_stats=initial_current_stats)
-
-        self.set_current_stats()    # (placed here since it requires request_stat method)
 
     DEFENSIVE_SPECIAL_STATS = ('percent_physical_reduction_by_armor',
                                'percent_magic_reduction_by_mr',

@@ -19,7 +19,8 @@ class Setups(unittest.TestCase):
             enemy_1=1,
             enemy_2=1,
             enemy_3=1,
-        )
+            enemy_4=1,
+            enemy_5=1,)
 
         self.ability_lvls_dct = dict(
             q=1,
@@ -45,7 +46,7 @@ class Setups(unittest.TestCase):
             selected_runes=None)
 
     def set_champ_instance(self):
-        self.inst = user_instance_settings.UserInstance().champion_instance(self.kwargs)
+        self.inst = user_instance_settings.UserInstance(self.kwargs).champion_instance()
 
     def set_ability_lvls(self, lvls_tpl=None, same_lvl=None):
         """
@@ -192,7 +193,6 @@ class GeneralTest(Setups):
         """
         Tests if an ability resets a champion's AA cooldown.
         """
-
 
 
 if __name__ == '__main__':

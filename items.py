@@ -133,6 +133,7 @@ class AllItems(Gunblade,):
         ItemsBase.__init__(self, **kwargs)
 
         self.set_items_effects()
+        self.static_shiv_stacks = 100
 
     def set_items_effects(self):
         """
