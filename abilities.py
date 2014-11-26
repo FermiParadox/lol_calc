@@ -3,6 +3,7 @@ import timers
 import runes
 import database_champion_stats
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 
 class EnemyTargetsDeadException(BaseException):
@@ -986,7 +987,7 @@ class VisualRepresentation(Actions):
                          initial_current_stats=initial_current_stats,
                          selected_runes=selected_runes)
 
-    def subplot_pie_chart_dmg_types(self, subplot):
+    def subplot_pie_chart_dmg_types(self, subplot_name):
 
         dmg_values = []
         slice_names = []
@@ -999,9 +1000,9 @@ class VisualRepresentation(Actions):
                 slice_names.append(dmg_total_name)
                 dmg_values.append(self.combat_results['player'][dmg_total_name])
 
-        subplot.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
+        subplot_name.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
 
-    def subplot_pie_chart_sources(self, subplot):
+    def subplot_pie_chart_sources(self, subplot_name):
 
         dmg_values = []
         slice_names = []
@@ -1014,7 +1015,7 @@ class VisualRepresentation(Actions):
                 slice_names.append(source_name)
                 dmg_values.append(self.combat_results['player']['source'][source_name])
 
-        subplot.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
+        subplot_name.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
 
     def add_actions_on_plot(self, subplot_name, annotated=True):
         # ACTIONS IN PLOT
@@ -1171,22 +1172,28 @@ class VisualRepresentation(Actions):
                                                             stat_name=stat_name)))
 
         # AFTERMATH STATS
-        couple_lst.append(('dps', "{0:.3f}".format(self.dps())))
+        couple_lst.append(('dps: ' + "{0:.3f}".format(self.dps())))
 
         subplot_name.axis('off')
         subplot_name.table(
-            cellText=couple_lst,
+            cellText=((1,2),),
             cellLoc='left',
-            loc='center'
-        )
+            loc='center')
 
     def represent_results_visually(self):
 
-        self.subplot_dmg_graph(plt.figure(1).add_subplot(331))
-        self.subplot_pie_chart_dmg_types(subplot=plt.figure(1).add_subplot(332))
-        self.subplot_pie_chart_sources(subplot=plt.figure(1).add_subplot(333))
-        self.subplot_resource_vamp_lifesteal_graph(plt.figure(1).add_subplot(334))
-        self.subplot_table_of_setup(plt.figure(1).add_subplot(212))
+        gs = gridspec.GridSpec(3, 3)
+
+        # Graphs
+        self.subplot_dmg_graph(subplot_name=plt.figure(1).add_subplot(gs[:1, :1]))
+        self.subplot_resource_vamp_lifesteal_graph(subplot_name=plt.figure(1).add_subplot(gs[1:2, :1]))
+
+        # Pies
+        self.subplot_pie_chart_dmg_types(subplot_name=plt.figure(1).add_subplot(gs[:1, 1:2]))
+        self.subplot_pie_chart_sources(subplot_name=plt.figure(1).add_subplot(gs[:1, 2:3]))
+
+        # Tables
+        self.subplot_table_of_setup(subplot_name=plt.figure(1).add_subplot(gs[2, :1]))
 
 
 class OldVisualRepresentation(Actions):
@@ -1369,8 +1376,7 @@ class OldVisualRepresentation(Actions):
         subplot_name.table(
             cellText=couple_lst,
             cellLoc='left',
-            loc='center'
-        )
+            loc='center')
 
 if __name__ == '__main__':
 
