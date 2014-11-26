@@ -986,7 +986,7 @@ class VisualRepresentation(Actions):
                          initial_current_stats=initial_current_stats,
                          selected_runes=selected_runes)
 
-    def subplot_pie_chart(self, subplot_name):
+    def subplot_pie_chart_dmg_types(self, subplot):
 
         dmg_values = []
         slice_names = []
@@ -999,7 +999,22 @@ class VisualRepresentation(Actions):
                 slice_names.append(dmg_total_name)
                 dmg_values.append(self.combat_results['player'][dmg_total_name])
 
-        subplot_name.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
+        subplot.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
+
+    def subplot_pie_chart_sources(self, subplot):
+
+        dmg_values = []
+        slice_names = []
+
+        for source_name in self.combat_results['player']['source']:
+
+            # Filters out 0 value dmg.
+            if self.combat_results['player']['source'][source_name] > 0:
+
+                slice_names.append(source_name)
+                dmg_values.append(self.combat_results['player']['source'][source_name])
+
+        subplot.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
 
     def subplot_dmg_graph(self, subplot_name):
 
@@ -1013,44 +1028,41 @@ class VisualRepresentation(Actions):
         plt.ylabel('health')
 
         color_counter_var = 0
-
         color_lst = ('b', 'g', 'y', 'r')
 
-        for tar_name in sorted(self.combat_history):
-            if tar_name != 'player':
+        for tar_name in self.enemy_target_names:
 
-                hp_change_times = sorted(self.combat_history[tar_name]['current_hp'])
-                max_hp = self.request_stat(target_name=tar_name, stat_name='hp')
+            hp_change_times = sorted(self.combat_history[tar_name]['current_hp'])
+            max_hp = self.request_stat(target_name=tar_name, stat_name='hp')
 
-                # Inserts initial point.
-                subplot_name.plot([0], max_hp, color=color_lst[color_counter_var], alpha=0.8,
-                                  label=tar_name)
+            # Inserts initial point.
+            subplot_name.plot([0], max_hp, color=color_lst[color_counter_var], alpha=0.8,
+                              label=tar_name)
 
-                # Left boundary is initially set to max hp.
-                x_1 = 0
-                current_hp = max_hp
+            # Left boundary is initially set to max hp.
+            x_1 = 0
+            current_hp = max_hp
 
-                x_values = []
-                y_values = []
+            x_values = []
+            y_values = []
 
-                for event_time in hp_change_times:
+            for event_time in hp_change_times:
 
-                    x_area_lst = [i for i in range(int(x_1 / 0.01), int((event_time + 0.01) / 0.01))]
+                x_area_lst = [i for i in range(int(x_1 / 0.01), int((event_time + 0.01) / 0.01))]
 
-                    for x_element in x_area_lst:
-                        x_values.append(x_element/100)
-                        y_values.append(current_hp)
+                for x_element in x_area_lst:
+                    x_values.append(x_element/100)
+                    y_values.append(current_hp)
 
-                    current_hp = self.combat_history[tar_name]['current_hp'][event_time]
-                    x_1 = event_time
+                current_hp = self.combat_history[tar_name]['current_hp'][event_time]
+                x_1 = event_time
 
-                subplot_name.plot(x_values, y_values, color=color_lst[color_counter_var], alpha=0.7)
-                color_counter_var += 1
+            subplot_name.plot(x_values, y_values, color=color_lst[color_counter_var], alpha=0.7)
+            color_counter_var += 1
 
         plt.legend(prop={'size': 10},
                    bbox_to_anchor=(1.0, 1),
-                   loc=2,
-                   )
+                   loc=2,)
 
         # ACTIONS IN PLOT
         x_actions = []
@@ -1510,10 +1522,11 @@ if __name__ == '__main__':
             inst.combat_loop()
             inst.add_dmg_tot_history()
 
-            inst.subplot_pie_chart(plt.figure(1).add_subplot(222))
-            inst.subplot_dmg_graph(plt.figure(1).add_subplot(221))
-            inst.subplot_resource_vamp_lifesteal_graph(plt.figure(1).add_subplot(223))
-            inst.subplot_table_of_setup(plt.figure(1).add_subplot(224))
+            inst.subplot_dmg_graph(plt.figure(1).add_subplot(331))
+            inst.subplot_pie_chart_dmg_types(subplot=plt.figure(1).add_subplot(332))
+            inst.subplot_pie_chart_sources(subplot=plt.figure(1).add_subplot(333))
+            inst.subplot_resource_vamp_lifesteal_graph(plt.figure(1).add_subplot(334))
+            inst.subplot_table_of_setup(plt.figure(1).add_subplot(335))
 
             msg = '\nrotation: %s\n' % inst.rotation_lst
             msg += '\ntotal dmg types: %s' % inst.refined_combat_history()
