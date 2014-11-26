@@ -986,6 +986,21 @@ class VisualRepresentation(Actions):
                          initial_current_stats=initial_current_stats,
                          selected_runes=selected_runes)
 
+    def subplot_pie_chart1(self, subplot_name):
+
+        dmg_values = []
+        slice_names = []
+
+        for dmg_type in ('physical', 'magic', 'true'):
+
+            # Filters out 0 value dmg.
+            if self.combat_results[dmg_type] > 0:
+
+                slice_names.append(dmg_type)
+                dmg_values.append(self.combat_results[dmg_type])
+
+        subplot_name.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
+
     def subplot_pie_chart(self, subplot_name):
 
         dmg_values = []
@@ -1532,6 +1547,10 @@ if __name__ == '__main__':
 
             msg += '\ntotal movement distance: %s' % str(inst.total_movement)
 
+            del inst.combat_results['player']['all_precombat_stats']
+            del inst.combat_results['player']['all_post_combat_stats']
+            msg += '\ntotal combat results: %s' % inst.combat_results['player']
+
             print(msg)
 
             return plt.show()
@@ -1606,7 +1625,7 @@ if __name__ == '__main__':
         import pstats
         results_run = pstats.Stats('cprof_results').sort_stats('cumtime')
         results_run.strip_dirs().sort_stats('cumtime').print_stats(5)
-        print(results_run.strip_dirs().sort_stats('cumtime').stats)
+        #print(results_run.strip_dirs().sort_stats('cumtime').stats)
 
 
 #rot1, itemLst2

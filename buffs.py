@@ -274,9 +274,9 @@ class Counters(BuffsGeneral):
         self.actions_dct = {}
         self.combat_history = {}
         self.combat_results = {}
-        self.place_tar_and_empty_dct_in_dct(self.combat_results)
 
         self.set_combat_history()
+        self.set_combat_results()
 
     def internally_displayed_player_stat_names(self):
         """
@@ -555,6 +555,15 @@ class Counters(BuffsGeneral):
                 self.combat_history[target_name][dmg_type].update({self.current_time: final_dmg_value})
 
     # RESULTS ---------------------------------------------------------------------------------------------------------
+    def set_combat_results(self):
+        """
+        Returns:
+            (None)
+        """
+        self.place_tar_and_empty_dct_in_dct(self.combat_results)
+
+        self.combat_results['player'].update({'source': {}, 'total_physical': 0, 'total_magic': 0, 'total_true': 0})
+
     def note_dmg_totals_in_results(self):
         """
         Calculates total dmg for each dmg type and stores it,
@@ -569,12 +578,14 @@ class Counters(BuffsGeneral):
         for tar_name in self.enemy_target_names:
             tot_value = 0
 
-            for dmg_type in ('true', 'physical', 'magic'):
+            for dmg_type, type_dmg_name in zip(('physical', 'magic', 'true'), ('total_physical', 'total_magic', 'total_true')):
+                type_dmg_value = 0
                 for event_time in self.combat_history[tar_name][dmg_type]:
-                    tot_value += self.combat_history[tar_name][dmg_type][event_time]
+                    type_dmg_value += self.combat_history[tar_name][dmg_type][event_time]
 
                 # TYPE TOTALS
-                self.combat_results[tar_name][dmg_type] = tot_value
+                self.combat_results['player'][type_dmg_name] += type_dmg_value
+                tot_value += type_dmg_value
 
             # OVERALL TOTALS
             self.combat_results['player']['total_dmg_done'] += tot_value
@@ -641,10 +652,11 @@ class Counters(BuffsGeneral):
             (None)
         """
         source_name = dmg_dct['special']['dmg_source']
-        if source_name in self.combat_results:
-            self.combat_results[source_name] += final_dmg_value
+
+        if source_name in self.combat_results['player']['source']:
+            self.combat_results['player']['source'][source_name] += final_dmg_value
         else:
-            self.combat_results[source_name] = final_dmg_value
+            self.combat_results['player']['source'][source_name] = final_dmg_value
 
     def note_all_precombat_stats_in_results(self, stats_category_name='all_precombat_stats'):
         """
