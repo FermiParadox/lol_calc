@@ -948,7 +948,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         self.add_passive_buffs(self.abilities_effects(), self.ability_lvls_dct)
 
         # Stores precombat stats.
-        self.note_all_precombat_stats_in_results()
+        self.note_pre_combat_stats_in_results()
 
         # Applies actions or events based on which occurs first.
         self.apply_all_actions()
@@ -958,10 +958,13 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
         # Stores postcombat stats.
         self.note_dmg_totals_in_results()
-        self.note_all_postcombat_stats_in_results()
+        self.note_post_combat_stats_in_results()
 
 
 class VisualRepresentation(Actions):
+
+    PLAYER_STATS_DISPLAYED = ('ap', 'ad', 'armor', 'mr', 'hp', 'mp', 'att_speed')
+    ENEMY_STATS_DISPLAYED = ('armor', 'mr', 'physical_dmg_taken', 'magic_dmg_taken',)
 
     def __init__(self,
                  rotation_lst,
@@ -1152,33 +1155,89 @@ class VisualRepresentation(Actions):
 
         self.add_actions_on_plot(subplot_name=subplot_name, annotated=False)
 
-    def subplot_table_of_setup(self, subplot_name):
+    def subplot_player_stats_table(self, subplot_name):
+        """
+        Subplots player's pre and post combat stats.
 
-        stat_names_lst = [
-            'ad',
-            'ap',
-            'att_speed',
-            'crit_chance',
-            'armor',
-            'mr'
-        ]
+        Stat values are rounded.
 
-        couple_lst = []
+        Returns:
+            (None)
+        """
 
-        # BASE STATS
-        # Creates stat_values and inserts them in corresponding order of stat_names.
-        for stat_name in stat_names_lst:
-            couple_lst.append((stat_name, self.request_stat(target_name='player',
-                                                            stat_name=stat_name)))
+        table_lst = [('PLAYER STATS', 'PRE', 'POST'), ]
 
-        # AFTERMATH STATS
-        couple_lst.append(('dps: ' + "{0:.3f}".format(self.dps())))
+        # Creates lines.
+        for stat_name in self.PLAYER_STATS_DISPLAYED:
+
+            precombat_value = self.combat_results['player']['pre_combat_stats'][stat_name]
+            precombat_value = round(precombat_value, 4)
+
+            postcombat_value = self.combat_results['player']['post_combat_stats'][stat_name]
+            postcombat_value = round(postcombat_value, 4)
+
+            line_tpl = (stat_name+': ', precombat_value, postcombat_value)
+
+            # Inserts in data to be displayed
+            table_lst.append(line_tpl)
 
         subplot_name.axis('off')
         subplot_name.table(
-            cellText=((1,2),),
+            cellText=table_lst,
             cellLoc='left',
-            loc='center')
+            loc='center').auto_set_font_size(False)
+
+    def subplot_enemy_stats_table(self, subplot_name):
+        """
+        Subplots player's pre combat stats.
+
+        Stat values are rounded.
+
+        Returns:
+            (None)
+        """
+
+        table_lst = []
+
+        for tar_name in self.enemy_target_names:
+            table_lst.append(('%s' % tar_name.upper(), ''))
+
+            # Creates lines.
+            for stat_name in self.ENEMY_STATS_DISPLAYED:
+
+                precombat_value = self.combat_results[tar_name]['pre_combat_stats'][stat_name]
+                precombat_value = round(precombat_value, 4)
+
+                line_tpl = (stat_name+': ', precombat_value)
+
+                # Inserts in data to be displayed
+                table_lst.append(line_tpl)
+
+        subplot_name.axis('off')
+        subplot_name.table(
+            cellText=table_lst,
+            cellLoc='left',
+            loc='center').auto_set_font_size(False)
+
+    def subplot_preset_and_results_table(self, subplot_name):
+
+        table_lst = []
+
+        # Rotation
+        table_lst.append(('ROTATION',))
+        table_lst.append((self.rotation_lst,))
+
+        # Dps
+        table_lst.append(('DPS',))
+        dps_value = self.combat_results['player']['dps']
+        dps_value = round(dps_value, 1)
+        table_lst.append((dps_value,))
+
+        subplot_name.axis('off')
+        subplot_name.table(
+            cellText=table_lst,
+            cellLoc='left',
+            loc='center').auto_set_font_size(False)
 
     def represent_results_visually(self):
 
@@ -1193,7 +1252,9 @@ class VisualRepresentation(Actions):
         self.subplot_pie_chart_sources(subplot_name=plt.figure(1).add_subplot(gs[:1, 2:3]))
 
         # Tables
-        self.subplot_table_of_setup(subplot_name=plt.figure(1).add_subplot(gs[2, :1]))
+        self.subplot_player_stats_table(subplot_name=plt.figure(1).add_subplot(gs[2, :1]))
+        self.subplot_enemy_stats_table(subplot_name=plt.figure(1).add_subplot(gs[2, 1:2]))
+        self.subplot_preset_and_results_table(subplot_name=plt.figure(1).add_subplot(gs[2, 2:3]))
 
 
 class OldVisualRepresentation(Actions):
@@ -1564,8 +1625,8 @@ if __name__ == '__main__':
 
             msg += '\ntotal movement distance: %s' % str(inst.total_movement)
 
-            del inst.combat_results['player']['all_precombat_stats']
-            del inst.combat_results['player']['all_post_combat_stats']
+            del inst.combat_results['player']['pre_combat_stats']
+            del inst.combat_results['player']['post_combat_stats']
             msg += '\nhistory: %s' % inst.combat_history['enemy_1']['current_hp']
 
             print(msg)

@@ -250,7 +250,7 @@ class Counters(BuffsGeneral):
     AOE_SPELLVAMP_MOD = 30/100
     LOWEST_MEANINGFUL_COMBAT_TIME = 5
     BASE_STATS_TPL = ()
-    EXTRA_STATS_TPL = ('lifesteal', 'spellvamp', )
+    EXTRA_STATS_TPL = ('lifesteal', 'spellvamp', 'ap')
 
     def __init__(self,
                  current_time,
@@ -658,7 +658,7 @@ class Counters(BuffsGeneral):
         else:
             self.combat_results['player']['source'][source_name] = final_dmg_value
 
-    def note_all_precombat_stats_in_results(self, stats_category_name='all_precombat_stats'):
+    def note_pre_combat_stats_in_results(self, stats_category_name='pre_combat_stats'):
         """
         Stores all precombat stats for all targets.
 
@@ -666,8 +666,8 @@ class Counters(BuffsGeneral):
 
         Args:
             stats_category_name: (str) Used for similar method below.
-                'all_precombat_stats'
-                'all_post_combat_stats'
+                'pre_combat_stats'
+                'post_combat_stats'
         Returns:
             (None)
         """
@@ -685,7 +685,7 @@ class Counters(BuffsGeneral):
                     self.combat_results[tar_name][stats_category_name].update(
                         {stat_name: self.request_stat(target_name=tar_name, stat_name=stat_name)})
 
-    def note_all_postcombat_stats_in_results(self):
+    def note_post_combat_stats_in_results(self):
         """
         Stores all postcombat stats for all targets.
 
@@ -695,7 +695,7 @@ class Counters(BuffsGeneral):
             (None)
         """
 
-        self.note_all_precombat_stats_in_results(stats_category_name='all_post_combat_stats')
+        self.note_pre_combat_stats_in_results(stats_category_name='post_combat_stats')
         self.note_lifesteal_spellvamp_totals_in_results()
         self.note_dps_in_results()
 
