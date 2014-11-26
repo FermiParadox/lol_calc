@@ -535,7 +535,7 @@ class Counters(BuffsGeneral):
     def note_dmg_in_history(self, dmg_type, final_dmg_value, target_name):
         """
         Calculates and stores total dmg of a particular type, at a moment,
-        and stores current_hp at a each moment for a target.
+        and stores current_hp at each moment for a target.
 
         Modifies:
             combat_history

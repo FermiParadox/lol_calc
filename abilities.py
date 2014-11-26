@@ -1006,7 +1006,7 @@ class VisualRepresentation(Actions):
         dmg_values = []
         slice_names = []
 
-        for source_name in self.combat_results['player']['source']:
+        for source_name in sorted(self.combat_results['player']['source']):
 
             # Filters out 0 value dmg.
             if self.combat_results['player']['source'][source_name] > 0:
@@ -1020,16 +1020,16 @@ class VisualRepresentation(Actions):
 
         subplot_name.grid(b=True)
 
-        # Line at y=0.
+        # Line at y=0, and at x=0.
         plt.axhline(y=0, color='black')
-        # Line at x=0.
         plt.axvline(x=0, color='black')
 
-        plt.ylabel('health')
+        plt.ylabel('hp')
 
         color_counter_var = 0
         color_lst = ('b', 'g', 'y', 'r')
 
+        # Creates graph for each target.
         for tar_name in self.enemy_target_names:
 
             hp_change_times = sorted(self.combat_history[tar_name]['current_hp'])
@@ -1048,7 +1048,8 @@ class VisualRepresentation(Actions):
 
             for event_time in hp_change_times:
 
-                x_area_lst = [i for i in range(int(x_1 / 0.01), int((event_time + 0.01) / 0.01))]
+                # (x values for same-height-points cluster)
+                x_area_lst = [i for i in range(int(x_1 * 100), int((event_time + 0.01) * 100))]
 
                 for x_element in x_area_lst:
                     x_values.append(x_element/100)
@@ -1056,6 +1057,10 @@ class VisualRepresentation(Actions):
 
                 current_hp = self.combat_history[tar_name]['current_hp'][event_time]
                 x_1 = event_time
+
+            # When events finish, adds one last point so that last event cluster is included.
+            x_values.append(hp_change_times[-1])
+            y_values.append(current_hp)
 
             subplot_name.plot(x_values, y_values, color=color_lst[color_counter_var], alpha=0.7)
             color_counter_var += 1
@@ -1545,7 +1550,7 @@ if __name__ == '__main__':
 
             del inst.combat_results['player']['all_precombat_stats']
             del inst.combat_results['player']['all_post_combat_stats']
-            msg += '\ntotal combat results: %s' % inst.combat_results['player']
+            msg += '\nhistory: %s' % inst.combat_history['enemy_1']['current_hp']
 
             print(msg)
 
