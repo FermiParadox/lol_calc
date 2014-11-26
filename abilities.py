@@ -986,35 +986,18 @@ class VisualRepresentation(Actions):
                          initial_current_stats=initial_current_stats,
                          selected_runes=selected_runes)
 
-    def subplot_pie_chart1(self, subplot_name):
-
-        dmg_values = []
-        slice_names = []
-
-        for dmg_type in ('physical', 'magic', 'true'):
-
-            # Filters out 0 value dmg.
-            if self.combat_results[dmg_type] > 0:
-
-                slice_names.append(dmg_type)
-                dmg_values.append(self.combat_results[dmg_type])
-
-        subplot_name.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
-
     def subplot_pie_chart(self, subplot_name):
 
         dmg_values = []
         slice_names = []
 
-        for dmg_type in self.refined_combat_history()['all_targets']:
-            # Filters out non used keywords.
-            if ('heal' not in dmg_type) and ('total' not in dmg_type):
+        for dmg_total_name in ('total_physical', 'total_magic', 'total_true'):
 
-                # Filters out 0 value dmg.
-                if self.refined_combat_history()['all_targets'][dmg_type] > 0:
+            # Filters out 0 value dmg.
+            if self.combat_results['player'][dmg_total_name] > 0:
 
-                    slice_names.append(dmg_type)
-                    dmg_values.append(self.refined_combat_history()['all_targets'][dmg_type])
+                slice_names.append(dmg_total_name)
+                dmg_values.append(self.combat_results['player'][dmg_total_name])
 
         subplot_name.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
 
@@ -1615,7 +1598,7 @@ if __name__ == '__main__':
     if run_graph_test:
         TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst2)
 
-    run_time_test = True
+    run_time_test = False
     if run_time_test:
         # Crude time testing.
         import cProfile

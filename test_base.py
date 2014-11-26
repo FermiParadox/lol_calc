@@ -46,7 +46,7 @@ class Setups(unittest.TestCase):
             selected_runes=None)
 
     def set_champ_instance(self):
-        self.inst = user_instance_settings.UserInstance(self.kwargs).champion_instance()
+        self.inst = user_instance_settings.UserSession(self.kwargs).combat_instance()
 
     def set_ability_lvls(self, lvls_tpl=None, same_lvl=None):
         """

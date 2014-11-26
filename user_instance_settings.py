@@ -1,13 +1,13 @@
 import abilities
 
 
-class UserInstance(object):
+class UserSession(object):
 
     def __init__(self, input_dct):
         self.input_dct = input_dct
         self.instances_results = {}
 
-    def champion_instance(self):
+    def combat_instance(self):
 
         player_champ_name = self.input_dct['selected_champions_dct']['player']
         player_champ_module = __import__(player_champ_name)
