@@ -1016,6 +1016,44 @@ class VisualRepresentation(Actions):
 
         subplot.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
 
+    def add_actions_on_plot(self, subplot_name, annotated=True):
+        # ACTIONS IN PLOT
+        x_actions = []
+        y_actions = []
+        previous_action_name_x = -100
+        prev_high = False
+
+        for x_var in sorted(self.actions_dct):
+            x_actions.append(x_var)
+            y_actions.append(0)
+
+            # If names are too close..
+            if x_var - previous_action_name_x < 1:
+
+                # ..and if previous was low..
+                if not prev_high:
+
+                    # ..increases the height of the name.
+                    higher_y = 40
+                    prev_high = True
+
+                else:
+                    prev_high = False
+                    higher_y = 0
+            else:
+                # If names are too far, it sets it on the lowest height.
+                prev_high = False
+                higher_y = 0
+
+            # ANNOTATE
+            if annotated is True:
+                subplot_name.annotate(self.actions_dct[x_var]['action_name'], xy=(x_var, -70 + higher_y), color='grey')
+
+            previous_action_name_x = x_var
+
+            # Action vertical lines
+            plt.axvline(x=x_var, color='grey', linestyle='dashed', alpha=0.6)
+
     def subplot_dmg_graph(self, subplot_name):
 
         subplot_name.grid(b=True)
@@ -1069,40 +1107,7 @@ class VisualRepresentation(Actions):
                    bbox_to_anchor=(1.0, 1),
                    loc=2,)
 
-        # ACTIONS IN PLOT
-        x_actions = []
-        y_actions = []
-        previous_action_name_x = -100
-        prev_high = False
-
-        for x_var in sorted(self.actions_dct):
-            x_actions.append(x_var)
-            y_actions.append(0)
-
-            # If names are too close..
-            if x_var - previous_action_name_x < 1:
-
-                # ..and if previous was low..
-                if not prev_high:
-
-                    # ..increases the height of the name.
-                    higher_y = 40
-                    prev_high = True
-
-                else:
-                    prev_high = False
-                    higher_y = 0
-            else:
-                # If names are too far, it sets it on the lowest height.
-                prev_high = False
-                higher_y = 0
-
-            subplot_name.annotate(self.actions_dct[x_var]['action_name'], xy=(x_var, -70 + higher_y), color='grey')
-
-            previous_action_name_x = x_var
-
-            # Action vertical lines
-            plt.axvline(x=x_var, color='grey', linestyle='dashed', alpha=0.6)
+        self.add_actions_on_plot(subplot_name=subplot_name, annotated=True)
 
     def subplot_resource_vamp_lifesteal_graph(self, subplot_name):
 
@@ -1142,8 +1147,9 @@ class VisualRepresentation(Actions):
 
         plt.legend(prop={'size': 10},
                    bbox_to_anchor=(1.01, 1),
-                   loc=2,
-                   )
+                   loc=2,)
+
+        self.add_actions_on_plot(subplot_name=subplot_name, annotated=False)
 
     def subplot_table_of_setup(self, subplot_name):
 
@@ -1173,6 +1179,14 @@ class VisualRepresentation(Actions):
             cellLoc='left',
             loc='center'
         )
+
+    def represent_results_visually(self):
+
+        self.subplot_dmg_graph(plt.figure(1).add_subplot(331))
+        self.subplot_pie_chart_dmg_types(subplot=plt.figure(1).add_subplot(332))
+        self.subplot_pie_chart_sources(subplot=plt.figure(1).add_subplot(333))
+        self.subplot_resource_vamp_lifesteal_graph(plt.figure(1).add_subplot(334))
+        self.subplot_table_of_setup(plt.figure(1).add_subplot(212))
 
 
 class OldVisualRepresentation(Actions):
@@ -1430,16 +1444,16 @@ if __name__ == '__main__':
                              selected_runes=None):
 
                     VisualRepresentation.__init__(self,
-                                                     rotation_lst=rotation_lst,
-                                                     max_targets_dct=max_targets_dct,
-                                                     selected_champions_dct=selected_champions_dct,
-                                                     champion_lvls_dct=champion_lvls_dct,
-                                                     ability_lvls_dct=ability_lvls_dct,
-                                                     max_combat_time=max_combat_time,
-                                                     initial_active_buffs=initial_active_buffs,
-                                                     initial_current_stats=initial_current_stats,
-                                                     items_lst=items_lst,
-                                                     selected_runes=selected_runes)
+                                                  rotation_lst=rotation_lst,
+                                                  max_targets_dct=max_targets_dct,
+                                                  selected_champions_dct=selected_champions_dct,
+                                                  champion_lvls_dct=champion_lvls_dct,
+                                                  ability_lvls_dct=ability_lvls_dct,
+                                                  max_combat_time=max_combat_time,
+                                                  initial_active_buffs=initial_active_buffs,
+                                                  initial_current_stats=initial_current_stats,
+                                                  items_lst=items_lst,
+                                                  selected_runes=selected_runes)
 
                     player_champ_module.TotalChampionAttributes.__init__(self,
                                                                          ability_lvls_dct=ability_lvls_dct,
@@ -1527,11 +1541,7 @@ if __name__ == '__main__':
             inst.combat_loop()
             inst.add_dmg_tot_history()
 
-            inst.subplot_dmg_graph(plt.figure(1).add_subplot(331))
-            inst.subplot_pie_chart_dmg_types(subplot=plt.figure(1).add_subplot(332))
-            inst.subplot_pie_chart_sources(subplot=plt.figure(1).add_subplot(333))
-            inst.subplot_resource_vamp_lifesteal_graph(plt.figure(1).add_subplot(334))
-            inst.subplot_table_of_setup(plt.figure(1).add_subplot(335))
+            inst.represent_results_visually()
 
             msg = '\nrotation: %s\n' % inst.rotation_lst
             msg += '\ntotal dmg types: %s' % inst.refined_combat_history()
@@ -1616,7 +1626,7 @@ if __name__ == '__main__':
     if run_graph_test:
         TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst2)
 
-    run_time_test = False
+    run_time_test = True
     if run_time_test:
         # Crude time testing.
         import cProfile
@@ -1634,6 +1644,3 @@ if __name__ == '__main__':
 #dps: 338.4234113818222 (unexpected change, after changing bonus_ad method to get stats by 'evaluate' instead of direct)
 #dps: 406.06856388086914 (rotation and targets changed)
 #dps: 414.08610981856975 (rotation and targets changed)
-
-#time increased 10fold with addition of 'r' and 'gunblade' in rotation
-# (both have high cd, reducing their cd reduces time)
