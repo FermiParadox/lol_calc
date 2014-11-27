@@ -330,8 +330,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
             target='player',
             stats=dict(
                 armor=dict(
-                    additive=self.scaling_buff(list_of_values=self.R_STATS['armor_buff']['base_stat_tpl'],
-                                               request_stat_function=self.request_stat_function)
+                    additive=self.scaling_stat_buff(list_of_values=self.R_STATS['armor_buff']['base_stat_tpl'],
+                                                    req_stat_function=self.req_stats_func)
                 )
             ))
 
@@ -359,126 +359,4 @@ class TotalChampionAttributes(dmg_categories.Categories):
 
 
 if __name__ == '__main__':
-
-    class TestTotalAttributes(object):
-
-        MSG_START = '\n\n-----------------------------'
-
-        def req_stats_func(self, target_name, stat_name):
-
-            return self.req_stats_func_dct[target_name][stat_name]
-
-        def set_up(self):
-
-            self.ability_lvls_dct = dict(
-                q=1,
-                w=1,
-                e=2,
-                r=3)
-
-            self.req_stats_func_dct = dict(
-                player=dict(
-                    ap=100,
-                    ad=200,
-                    hp=2000,
-                    bonus_ad=0),
-                enemy_1=dict(
-                    hp=2500),
-                enemy_2=dict(
-                    hp=2500),
-                enemy_3=dict(
-                    hp=2500))
-
-            self.champion_lvls_dct = dict(
-                player=1,
-                enemy_1=1)
-
-            self.act_buffs = dict(
-                player={},
-                enemy_1={})
-
-            self.current_stats = dict(
-                player=dict(
-                    current_hp=100
-                ),
-                enemy_1=dict(
-                    current_hp=400
-                ))
-
-            self.current_target = 'enemy_1'
-
-            self.current_target_num = None
-
-            self.init_tot_attr = dict(
-                ability_lvls_dct=self.ability_lvls_dct,
-                req_stats_func=self.req_stats_func,
-                act_buffs=self.act_buffs,
-                current_stats=self.current_stats,
-                current_target=self.current_target,
-                champion_lvls_dct=self.champion_lvls_dct,
-                current_target_num=self.current_target_num)
-
-        def test_innate(self):
-
-            self.set_up()
-
-            msg = self.MSG_START
-            msg += '\nInnate (single stack)\n'
-
-            msg += '\nbonus tuple: %s' % str(TotalChampionAttributes.INNATE_ATT_SPEED_TPL)
-            msg += '\n'
-
-            for player_lvl in (1, 3, 4, 18):
-
-                self.init_tot_attr['champion_lvls_dct']['player'] = player_lvl
-
-                msg += '\nplayer lvl: %s, ' % player_lvl
-
-                msg += ('att speed bonus: ' +
-                        str(TotalChampionAttributes(**self.init_tot_attr)
-                            .innate_att_speed_buff()['stats']['att_speed']['percent']))
-
-            return msg
-
-        def test_dmg_values(self, ability_name):
-
-            self.set_up()
-
-            msg = self.MSG_START
-
-            stat_dct = getattr(TotalChampionAttributes, ability_name.upper() + '_STATS')
-
-            msg += '\nbase dmg tuple: ' + str(stat_dct['general']['base_dmg_tpl'])
-            for stat_name in self.req_stats_func_dct['player']:
-                msg += '\n%s: %s' % (stat_name, self.req_stats_func('player', stat_name=stat_name))
-
-            # Checks all lvls
-            if ability_name != 'r':
-                ability_lvl_tpl = (1, 2, 3, 4, 5)
-            else:
-                ability_lvl_tpl = (1, 2, 3)
-            for ability_lvl in ability_lvl_tpl:
-                self.init_tot_attr['ability_lvls_dct'][ability_name] = ability_lvl
-
-                inst = TotalChampionAttributes(**self.init_tot_attr)
-
-                msg += '\n%s lvl: %s, ' % (ability_name, self.init_tot_attr['ability_lvls_dct'][ability_name])
-
-                value = getattr(inst, ability_name + '_dmg_value')
-
-                msg += '%s dmg value: %s' % (ability_name, value())
-
-            return msg
-
-        def __repr__(self):
-
-            msg = self.test_innate()
-
-            for ability_name in 'qwer':
-                msg += '\n-----------------------------'
-
-                msg += self.test_dmg_values(ability_name)
-
-            return msg
-
-    print(TestTotalAttributes())
+    print('\nNo tests\n')

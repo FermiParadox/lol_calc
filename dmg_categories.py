@@ -1,39 +1,4 @@
-class InnateListValue(object):
-
-    def __init__(self, champion_lvls_dct):
-        self.champion_lvls_dct = champion_lvls_dct
-
-    def innate_value(self, list_of_values):
-        """
-        Returns the value of the player's innate, based on the current champion lvl.
-
-        >>>InnateListValue({'player':1},[4, 6, 8, 10, 12, 14]).innate_value()
-        """
-        lvl_partition_size = 18 // len(list_of_values)
-        return list_of_values[(self.champion_lvls_dct['player'] - 1) // lvl_partition_size]
-
-    def scaling_buff(self, list_of_values, scaling_dct, request_stat_function):
-
-        value = list_of_values * (self.champion_lvls_dct['player']-1)
-
-        for scaling_stat in scaling_dct:
-            value += scaling_dct[scaling_stat] * request_stat_function(stat_name=scaling_stat, tar_name='player')
-
-        return value
-
-
-    def __repr__(self):
-        return ('\nClass: %s\n'
-                'Innate list: %s \n'
-                'Champion lvl: %s \n'
-                'Innate value: %s\n'
-                '') % (self.__class__.__name__,
-                       [4, 6, 8, 10, 12, 14],
-                       self.champion_lvls_dct['player'],
-                       self.innate_value([4, 6, 8, 10, 12, 14]))
-
-
-class Categories(InnateListValue):
+class Categories(object):
 
     def __init__(self,
                  req_stats_func,
@@ -42,11 +7,34 @@ class Categories(InnateListValue):
                  champion_lvls_dct,
                  current_target_num):
 
+        self.champion_lvls_dct = champion_lvls_dct
+        self.player_lvl = self.champion_lvls_dct['player']
         self.req_stats_func = req_stats_func
         self.current_stats = current_stats
         self.current_target = current_target
         self.current_target_num = current_target_num
-        InnateListValue.__init__(self, champion_lvls_dct)
+
+    def innate_value(self, list_of_values):
+        """
+        Returns the value of the player's innate, based on the current champion lvl.
+        """
+        lvl_partition_size = 18 // len(list_of_values)
+        return list_of_values[(self.player_lvl - 1) // lvl_partition_size]
+
+    def scaling_stat_buff(self, list_of_values, scaling_dct, req_stat_function):
+        """
+        Calculates the value of a bonus to a stat from a buff.
+
+        Returns:
+            (float)
+        """
+
+        value = list_of_values * (self.player_lvl-1)
+
+        for scaling_stat in scaling_dct:
+            value += scaling_dct[scaling_stat] * req_stat_function(stat_name=scaling_stat, tar_name='player')
+
+        return value
 
     def standard_dmg(self, ability_dct, ability_lvl=1):
         """
@@ -71,7 +59,8 @@ class Categories(InnateListValue):
         for stat in ability_dct['scaling_stats']:
 
             if stat == 'target_max_hp':
-                total_dmg += self.req_stats_func(self.current_target, 'hp') * ability_dct['scaling_stats'][stat]
+                total_dmg += self.req_stats_func(target_name=self.current_target,
+                                                 stat_name='hp') * ability_dct['scaling_stats'][stat]
 
             elif stat == 'target_current_hp':
                 total_dmg += (self.current_stats[self.current_target]['current_hp'] *
@@ -79,14 +68,17 @@ class Categories(InnateListValue):
 
             elif stat == 'target_missing_hp':
                 total_dmg += (
-                    (self.req_stats_func(self.current_target, 'hp') - self.current_stats[self.current_target]['current_hp'])
+                    (self.req_stats_func(target_name=self.current_target,
+                                         stat_name='hp') - self.current_stats[self.current_target]['current_hp'])
                     * ability_dct['scaling_stats'][stat])
 
             elif stat == 'player_max_hp':
-                total_dmg += self.req_stats_func('player', 'hp') * ability_dct['scaling_stats'][stat]
+                total_dmg += self.req_stats_func(target_name='player',
+                                                 stat_name='hp') * ability_dct['scaling_stats'][stat]
 
             else:
-                total_dmg += self.req_stats_func('player', stat) * ability_dct['scaling_stats'][stat]
+                total_dmg += self.req_stats_func(target_name='player',
+                                                 stat_name=stat) * ability_dct['scaling_stats'][stat]
 
         return total_dmg
 
@@ -100,7 +92,8 @@ class Categories(InnateListValue):
         total_dmg = self.innate_value(ability_dct['base_dmg_tpl'])
 
         for stat in ability_dct['scaling_stats']:
-            total_dmg += self.req_stats_func('player', stat) * ability_dct['scaling_stats'][stat]
+            total_dmg += self.req_stats_func(target_name='player',
+                                             stat_name=stat) * ability_dct['scaling_stats'][stat]
 
         return total_dmg
 
@@ -145,16 +138,20 @@ class Categories(InnateListValue):
         -Modifiers can be applied as well (e.g. Runaan's Hurricane, Miss Fortune's Q etc).
         """
 
-        crit_chance = self.req_stats_func('player', 'crit_chance')
+        crit_chance = self.req_stats_func(target_name='player',
+                                          stat_name='crit_chance')
 
-        crit_mod_val = self.req_stats_func('player', 'crit_modifier')
+        crit_mod_val = self.req_stats_func(target_name='player',
+                                           stat_name='crit_modifier')
 
         if critable_bonus:
-            value = (crit_chance*crit_mod_val + 1 - crit_chance) * (self.req_stats_func('player', 'ad') +
-                                                                    critable_bonus)
+            value = (crit_chance*crit_mod_val + 1 - crit_chance) * (critable_bonus +
+                                                                    self.req_stats_func(target_name='player',
+                                                                                        stat_name='ad'))
 
         else:
-            value = (crit_chance*crit_mod_val + 1 - crit_chance) * self.req_stats_func('player', 'ad')
+            value = (crit_chance*crit_mod_val + 1 - crit_chance) * self.req_stats_func(target_name='player',
+                                                                                       stat_name='ad')
 
         if aa_reduction_mod:
             return value * aa_reduction_mod
