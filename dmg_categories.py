@@ -12,6 +12,16 @@ class InnateListValue(object):
         lvl_partition_size = 18 // len(list_of_values)
         return list_of_values[(self.champion_lvls_dct['player'] - 1) // lvl_partition_size]
 
+    def scaling_buff(self, list_of_values, scaling_dct, request_stat_function):
+
+        value = list_of_values * (self.champion_lvls_dct['player']-1)
+
+        for scaling_stat in scaling_dct:
+            value += scaling_dct[scaling_stat] * request_stat_function(stat_name=scaling_stat, tar_name='player')
+
+        return value
+
+
     def __repr__(self):
         return ('\nClass: %s\n'
                 'Innate list: %s \n'
@@ -26,13 +36,13 @@ class InnateListValue(object):
 class Categories(InnateListValue):
 
     def __init__(self,
-                 tot_stats,
+                 req_stats_func,
                  current_stats,
                  current_target,
                  champion_lvls_dct,
                  current_target_num):
 
-        self.tot_stats = tot_stats
+        self.req_stats_func = req_stats_func
         self.current_stats = current_stats
         self.current_target = current_target
         self.current_target_num = current_target_num
@@ -53,15 +63,15 @@ class Categories(InnateListValue):
         if 'base_dmg_tpl' in ability_dct:
             total_dmg = ability_dct['base_dmg_tpl'][ability_lvl-1]
 
-        # Otherwise 'base_dmg' is inside instead of 'base_dmg_tpl'.
+        # Otherwise 'fixed_base_dmg' is inside instead of 'base_dmg_tpl'.
         else:
-            total_dmg = ability_dct['base_dmg']
+            total_dmg = ability_dct['fixed_base_dmg']
 
         # Adds bonus dmg to base dmg.
         for stat in ability_dct['scaling_stats']:
 
             if stat == 'target_max_hp':
-                total_dmg += self.tot_stats(self.current_target, 'hp') * ability_dct['scaling_stats'][stat]
+                total_dmg += self.req_stats_func(self.current_target, 'hp') * ability_dct['scaling_stats'][stat]
 
             elif stat == 'target_current_hp':
                 total_dmg += (self.current_stats[self.current_target]['current_hp'] *
@@ -69,14 +79,14 @@ class Categories(InnateListValue):
 
             elif stat == 'target_missing_hp':
                 total_dmg += (
-                    (self.tot_stats(self.current_target, 'hp') - self.current_stats[self.current_target]['current_hp'])
+                    (self.req_stats_func(self.current_target, 'hp') - self.current_stats[self.current_target]['current_hp'])
                     * ability_dct['scaling_stats'][stat])
 
             elif stat == 'player_max_hp':
-                total_dmg += self.tot_stats('player', 'hp') * ability_dct['scaling_stats'][stat]
+                total_dmg += self.req_stats_func('player', 'hp') * ability_dct['scaling_stats'][stat]
 
             else:
-                total_dmg += self.tot_stats('player', stat) * ability_dct['scaling_stats'][stat]
+                total_dmg += self.req_stats_func('player', stat) * ability_dct['scaling_stats'][stat]
 
         return total_dmg
 
@@ -90,7 +100,7 @@ class Categories(InnateListValue):
         total_dmg = self.innate_value(ability_dct['base_dmg_tpl'])
 
         for stat in ability_dct['scaling_stats']:
-            total_dmg += self.tot_stats('player', stat) * ability_dct['scaling_stats'][stat]
+            total_dmg += self.req_stats_func('player', stat) * ability_dct['scaling_stats'][stat]
 
         return total_dmg
 
@@ -135,16 +145,16 @@ class Categories(InnateListValue):
         -Modifiers can be applied as well (e.g. Runaan's Hurricane, Miss Fortune's Q etc).
         """
 
-        crit_chance = self.tot_stats('player', 'crit_chance')
+        crit_chance = self.req_stats_func('player', 'crit_chance')
 
-        crit_mod_val = self.tot_stats('player', 'crit_modifier')
+        crit_mod_val = self.req_stats_func('player', 'crit_modifier')
 
         if critable_bonus:
-            value = (crit_chance*crit_mod_val + 1 - crit_chance) * (self.tot_stats('player', 'ad') +
+            value = (crit_chance*crit_mod_val + 1 - crit_chance) * (self.req_stats_func('player', 'ad') +
                                                                     critable_bonus)
 
         else:
-            value = (crit_chance*crit_mod_val + 1 - crit_chance) * self.tot_stats('player', 'ad')
+            value = (crit_chance*crit_mod_val + 1 - crit_chance) * self.req_stats_func('player', 'ad')
 
         if aa_reduction_mod:
             return value * aa_reduction_mod

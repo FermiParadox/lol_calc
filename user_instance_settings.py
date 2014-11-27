@@ -41,7 +41,7 @@ class UserSession(object):
 
                 player_champ_module.TotalChampionAttributes.__init__(self,
                                                                      ability_lvls_dct=ability_lvls_dct,
-                                                                     tot_stats=self.request_stat,
+                                                                     req_stats_func=self.request_stat,
                                                                      act_buffs=self.active_buffs,
                                                                      current_stats=self.current_stats,
                                                                      current_target=self.current_target,

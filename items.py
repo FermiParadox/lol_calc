@@ -6,7 +6,7 @@ import copy
 class ItemsBase(dmg_categories.Categories):
 
     def __init__(self,
-                 tot_stats,
+                 req_stats_func,
                  act_buffs,
                  current_stats,
                  current_target,
@@ -16,7 +16,7 @@ class ItemsBase(dmg_categories.Categories):
         self.active_buffs = act_buffs
 
         dmg_categories.Categories.__init__(self,
-                                           tot_stats=tot_stats,
+                                           req_stats_func=req_stats_func,
                                            current_stats=current_stats,
                                            current_target=current_target,
                                            champion_lvls_dct=champion_lvls_dct,
@@ -37,7 +37,7 @@ class Gunblade(ItemsBase):
             spellvamp=20/100,),
         active=dict(
             dmg_type='magic',
-            base_dmg=150,
+            fixed_base_dmg=150,
             scaling_stats=dict(
                 ap=40/100
             ),

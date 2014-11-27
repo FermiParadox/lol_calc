@@ -23,7 +23,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
 
         items.AllItems.__init__(self,
                                 items_lst=items_lst,
-                                kwargs=dict(tot_stats=self.request_stat,
+                                kwargs=dict(req_stats_func=self.request_stat,
                                             act_buffs=self.active_buffs,
                                             current_stats=self.current_stats,
                                             current_target=self.current_target,
@@ -1124,7 +1124,7 @@ if __name__ == '__main__':
 
                     jax.TotalChampionAttributes.__init__(self,
                                                          ability_lvls_dct=ability_lvls_dct,
-                                                         tot_stats=self.request_stat,
+                                                         req_stats_func=self.request_stat,
                                                          act_buffs=self.active_buffs,
                                                          current_stats=self.current_stats,
                                                          current_target=current_target,

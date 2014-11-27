@@ -9,7 +9,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
 
     def __init__(self,
                  ability_lvls_dct,
-                 tot_stats,
+                 req_stats_func,
                  act_buffs,
                  current_stats,
                  current_target,
@@ -22,7 +22,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         self.ability_lvls_dct = ability_lvls_dct
 
         dmg_categories.Categories.__init__(self,
-                                           tot_stats=tot_stats,
+                                           req_stats_func=req_stats_func,
                                            current_stats=current_stats,
                                            current_target=current_target,
                                            champion_lvls_dct=champion_lvls_dct,
@@ -263,7 +263,16 @@ class TotalChampionAttributes(dmg_categories.Categories):
             cast_time=0.),
         counter_buff=dict(
             duration=2.5,
-            hits_to_trigger=3))
+            hits_to_trigger=3),
+        armor_buff=dict(
+            duration=8,
+            base_stat_tpl=(25, 35, 45),
+            armor_scaling_stats=dict(
+                ad=0.3,),
+            base_mr_tpl=(25, 35, 45),
+            mr_scaling_stats=dict(
+                ap=0.2)
+        ))
 
     def r_dmg_value(self):
         return self.standard_dmg(ability_dct=self.R_STATS['general'],
@@ -280,8 +289,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
     R_COUNTER_BUFF = dict(
         duration=R_STATS['counter_buff']['duration'],
         target='player',
-        max_stacks=2
-    )
+        max_stacks=2)
 
     def r_counter_buff(self):
         return self.R_COUNTER_BUFF
@@ -310,10 +318,31 @@ class TotalChampionAttributes(dmg_categories.Categories):
 
         return dct
 
+    # TODO make method for similar abilities.
+    def r_armor_value(self):
+        value = self.R_STATS['armor_buff']['armor']['base_armor_tpl'][self.ability_lvls_dct['r']-1]
+        value += self.R_STATS['armor_buff']['armor']['armor_scaling_stats']
+        return value
+
+    def r_armor_buff(self):
+        dct = dict(
+            duration=self.R_STATS['armor_buff']['duration'],
+            target='player',
+            stats=dict(
+                armor=dict(
+                    additive=self.scaling_buff(list_of_values=self.R_STATS['armor_buff']['base_stat_tpl'],
+                                               request_stat_function=self.request_stat_function)
+                )
+            ))
+
+        return dct
+
     R_EFFECTS = dict(
         player=dict(
             # buffs and effects activated at skill lvl up
-            passives=dict(buffs=['r_dmg_initiator']))
+            passives=dict(buffs=['r_dmg_initiator', ]),
+            #actives=dict(buffs=['r_armor_buff', 'r_mr_buff', ])
+        )
     )
 
     def r_effects(self):
@@ -335,9 +364,9 @@ if __name__ == '__main__':
 
         MSG_START = '\n\n-----------------------------'
 
-        def tot_stats(self, target_name, stat_name):
+        def req_stats_func(self, target_name, stat_name):
 
-            return self.tot_stats_dct[target_name][stat_name]
+            return self.req_stats_func_dct[target_name][stat_name]
 
         def set_up(self):
 
@@ -347,7 +376,7 @@ if __name__ == '__main__':
                 e=2,
                 r=3)
 
-            self.tot_stats_dct = dict(
+            self.req_stats_func_dct = dict(
                 player=dict(
                     ap=100,
                     ad=200,
@@ -382,7 +411,7 @@ if __name__ == '__main__':
 
             self.init_tot_attr = dict(
                 ability_lvls_dct=self.ability_lvls_dct,
-                tot_stats=self.tot_stats,
+                req_stats_func=self.req_stats_func,
                 act_buffs=self.act_buffs,
                 current_stats=self.current_stats,
                 current_target=self.current_target,
@@ -420,8 +449,8 @@ if __name__ == '__main__':
             stat_dct = getattr(TotalChampionAttributes, ability_name.upper() + '_STATS')
 
             msg += '\nbase dmg tuple: ' + str(stat_dct['general']['base_dmg_tpl'])
-            for stat_name in self.tot_stats_dct['player']:
-                msg += '\n%s: %s' % (stat_name, self.tot_stats('player', stat_name=stat_name))
+            for stat_name in self.req_stats_func_dct['player']:
+                msg += '\n%s: %s' % (stat_name, self.req_stats_func('player', stat_name=stat_name))
 
             # Checks all lvls
             if ability_name != 'r':
