@@ -32,23 +32,19 @@ class TotalChampionAttributes(dmg_categories.Categories):
 
     def innate_att_speed_buff(self):
         return dict(
-            displayed_name='Relentless Assault',
-
             max_stacks=6,
             stats=dict(
                 att_speed=dict(
                     percent=self.innate_value(self.INNATE_ATT_SPEED_TPL))),
             duration=2.5,
-            target='player'
-        )
+            target='player',)
 
     INNATE_INITIATOR_BUFF = dict(
         on_hit=dict(apply_buff=['innate_att_speed_buff'],
                     cause_dmg=[],
                     remove_buff=[]),
         target='player',
-        duration='permanent',
-    )
+        duration='permanent',)
 
     def innate_initiator_buff(self):
         """
@@ -67,8 +63,6 @@ class TotalChampionAttributes(dmg_categories.Categories):
 
     Q_STATS = dict(
         general=dict(
-            displayed_name='Leap Strike',
-
             range=700,
 
             base_cd_tpl=(10, 9, 8, 7, 6),
@@ -119,8 +113,6 @@ class TotalChampionAttributes(dmg_categories.Categories):
     # W ------------------------------------------------------------------------------------------------------------
     W_STATS = dict(
         general=dict(
-            displayed_name='Empower',
-
             base_cd_tpl=(7, 6, 5, 4, 3),
 
             resource_used='mp',
@@ -177,8 +169,6 @@ class TotalChampionAttributes(dmg_categories.Categories):
     # E --------------------------------------------------------------------------------
     E_STATS = dict(
         general=dict(
-            displayed_name='Counter Strike',
-
             range=0,
             radius=187.5,
 
@@ -230,7 +220,6 @@ class TotalChampionAttributes(dmg_categories.Categories):
     E_STUN_ENEMY = dict(
         stun=None,
         duration=E_STATS['stun']['duration'],
-        displayed_name=E_STATS['general']['displayed_name'],
         target='enemy',
         delay=E_STATS['general']['delay'],)
 
@@ -249,8 +238,6 @@ class TotalChampionAttributes(dmg_categories.Categories):
     # R -------------------------------------------------------------------------------
     R_STATS = dict(
         general=dict(
-            displayed_name="Grandmaster's Might",
-
             fixed_base_cd=80,
             resource_used='mp',
             fixed_cost=100,
@@ -305,8 +292,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
                         cause_dmg=[],
                         remove_buff=[]),
             target='player',
-            duration='permanent',
-        )
+            duration='permanent',)
 
         #... otherwise it causes the dmg and resets the counter.
         if 'r_counter_buff' in self.act_buffs['player']:
@@ -331,7 +317,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
             stats=dict(
                 armor=dict(
                     additive=self.scaling_stat_buff(list_of_values=self.R_STATS['armor_buff']['base_stat_tpl'],
-                                                    req_stat_function=self.req_stats_func)
+                                                    req_stat_function=self.req_stats_func,
+                                                    scaling_dct=self.R_STATS['armor_buff']['armor_scaling_stats'])
                 )
             ))
 
