@@ -1,8 +1,22 @@
-GAREN_ABILITIES = {
+ABILITIES = {
    "id": 86,
    "title": "The Might of Demacia",
    "name": "Garen",
    "spells": [
+      {
+      "sanitizedDescription": "If Garen has not been struck by damage or enemy abilities for the last 10 seconds, Garen regenerates 0.4% of his maximum Health each second. Minion damage does not stop Perseverance.",
+      "description": "If Garen has not been struck by damage or enemy abilities for the last 10 seconds, Garen regenerates 0.4% of his maximum Health each second. Minion damage does not stop Perseverance. ",
+      "name": "Perseverance",
+      "image": {
+         "w": 48,
+         "full": "Garen_Passive.png",
+         "sprite": "passive0.png",
+         "group": "passive",
+         "h": 48,
+         "y": 96,
+         "x": 288
+      }
+      },
       {
          "range": "self",
          "leveltip": {

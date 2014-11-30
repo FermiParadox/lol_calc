@@ -1,4 +1,4 @@
-NIDALEE_ABILITIES = {
+ABILITIES = {
    "id": 76,
    "title": "the Bestial Huntress",
    "name": "Nidalee",
