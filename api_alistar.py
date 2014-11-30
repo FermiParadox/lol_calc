@@ -1,4 +1,4 @@
-ALISTAR_ABILITIES = {
+ABILITIES = {
    "id": 12,
    "title": "the Minotaur",
    "name": "Alistar",

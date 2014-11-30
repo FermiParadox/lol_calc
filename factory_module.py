@@ -1,3 +1,5 @@
+### Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
+
 """
 Module used for setting attributes for a champion's abilities.
 There is always one 'general' keyword in _STATS, and 0 or more secondary effects.
@@ -41,7 +43,24 @@ class ApiElementDetector(object):
 
     def __init__(self,
                  champ_name):
+        
         self.champ_name = champ_name
+        
+        self.suggested_tags = {}
+        self.set_suggested_tags()
+
+        self.attr_types = {}
+        self.set_attr_type()
+    
+    def set_suggested_tags(self):
+        
+        for ability_name in self.ABILITY_ORDER_IN_STORE:
+            self.suggested_tags.update({ability_name: []})
+    
+    def set_attr_type(self):
+
+        for ability_name in self.ABILITY_ORDER_IN_STORE:
+            self.suggested_tags.update({ability_name: []})
 
     def abilities_dct(self):
         """
@@ -73,27 +92,32 @@ class ApiElementDetector(object):
         return dct['spells']
 
     def ability_dct(self, ability_name):
+        """
+        Returns a dict from API for given ability.
+
+        There are 4 dicts in API data (one for each ability) and 1 stored manually for innate.
+
+        Returns:
+            (dict)
+        """
         ability_num = self.ABILITY_ORDER_IN_STORE.index(ability_name)
 
         return self.abilities_dct()[ability_num]
 
-    def inn(self):
-        return self.ability_dct(ability_name='inn')
+    def create_attr_tags(self):
 
-    def q(self):
-        return self.ability_dct(ability_name='q')
+        for ability_name in self.ABILITY_ORDER_IN_STORE:
 
-    def w(self):
-        return self.ability_dct(ability_name='w')
+            tags = []
+            if 'dealing' in self.ability_dct(ability_name):
 
-    def e(self):
-        return self.ability_dct(ability_name='e')
-
-    def r(self):
-        return self.ability_dct(ability_name='r')
+                tags.append('scaling')
 
 
-class ChampionAttributeSetter(object):
+
+    
+    
+class ChampionAttributeSetter(ApiElementDetector):
 
     pass
 
@@ -105,4 +129,4 @@ class ChampionModuleCreator(ChampionAttributeSetter):
 if __name__ == '__main__':
 
     garen = ApiElementDetector('garen')
-    print(garen.q())
+    print(garen.ability_dct('q').keys())

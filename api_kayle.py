@@ -1,4 +1,4 @@
-KAYLE_ABILITIES = {
+ABILITIES = {
    "id": 10,
    "title": "The Judicator",
    "name": "Kayle",

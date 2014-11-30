@@ -1524,11 +1524,11 @@ if __name__ == '__main__':
         import pstats
         results_run = pstats.Stats('cprof_results').sort_stats('cumtime')
         results_run.strip_dirs().sort_stats('cumtime').print_stats(5)
-        #print(results_run.strip_dirs().sort_stats('cumtime').stats)
+        # print(results_run.strip_dirs().sort_stats('cumtime').stats)
 
 
-#rot1, itemLst2
-#dps: 331.07415420245394 (after changing dps method)
-#dps: 338.4234113818222 (unexpected change, after changing bonus_ad method to get stats by 'evaluate' instead of direct)
-#dps: 406.06856388086914 (rotation and targets changed)
-#dps: 414.08610981856975 (rotation and targets changed)
+# rot1, itemLst2
+# dps: 331.07415420245394 (after changing dps method)
+# dps: 338.4234113818222 (unexpected change, after changing bonus_ad method to get stats by 'evaluate' instead of direct)
+# dps: 406.06856388086914 (rotation and targets changed)
+# dps: 414.08610981856975 (rotation and targets changed)
