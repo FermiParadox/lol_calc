@@ -45,15 +45,13 @@ class ChampionsStats(object):
 
                 # buffs and effects activated at skill lvl up
                 passives=dict(buffs=[],
-                              remove_buff=[],
-                              on_hit=[])),
+                              remove_buff=[])),
 
             player=dict(
 
                 # buffs and effects activated at skill lvl up
                 passives=dict(buffs=[],
-                              remove_buff=[],
-                              on_hit=[]))
+                              remove_buff=[]))
         )
 
     @staticmethod

@@ -62,7 +62,7 @@ ABILITIES = {
          "rangeBurn": "365",
          "costType": "Mana",
          "effect": [
-            null,
+            'null',
             [
                70,
                85,
@@ -145,7 +145,7 @@ ABILITIES = {
          "rangeBurn": "650",
          "costType": "Mana",
          "effect": [
-            null,
+            'null',
             [
                80,
                90,
@@ -226,7 +226,7 @@ ABILITIES = {
          "rangeBurn": "575",
          "costType": "Mana",
          "effect": [
-            null,
+            'null',
             [
                2,
                2,
@@ -294,7 +294,7 @@ ABILITIES = {
          "rangeBurn": "self",
          "costType": "Mana",
          "effect": [
-            null,
+            'null',
             [
                7,
                7,

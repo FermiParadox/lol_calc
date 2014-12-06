@@ -1,4 +1,4 @@
-### Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
+# Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
 """
 Module used for setting attributes for a champion's abilities.
@@ -60,7 +60,7 @@ class ApiElementDetector(object):
     def set_attr_type(self):
 
         for ability_name in self.ABILITY_ORDER_IN_STORE:
-            self.suggested_tags.update({ability_name: []})
+            self.attr_types.update({ability_name: ['general', ]})
 
     def abilities_dct(self):
         """

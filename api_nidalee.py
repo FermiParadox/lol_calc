@@ -82,7 +82,7 @@ ABILITIES = {
          "rangeBurn": "1500",
          "costType": "Mana",
          "effect": [
-            'null',
+            "null",
             [
                50,
                75,
@@ -111,7 +111,7 @@ ABILITIES = {
                6,
                6
             ],
-            'null',
+            "null",
             [
                1.2,
                1.2,
@@ -204,7 +204,7 @@ ABILITIES = {
          "rangeBurn": "900",
          "costType": "Mana",
          "effect": [
-            'null',
+            "null",
             [
                40,
                45,
@@ -341,7 +341,7 @@ ABILITIES = {
          "rangeBurn": "600",
          "costType": "Mana",
          "effect": [
-            'null',
+            "null",
             [
                45,
                85,
@@ -349,7 +349,7 @@ ABILITIES = {
                165,
                205
             ],
-            'null',
+            "null",
             [
                60,
                75,
@@ -444,7 +444,7 @@ ABILITIES = {
          "rangeBurn": "self",
          "costType": "NoCost",
          "effect": [
-            'null',
+            "null",
             [
                70,
                130,
@@ -572,7 +572,7 @@ ABILITIES = {
          "rangeBurn": "self",
          "costType": "NoCost",
          "effect": [
-            'null',
+            "null",
             [
                50,
                75,
@@ -601,7 +601,7 @@ ABILITIES = {
                6,
                6
             ],
-            'null',
+            "null",
             [
                0.9,
                0.9,
@@ -685,7 +685,7 @@ ABILITIES = {
          "rangeBurn": "350",
          "costType": "NoCost",
          "effect": [
-            'null',
+            "null",
             [
                40,
                45,
@@ -813,7 +813,7 @@ ABILITIES = {
          "rangeBurn": "350",
          "costType": "NoCost",
          "effect": [
-            'null',
+            "null",
             [
                55,
                95,
@@ -821,7 +821,7 @@ ABILITIES = {
                175,
                215
             ],
-            'null',
+            "null",
             [
                60,
                75,
