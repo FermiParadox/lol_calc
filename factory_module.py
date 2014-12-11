@@ -22,11 +22,11 @@ garen.q().gen_attr('reset_aa', 'no_cost')
 """
 
 # (each ability contains 'general' attribute in its _STATS)
-MANDATORY_ATTR_GENERAL = ('cast_time', 'delay', 'range', 'effect_names',)
-OPTIONAL_ATTR_GENERAL = ('no_cost', 'resets_aa', 'channel_time')
+MANDATORY_ATTR_GENERAL = ('cast_time', 'range', 'effect_names',)
+OPTIONAL_ATTR_GENERAL = ('no_cost', 'change_ability_cd', 'channel_time')
 
 # Independent of effect type
-MANDATORY_ATTR_EFFECT = ('target_name',)
+MANDATORY_ATTR_EFFECT = ('target_type',)
 OPTIONAL_ATTR_EFFECT = ('radius', 'aoe', 'max_targets', )
 # Dmg effect tags
 MANDATORY_ATTR_DMG = ('dmg_category', )

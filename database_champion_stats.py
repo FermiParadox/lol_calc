@@ -1,7 +1,7 @@
 CHAMPION_BASE_STATS = dict(
     jax=dict(
 
-        stat_dependencies =dict(
+        stat_dependencies=dict(
             player=dict(
                 armor=['ad', ], mr=['ap'])),
 

@@ -629,7 +629,7 @@ class StatRequest(StatCalculation):
             # ..for each controller..
             for controller in self.stat_dependencies[target_name][stat_name]:
 
-                #.. requests its value (that is, refreshes its value or fetches the stored value).
+                # .. requests its value (that is, refreshes its value or fetches the stored value).
                 # Recursive calls force controllers to refresh if needed.
                 # (controllers' buffs to bonuses are refreshed first)
                 self.request_stat(target_name=target_name, stat_name=controller, return_value=False)

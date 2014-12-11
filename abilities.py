@@ -456,7 +456,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
             casted_earlier = None
 
-            #...checks all actions inside dict from last to first.
+            # ..checks all actions inside dict from last to first.
             for action_time in sorted(self.actions_dct, reverse=True):
 
                 name = end_name(action_dct=self.actions_dct[action_time])
@@ -464,7 +464,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                 # If the examined action has been casted earlier...
                 if action_name == self.actions_dct[action_time]['action_name']:
 
-                    #..compare which ends last;
+                    # ..compare which ends last;
                     # the examined action's cd or or the last action's cast end.
                     cast_start = max(
                         self.actions_dct[action_time]['cd_end'],
@@ -738,7 +738,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
         # AA
         if action_name == 'AA':
-            #..applies AA physical dmg, and applies (or removes) on_hit buffs and dmg.
+            # ..applies AA physical dmg, and applies (or removes) on_hit buffs and dmg.
             self.apply_aa_effects(current_time=self.current_time)
 
         # ABILITY
@@ -1224,14 +1224,10 @@ class VisualRepresentation(Actions):
 
     def subplot_preset_and_results_table(self, subplot_name):
 
-        table_lst = []
-
         # Rotation
-        table_lst.append(('ROTATION',))
-        table_lst.append((self.rotation_lst,))
+        table_lst = [('ROTATION',), (self.rotation_lst,), ('DPS',)]
 
         # Dps
-        table_lst.append(('DPS',))
         dps_value = self.combat_results['player']['dps']
         dps_value = round(dps_value, 1)
         table_lst.append((dps_value,))

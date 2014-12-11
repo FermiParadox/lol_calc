@@ -80,6 +80,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
             cast_time=0.5)   # TODO: Find actual value. Consider using a higher one to include jump time.
     )
 
+    # TODO: Make all _dmg_value methods use standard_dmg (etc.) with single param (e.g. ability_dct=self.Q_STATS)
+    # TODO: and detect the dict in Q_STATS by name (that is, same name as dmg or buff).
     def q_dmg_value(self):
         return self.standard_dmg(ability_dct=self.Q_STATS['general'],
                                  ability_lvl=self.ability_lvls_dct['q'])
@@ -286,7 +288,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         Returns dictionary containing Jax's R counter.
         """
 
-        # If Jax has done less than 3 hits, increases his hit counter by one on hits, ...
+        # If Jax has done less than 3 hits, increases his hit counter by one on hits, ..
         dct = dict(
             on_hit=dict(apply_buff=['r_counter_buff'],
                         cause_dmg=[],
@@ -294,7 +296,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
             target='player',
             duration='permanent',)
 
-        #... otherwise it causes the dmg and resets the counter.
+        # .. otherwise it causes the dmg and resets the counter.
         if 'r_counter_buff' in self.act_buffs['player']:
             if self.act_buffs['player']['r_counter_buff']['current_stacks'] == 2:
                 dct['on_hit'] = dict(
