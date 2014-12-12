@@ -33,7 +33,7 @@ MANDATORY_ATTR_DMG = ('dmg_category', )
 OPTIONAL_ATTR_DMG = ('not_scaling', 'scaling', 'lifesteal', 'spellvamp', 'dmg_source', 'dot')
 # Buff effect tags
 MANDATORY_ATTR_BUFF = ('duration', )
-OPTIONAL_ATTR_BUFF = ('affects_stat', 'is_trigger', 'delay_cd_start' 'on_hit')
+OPTIONAL_ATTR_BUFF = ('affects_stat', 'is_trigger', 'delay_cd_start', 'on_hit')
 
 
 class ApiElementDetector(object):

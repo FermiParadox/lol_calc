@@ -25,7 +25,7 @@ CHAMPION_BASE_STATS = dict(
         ad_per_lvl=3.375,
 
         base_att_speed=0.638,
-        att_speed_per_lvl=3.4/100.,
+        att_speed_per_lvl=3.4,
 
         armor=22,
         armor_per_lvl=3.,

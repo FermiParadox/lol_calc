@@ -307,9 +307,8 @@ class StatCalculation(StatFilters):
 
         # _PER_LVL
         # Adds _per_lvl bonus of att_speed to the modifier.
-        multiplication_mod = (
-            1 + self.base_stats_dct()[tar_name]['att_speed_per_lvl'] * (self.champion_lvls_dct[tar_name] - 1)
-        )
+        multiplication_mod = 100
+        multiplication_mod += self.base_stats_dct()[tar_name]['att_speed_per_lvl'] * (self.champion_lvls_dct[tar_name]-1)
 
         # ITEM AND BUFF BONUSES
         # Adds item and buff bonuses of att_speed to the modifier.
@@ -318,7 +317,7 @@ class StatCalculation(StatFilters):
             for bonus_name in tar_bonuses['att_speed']['percent']:
                 multiplication_mod += tar_bonuses['att_speed']['percent'][bonus_name]
 
-        value *= multiplication_mod
+        value *= multiplication_mod / 100
 
         # REDUCTIONS
         if 'att_speed_reduction' in tar_bonuses:

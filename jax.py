@@ -28,7 +28,16 @@ class TotalChampionAttributes(dmg_categories.Categories):
                                            champion_lvls_dct=champion_lvls_dct,
                                            current_target_num=current_target_num)
 
-    INNATE_ATT_SPEED_TPL = (4./100, 6./100, 8./100, 10./100, 12./100, 14./100)
+    INNATE_ATT_SPEED_TPL = (4., 6., 8., 10., 12., 14.)
+
+    INN_STATS = dict(
+        inn_att_speed_buff=dict(
+            max_stacks=6,
+            affected_stat=dict(
+                att_speed=dict(
+                    percent=(4., 6., 8., 10., 12., 14.))),
+            duration=2.5,
+            target='player', ))
 
     def innate_att_speed_buff(self):
         return dict(
@@ -330,7 +339,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         player=dict(
             # buffs and effects activated at skill lvl up
             passives=dict(buffs=['r_dmg_initiator', ]),
-            #actives=dict(buffs=['r_armor_buff', 'r_mr_buff', ])
+            # actives=dict(buffs=['r_armor_buff', 'r_mr_buff', ])
         )
     )
 
