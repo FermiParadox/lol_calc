@@ -1,3 +1,5 @@
+import copy
+
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
 """
@@ -21,9 +23,6 @@ garen.q().gen_attr('reset_aa', 'no_cost')
 
 """
 
-# (each ability contains 'general' attribute in its _STATS)
-MANDATORY_ATTR_GENERAL = ('cast_time', 'range', 'effect_names',)
-OPTIONAL_ATTR_GENERAL = ('no_cost', 'change_ability_cd', 'channel_time')
 
 # Independent of effect type
 MANDATORY_ATTR_EFFECT = ('target_type',)
@@ -113,9 +112,6 @@ class ApiElementDetector(object):
 
                 tags.append('scaling')
 
-
-
-    
     
 class ChampionAttributeSetter(ApiElementDetector):
 
@@ -125,6 +121,71 @@ class ChampionAttributeSetter(ApiElementDetector):
 class ChampionModuleCreator(ChampionAttributeSetter):
 
     pass
+
+
+class AbilityAttributes(object):
+
+    GENERAL_ATTRIBUTES = dict(
+        cast_time='placeholder',
+        range='placeholder',
+        dmg_effect_names=['placeholder', ],
+        buff_effect_names=['placeholder', ],
+        cost=dict(
+            type_1_placeholder='value_tpl_1_placeholder',
+            ),
+        move_while_casting='placeholder',
+        dashed_distance='placeholder',
+        channel_time='placeholder',
+        reset_aa='placeholder',
+        reduce_ability_cd=dict(
+            name_placeholder='duration_placeholder'
+        )
+    )
+
+    # (each ability can contain 0 or more 'dmg' attributes in its _STATS)
+    DMG_ATTRIBUTES = dict(
+        target_type='placeholder',
+        dmg_category='placeholder',
+        dmg_type='placeholder',
+        values='placeholder',
+        dmg_source='placeholder',
+        # (e.g. None, 'normal': {stat1: coef1,}, 'by_ability_lvl': {stat1: (coef_lvl1,),})
+        bonus_by_stats='placeholder',
+        # (e.g. None, lifesteal, spellvamp)
+        life_conversion_type='placeholder',
+        radius='placeholder',
+        dot='placeholder',
+        max_targets='placeholder',
+        aoe='placeholder',
+    )
+
+    # (each ability can contain 0 or more 'buff' attributes in its _STATS)
+    BUFF_ATTRIBUTES = dict(
+        target_type='placeholder',
+        duration='placeholder',
+        max_stacks='placeholder',
+        affected_stat=dict(
+            names=dict(
+                stat_1=dict(
+                    percent='placeholder',
+                    additive='placeholder',),),
+            affected_by=dict(
+                stat_1='placeholder',)
+        ),
+        on_hit=dict(
+            apply_buff=['placeholder', ],
+            add_dmg=['placeholder', ],
+            remove_buff=['placeholder', ]
+        ),
+        prohibit_cd_start='placeholder',
+    )
+    
+    def __init__(self):
+        # (each ability must contain 'general' attribute in its _STATS)
+        self.x_STATS = dict(
+            general=copy.deepcopy(self.GENERAL_ATTRIBUTES),
+            )
+
 
 if __name__ == '__main__':
 
