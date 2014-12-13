@@ -296,17 +296,17 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         if action_name in 'qwer':
             # NORMAL COST
             ability_stats_dct = self.request_ability_stats(ability_name=action_name)
-            resource_used = ability_stats_dct['general']['resource_used']
+            resource_cost_type = ability_stats_dct['general']['resource_cost_type']
 
             # Check if ability has a fixed cost,
             # or one that scales per ability_lvl,
             # or no resource cost (none of the if's are true).
             if 'fixed_cost' in ability_stats_dct['general']:
                 resource_cost = ability_stats_dct['general']['fixed_cost']
-                cost_dct = {resource_used: resource_cost}
+                cost_dct = {resource_cost_type: resource_cost}
             elif 'cost_tpl' in ability_stats_dct['general']:
                 resource_cost = ability_stats_dct['general']['cost_tpl'][self.ability_lvls_dct[action_name]-1]
-                cost_dct = {resource_used: resource_cost}
+                cost_dct = {resource_cost_type: resource_cost}
 
             # STACK COST
             # (e.g. Akali R stacks)

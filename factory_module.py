@@ -35,7 +35,7 @@ MANDATORY_ATTR_BUFF = ('duration', )
 OPTIONAL_ATTR_BUFF = ('affects_stat', 'is_trigger', 'delay_cd_start', 'on_hit')
 
 
-class ApiElementDetector(object):
+class _ObsoleteClass(object):
 
     EXPECTED_PUBLIC_OBJECTS = 1
     ABILITY_ORDER_IN_STORE = ('inn', 'q', 'w', 'e', 'r')
@@ -113,7 +113,7 @@ class ApiElementDetector(object):
                 tags.append('scaling')
 
     
-class ChampionAttributeSetter(ApiElementDetector):
+class ChampionAttributeSetter(_ObsoleteClass):
 
     pass
 
@@ -128,6 +128,7 @@ class AbilityAttributes(object):
     GENERAL_ATTRIBUTES = dict(
         cast_time='placeholder',
         range='placeholder',
+        travel_time='placeholder',
         dmg_effect_names=['placeholder', ],
         buff_effect_names=['placeholder', ],
         cost=dict(
@@ -187,7 +188,27 @@ class AbilityAttributes(object):
             )
 
 
+class AttrDetector(AbilityAttributes):
+
+    NO_COST_NAME_IN_API = 'No Cost'
+    MANA_COST_NAME_IN_API = 'Mana'
+
+    def ability_cost(self, api_ability_dct):
+        """
+        Detects cost type and returns its name.
+
+        Returns:
+            (str)
+            None
+        """
+
+        if self.NO_COST_NAME_IN_API in api_ability_dct['resource']:
+            return None
+        elif self.MANA_COST_NAME_IN_API in api_ability_dct['resource']:
+            return 'mp'
+
+
 if __name__ == '__main__':
 
-    garen = ApiElementDetector('garen')
+    garen = _ObsoleteClass('garen')
     print(garen.ability_dct('q').keys())

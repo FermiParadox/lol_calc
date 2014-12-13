@@ -76,7 +76,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
 
             base_cd_tpl=(10, 9, 8, 7, 6),
 
-            resource_used='mp',
+            resource_cost_type='mp',
             fixed_cost=65,
 
             base_dmg_tpl=(70, 110, 150, 190, 230),
@@ -126,7 +126,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         general=dict(
             base_cd_tpl=(7, 6, 5, 4, 3),
 
-            resource_used='mp',
+            resource_cost_type='mp',
             fixed_cost=30,
 
             base_dmg_tpl=(40, 75, 110, 145, 180),
@@ -185,7 +185,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
 
             base_cd_tpl=(18, 16, 14, 12, 10),
 
-            resource_used='mp',
+            resource_cost_type='mp',
             cost_tpl=(70, 75, 80, 85, 90),
 
             base_dmg_tpl=(50, 75, 100, 125, 150),
@@ -250,7 +250,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
     R_STATS = dict(
         general=dict(
             fixed_base_cd=80,
-            resource_used='mp',
+            resource_cost_type='mp',
             fixed_cost=100,
 
             base_dmg_tpl=(100, 160, 220),
