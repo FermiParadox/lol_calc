@@ -1,5 +1,4 @@
 import re
-import copy
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -113,16 +112,6 @@ class _ObsoleteClass(object):
 
                 tags.append('scaling')
 
-    
-class ChampionAttributeSetter(_ObsoleteClass):
-
-    pass
-
-
-class ChampionModuleCreator(ChampionAttributeSetter):
-
-    pass
-
 
 # ===============================================================
 def check_all_same(lst):
@@ -146,27 +135,29 @@ def check_all_same(lst):
 
 class GeneralAbilityAttributes(object):
 
+    @staticmethod
+    def general_attributes():
+        return dict(
+            cast_time='placeholder',
+            range='placeholder',
+            travel_time='placeholder',
+            dmg_effect_names=['placeholder', ],
+            buff_effect_names=['placeholder', ],
+            cost=dict(
+                type_1_placeholder='value_tpl_1_placeholder',
+                ),
+            move_while_casting='placeholder',
+            dashed_distance='placeholder',
+            channel_time='placeholder',
+            reset_aa='placeholder',
+            reduce_ability_cd=dict(
+                name_placeholder='duration_placeholder'
+            )
+        )
+
     def __init__(self, api_ability_dct):
         self.api_ability_dct = api_ability_dct
-        self.general_attr_dct = copy.deepcopy(self.GENERAL_ATTRIBUTES)
-
-    GENERAL_ATTRIBUTES = dict(
-        cast_time='placeholder',
-        range='placeholder',
-        travel_time='placeholder',
-        dmg_effect_names=['placeholder', ],
-        buff_effect_names=['placeholder', ],
-        cost=dict(
-            type_1_placeholder='value_tpl_1_placeholder',
-            ),
-        move_while_casting='placeholder',
-        dashed_distance='placeholder',
-        channel_time='placeholder',
-        reset_aa='placeholder',
-        reduce_ability_cd=dict(
-            name_placeholder='duration_placeholder'
-        )
-    )
+        self.general_attr_dct = self.general_attributes()
 
     AUTOMATICALLY_FILLED_GEN_ATTR = ('range', 'cost', )
 
@@ -238,36 +229,52 @@ class GeneralAbilityAttributes(object):
         # HEALTH VALUES
         if 'Health' in self.api_ability_dct['resource']:
             e_num = re.findall(r'e\d', self.api_ability_dct['resource'])[0]
-            effect_number = e_num[:][-1]
+            effect_number = int(e_num[:][-1])
 
-            return tuple(self.api_ability_dct['effects'][effect_number])
+            return tuple(self.api_ability_dct['effect'][effect_number])
 
         else:
-            return tuple(self.api_ability_dct['effects']['cost'])
+            return tuple(self.api_ability_dct['effect']['cost'])
 
-    def ability_range(self):
+    def insert_resource(self):
         """
-        Checks if an ability has a fixed range.
+        Inserts resource cost type and values in general attr dict.
+
+        Does NOT insert secondary resources used (e.g. teemo R stack cost).
 
         Returns:
-            (int) fixed range
-            (tpl) range tuple
+            None
         """
+
+        self.general_attr_dct['cost'].update({self.resource_cost_type(): self.resource_cost_values()})
+
+    def insert_range(self):
+        """
+        Detects and inserts an ability's range after naming it appropriately,
+        based on whether it's fixed or scales per lvl.
+
+        Returns:
+            None
+        """
+
+        # Clears range and uses a different name.
+        del self.general_attr_dct['range']
 
         range_val = self.api_ability_dct['range']
 
+        # (if 'range' is 'self)
         if type(range_val) is str:
-            return 0
+            range_val = 0
+            range_category = 'fixed_range'
 
         else:
             if check_all_same(range_val):
-                return range_val[0]
+                range_category = 'fixed_range'
+                range_val = range_val[0]
             else:
-                return tuple(range_val)
+                range_category = 'scaling_range'
 
-    def insert_resource_cost_type(self):
-
-        self.general_attr_dct['cost'].update({self.resource_cost_type(): self.resource_cost_values()})
+        self.general_attr_dct.update({range_category: range_val})
 
 
 class DmgAbilityAttributes(object):
@@ -316,5 +323,14 @@ class BuffAbilityAttributes(object):
 
 if __name__ == '__main__':
 
-    garen = _ObsoleteClass('garen')
-    print(garen.ability_dct('q').keys())
+    import api_mundo
+
+    all_abilities = api_mundo.ABILITIES['spells']
+
+    for ability_dct in all_abilities:
+        mundo = GeneralAbilityAttributes(api_ability_dct=ability_dct)
+        mundo.insert_resource()
+        mundo.insert_range()
+
+        print(mundo.general_attr_dct)
+
