@@ -1,3 +1,4 @@
+import re
 import copy
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
@@ -123,7 +124,31 @@ class ChampionModuleCreator(ChampionAttributeSetter):
     pass
 
 
-class AbilityAttributes(object):
+# ===============================================================
+def check_all_same(lst):
+    """
+    Iterates through a list and checks if all its elements are the same.
+    
+    Returns:
+        (bool)
+    """
+    
+    all_same = True
+
+    for i in range(len(lst)-1):
+        
+        if lst[i] != lst[i+1]:
+            all_same = False
+            break
+            
+    return all_same
+
+
+class GeneralAbilityAttributes(object):
+
+    def __init__(self, api_ability_dct):
+        self.api_ability_dct = api_ability_dct
+        self.general_attr_dct = copy.deepcopy(self.GENERAL_ATTRIBUTES)
 
     GENERAL_ATTRIBUTES = dict(
         cast_time='placeholder',
@@ -143,6 +168,110 @@ class AbilityAttributes(object):
         )
     )
 
+    AUTOMATICALLY_FILLED_GEN_ATTR = ('range', 'cost', )
+
+    SUGGESTED_VALUES_GEN_ATTR = dict(
+        cast_time=(0.25, 0.5),
+        travel_time=(0, 0.25, 0.5),
+        move_while_casting=(False, True),
+        dashed_distance=(None,),
+        channel_time=(None,),
+        reset_aa=(False, True),
+    )
+
+    def resource_cost_type(self):
+        """
+        Detects cost type and returns its name.
+
+        Raises:
+            (BaseException)
+        Returns:
+            (str)
+            None
+        """
+        
+        res_name = self.api_ability_dct['resource']
+
+        # NO COST
+        if 'No Cost' == res_name:
+            return None
+
+        # MP
+        elif 'Mana Per Second' in res_name:
+            return 'mp_per_sec'
+        elif '}} Mana' in res_name:
+            return 'mp'
+
+        # ENERGY
+        elif '}} Energy' in res_name:
+            return 'energy'
+
+        # HP
+        elif '}}% of Current Health' in res_name:
+            return 'current_hp'
+        elif '}} Health Per Sec' in res_name:
+            return 'hp_per_sec'
+        elif '}} Health' in res_name:
+            return 'hp'
+
+        # RUMBLE
+        elif '}} Heat' in res_name:
+            return 'heat'
+
+        # RENEKTON
+        elif 'No Cost or 50 Fury' == res_name:
+            return 'no_cost_or_50_fury'
+
+        else:
+            raise BaseException('Unknown cost type detected.')
+
+    def resource_cost_values(self):
+        """
+        Detects cost value tuple.
+
+        All resource costs are in a list named "cost", except health related costs.
+
+        Returns:
+            (tpl)
+        """
+
+        # HEALTH VALUES
+        if 'Health' in self.api_ability_dct['resource']:
+            e_num = re.findall(r'e\d', self.api_ability_dct['resource'])[0]
+            effect_number = e_num[:][-1]
+
+            return tuple(self.api_ability_dct['effects'][effect_number])
+
+        else:
+            return tuple(self.api_ability_dct['effects']['cost'])
+
+    def ability_range(self):
+        """
+        Checks if an ability has a fixed range.
+
+        Returns:
+            (int) fixed range
+            (tpl) range tuple
+        """
+
+        range_val = self.api_ability_dct['range']
+
+        if type(range_val) is str:
+            return 0
+
+        else:
+            if check_all_same(range_val):
+                return range_val[0]
+            else:
+                return tuple(range_val)
+
+    def insert_resource_cost_type(self):
+
+        self.general_attr_dct['cost'].update({self.resource_cost_type(): self.resource_cost_values()})
+
+
+class DmgAbilityAttributes(object):
+
     # (each ability can contain 0 or more 'dmg' attributes in its _STATS)
     DMG_ATTRIBUTES = dict(
         target_type='placeholder',
@@ -159,6 +288,9 @@ class AbilityAttributes(object):
         max_targets='placeholder',
         aoe='placeholder',
     )
+
+
+class BuffAbilityAttributes(object):
 
     # (each ability can contain 0 or more 'buff' attributes in its _STATS)
     BUFF_ATTRIBUTES = dict(
@@ -181,32 +313,6 @@ class AbilityAttributes(object):
         prohibit_cd_start='placeholder',
     )
     
-    def __init__(self):
-        # (each ability must contain 'general' attribute in its _STATS)
-        self.x_STATS = dict(
-            general=copy.deepcopy(self.GENERAL_ATTRIBUTES),
-            )
-
-
-class AttrDetector(AbilityAttributes):
-
-    NO_COST_NAME_IN_API = 'No Cost'
-    MANA_COST_NAME_IN_API = 'Mana'
-
-    def ability_cost(self, api_ability_dct):
-        """
-        Detects cost type and returns its name.
-
-        Returns:
-            (str)
-            None
-        """
-
-        if self.NO_COST_NAME_IN_API in api_ability_dct['resource']:
-            return None
-        elif self.MANA_COST_NAME_IN_API in api_ability_dct['resource']:
-            return 'mp'
-
 
 if __name__ == '__main__':
 
