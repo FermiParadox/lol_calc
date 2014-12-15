@@ -143,7 +143,9 @@ class GeneralAbilityAttributes(object):
             travel_time='placeholder',
             dmg_effect_names=['placeholder', ],
             buff_effect_names=['placeholder', ],
+            base_cd='placeholder',
             cost=dict(
+                # Main type auto inserted. Secondary manually.
                 type_1_placeholder='value_tpl_1_placeholder',
                 ),
             move_while_casting='placeholder',
@@ -160,10 +162,13 @@ class GeneralAbilityAttributes(object):
         self.api_ability_dct = api_ability_dct
         self.general_attr_dct = self.general_attributes()
 
+        self.auto_insert_attributes()
+        self.suggest_gen_attr_value()
+
     AUTOMATICALLY_FILLED_GEN_ATTR = ('range', 'cost', )
 
     SUGGESTED_VALUES_GEN_ATTR = dict(
-        cast_time=(0.25, 0.5),
+        cast_time=(0.25, 0.5, 0),
         travel_time=(0, 0.25, 0.5),
         move_while_casting=(False, True),
         dashed_distance=(None,),
@@ -191,6 +196,8 @@ class GeneralAbilityAttributes(object):
         # MP
         elif 'Mana Per Second' in res_name:
             return 'mp_per_sec'
+        elif 'Mana Per Attack' in res_name:
+            return 'mp_per_attack'
         elif '}} Mana' in res_name:
             return 'mp'
 
@@ -200,7 +207,7 @@ class GeneralAbilityAttributes(object):
 
         # HP
         elif '}}% of Current Health' in res_name:
-            return 'current_hp'
+            return 'percent_hp'
         elif '}} Health Per Sec' in res_name:
             return 'hp_per_sec'
         elif '}} Health' in res_name:
@@ -208,11 +215,15 @@ class GeneralAbilityAttributes(object):
 
         # RUMBLE
         elif '}} Heat' in res_name:
-            return 'heat'
+            return None
 
         # RENEKTON
         elif 'No Cost or 50 Fury' == res_name:
-            return 'no_cost_or_50_fury'
+            return None
+
+        # PASSIVES
+        elif 'Passive' == res_name:
+            return None
 
         else:
             raise BaseException('Unknown cost type detected.')
@@ -227,15 +238,45 @@ class GeneralAbilityAttributes(object):
             (tpl)
         """
 
-        # HEALTH VALUES
+        # HEALTH COST
         if 'Health' in self.api_ability_dct['resource']:
             e_num = re.findall(r'e\d', self.api_ability_dct['resource'])[0]
             effect_number = int(e_num[:][-1])
 
             return tuple(self.api_ability_dct['effect'][effect_number])
 
+        # ABILITIES WITHOUT A COST
+        elif self.resource_cost_type is None:
+            return None
+
+        # NORMAL COST
         else:
             return tuple(self.api_ability_dct['effect']['cost'])
+
+    def insert_base_cd_values(self):
+        """
+        Detects base_cd tuple, determines if static, and inserts value in dct.
+
+        Returns:
+            None
+        """
+
+        # NOT CASTABLE
+        if self.api_ability_dct['resource'] == 'Passive':
+            # Removes base_cd since its not applicable.
+            del self.general_attr_dct['base_cd']
+
+        # CASTABLE
+        else:
+            # Replaces base_cd with appropriate name.
+            del self.general_attr_dct['base_cd']
+
+            if check_all_same:
+                base_cd_val = self.api_ability_dct['cooldown']
+                self.general_attr_dct.update({'base_cd_tpl': base_cd_val})
+            else:
+                base_cd_val = self.api_ability_dct['cooldown'][0]
+                self.general_attr_dct.update({'fixed_base_cd': base_cd_val})
 
     def insert_resource(self):
         """
@@ -247,7 +288,11 @@ class GeneralAbilityAttributes(object):
             None
         """
 
-        self.general_attr_dct['cost'].update({self.resource_cost_type(): self.resource_cost_values()})
+        if self.resource_cost_type() is None:
+            self.general_attr_dct['cost'] = None
+        else:
+            self.general_attr_dct['cost'] = {}
+            self.general_attr_dct['cost'].update({self.resource_cost_type(): self.resource_cost_values()})
 
     def insert_range(self):
         """
@@ -277,23 +322,32 @@ class GeneralAbilityAttributes(object):
 
         self.general_attr_dct.update({range_category: range_val})
 
+    def auto_insert_attributes(self):
+        """
+        Groups all auto inserted attributes.
+
+        Returns:
+            (None)
+        """
+        self.insert_range()
+        self.insert_resource()
+        self.insert_base_cd_values()
+
     def suggest_gen_attr_value(self):
         """
-        Suggests a value and records the choice.
+        Suggests a value and stores the choice.
 
         Returns:
             None
         """
 
-        display = ['Enter', '1', '2', '3', '4', '5']
-        shortcuts = ['', '1', '2', '3', '4', '5']
-
-        # SETUP MESSAGE
         print('\n'+'-'*40)
-        print('\nCHAMPION: %s ' % self.champion_name)
-        print('\nABILITY NAME: %s' % 'TO FIX')
 
         for attr_name in self.SUGGESTED_VALUES_GEN_ATTR:
+
+            display = [' ', '1', '2', '3', '4', '5']
+            shortcuts = ['', '1', '2', '3', '4', '5']
+
             suggested_val_tpl = self.SUGGESTED_VALUES_GEN_ATTR[attr_name]
 
             # Ensures lists to be zipped have same length.
@@ -348,6 +402,12 @@ class DmgAbilityAttributes(object):
         aoe='placeholder',
     )
 
+    AUTOMATICALLY_FILLED_DMG_ATTR = ()
+
+    def __init__(self, ability_name, api_ability_dct):
+        self.api_ability_dct = api_ability_dct
+        self.ability_name = ability_name
+
 
 class BuffAbilityAttributes(object):
 
@@ -381,9 +441,6 @@ if __name__ == '__main__':
 
     for ability_dct in all_abilities:
         mundo = GeneralAbilityAttributes(api_ability_dct=ability_dct, champion_name='Mundo')
-        mundo.insert_resource()
-        mundo.insert_range()
-        mundo.suggest_gen_attr_value()
 
         print(mundo.general_attr_dct)
         break
