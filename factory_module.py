@@ -155,7 +155,8 @@ class GeneralAbilityAttributes(object):
             )
         )
 
-    def __init__(self, api_ability_dct):
+    def __init__(self, api_ability_dct, champion_name):
+        self.champion_name = champion_name
         self.api_ability_dct = api_ability_dct
         self.general_attr_dct = self.general_attributes()
 
@@ -276,6 +277,57 @@ class GeneralAbilityAttributes(object):
 
         self.general_attr_dct.update({range_category: range_val})
 
+    def suggest_gen_attr_value(self):
+        """
+        Suggests a value and records the choice.
+
+        Returns:
+            None
+        """
+
+        display = ['Enter', '1', '2', '3', '4', '5']
+        shortcuts = ['', '1', '2', '3', '4', '5']
+
+        # SETUP MESSAGE
+        print('\n'+'-'*40)
+        print('\nCHAMPION: %s ' % self.champion_name)
+        print('\nABILITY NAME: %s' % 'TO FIX')
+
+        for attr_name in self.SUGGESTED_VALUES_GEN_ATTR:
+            suggested_val_tpl = self.SUGGESTED_VALUES_GEN_ATTR[attr_name]
+
+            # Ensures lists to be zipped have same length.
+            shortcut_len = len(suggested_val_tpl)
+            display = display[:shortcut_len]
+            shortcuts = shortcuts[:shortcut_len]
+
+            # INITIAL CHOICE MESSAGE
+            msg = '-'*20
+            msg += '\nATTRIBUTE: %s' % attr_name
+            for shortcut_val, sugg_val, display_val in zip(shortcuts, suggested_val_tpl, display):
+                msg += '\n%s: %s' % (display_val, sugg_val)
+            msg += '\n'
+
+            # CHOICE PROCESSING
+            choice_num = None
+            input_given = input(msg)
+
+            for val_num, val in enumerate(shortcuts):
+                if val == input_given:
+                    choice_num = val_num
+                    break
+
+            # Checks if user chose a suggested value.
+            if choice_num is not None:
+                chosen_value = suggested_val_tpl[choice_num]
+            else:
+                chosen_value = input_given
+
+            # Stores the choice and notifies user.
+            choice_msg = '\n%s: %s\n' % (attr_name, chosen_value)
+            self.general_attr_dct[attr_name] = chosen_value
+            print(choice_msg)
+
 
 class DmgAbilityAttributes(object):
 
@@ -328,9 +380,11 @@ if __name__ == '__main__':
     all_abilities = api_mundo.ABILITIES['spells']
 
     for ability_dct in all_abilities:
-        mundo = GeneralAbilityAttributes(api_ability_dct=ability_dct)
+        mundo = GeneralAbilityAttributes(api_ability_dct=ability_dct, champion_name='Mundo')
         mundo.insert_resource()
         mundo.insert_range()
+        mundo.suggest_gen_attr_value()
 
         print(mundo.general_attr_dct)
+        break
 
