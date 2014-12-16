@@ -133,6 +133,61 @@ def check_all_same(lst):
     return all_same
 
 
+def suggest_attr_values(suggested_values_dct, modified_dct):
+    """
+    Suggests a value and stores the choice.
+
+    Returns:
+        None
+    """
+
+    print('\n'+'-'*40)
+
+    for attr_name in suggested_values_dct:
+
+        display = [' ', '1', '2', '3', '4', '5']
+        shortcuts = ['', '1', '2', '3', '4', '5']
+
+        suggested_val_tpl = suggested_values_dct[attr_name]
+
+        # Ensures lists to be zipped have same length.
+        shortcut_len = len(suggested_val_tpl)
+        display = display[:shortcut_len]
+        shortcuts = shortcuts[:shortcut_len]
+
+        # INITIAL CHOICE MESSAGE
+        msg = '-'*20
+        msg += '\nATTRIBUTE: %s' % attr_name
+        for shortcut_val, sugg_val, display_val in zip(shortcuts, suggested_val_tpl, display):
+            msg += '\n%s: %s' % (display_val, sugg_val)
+        msg += '\n'
+
+        # CHOICE PROCESSING
+        choice_num = None
+        input_given = input(msg)
+
+        # (breaks loot prematurely if asked)
+        if input_given == 'stop':
+            print('#### LOOP STOPPED ####')
+            break
+
+        for val_num, val in enumerate(shortcuts):
+            if val == input_given:
+                choice_num = val_num
+                break
+
+        # Checks if user chose a suggested value.
+        if choice_num is not None:
+            chosen_value = suggested_val_tpl[choice_num]
+        else:
+            chosen_value = input_given
+
+        # Stores the choice and notifies user.
+        choice_msg = '\n%s: %s\n' % (attr_name, chosen_value)
+        modified_dct[attr_name] = chosen_value
+        print(choice_msg)
+
+
 class GeneralAbilityAttributes(object):
 
     @staticmethod
@@ -161,9 +216,6 @@ class GeneralAbilityAttributes(object):
         self.champion_name = champion_name
         self.api_ability_dct = api_ability_dct
         self.general_attr_dct = self.general_attributes()
-
-        self.auto_insert_attributes()
-        self.suggest_gen_attr_value()
 
     AUTOMATICALLY_FILLED_GEN_ATTR = ('range', 'cost', )
 
@@ -333,105 +385,164 @@ class GeneralAbilityAttributes(object):
         self.insert_resource()
         self.insert_base_cd_values()
 
-    def suggest_gen_attr_value(self):
-        """
-        Suggests a value and stores the choice.
+    def suggest_gen_attr_values(self):
+        suggest_attr_values(suggested_values_dct=self.SUGGESTED_VALUES_GEN_ATTR,
+                            modified_dct=self.general_attr_dct)
 
-        Returns:
-            None
-        """
+    def run_class(self):
 
-        print('\n'+'-'*40)
-
-        for attr_name in self.SUGGESTED_VALUES_GEN_ATTR:
-
-            display = [' ', '1', '2', '3', '4', '5']
-            shortcuts = ['', '1', '2', '3', '4', '5']
-
-            suggested_val_tpl = self.SUGGESTED_VALUES_GEN_ATTR[attr_name]
-
-            # Ensures lists to be zipped have same length.
-            shortcut_len = len(suggested_val_tpl)
-            display = display[:shortcut_len]
-            shortcuts = shortcuts[:shortcut_len]
-
-            # INITIAL CHOICE MESSAGE
-            msg = '-'*20
-            msg += '\nATTRIBUTE: %s' % attr_name
-            for shortcut_val, sugg_val, display_val in zip(shortcuts, suggested_val_tpl, display):
-                msg += '\n%s: %s' % (display_val, sugg_val)
-            msg += '\n'
-
-            # CHOICE PROCESSING
-            choice_num = None
-            input_given = input(msg)
-
-            for val_num, val in enumerate(shortcuts):
-                if val == input_given:
-                    choice_num = val_num
-                    break
-
-            # Checks if user chose a suggested value.
-            if choice_num is not None:
-                chosen_value = suggested_val_tpl[choice_num]
-            else:
-                chosen_value = input_given
-
-            # Stores the choice and notifies user.
-            choice_msg = '\n%s: %s\n' % (attr_name, chosen_value)
-            self.general_attr_dct[attr_name] = chosen_value
-            print(choice_msg)
+        self.auto_insert_attributes()
+        self.suggest_gen_attr_values()
 
 
 class DmgAbilityAttributes(object):
 
-    # (each ability can contain 0 or more 'dmg' attributes in its _STATS)
-    DMG_ATTRIBUTES = dict(
-        target_type='placeholder',
-        dmg_category='placeholder',
-        dmg_type='placeholder',
+    """
+    An ability can contain 0 or more "dmg attributes" in its _STATS.
+
+    Each "dmg attribute" must have a single responsibility.
+    """
+
+    @staticmethod
+    def dmg_attributes():
+        return dict(
+            target_type='placeholder',
+            dmg_category='placeholder',
+            dmg_type='placeholder',
+            values='placeholder',
+            dmg_source='placeholder',
+            # (None or 'normal': {stat1: coef1,} or 'by_ability_lvl': {stat1: (coef_lvl1,),})
+            bonus_by_stats='placeholder',
+            # (None or lifesteal or spellvamp)
+            life_conversion_type='placeholder',
+            radius='placeholder',
+            dot='placeholder',
+            max_targets='placeholder',
+            aoe='placeholder',
+            )
+
+    SUGGESTED_VALUES_DMG_ATTR = dict(
+        target_type=('player', 'enemy'),
+        # TODO insert more categories in class and then here.
+        dmg_category=('standard_dmg', 'innate_dmg', 'chain_decay', 'chain_limited_decay', 'aa_dmg_value'),
+        dmg_type=('magic', 'physical', 'true', 'AA'),
         values='placeholder',
         dmg_source='placeholder',
-        # (e.g. None, 'normal': {stat1: coef1,}, 'by_ability_lvl': {stat1: (coef_lvl1,),})
+        # (None or 'normal': {stat1: coef1,} or 'by_ability_lvl': {stat1: (coef_lvl1,),})
         bonus_by_stats='placeholder',
-        # (e.g. None, lifesteal, spellvamp)
-        life_conversion_type='placeholder',
+        life_conversion_type=(None, 'lifesteal', 'spellvamp'),
         radius='placeholder',
         dot='placeholder',
         max_targets='placeholder',
         aoe='placeholder',
-    )
+        )
 
     AUTOMATICALLY_FILLED_DMG_ATTR = ()
 
     def __init__(self, ability_name, api_ability_dct):
         self.api_ability_dct = api_ability_dct
         self.ability_name = ability_name
+        self.dmgs_dct = {}
 
+    @staticmethod
+    def single_dmg_dct_template_in_factory():
+        return dict(
+            dmg_type='placeholder',
+            abbr_in_effects='placeholder',
+            mod_1='placeholder',
+
+        )
+
+    @staticmethod
+    def single_mod_dct_template_in_factory():
+        return dict(
+            abbr_in_effects='placeholder',
+
+        )
+
+    def detect_dmgs(self):
+        """
+        Detects all dmg dealing instances in api ability description.
+
+        Results returned contain the name of the dmg value (as named in api 'effect'),
+        and the name of modifiers, in each list element.
+
+        Returns:
+            (list)
+        """
+
+        s = self.api_ability_dct['sanitizedTooltip']
+
+        # (e.g. ' {{ e1}} true damage' )
+        lst = re.findall(r'(?: \{\{ )\w\d(?: \}\}).*?(?:true|magic|physical)\sdamage', s)
+        lst += re.findall(r'(?: \{\{ )\w\d(?: \}\}).*?(?:true|magic|physical)\sdamage', s)
+
+        return lst
+
+    def dmg_elements(self):
+        """
+        Detects dmg type and abbreviation, list of dmg modifier abbreviations.
+
+        Returns:
+            None
+        """
+
+        dct = {}
+
+        dmgs_lst = self.detect_dmgs()
+
+        for element in dmgs_lst:
+
+            dmg_val_abbrev = re.findall(r' \{\{ (\w\d) \}\}', element)[0]
+            dmg_type = re.search(r'(?:true|magic|physical)', element).group()
+
+            dct.update({'abbreviation': dmg_val_abbrev, 'dmg_type': dmg_type})
+
+            # Dmg mods in api 'effects'
+            mod_val_abbrev_lst = re.findall(r'\+\{\{ (\w\d) \}\}', element)
+
+            for i, mod_abbrev in enumerate(mod_val_abbrev_lst):
+
+                dct.update({'mod_'+str(i): {'abbreviation': mod_abbrev, 'bonus_type': None}})
+
+        # Create new dmg name for temporary storage.
+        num = 1
+        for dmg_name in self.dmgs_dct:
+            num += 1
+        self.dmgs_dct.update({'dmg_'+num, dct})
+
+    def suggest_dmg_attr_values(self):
+        suggest_attr_values(suggested_values_dct=self.SUGGESTED_VALUES_DMG_ATTR,
+                            modified_dct=self.dmgs_dct)
 
 class BuffAbilityAttributes(object):
 
-    # (each ability can contain 0 or more 'buff' attributes in its _STATS)
-    BUFF_ATTRIBUTES = dict(
-        target_type='placeholder',
-        duration='placeholder',
-        max_stacks='placeholder',
-        affected_stat=dict(
-            names=dict(
-                stat_1=dict(
-                    percent='placeholder',
-                    additive='placeholder',),),
-            affected_by=dict(
-                stat_1='placeholder',)
-        ),
-        on_hit=dict(
-            apply_buff=['placeholder', ],
-            add_dmg=['placeholder', ],
-            remove_buff=['placeholder', ]
-        ),
-        prohibit_cd_start='placeholder',
-    )
-    
+    """
+    An ability can contain 0 or more 'buff' attributes in its _STATS.
+    """
+
+    @staticmethod
+    def buff_attributes():
+        return dict(
+            target_type='placeholder',
+            duration='placeholder',
+            max_stacks='placeholder',
+            affected_stat=dict(
+                names=dict(
+                    stat_1=dict(
+                        percent='placeholder',
+                        additive='placeholder',),),
+                affected_by=dict(
+                    stat_1='placeholder',)
+            ),
+            on_hit=dict(
+                apply_buff=['placeholder', ],
+                add_dmg=['placeholder', ],
+                remove_buff=['placeholder', ]
+            ),
+            prohibit_cd_start='placeholder',
+            )
+
 
 if __name__ == '__main__':
 
@@ -441,6 +552,7 @@ if __name__ == '__main__':
 
     for ability_dct in all_abilities:
         mundo = GeneralAbilityAttributes(api_ability_dct=ability_dct, champion_name='Mundo')
+        mundo.run_class()
 
         print(mundo.general_attr_dct)
         break
