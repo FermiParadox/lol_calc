@@ -133,6 +133,23 @@ def check_all_same(lst):
     return all_same
 
 
+def return_tpl_or_element(lst):
+    """
+    Returns whole list if its elements are the same,
+    otherwise returns the first element.
+
+    Args:
+        tags: (str)
+    Returns:
+        (lst)
+        (float) or (int) or (str)
+    """
+    if check_all_same(lst=lst):
+        return lst
+    else:
+        return lst[0]
+
+
 def suggest_attr_values(suggested_values_dct, modified_dct):
     """
     Suggests a value and stores the choice.
@@ -307,7 +324,8 @@ class GeneralAbilityAttributes(object):
 
     def insert_base_cd_values(self):
         """
-        Detects base_cd tuple, determines if static, and inserts value in dct.
+        Detects base_cd tuple and inserts value in dct,
+        unless ability is passive (removes base_cd completely from dct).
 
         Returns:
             None
@@ -320,15 +338,7 @@ class GeneralAbilityAttributes(object):
 
         # CASTABLE
         else:
-            # Replaces base_cd with appropriate name.
-            del self.general_attr_dct['base_cd']
-
-            if check_all_same:
-                base_cd_val = self.api_ability_dct['cooldown']
-                self.general_attr_dct.update({'base_cd_tpl': base_cd_val})
-            else:
-                base_cd_val = self.api_ability_dct['cooldown'][0]
-                self.general_attr_dct.update({'fixed_base_cd': base_cd_val})
+            self.general_attr_dct['base_cd'] = return_tpl_or_element(lst=self.api_ability_dct['cooldown'])
 
     def insert_resource(self):
         """
@@ -348,31 +358,20 @@ class GeneralAbilityAttributes(object):
 
     def insert_range(self):
         """
-        Detects and inserts an ability's range after naming it appropriately,
-        based on whether it's fixed or scales per lvl.
+        Detects and inserts an ability's range.
 
         Returns:
             None
         """
 
-        # Clears range and uses a different name.
-        del self.general_attr_dct['range']
-
         range_val = self.api_ability_dct['range']
 
         # (if 'range' is 'self)
         if type(range_val) is str:
-            range_val = 0
-            range_category = 'fixed_range'
+            self.general_attr_dct['range'] = 0
 
         else:
-            if check_all_same(range_val):
-                range_category = 'fixed_range'
-                range_val = range_val[0]
-            else:
-                range_category = 'scaling_range'
-
-        self.general_attr_dct.update({range_category: range_val})
+            self.general_attr_dct['range'] = return_tpl_or_element(lst=range_val)
 
     def auto_insert_attributes(self):
         """
@@ -412,7 +411,7 @@ class DmgAbilityAttributes(object):
             values='placeholder',
             dmg_source='placeholder',
             # (None or 'normal': {stat1: coef1,} or 'by_ability_lvl': {stat1: (coef_lvl1,),})
-            bonus_by_stats='placeholder',
+            mods='placeholder',
             # (None or lifesteal or spellvamp)
             life_conversion_type='placeholder',
             radius='placeholder',
@@ -421,6 +420,10 @@ class DmgAbilityAttributes(object):
             aoe='placeholder',
             )
 
+    @staticmethod
+    def dmg_mod_attributes():
+        return dict()
+
     SUGGESTED_VALUES_DMG_ATTR = dict(
         target_type=('player', 'enemy'),
         # TODO insert more categories in class and then here.
@@ -428,8 +431,6 @@ class DmgAbilityAttributes(object):
         dmg_type=('magic', 'physical', 'true', 'AA'),
         values='placeholder',
         dmg_source='placeholder',
-        # (None or 'normal': {stat1: coef1,} or 'by_ability_lvl': {stat1: (coef_lvl1,),})
-        bonus_by_stats='placeholder',
         life_conversion_type=(None, 'lifesteal', 'spellvamp'),
         radius='placeholder',
         dot='placeholder',
@@ -471,15 +472,37 @@ class DmgAbilityAttributes(object):
             (list)
         """
 
-        s = self.api_ability_dct['sanitizedTooltip']
+        api_string = self.api_ability_dct['sanitizedTooltip']
 
         # (e.g. ' {{ e1}} true damage' )
-        lst = re.findall(r'(?: \{\{ )\w\d(?: \}\}).*?(?:true|magic|physical)\sdamage', s)
-        lst += re.findall(r'(?: \{\{ )\w\d(?: \}\}).*?(?:true|magic|physical)\sdamage', s)
+        p = re.compile(
+            r"""(?: \{\{ )\w\d(?: \}\})         # ' {{ e1}}'
+            [^,.]*?                             # any characters in between excluding , and .
+            (?:true|magic|physical)             # true magic or physical
+            \sdamage                            # ' damage'
+
+            """, re.IGNORECASE | re.VERBOSE)
+        lst = p.findall(api_string)
 
         return lst
 
-    def dmg_elements(self):
+    def detect_values_by_abbreviation(self, abbr):
+        """
+        Detects the values of a dmg or a dmg modifier,
+        and returns a tuple or float based on whether it changes or not.
+
+        Returns:
+            (tpl)
+            (float)
+        """
+
+        effect_num = abbr[-1:]
+
+        mod_vals = self.api_ability_dct['effect'][effect_num]
+
+        return return_tpl_or_element(lst=mod_vals)
+
+    def insert_dmg_elements(self):
         """
         Detects dmg type and abbreviation, list of dmg modifier abbreviations.
 
@@ -487,33 +510,37 @@ class DmgAbilityAttributes(object):
             None
         """
 
-        dct = {}
-
         dmgs_lst = self.detect_dmgs()
 
-        for element in dmgs_lst:
+        for dmg_num, element in enumerate(dmgs_lst):
 
+            # INSERTS DMG NAME AND ATTRS
+            # New temporary dmg name.
+            new_dmg_name = 'dmg_' + str(dmg_num)
+            self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
+
+            curr_dmg_dct = self.dmgs_dct[new_dmg_name]
+            
+            # INSERTS DMG VALUES
             dmg_val_abbrev = re.findall(r' \{\{ (\w\d) \}\}', element)[0]
-            dmg_type = re.search(r'(?:true|magic|physical)', element).group()
+            curr_dmg_dct['values'] = self.detect_values_by_abbreviation(abbr=dmg_val_abbrev)
+            
+            # INSERTS DMG TYPE
+            dmg_type = re.search(r'true|magic|physical', element).group()
+            curr_dmg_dct['dmg_type'] = dmg_type
 
-            dct.update({'abbreviation': dmg_val_abbrev, 'dmg_type': dmg_type})
-
+            # INSERTS MODS IN DMG
             # Dmg mods in api 'effects'
             mod_val_abbrev_lst = re.findall(r'\+\{\{ (\w\d) \}\}', element)
-
             for i, mod_abbrev in enumerate(mod_val_abbrev_lst):
-
-                dct.update({'mod_'+str(i): {'abbreviation': mod_abbrev, 'bonus_type': None}})
-
-        # Create new dmg name for temporary storage.
-        num = 1
-        for dmg_name in self.dmgs_dct:
-            num += 1
-        self.dmgs_dct.update({'dmg_'+num, dct})
+                # Names mods: mod_1, mod_2 etc, and inserts them.
+                mod_name = 'mod_' + str(i)
+                curr_dmg_dct.update({mod_name: self.detect_values_by_abbreviation(abbr=mod_abbrev)})
 
     def suggest_dmg_attr_values(self):
         suggest_attr_values(suggested_values_dct=self.SUGGESTED_VALUES_DMG_ATTR,
                             modified_dct=self.dmgs_dct)
+
 
 class BuffAbilityAttributes(object):
 
@@ -549,11 +576,21 @@ if __name__ == '__main__':
     import api_mundo
 
     all_abilities = api_mundo.ABILITIES['spells']
+    
+    testGen = False
+    
+    if testGen is True:
+        for ability_dct in all_abilities:
+            GeneralAbilityAttributes(api_ability_dct=ability_dct, champion_name='Mundo').run_class()
+            break
 
-    for ability_dct in all_abilities:
-        mundo = GeneralAbilityAttributes(api_ability_dct=ability_dct, champion_name='Mundo')
-        mundo.run_class()
+    testDmg = True
+    
+    if testDmg is True:
+        for ability_dct in all_abilities:
+            d = DmgAbilityAttributes(api_ability_dct=ability_dct, ability_name='q').detect_dmgs()
+            print(d)
 
-        print(mundo.general_attr_dct)
-        break
+            break
 
+    
