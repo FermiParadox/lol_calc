@@ -150,6 +150,7 @@ def return_tpl_or_element(lst):
         return lst[0]
 
 
+# ================================================================
 def suggest_attr_values(suggested_values_dct, modified_dct):
     """
     Suggests a value and stores the choice.
@@ -203,6 +204,33 @@ def suggest_attr_values(suggested_values_dct, modified_dct):
         choice_msg = '\n%s: %s\n' % (attr_name, chosen_value)
         modified_dct[attr_name] = chosen_value
         print(choice_msg)
+
+
+# ================================================================
+def all_abilities_dct(champion_name):
+    """
+    Returns stored champion api abilities dict.
+
+    Returns:
+        (dct)
+    """
+
+    champ_module = __import__('api_'+champion_name)
+
+    return champ_module.ABILITIES['spells']
+
+
+def ability_dct_by_name(ability_name, champion_name):
+    """
+    Returns an ability's information contained in api data.
+
+    Returns:
+        (dct)
+    """
+
+    for ability_num, ability_letter in enumerate('qwer'[:]):
+        if ability_letter == ability_name:
+            return all_abilities_dct(champion_name=champion_name)[ability_num]
 
 
 class GeneralAbilityAttributes(object):
@@ -399,7 +427,7 @@ class DmgAbilityAttributes(object):
     """
     An ability can contain 0 or more "dmg attributes" in its _STATS.
 
-    Each "dmg attribute" must have a single responsibility.
+    Each "dmg" must have a single responsibility.
     """
 
     @staticmethod
@@ -410,7 +438,7 @@ class DmgAbilityAttributes(object):
             dmg_type='placeholder',
             values='placeholder',
             dmg_source='placeholder',
-            # (None or 'normal': {stat1: coef1,} or 'by_ability_lvl': {stat1: (coef_lvl1,),})
+            # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
             mods='placeholder',
             # (None or lifesteal or spellvamp)
             life_conversion_type='placeholder',
@@ -461,12 +489,13 @@ class DmgAbilityAttributes(object):
 
         )
 
-    def detect_dmgs(self):
+    def raw_dmg_strings(self):
         """
-        Detects all dmg dealing instances in api ability description.
+        Detects all string parts related to dmg dealing in api ability description.
 
-        Results returned contain the name of the dmg value (as named in api 'effect'),
-        and the name of modifiers, in each list element.
+        Each result in the returned list,
+        contains the name of the dmg shortcut (as named in api 'effect'),
+        and the name of modifiers.
 
         Returns:
             (list)
@@ -476,7 +505,8 @@ class DmgAbilityAttributes(object):
 
         # (e.g. ' {{ e1}} true damage' )
         p = re.compile(
-            r"""(?: \{\{ )\w\d(?: \}\})         # ' {{ e1}}'
+            r"""
+            (?: \{\{ )\w\d(?: \}\})             # ' {{ e1 }}'
             [^,.]*?                             # any characters in between excluding , and .
             (?:true|magic|physical)             # true magic or physical
             \sdamage                            # ' damage'
@@ -486,7 +516,7 @@ class DmgAbilityAttributes(object):
 
         return lst
 
-    def detect_values_by_abbreviation(self, abbr):
+    def effect_values_by_abbr(self, abbr):
         """
         Detects the values of a dmg or a dmg modifier,
         and returns a tuple or float based on whether it changes or not.
@@ -498,9 +528,9 @@ class DmgAbilityAttributes(object):
 
         effect_num = abbr[-1:]
 
-        mod_vals = self.api_ability_dct['effect'][effect_num]
+        mod_val = self.api_ability_dct['effect'][effect_num]
 
-        return return_tpl_or_element(lst=mod_vals)
+        return return_tpl_or_element(lst=mod_val)
 
     def insert_dmg_elements(self):
         """
@@ -510,7 +540,7 @@ class DmgAbilityAttributes(object):
             None
         """
 
-        dmgs_lst = self.detect_dmgs()
+        dmgs_lst = self.raw_dmg_strings()
 
         for dmg_num, element in enumerate(dmgs_lst):
 
@@ -523,7 +553,7 @@ class DmgAbilityAttributes(object):
             
             # INSERTS DMG VALUES
             dmg_val_abbrev = re.findall(r' \{\{ (\w\d) \}\}', element)[0]
-            curr_dmg_dct['values'] = self.detect_values_by_abbreviation(abbr=dmg_val_abbrev)
+            curr_dmg_dct['values'] = self.effect_values_by_abbr(abbr=dmg_val_abbrev)
             
             # INSERTS DMG TYPE
             dmg_type = re.search(r'true|magic|physical', element).group()
@@ -532,10 +562,10 @@ class DmgAbilityAttributes(object):
             # INSERTS MODS IN DMG
             # Dmg mods in api 'effects'
             mod_val_abbrev_lst = re.findall(r'\+\{\{ (\w\d) \}\}', element)
-            for i, mod_abbrev in enumerate(mod_val_abbrev_lst):
+            for abbrev_num, mod_abbrev in enumerate(mod_val_abbrev_lst):
                 # Names mods: mod_1, mod_2 etc, and inserts them.
-                mod_name = 'mod_' + str(i)
-                curr_dmg_dct.update({mod_name: self.detect_values_by_abbreviation(abbr=mod_abbrev)})
+                mod_name = 'mod_' + str(abbrev_num)
+                curr_dmg_dct.update({mod_name: self.effect_values_by_abbr(abbr=mod_abbrev)})
 
     def suggest_dmg_attr_values(self):
         suggest_attr_values(suggested_values_dct=self.SUGGESTED_VALUES_DMG_ATTR,
@@ -584,13 +614,16 @@ if __name__ == '__main__':
             GeneralAbilityAttributes(api_ability_dct=ability_dct, champion_name='Mundo').run_class()
             break
 
-    testDmg = True
+    testDmg = False
     
     if testDmg is True:
         for ability_dct in all_abilities:
-            d = DmgAbilityAttributes(api_ability_dct=ability_dct, ability_name='q').detect_dmgs()
+            d = DmgAbilityAttributes(api_ability_dct=ability_dct, ability_name='q').raw_dmg_strings()
             print(d)
 
-            break
+    sanitizedTooltipLst = []
+    for i, j in enumerate(api_mundo.ABILITIES['spells']):
+        sanitizedTooltipLst.append(api_mundo.ABILITIES['spells'][i]['sanitizedTooltip'])
 
-    
+    for i in sanitizedTooltipLst:
+        print(i)
