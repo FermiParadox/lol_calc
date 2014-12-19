@@ -1,4 +1,9 @@
 import re
+import time
+import urllib.request
+import api_champion_ids
+import json
+import autopep8
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -114,6 +119,89 @@ class _ObsoleteClass(object):
 
 
 # ===============================================================
+API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
+
+
+def request_single_champ_from_api(champion_id):
+    """
+    Requests all data for a champion from api.
+
+    Return:
+        (str)
+    """
+
+    time.sleep(2)
+    page_url = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/champion/"
+                + champion_id
+                + "?champData=all&api_key="
+                + API_KEY)
+
+    page_as_bytes_type = urllib.request.urlopen(page_url).read()
+
+    page_as_str = page_as_bytes_type.decode('utf-8')
+
+    return page_as_str
+
+
+def refined_champion_full_dct(champion_id):
+    """
+    Processes api data of a champion by converting it to python dict.
+
+    Returns:
+        (dct)
+    """
+
+    page_as_str = request_single_champ_from_api(champion_id=champion_id)
+
+    return json.loads(page_as_str)
+
+
+def request_all_champions_from_api():
+    """
+    Creates a dict containing champion data of all champions.
+
+    Returns:
+        (dct)
+    """
+    all_champs_dct = {}
+
+    for champ_id in api_champion_ids.CHAMPION_IDS:
+
+        champ_name = api_champion_ids.CHAMPION_IDS[champ_id]
+        page_as_dct = refined_champion_full_dct(champion_id=champ_id)
+
+        all_champs_dct.update({champ_name: page_as_dct})
+
+    return all_champs_dct
+
+
+def store_all_champions_data():
+
+    with open('all_api_champion_data.py', 'r') as read_module:
+
+        # Checks if module is non empty.
+        if read_module.read() != '':
+            user_answer = input('Non empty module detected. \nReplace data?\n')
+            if user_answer.lower() in ('yes', 'y'):
+                print('Replacing existing file content.')
+            else:
+                print('Champion data insertion aborted.')
+                return
+        else:
+            print('Inserting all champions data.')
+
+    # Replaces module content.
+    with open('all_api_champion_data.py', 'w') as edited_module:
+
+        # Creates file content.
+        dct_as_str = request_all_champions_from_api()
+        file_as_str = 'ALL_CHAMPIONS_ATTR = %s' % dct_as_str
+        final_str = autopep8.fix_code(file_as_str, options=autopep8.parse_args(['--aggressive', '']))
+
+        edited_module.write(final_str)
+
+
+# ===============================================================
 def check_all_same(lst):
     """
     Iterates through a list and checks if all its elements are the same.
@@ -124,9 +212,9 @@ def check_all_same(lst):
     
     all_same = True
 
-    for i in range(len(lst)-1):
+    for item_num in range(len(lst)-1):
         
-        if lst[i] != lst[i+1]:
+        if lst[item_num] != lst[item_num+1]:
             all_same = False
             break
             
@@ -231,6 +319,8 @@ def ability_dct_by_name(ability_name, champion_name):
     for ability_num, ability_letter in enumerate('qwer'[:]):
         if ability_letter == ability_name:
             return all_abilities_dct(champion_name=champion_name)[ability_num]
+
+    raise BaseException('Invalid ability name.')
 
 
 class GeneralAbilityAttributes(object):
@@ -606,7 +696,7 @@ if __name__ == '__main__':
     import api_mundo
 
     all_abilities = api_mundo.ABILITIES['spells']
-    
+
     testGen = False
     
     if testGen is True:
@@ -621,9 +711,7 @@ if __name__ == '__main__':
             d = DmgAbilityAttributes(api_ability_dct=ability_dct, ability_name='q').raw_dmg_strings()
             print(d)
 
-    sanitizedTooltipLst = []
-    for i, j in enumerate(api_mundo.ABILITIES['spells']):
-        sanitizedTooltipLst.append(api_mundo.ABILITIES['spells'][i]['sanitizedTooltip'])
+    testApiStorage = True
 
-    for i in sanitizedTooltipLst:
-        print(i)
+    if testApiStorage is True:
+        store_all_champions_data()
