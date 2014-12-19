@@ -119,86 +119,107 @@ class _ObsoleteClass(object):
 
 
 # ===============================================================
-API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
+class RequestAllAbilities(object):
 
+    API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
 
-def request_single_champ_from_api(champion_id):
-    """
-    Requests all data for a champion from api.
+    def request_single_champ_from_api(self, champion_id):
+        """
+        Requests all data for a champion from api.
 
-    Return:
-        (str)
-    """
+        Return:
+            (str)
+        """
 
-    time.sleep(2)
-    page_url = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/champion/"
-                + champion_id
-                + "?champData=all&api_key="
-                + API_KEY)
+        time.sleep(2)
+        page_url = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/champion/"
+                    + champion_id
+                    + "?champData=all&api_key="
+                    + self.API_KEY)
 
-    page_as_bytes_type = urllib.request.urlopen(page_url).read()
+        page_as_bytes_type = urllib.request.urlopen(page_url).read()
 
-    page_as_str = page_as_bytes_type.decode('utf-8')
+        page_as_str = page_as_bytes_type.decode('utf-8')
 
-    return page_as_str
+        return page_as_str
 
+    def refined_champion_full_dct(self, champion_id):
+        """
+        Processes api data of a champion by converting it to python dict.
 
-def refined_champion_full_dct(champion_id):
-    """
-    Processes api data of a champion by converting it to python dict.
+        Returns:
+            (dct)
+        """
 
-    Returns:
-        (dct)
-    """
+        page_as_str = self.request_single_champ_from_api(champion_id=champion_id)
 
-    page_as_str = request_single_champ_from_api(champion_id=champion_id)
+        return json.loads(page_as_str)
 
-    return json.loads(page_as_str)
+    def request_all_champions_from_api(self, max_champions=None):
+        """
+        Creates a dict containing champion data of all champions.
 
+        Returns:
+            (dct)
+        """
 
-def request_all_champions_from_api():
-    """
-    Creates a dict containing champion data of all champions.
+        all_champs_dct = {}
 
-    Returns:
-        (dct)
-    """
-    all_champs_dct = {}
+        for champs_requested, champ_id in enumerate(api_champion_ids.CHAMPION_IDS):
 
-    for champ_id in api_champion_ids.CHAMPION_IDS:
+            if max_champions is not None:
+                if champs_requested > max_champions:
+                    break
 
-        champ_name = api_champion_ids.CHAMPION_IDS[champ_id]
-        page_as_dct = refined_champion_full_dct(champion_id=champ_id)
+            champ_name = api_champion_ids.CHAMPION_IDS[champ_id]
+            page_as_dct = self.refined_champion_full_dct(champion_id=champ_id)
 
-        all_champs_dct.update({champ_name: page_as_dct})
+            all_champs_dct.update({champ_name: page_as_dct})
 
-    return all_champs_dct
+        return all_champs_dct
 
+    def store_all_champions_data(self, max_champions=None):
+        """
+        Stores all champions' data from API.
 
-def store_all_champions_data():
+        Returns:
+            (None)
+        """
 
-    with open('all_api_champion_data.py', 'r') as read_module:
+        abort_msg = '\nChampion data insertion ABORTED.\n'
+        completion_msg = '\nChampion data insertion COMPLETE.\n'
+
+        # Confirms insertion
+        user_start_question = input('\nStart API requests?\n')
+        if user_start_question.lower() in ('yes', 'y'):
+            pass
+        else:
+            print(abort_msg)
+            return
 
         # Checks if module is non empty.
-        if read_module.read() != '':
-            user_answer = input('Non empty module detected. \nReplace data?\n')
-            if user_answer.lower() in ('yes', 'y'):
-                print('Replacing existing file content.')
+        with open('all_api_champion_data.py', 'r') as read_module:
+
+            if read_module.read() != '':
+                user_answer = input('Non empty module detected. \nReplace data?\n')
+                if user_answer.lower() in ('yes', 'y'):
+                    print('Replacing existing file content.')
+                else:
+                    print(abort_msg)
+                    return
             else:
-                print('Champion data insertion aborted.')
-                return
-        else:
-            print('Inserting all champions data.')
+                print('Inserting all champions data.')
 
-    # Replaces module content.
-    with open('all_api_champion_data.py', 'w') as edited_module:
+        # Replaces module content.
+        with open('all_api_champion_data.py', 'w') as edited_module:
 
-        # Creates file content.
-        dct_as_str = request_all_champions_from_api()
-        file_as_str = 'ALL_CHAMPIONS_ATTR = %s' % dct_as_str
-        final_str = autopep8.fix_code(file_as_str, options=autopep8.parse_args(['--aggressive', '']))
+            # Creates file content.
+            dct_as_str = self.request_all_champions_from_api(max_champions=max_champions)
+            file_as_str = 'ALL_CHAMPIONS_ATTR = %s' % dct_as_str
 
-        edited_module.write(final_str)
+            edited_module.write(file_as_str)
+
+        print(completion_msg)
 
 
 # ===============================================================
@@ -698,20 +719,17 @@ if __name__ == '__main__':
     all_abilities = api_mundo.ABILITIES['spells']
 
     testGen = False
-    
     if testGen is True:
         for ability_dct in all_abilities:
             GeneralAbilityAttributes(api_ability_dct=ability_dct, champion_name='Mundo').run_class()
             break
 
     testDmg = False
-    
     if testDmg is True:
         for ability_dct in all_abilities:
             d = DmgAbilityAttributes(api_ability_dct=ability_dct, ability_name='q').raw_dmg_strings()
             print(d)
 
-    testApiStorage = True
-
+    testApiStorage = False
     if testApiStorage is True:
-        store_all_champions_data()
+        RequestAllAbilities().store_all_champions_data(max_champions=None)
