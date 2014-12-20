@@ -3,7 +3,6 @@ import time
 import urllib.request
 import api_champion_ids
 import json
-import autopep8
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -119,7 +118,7 @@ class _ObsoleteClass(object):
 
 
 # ===============================================================
-class RequestAllAbilities(object):
+class RequestAllAbilitiesFromApi(object):
 
     API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
 
@@ -186,11 +185,19 @@ class RequestAllAbilities(object):
             (None)
         """
 
+        targeted_module = 'all_api_champion_data.py'
+
+        # Messages
+        start_msg = '\n' + '-'*40
+        start_msg += '\nWARNING !!!'
+        start_msg += '\nStart API requests?\n'
+
         abort_msg = '\nChampion data insertion ABORTED.\n'
+
         completion_msg = '\nChampion data insertion COMPLETE.\n'
 
         # Confirms insertion
-        user_start_question = input('\nStart API requests?\n')
+        user_start_question = input(start_msg)
         if user_start_question.lower() in ('yes', 'y'):
             pass
         else:
@@ -198,7 +205,7 @@ class RequestAllAbilities(object):
             return
 
         # Checks if module is non empty.
-        with open('all_api_champion_data.py', 'r') as read_module:
+        with open(targeted_module, 'r') as read_module:
 
             if read_module.read() != '':
                 user_answer = input('Non empty module detected. \nReplace data?\n')
@@ -211,7 +218,7 @@ class RequestAllAbilities(object):
                 print('Inserting all champions data.')
 
         # Replaces module content.
-        with open('all_api_champion_data.py', 'w') as edited_module:
+        with open(targeted_module, 'w') as edited_module:
 
             # Creates file content.
             dct_as_str = self.request_all_champions_from_api(max_champions=max_champions)
@@ -220,6 +227,24 @@ class RequestAllAbilities(object):
             edited_module.write(file_as_str)
 
         print(completion_msg)
+
+
+class ExploreApiAbilities(object):
+
+    def __init__(self):
+        self.data_module = __import__('all_api_champion_data')
+
+    def ability_tooltip(self, champ_name):
+        """
+        Returns string containing data about an ability's effects.
+
+        Returns:
+            (str)
+        """
+
+        lst = self.data_module.ALL_CHAMPIONS_ATTR[champ_name]['spells']
+
+        return lst
 
 
 # ===============================================================
@@ -730,6 +755,6 @@ if __name__ == '__main__':
             d = DmgAbilityAttributes(api_ability_dct=ability_dct, ability_name='q').raw_dmg_strings()
             print(d)
 
-    testApiStorage = False
+    testApiStorage = True
     if testApiStorage is True:
-        RequestAllAbilities().store_all_champions_data(max_champions=None)
+        RequestAllAbilitiesFromApi().store_all_champions_data(max_champions=None)
