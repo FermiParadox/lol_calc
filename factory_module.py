@@ -28,94 +28,17 @@ garen.q().gen_attr('reset_aa', 'no_cost')
 
 """
 
-
+"""
 # Independent of effect type
 MANDATORY_ATTR_EFFECT = ('target_type',)
 OPTIONAL_ATTR_EFFECT = ('radius', 'aoe', 'max_targets', )
 # Dmg effect tags
 MANDATORY_ATTR_DMG = ('dmg_category', )
-OPTIONAL_ATTR_DMG = ('not_scaling', 'scaling', 'lifesteal', 'spellvamp', 'dmg_source', 'dot')
+OPTIONAL_ATTR_DMG = ('lifesteal', 'spellvamp', 'dmg_source', 'dot')
 # Buff effect tags
 MANDATORY_ATTR_BUFF = ('duration', )
 OPTIONAL_ATTR_BUFF = ('affects_stat', 'is_trigger', 'delay_cd_start', 'on_hit')
-
-
-class _ObsoleteClass(object):
-
-    EXPECTED_PUBLIC_OBJECTS = 1
-    ABILITY_ORDER_IN_STORE = ('inn', 'q', 'w', 'e', 'r')
-
-    def __init__(self,
-                 champ_name):
-
-        self.champ_name = champ_name
-
-        self.suggested_tags = {}
-        self.set_suggested_tags()
-
-        self.attr_types = {}
-        self.set_attr_type()
-
-    def set_suggested_tags(self):
-
-        for ability_name in self.ABILITY_ORDER_IN_STORE:
-            self.suggested_tags.update({ability_name: []})
-
-    def set_attr_type(self):
-
-        for ability_name in self.ABILITY_ORDER_IN_STORE:
-            self.attr_types.update({ability_name: ['general', ]})
-
-    def abilities_dct(self):
-        """
-        Returns the dict containing all abilities in the champion's stored api data.
-
-        Raises:
-            (BaseException) If more or less than one public objects are found in api module.
-        Returns:
-            (dict)
-        """
-
-        objects_found = 0
-        dct_name = None
-
-        champ_module = __import__('api_'+self.champ_name)
-
-        for obj_name in dir(champ_module):
-            if '_' != obj_name[0]:
-                objects_found += 1
-                dct_name = obj_name
-
-        # Checks if it contains exact amount of public objects in API_DATA module.
-        if objects_found != self.EXPECTED_PUBLIC_OBJECTS:
-            raise BaseException('Expected exactly %s objects in API data module, got %s instead.' %
-                                (self.EXPECTED_PUBLIC_OBJECTS, objects_found))
-
-        dct = getattr(champ_module, dct_name)
-
-        return dct['spells']
-
-    def ability_dct(self, ability_name):
-        """
-        Returns a dict from API for given ability.
-
-        There are 4 dicts in API data (one for each ability) and 1 stored manually for innate.
-
-        Returns:
-            (dict)
-        """
-        ability_num = self.ABILITY_ORDER_IN_STORE.index(ability_name)
-
-        return self.abilities_dct()[ability_num]
-
-    def create_attr_tags(self):
-
-        for ability_name in self.ABILITY_ORDER_IN_STORE:
-
-            tags = []
-            if 'dealing' in self.ability_dct(ability_name):
-
-                tags.append('scaling')
+"""
 
 
 # ===============================================================
@@ -307,12 +230,29 @@ class ExploreApiAbilities(object):
 
         return final_dct
 
+    def mod_link_names(self):
+        dct = {}
+
+        for champ_name in self.all_champions_data_dct:
+            for spell_dct in self.all_champions_data_dct[champ_name]['spells']:
+
+                if 'vars' in spell_dct:
+                    for coeff_dct in spell_dct['vars']:
+                        link_name = coeff_dct['link']
+
+                        if link_name in dct:
+                            dct[link_name] += 1
+                        else:
+                            dct.update({link_name: 1})
+
+        return dct
+
 
 # ===============================================================
 def check_all_same(lst):
     """
     Iterates through a list and checks if all its elements are the same.
-    
+
     Returns:
         (bool)
     """
@@ -355,6 +295,7 @@ def suggest_attr_values(suggested_values_dct, modified_dct):
     """
 
     print('\n'+'-'*40)
+    print('\n(type "stop" at any point to exit)')
 
     for attr_name in suggested_values_dct:
 
@@ -666,9 +607,20 @@ class DmgAbilityAttributes(object):
 
     AUTOMATICALLY_FILLED_DMG_ATTR = ()
 
-    def __init__(self, ability_name, api_ability_dct):
-        self.api_ability_dct = api_ability_dct
+    MOD_STAT_NAME_MAP = dict(attackdamage='ad',
+                             bonusattackdamage='bonus_ad',
+                             spelldamage='ap',
+                             armor='armor',
+                             bonusarmor='bonus_armor',
+                             bonushealth='bonus_hp',
+                             bonusspellblock='bonus_ap',
+                             health='hp',
+                             mana='mp',)
+
+    def __init__(self, ability_name, api_spell_dct):
+        self.api_spell_dct = api_spell_dct
         self.ability_name = ability_name
+        self.ability_num = 'qwer'.index(self.ability_name)
         self.dmgs_dct = {}
 
     @staticmethod
@@ -699,12 +651,12 @@ class DmgAbilityAttributes(object):
             (list)
         """
 
-        api_string = self.api_ability_dct['sanitizedTooltip']
+        api_string = self.api_spell_dct['sanitizedTooltip']
 
         # (e.g. ' {{ e1}} true damage' )
         p = re.compile(
             r"""
-            (?:\s\{\{\s)\w\d(?:\s\}\})             # ' {{ e1 }}'
+            (?:\s\{\{\s)\w\d(?:\s\}\})          # ' {{ e1 }}'
             [^,.]*?                             # any characters in between excluding , and .
             (?:true|magic|physical)             # true magic or physical
             \sdamage                            # ' damage'
@@ -727,9 +679,26 @@ class DmgAbilityAttributes(object):
         # (last character of modifier)
         effect_num = int(abbr[-1:])
 
-        mod_val = self.api_ability_dct['effect'][effect_num]
+        mod_val = self.api_spell_dct['effect'][effect_num]
 
         return return_tpl_or_element(lst=mod_val)
+
+    def mod_value_and_stat(self, mod_shortcut):
+        """
+        Finds mod's value and the stat linked to the mod.
+
+        Returns:
+            (dct)
+        """
+
+        for mod_dct in self.api_spell_dct['vars']:
+            if mod_dct['key'] == mod_shortcut:
+
+                stat_name = mod_dct['link']
+                mod_coeff = amod_dct['coeff']
+
+                return {stat_name: mod_coeff}
+
 
     def insert_dmg_type_and_mods(self):
         """
@@ -765,7 +734,11 @@ class DmgAbilityAttributes(object):
             for abbrev_num, mod_abbrev in enumerate(mod_val_abbrev_lst):
                 # Names mods: mod_1, mod_2 etc, and inserts them.
                 mod_name = 'mod_' + str(abbrev_num+1)
-                curr_dmg_dct.update({mod_name: self.effect_values_by_abbr(abbr=mod_abbrev)})
+                curr_dmg_dct.update({mod_name: {}})
+                # Mod values
+                curr_dmg_dct[mod_name].update({'mod_values': self.effect_values_by_abbr(abbr=mod_abbrev)})
+                # Stat affecting the mod
+                curr_dmg_dct[mod_name].update({'stat_name': self.effect_values_by_abbr(abbr=mod_abbrev)})
 
             # INSERTS DMGS
 
@@ -818,18 +791,19 @@ if __name__ == '__main__':
             GeneralAbilityAttributes(api_ability_dct=abilityDct, champion_name='Mundo').run_class()
             break
 
-    testDmg = True
+    testDmg = False
     if testDmg is True:
         for abilityDct in allAbilities:
-            DmgAbilityAttributes(api_ability_dct=abilityDct, ability_name='q').insert_dmg_type_and_mods()
-            d = DmgAbilityAttributes(api_ability_dct=abilityDct, ability_name='q').dmgs_dct
-            print(d)
+            dmgAttrInstance = DmgAbilityAttributes(api_spell_dct=abilityDct, ability_name='q')
+            dmgAttrInstance.insert_dmg_type_and_mods()
+            d = dmgAttrInstance.dmgs_dct
+            pp.pprint(d)
 
     testApiStorage = False
     if testApiStorage is True:
         RequestAllAbilitiesFromApi().store_all_champions_data(max_champions=None)
 
-    testExploration = False
+    testExploration = True
     if testExploration is True:
-        labelOcc = ExploreApiAbilities().label_occurrences()
-        pp.pprint(labelOcc)
+        exploreFunc = ExploreApiAbilities().mod_link_names()
+        pp.pprint(exploreFunc)
