@@ -3,6 +3,7 @@ import time
 import urllib.request
 import api_champion_ids
 import json
+import pprint as pp
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -233,18 +234,78 @@ class ExploreApiAbilities(object):
 
     def __init__(self):
         self.data_module = __import__('all_api_champion_data')
+        self.all_champions_data_dct = self.data_module.ALL_CHAMPIONS_ATTR
 
-    def ability_tooltip(self, champ_name):
+    @staticmethod
+    def dct_appender(source_dct, targeted_dct):
         """
-        Returns string containing data about an ability's effects.
+        Increments a dict's key value. If key doesnt exist, assigns value 1.
+
+        Returns:
+            (None)
+        """
+        for elem in source_dct:
+            if elem not in targeted_dct:
+                targeted_dct.update({elem: 1})
+            else:
+                targeted_dct[elem] += 1
+
+    @staticmethod
+    def label_in_description(label, ability_dct):
+        """
+        Checks if given label is inside the ability description.
+
+        Strips label of any leading or trailing whitespaces,
+        to avoid API accidental naming inconsistency.
 
         Returns:
             (str)
         """
 
-        lst = self.data_module.ALL_CHAMPIONS_ATTR[champ_name]['spells']
+        label = label.lstrip()
+        label = label.rstrip()
 
-        return lst
+        # (upper or lower case is irrelevant)
+        label = label.lower()
+        if label in ability_dct['sanitizedTooltip']:
+            return True
+        else:
+            return False
+
+    def label_occurrences(self, champions_lst=None):
+        """
+        Returns dict containing all possible effect labels,
+        how many times they occur and their existence in ability description.
+
+        Returns:
+            (dct)
+        """
+
+        # All champions, or a list of champions.
+        if champions_lst is None:
+            champ_lst = self.all_champions_data_dct
+        else:
+            champ_lst = champions_lst
+
+        final_dct = {}
+
+        for champ_name in champ_lst:
+            for spell_dct in self.all_champions_data_dct[champ_name]['spells']:
+                for label in spell_dct['leveltip']['label']:
+
+                    # Label frequency.
+                    if label not in final_dct:
+                        final_dct.update({label: {'frequency': 1, 'in_description': 0}})
+                    else:
+                        final_dct[label]['frequency'] += 1
+
+                    # Label in description.
+                    in_description = self.label_in_description(label=label,
+                                                               ability_dct=spell_dct)
+                    if in_description:
+                        final_dct[label]['in_description'] += 1
+
+        return final_dct
 
 
 # ===============================================================
@@ -741,20 +802,25 @@ if __name__ == '__main__':
 
     import api_mundo
 
-    all_abilities = api_mundo.ABILITIES['spells']
+    allAbilities = api_mundo.ABILITIES['spells']
 
     testGen = False
     if testGen is True:
-        for ability_dct in all_abilities:
-            GeneralAbilityAttributes(api_ability_dct=ability_dct, champion_name='Mundo').run_class()
+        for abilityDct in allAbilities:
+            GeneralAbilityAttributes(api_ability_dct=abilityDct, champion_name='Mundo').run_class()
             break
 
     testDmg = False
     if testDmg is True:
-        for ability_dct in all_abilities:
-            d = DmgAbilityAttributes(api_ability_dct=ability_dct, ability_name='q').raw_dmg_strings()
+        for abilityDct in allAbilities:
+            d = DmgAbilityAttributes(api_ability_dct=abilityDct, ability_name='q').raw_dmg_strings()
             print(d)
 
-    testApiStorage = True
+    testApiStorage = False
     if testApiStorage is True:
         RequestAllAbilitiesFromApi().store_all_champions_data(max_champions=None)
+
+    testExploration = True
+    if testExploration is True:
+        c = ExploreApiAbilities().label_occurrences()
+        pp.pprint(c)
