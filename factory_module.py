@@ -47,20 +47,20 @@ class _ObsoleteClass(object):
 
     def __init__(self,
                  champ_name):
-        
+
         self.champ_name = champ_name
-        
+
         self.suggested_tags = {}
         self.set_suggested_tags()
 
         self.attr_types = {}
         self.set_attr_type()
-    
+
     def set_suggested_tags(self):
-        
+
         for ability_name in self.ABILITY_ORDER_IN_STORE:
             self.suggested_tags.update({ability_name: []})
-    
+
     def set_attr_type(self):
 
         for ability_name in self.ABILITY_ORDER_IN_STORE:
@@ -251,7 +251,7 @@ class ExploreApiAbilities(object):
                 targeted_dct[elem] += 1
 
     @staticmethod
-    def label_in_description(label, ability_dct):
+    def label_in_tooltip(label, ability_dct):
         """
         Checks if given label is inside the ability description.
 
@@ -295,15 +295,15 @@ class ExploreApiAbilities(object):
 
                     # Label frequency.
                     if label not in final_dct:
-                        final_dct.update({label: {'frequency': 1, 'in_description': 0}})
+                        final_dct.update({label: {'frequency': 1, 'in_tooltip': 0}})
                     else:
                         final_dct[label]['frequency'] += 1
 
                     # Label in description.
-                    in_description = self.label_in_description(label=label,
-                                                               ability_dct=spell_dct)
-                    if in_description:
-                        final_dct[label]['in_description'] += 1
+                    in_tooltip = self.label_in_tooltip(label=label,
+                                                       ability_dct=spell_dct)
+                    if in_tooltip:
+                        final_dct[label]['in_tooltip'] += 1
 
         return final_dct
 
@@ -316,15 +316,15 @@ def check_all_same(lst):
     Returns:
         (bool)
     """
-    
+
     all_same = True
 
     for item_num in range(len(lst)-1):
-        
+
         if lst[item_num] != lst[item_num+1]:
             all_same = False
             break
-            
+
     return all_same
 
 
@@ -340,9 +340,9 @@ def return_tpl_or_element(lst):
         (float) or (int) or (str)
     """
     if check_all_same(lst=lst):
-        return lst
-    else:
         return lst[0]
+    else:
+        return lst
 
 
 # ================================================================
@@ -468,7 +468,7 @@ class GeneralAbilityAttributes(object):
         dashed_distance=(None,),
         channel_time=(None,),
         reset_aa=(False, True),
-    )
+        )
 
     def resource_cost_type(self):
         """
@@ -480,7 +480,7 @@ class GeneralAbilityAttributes(object):
             (str)
             None
         """
-        
+
         res_name = self.api_ability_dct['resource']
 
         # NO COST
@@ -660,6 +660,7 @@ class DmgAbilityAttributes(object):
         radius='placeholder',
         dot='placeholder',
         max_targets='placeholder',
+        usual_max_targets='placeholder',
         aoe='placeholder',
         )
 
@@ -677,14 +678,14 @@ class DmgAbilityAttributes(object):
             abbr_in_effects='placeholder',
             mod_1='placeholder',
 
-        )
+            )
 
     @staticmethod
     def single_mod_dct_template_in_factory():
         return dict(
             abbr_in_effects='placeholder',
 
-        )
+            )
 
     def raw_dmg_strings(self):
         """
@@ -703,7 +704,7 @@ class DmgAbilityAttributes(object):
         # (e.g. ' {{ e1}} true damage' )
         p = re.compile(
             r"""
-            (?: \{\{ )\w\d(?: \}\})             # ' {{ e1 }}'
+            (?:\s\{\{\s)\w\d(?:\s\}\})             # ' {{ e1 }}'
             [^,.]*?                             # any characters in between excluding , and .
             (?:true|magic|physical)             # true magic or physical
             \sdamage                            # ' damage'
@@ -723,15 +724,17 @@ class DmgAbilityAttributes(object):
             (float)
         """
 
-        effect_num = abbr[-1:]
+        # (last character of modifier)
+        effect_num = int(abbr[-1:])
 
         mod_val = self.api_ability_dct['effect'][effect_num]
 
         return return_tpl_or_element(lst=mod_val)
 
-    def insert_dmg_elements(self):
+    def insert_dmg_type_and_mods(self):
         """
-        Detects dmg type and abbreviation, list of dmg modifier abbreviations.
+        Detects dmg type, its abbreviation,
+        and list of dmg modifier abbreviations and their values.
 
         Returns:
             None
@@ -739,30 +742,34 @@ class DmgAbilityAttributes(object):
 
         dmgs_lst = self.raw_dmg_strings()
 
-        for dmg_num, element in enumerate(dmgs_lst):
+        for dmg_num, tooltip_fragment in enumerate(dmgs_lst):
 
             # INSERTS DMG NAME AND ATTRS
             # New temporary dmg name.
-            new_dmg_name = 'dmg_' + str(dmg_num)
+            new_dmg_name = 'dmg_' + str(dmg_num+1)
             self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
 
             curr_dmg_dct = self.dmgs_dct[new_dmg_name]
-            
+
             # INSERTS DMG VALUES
-            dmg_val_abbrev = re.findall(r' \{\{ (\w\d) \}\}', element)[0]
-            curr_dmg_dct['values'] = self.effect_values_by_abbr(abbr=dmg_val_abbrev)
-            
+            dmg_val_abbrev = re.findall(r'\s\{\{\s(\w\d)\s\}\}', tooltip_fragment)[0]
+            curr_dmg_dct['dmg_values'] = self.effect_values_by_abbr(abbr=dmg_val_abbrev)
+
             # INSERTS DMG TYPE
-            dmg_type = re.search(r'true|magic|physical', element).group()
+            dmg_type = re.search(r'true|magic|physical', tooltip_fragment).group()
             curr_dmg_dct['dmg_type'] = dmg_type
 
             # INSERTS MODS IN DMG
             # Dmg mods in api 'effects'
-            mod_val_abbrev_lst = re.findall(r'\+\{\{ (\w\d) \}\}', element)
+            mod_val_abbrev_lst = re.findall(r'\+\{\{\s(\w\d)\s\}\}', tooltip_fragment)
             for abbrev_num, mod_abbrev in enumerate(mod_val_abbrev_lst):
                 # Names mods: mod_1, mod_2 etc, and inserts them.
-                mod_name = 'mod_' + str(abbrev_num)
+                mod_name = 'mod_' + str(abbrev_num+1)
                 curr_dmg_dct.update({mod_name: self.effect_values_by_abbr(abbr=mod_abbrev)})
+
+            # INSERTS DMGS
+
+            self.dmgs_dct.update({new_dmg_name: curr_dmg_dct})
 
     def suggest_dmg_attr_values(self):
         suggest_attr_values(suggested_values_dct=self.SUGGESTED_VALUES_DMG_ATTR,
@@ -800,9 +807,10 @@ class BuffAbilityAttributes(object):
 
 if __name__ == '__main__':
 
-    import api_mundo
+    import all_api_champion_data
 
-    allAbilities = api_mundo.ABILITIES['spells']
+    champName = 'ashe'
+    allAbilities = all_api_champion_data.ALL_CHAMPIONS_ATTR[champName]['spells']
 
     testGen = False
     if testGen is True:
@@ -810,17 +818,18 @@ if __name__ == '__main__':
             GeneralAbilityAttributes(api_ability_dct=abilityDct, champion_name='Mundo').run_class()
             break
 
-    testDmg = False
+    testDmg = True
     if testDmg is True:
         for abilityDct in allAbilities:
-            d = DmgAbilityAttributes(api_ability_dct=abilityDct, ability_name='q').raw_dmg_strings()
+            DmgAbilityAttributes(api_ability_dct=abilityDct, ability_name='q').insert_dmg_type_and_mods()
+            d = DmgAbilityAttributes(api_ability_dct=abilityDct, ability_name='q').dmgs_dct
             print(d)
 
     testApiStorage = False
     if testApiStorage is True:
         RequestAllAbilitiesFromApi().store_all_champions_data(max_champions=None)
 
-    testExploration = True
+    testExploration = False
     if testExploration is True:
-        c = ExploreApiAbilities().label_occurrences()
-        pp.pprint(c)
+        labelOcc = ExploreApiAbilities().label_occurrences()
+        pp.pprint(labelOcc)
