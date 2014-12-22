@@ -241,9 +241,13 @@ class ExploreApiAbilities(object):
                         link_name = coeff_dct['link']
 
                         if link_name in dct:
-                            dct[link_name] += 1
+                            dct[link_name]['frequency'] += 1
                         else:
-                            dct.update({link_name: 1})
+                            dct.update({link_name: {}})
+                            dct[link_name].update({'frequency': 1, 'champions': [champ_name]})
+
+                        if champ_name not in dct[link_name]['champions']:
+                            dct[link_name]['champions'].append(champ_name)
 
         return dct
 
@@ -694,11 +698,11 @@ class DmgAbilityAttributes(object):
         for mod_dct in self.api_spell_dct['vars']:
             if mod_dct['key'] == mod_shortcut:
 
-                stat_name = mod_dct['link']
-                mod_coeff = amod_dct['coeff']
+                link_name = mod_dct['link']
+                stat_name = self.MOD_STAT_NAME_MAP[link_name]
+                mod_coeff = self.MOD_STAT_NAME_MAP[mod_dct['coeff']]
 
                 return {stat_name: mod_coeff}
-
 
     def insert_dmg_type_and_mods(self):
         """
