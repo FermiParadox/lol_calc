@@ -251,6 +251,25 @@ class ExploreApiAbilities(object):
 
         return dct
 
+    def champion_abilities(self, champion_name, ability_name=None):
+        """
+        Prints selected champion's abilities.
+
+        Returns:
+            (None)
+        """
+        champ_abilities = self.all_champions_data_dct[champion_name]
+        if ability_name is None:
+            result = champ_abilities['spells']
+
+        else:
+            if ability_name == 'inn':
+                result = champ_abilities['passive']
+            else:
+                result = champ_abilities['spells']['qwer'.index(ability_name)]
+
+        pp.pprint(result)
+
 
 # ===============================================================
 def check_all_same(lst):
@@ -578,7 +597,7 @@ class DmgAbilityAttributes(object):
             target_type='placeholder',
             dmg_category='placeholder',
             dmg_type='placeholder',
-            values='placeholder',
+            dmg_values='placeholder',
             dmg_source='placeholder',
             # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
             mods='placeholder',
@@ -595,18 +614,17 @@ class DmgAbilityAttributes(object):
         return dict()
 
     SUGGESTED_VALUES_DMG_ATTR = dict(
-        target_type=('player', 'enemy'),
+        target_type=('enemy', 'player'),
         # TODO insert more categories in class and then here.
         dmg_category=('standard_dmg', 'innate_dmg', 'chain_decay', 'chain_limited_decay', 'aa_dmg_value'),
         dmg_type=('magic', 'physical', 'true', 'AA'),
-        values='placeholder',
-        dmg_source='placeholder',
-        life_conversion_type=(None, 'lifesteal', 'spellvamp'),
-        radius='placeholder',
-        dot='placeholder',
-        max_targets='placeholder',
-        usual_max_targets='placeholder',
-        aoe='placeholder',
+        dmg_source=('q', 'w', 'e', 'r', 'inn'),
+        life_conversion_type=('spellvamp', None, 'lifesteal'),
+        radius=(None, ),
+        dot=(False, True),
+        max_targets=(1, 2, 3, 4, 5, 'infinite'),
+        usual_max_targets=(1, 2, 3, 4, 5),
+        aoe=(False, True),
         )
 
     AUTOMATICALLY_FILLED_DMG_ATTR = ()
@@ -747,8 +765,12 @@ class DmgAbilityAttributes(object):
             self.dmgs_dct.update({new_dmg_name: curr_dmg_dct})
 
     def suggest_dmg_attr_values(self):
-        suggest_attr_values(suggested_values_dct=self.SUGGESTED_VALUES_DMG_ATTR,
-                            modified_dct=self.dmgs_dct)
+
+        for dmg_temp_name in self.dmgs_dct:
+            print('\n%s\n' % ('='*40))
+            print(dmg_temp_name.upper())
+            suggest_attr_values(suggested_values_dct=self.SUGGESTED_VALUES_DMG_ATTR,
+                                modified_dct=self.dmgs_dct[dmg_temp_name])
 
 
 class BuffAbilityAttributes(object):
@@ -798,6 +820,7 @@ if __name__ == '__main__':
         for abilityDct in allAbilities:
             dmgAttrInstance = DmgAbilityAttributes(api_spell_dct=abilityDct, ability_name='q')
             dmgAttrInstance.insert_dmg_type_and_mods()
+            dmgAttrInstance.suggest_dmg_attr_values()
             d = dmgAttrInstance.dmgs_dct
             pp.pprint(d)
 
