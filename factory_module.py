@@ -672,8 +672,10 @@ class DmgAbilityAttributes(object):
 
     def effect_values_by_abbr(self, abbr):
         """
-        Detects the values of a dmg or a dmg modifier,
+        Detects the values of an effect,
         and returns a tuple or float based on whether it changes or not.
+
+        To be used ONLY for 'effect' contents (e.g. not dmg mods).
 
         Returns:
             (tpl)
@@ -700,7 +702,7 @@ class DmgAbilityAttributes(object):
 
                 link_name = mod_dct['link']
                 stat_name = self.MOD_STAT_NAME_MAP[link_name]
-                mod_coeff = self.MOD_STAT_NAME_MAP[mod_dct['coeff']]
+                mod_coeff = mod_dct['coeff']
 
                 return {stat_name: mod_coeff}
 
@@ -733,16 +735,12 @@ class DmgAbilityAttributes(object):
             curr_dmg_dct['dmg_type'] = dmg_type
 
             # INSERTS MODS IN DMG
+            curr_dmg_dct.update({'mods': {}})
             # Dmg mods in api 'effects'
             mod_val_abbrev_lst = re.findall(r'\+\{\{\s(\w\d)\s\}\}', tooltip_fragment)
-            for abbrev_num, mod_abbrev in enumerate(mod_val_abbrev_lst):
-                # Names mods: mod_1, mod_2 etc, and inserts them.
-                mod_name = 'mod_' + str(abbrev_num+1)
-                curr_dmg_dct.update({mod_name: {}})
-                # Mod values
-                curr_dmg_dct[mod_name].update({'mod_values': self.effect_values_by_abbr(abbr=mod_abbrev)})
-                # Stat affecting the mod
-                curr_dmg_dct[mod_name].update({'stat_name': self.effect_values_by_abbr(abbr=mod_abbrev)})
+            for mod_abbrev in mod_val_abbrev_lst:
+                # Mod values and stats
+                curr_dmg_dct['mods'].update(self.mod_value_and_stat(mod_shortcut=mod_abbrev))
 
             # INSERTS DMGS
 
@@ -795,7 +793,7 @@ if __name__ == '__main__':
             GeneralAbilityAttributes(api_ability_dct=abilityDct, champion_name='Mundo').run_class()
             break
 
-    testDmg = False
+    testDmg = True
     if testDmg is True:
         for abilityDct in allAbilities:
             dmgAttrInstance = DmgAbilityAttributes(api_spell_dct=abilityDct, ability_name='q')
@@ -807,7 +805,7 @@ if __name__ == '__main__':
     if testApiStorage is True:
         RequestAllAbilitiesFromApi().store_all_champions_data(max_champions=None)
 
-    testExploration = True
+    testExploration = False
     if testExploration is True:
         exploreFunc = ExploreApiAbilities().mod_link_names()
         pp.pprint(exploreFunc)
