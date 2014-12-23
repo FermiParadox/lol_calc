@@ -251,6 +251,17 @@ class ExploreApiAbilities(object):
 
         return dct
 
+    def champion_base_stats(self, champion_name):
+        """
+        Prints selected champion's base stats.
+
+        Returns:
+            (None)
+        """
+        champ_stats = self.all_champions_data_dct[champion_name]['stats']
+
+        pp.pprint(champ_stats)
+
     def champion_abilities(self, champion_name, ability_name=None):
         """
         Prints selected champion's abilities.
@@ -258,15 +269,15 @@ class ExploreApiAbilities(object):
         Returns:
             (None)
         """
-        champ_abilities = self.all_champions_data_dct[champion_name]
+        champ_dct = self.all_champions_data_dct[champion_name]
         if ability_name is None:
-            result = champ_abilities['spells']
+            result = champ_dct['spells']
 
         else:
             if ability_name == 'inn':
-                result = champ_abilities['passive']
+                result = champ_dct['passive']
             else:
-                result = champ_abilities['spells']['qwer'.index(ability_name)]
+                result = champ_dct['spells']['qwer'.index(ability_name)]
 
         pp.pprint(result)
 
