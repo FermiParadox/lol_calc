@@ -41,84 +41,45 @@ OPTIONAL_ATTR_BUFF = ('affects_stat', 'is_trigger', 'delay_cd_start', 'on_hit')
 """
 
 
-# ===============================================================
-class RequestAllAbilitiesFromApi(object):
+API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
 
-    API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
 
-    def request_single_champ_from_api(self, champion_id):
+class RequestDataFromAPI(object):
+
+    @staticmethod
+    def _request_single_page_from_api(page_url):
         """
-        Requests all data for a champion from api.
+        Requests a page from API, after a brief delay.
 
         Return:
-            (str)
+            (dct)
         """
 
         time.sleep(2)
-        page_url = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/champion/"
-                    + champion_id
-                    + "?champData=all&api_key="
-                    + self.API_KEY)
 
         page_as_bytes_type = urllib.request.urlopen(page_url).read()
-
         page_as_str = page_as_bytes_type.decode('utf-8')
-
-        return page_as_str
-
-    def refined_champion_full_dct(self, champion_id):
-        """
-        Processes api data of a champion by converting it to python dict.
-
-        Returns:
-            (dct)
-        """
-
-        page_as_str = self.request_single_champ_from_api(champion_id=champion_id)
 
         return json.loads(page_as_str)
 
-    def request_all_champions_from_api(self, max_champions=None):
+    @staticmethod
+    def _data_storage(targeted_module, obj_name, str_to_insert):
         """
-        Creates a dict containing champion data of all champions.
-
-        Returns:
-            (dct)
-        """
-
-        all_champs_dct = {}
-
-        for champs_requested, champ_id in enumerate(champion_ids.CHAMPION_IDS):
-
-            if max_champions is not None:
-                if champs_requested > max_champions:
-                    break
-
-            champ_name = champion_ids.CHAMPION_IDS[champ_id]
-            page_as_dct = self.refined_champion_full_dct(champion_id=champ_id)
-
-            all_champs_dct.update({champ_name: page_as_dct})
-
-        return all_champs_dct
-
-    def store_all_champions_data(self, max_champions=None):
-        """
-        Stores all champions' data from API.
+        Reads a file, informs user of file status (empty/full),
+        and asks user action
 
         Returns:
             (None)
         """
-
-        targeted_module = 'api_champion_database.py'
 
         # Messages
         start_msg = '\n' + '-'*40
         start_msg += '\nWARNING !!!'
         start_msg += '\nStart API requests?\n'
 
-        abort_msg = '\nChampion data insertion ABORTED.\n'
+        abort_msg = '\nData insertion ABORTED.\n'
 
-        completion_msg = '\nChampion data insertion COMPLETE.\n'
+        completion_msg = '\nData insertion COMPLETE.\n'
 
         # Confirms insertion
         user_start_question = input(start_msg)
@@ -134,23 +95,108 @@ class RequestAllAbilitiesFromApi(object):
             if read_module.read() != '':
                 user_answer = input('Non empty module detected. \nReplace data?\n')
                 if user_answer.lower() in ('yes', 'y'):
-                    print('Replacing existing file content.')
+                    print('Replacing existing file content..')
                 else:
                     print(abort_msg)
                     return
             else:
-                print('Inserting all champions data.')
+                print('Inserting data..')
+
+        # Creates file content.
+        file_as_str = obj_name + ' = ' + str_to_insert
 
         # Replaces module content.
         with open(targeted_module, 'w') as edited_module:
-
-            # Creates file content.
-            dct_as_str = self.request_all_champions_from_api(max_champions=max_champions)
-            file_as_str = 'ALL_CHAMPIONS_ATTR = %s' % dct_as_str
-
             edited_module.write(file_as_str)
 
         print(completion_msg)
+
+
+class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
+
+    def request_single_champ_from_api(self, champion_id):
+        """
+        Requests all data for a champion from api.
+
+        Each champion's full data is at a separate page.
+
+        Return:
+            (dct)
+        """
+
+        time.sleep(2)
+        page_url = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/champion/"
+                    + champion_id
+                    + "?champData=all&api_key="
+                    + API_KEY)
+
+        page_as_dct = self._request_single_page_from_api(page_url=page_url)
+
+        return page_as_dct
+
+    def request_all_champions_from_api(self, max_champions=None):
+        """
+        Creates a dict containing champion data of all champions.
+
+        Returns:
+            (dct)
+        """
+
+        all_champs_dct = {}
+        all_champs_as_str = None
+
+        for champs_requested, champ_id in enumerate(champion_ids.CHAMPION_IDS):
+
+            if max_champions is not None:
+                if champs_requested > max_champions:
+                    break
+
+            champ_name = champion_ids.CHAMPION_IDS[champ_id]
+            page_as_dct = self.request_single_champ_from_api(champion_id=champ_id)
+
+            all_champs_dct.update({champ_name: page_as_dct})
+
+            all_champs_as_str = str(all_champs_dct)
+
+        return all_champs_as_str
+
+    def store_all_champions_data(self, max_champions=None):
+        """
+        Stores all champions' data from API.
+
+        Returns:
+            (None)
+        """
+
+        targeted_module = 'api_champions_database.py'
+
+        self._data_storage(targeted_module=targeted_module,
+                           obj_name='ALL_CHAMPIONS_ATTR',
+                           str_to_insert=self.request_all_champions_from_api(max_champions=max_champions))
+
+
+class RequestAllRunesFromAPI(RequestDataFromAPI):
+
+    RUNES_PAGE_URL = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key=" + API_KEY)
+
+    def request_all_runes_from_api(self):
+        """
+        Requests all runes from API.
+
+        Returns:
+            (str)
+        """
+
+        page_as_dct = self._request_single_page_from_api(page_url=self.RUNES_PAGE_URL)
+        page_as_str = str(page_as_dct)
+
+        return page_as_str
+
+    def store_all_runes_from_api(self):
+
+        self._data_storage(targeted_module='api_runes_database.py',
+                           obj_name='ALL_RUNES',
+                           str_to_insert=self.request_all_runes_from_api())
 
 
 class ExploreApiAbilities(object):
@@ -815,10 +861,10 @@ class BuffAbilityAttributes(object):
 
 if __name__ == '__main__':
 
-    import api_champion_database
+    import api_champions_database
 
     champName = 'ashe'
-    allAbilities = api_champion_database.ALL_CHAMPIONS_ATTR[champName]['spells']
+    allAbilities = api_champions_database.ALL_CHAMPIONS_ATTR[champName]['spells']
 
     testGen = False
     if testGen is True:
@@ -837,7 +883,7 @@ if __name__ == '__main__':
 
     testApiStorage = False
     if testApiStorage is True:
-        RequestAllAbilitiesFromApi().store_all_champions_data(max_champions=None)
+        RequestAllAbilitiesFromAPI().store_all_champions_data(max_champions=None)
 
     testExploration = False
     if testExploration is True:

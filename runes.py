@@ -1,4 +1,4 @@
-import api_static_stored_data as api_module
+import app_runes_database as api_module
 import palette
 
 

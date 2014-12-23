@@ -1,4 +1,4 @@
-import api_static_stored_data
+import app_runes_database
 import palette
 
 # Converts item related API data to app compatible format.
@@ -48,7 +48,7 @@ class ApiItemConverter(object):
 
         dct = {}
 
-        api_dct = api_static_stored_data.API_ITEMS_DCT['data']
+        api_dct = app_runes_database.API_ITEMS_DCT['data']
 
         for id_num in api_dct:
 

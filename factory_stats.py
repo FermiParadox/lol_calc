@@ -1,6 +1,6 @@
 import palette
 import copy
-import api_static_stored_data
+import app_runes_database
 
 
 class ChampionStatsRiot(object):
@@ -28,7 +28,7 @@ class ChampionStatsRiot(object):
         Returns a dict containing stats of a champion and their values.
         """
 
-        api_stats_dct = api_static_stored_data.API_CHAMPIONS_BASE_STATS['data'][champ_name.capitalize()]['stats']
+        api_stats_dct = app_runes_database.API_CHAMPIONS_BASE_STATS['data'][champ_name.capitalize()]['stats']
 
         app_stats_dct = self.palette_deepcopy_base_stats()['mp']
 
