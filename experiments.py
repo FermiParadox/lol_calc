@@ -1,4 +1,4 @@
-import all_api_champion_data as all_data
+import api_champion_database as all_data
 
 def new_dct(old_dct):
 
@@ -13,7 +13,7 @@ def new_dct(old_dct):
 
 def change_file():
 
-    with open('all_api_champion_data.py', 'w') as edited_module:
+    with open('api_champion_database.py', 'w') as edited_module:
         s = new_dct(all_data.ALL_CHAMPIONS_ATTR)
         s = 'ALL_CHAMPIONS_ATTR = '+str(s)
         edited_module.write(s)

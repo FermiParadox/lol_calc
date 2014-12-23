@@ -1,7 +1,7 @@
 import re
 import time
 import urllib.request
-import api_champion_ids
+import champion_ids
 import json
 import pprint as pp
 
@@ -88,13 +88,13 @@ class RequestAllAbilitiesFromApi(object):
 
         all_champs_dct = {}
 
-        for champs_requested, champ_id in enumerate(api_champion_ids.CHAMPION_IDS):
+        for champs_requested, champ_id in enumerate(champion_ids.CHAMPION_IDS):
 
             if max_champions is not None:
                 if champs_requested > max_champions:
                     break
 
-            champ_name = api_champion_ids.CHAMPION_IDS[champ_id]
+            champ_name = champion_ids.CHAMPION_IDS[champ_id]
             page_as_dct = self.refined_champion_full_dct(champion_id=champ_id)
 
             all_champs_dct.update({champ_name: page_as_dct})
@@ -109,7 +109,7 @@ class RequestAllAbilitiesFromApi(object):
             (None)
         """
 
-        targeted_module = 'all_api_champion_data.py'
+        targeted_module = 'api_champion_database.py'
 
         # Messages
         start_msg = '\n' + '-'*40
@@ -815,10 +815,10 @@ class BuffAbilityAttributes(object):
 
 if __name__ == '__main__':
 
-    import all_api_champion_data
+    import api_champion_database
 
     champName = 'ashe'
-    allAbilities = all_api_champion_data.ALL_CHAMPIONS_ATTR[champName]['spells']
+    allAbilities = api_champion_database.ALL_CHAMPIONS_ATTR[champName]['spells']
 
     testGen = False
     if testGen is True:
