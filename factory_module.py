@@ -111,6 +111,13 @@ class RequestDataFromAPI(object):
 
         print(completion_msg)
 
+    def _request_single_page_from_api_as_str(self, page_url):
+
+        page_as_dct = self._request_single_page_from_api(page_url=page_url)
+        page_as_str = str(page_as_dct)
+
+        return page_as_str
+
 
 class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
 
@@ -177,7 +184,7 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
 
 class RequestAllRunesFromAPI(RequestDataFromAPI):
 
-    RUNES_PAGE_URL = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key=" + API_KEY)
+    RUNES_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key=" + API_KEY
 
     def request_all_runes_from_api(self):
         """
@@ -187,16 +194,34 @@ class RequestAllRunesFromAPI(RequestDataFromAPI):
             (str)
         """
 
-        page_as_dct = self._request_single_page_from_api(page_url=self.RUNES_PAGE_URL)
-        page_as_str = str(page_as_dct)
-
-        return page_as_str
+        return self._request_single_page_from_api_as_str(page_url=self.RUNES_PAGE_URL)
 
     def store_all_runes_from_api(self):
 
         self._data_storage(targeted_module='api_runes_database.py',
                            obj_name='ALL_RUNES',
                            str_to_insert=self.request_all_runes_from_api())
+
+
+class RequestAllItemsFromAPI(RequestDataFromAPI):
+
+    ITEMS_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/item?itemListData=all&api_key=" + API_KEY
+
+    def request_all_items_from_api(self):
+        """
+        Requests all items from API.
+
+        Returns:
+            (str)
+        """
+
+        return self._request_single_page_from_api_as_str(page_url=self.ITEMS_PAGE_URL)
+
+    def store_all_items_from_api(self):
+
+        self._data_storage(targeted_module='api_items_database.py',
+                           obj_name='ALL_ITEMS',
+                           str_to_insert=self.request_all_items_from_api())
 
 
 class ExploreApiAbilities(object):
