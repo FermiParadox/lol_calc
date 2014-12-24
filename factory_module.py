@@ -850,14 +850,21 @@ class DmgAbilityAttributes(object):
 
             """, re.IGNORECASE | re.VERBOSE)
 
-        duration_str = re.findall(p, string)[0]
+        results_found = re.findall(p, string)
 
+        # If no matches are found returns message.
+        if results_found:
+            duration_str = results_found[0]
+        else:
+            return 'No dots detected.'
+
+        # Else converts string to float (or list of floats) and returns it.
         if '{' in duration_str:
             abbr = re.search(r'\w\d', duration_str)
             return self.api_spell_dct['effects'][abbr]
 
         else:
-            return int(duration_str)
+            return float(duration_str)
 
     def insert_dmg_type_and_mods(self):
         """
@@ -983,6 +990,7 @@ if __name__ == '__main__':
             dmgAttrInstance = DmgAbilityAttributes(ability_name=abilityName, champion_name='malzahar')
             dmgAttrInstance.insert_dmg_type_and_mods()
             dmgAttrInstance.suggest_dmg_attr_values()
+            print(dmgAttrInstance.dot_duration())
             d = dmgAttrInstance.dmgs_dct
             pp.pprint(d)
 
