@@ -345,7 +345,7 @@ class ExploreApiAbilities(object):
 
         pp.pprint(result)
 
-    def sanitized_tooltips(self, champion_name=None, print_results=False):
+    def sanitized_tooltips(self, champion_name=None, print_mode=False):
         """
         Returns all tooltips for given champion (or for all champions).
 
@@ -365,12 +365,13 @@ class ExploreApiAbilities(object):
                 tooltips_lst.append(spell_dct['sanitizedTooltip'])
 
         # Checks if print mode is selected.
-        if print_results is True:
+        if print_mode is True:
             for tooltip in tooltips_lst:
                 print()
                 pp.pprint(tooltip)
         else:
             return tooltips_lst
+
 
 # ===============================================================
 # ===============================================================
@@ -695,11 +696,12 @@ class DmgAbilityAttributes(object):
     Each "dmg" must have a single responsibility.
     """
 
-    def __init__(self, ability_name, api_spell_dct):
-        self.api_spell_dct = api_spell_dct
+    def __init__(self, ability_name, champion_name):
+        self.champion_name = champion_name
         self.ability_name = ability_name
         self.ability_num = 'qwer'.index(self.ability_name)
         self.dmgs_dct = {}
+        self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][self.ability_num]
 
     @staticmethod
     def dmg_attributes():
@@ -780,7 +782,7 @@ class DmgAbilityAttributes(object):
         # (e.g. ' {{ e1}} true damage' )
         p = re.compile(
             r"""
-            (?:\s\{\{\s)\w\d(?:\s\}\})          # ' {{ e1 }}'
+            \s\{\{\s\w\d{1,2}\s\}\}          # ' {{ e1 }}'
             [^,.]*?                             # any characters in between excluding , and .
             (?:true|magic|physical)             # true magic or physical
             \sdamage                            # ' damage'
@@ -821,10 +823,41 @@ class DmgAbilityAttributes(object):
             if mod_dct['key'] == mod_shortcut:
 
                 link_name = mod_dct['link']
-                stat_name = self.mod_stat_name_map[link_name]
+                stat_name = self.mod_stat_name_map()[link_name]
                 mod_coeff = mod_dct['coeff']
 
                 return {stat_name: mod_coeff}
+
+    def dot_duration(self):
+        """
+        Checks if given ability has a dot.
+
+        Returns:
+            (bool)
+        """
+
+        string = self.api_spell_dct['sanitizedTooltip']
+
+        p = re.compile(
+            r"""
+            damage
+            \s
+            over
+            \s
+            ( \d+\.?\d* | \{\{\s \w\d{1,2} \s\}\} )          # ('4' or '2.3') or '{{ e1 }}'
+            \s
+            seconds
+
+            """, re.IGNORECASE | re.VERBOSE)
+
+        duration_str = re.findall(p, string)[0]
+
+        if '{' in duration_str:
+            abbr = re.search(r'\w\d', duration_str)
+            return self.api_spell_dct['effects'][abbr]
+
+        else:
+            return int(duration_str)
 
     def insert_dmg_type_and_mods(self):
         """
@@ -847,17 +880,17 @@ class DmgAbilityAttributes(object):
             curr_dmg_dct = self.dmgs_dct[new_dmg_name]
 
             # INSERTS DMG VALUES
-            dmg_val_abbrev = re.findall(r'\s\{\{\s(\w\d)\s\}\}', tooltip_fragment)[0]
+            dmg_val_abbrev = re.findall(r'\s\{\{\s(\w\d{1,2})\s\}\}', tooltip_fragment)[0]
             curr_dmg_dct['dmg_values'] = self.effect_values_by_abbr(abbr=dmg_val_abbrev)
 
             # INSERTS DMG TYPE
-            dmg_type = re.search(r'true|magic|physical', tooltip_fragment).group()
+            dmg_type = re.search(r'true|magic|physical', tooltip_fragment, re.IGNORECASE).group()
             curr_dmg_dct['dmg_type'] = dmg_type
 
             # INSERTS MODS IN DMG
             curr_dmg_dct.update({'mods': {}})
             # Dmg mods in api 'effects'
-            mod_val_abbrev_lst = re.findall(r'\+\{\{\s(\w\d)\s\}\}', tooltip_fragment)
+            mod_val_abbrev_lst = re.findall(r'\+\{\{\s(\w\d{1,2})\s\}\}', tooltip_fragment)
             for mod_abbrev in mod_val_abbrev_lst:
                 # Mod values and stats
                 curr_dmg_dct['mods'].update(self.mod_value_and_stat(mod_shortcut=mod_abbrev))
@@ -871,7 +904,7 @@ class DmgAbilityAttributes(object):
         for dmg_temp_name in sorted(self.dmgs_dct):
 
             msg = '\n%s\n' % ('='*40)
-            msg += '\n%s' % dmg_temp_name.upper()
+            msg += '\n%s\n' % self.ability_name.upper()
             msg += '\ndmg_values: %s' % self.dmgs_dct[dmg_temp_name]['dmg_values']
             msg += '\nmods: %s' % self.dmgs_dct[dmg_temp_name]['mods']
 
@@ -909,8 +942,17 @@ class BuffAbilityAttributes(object):
             prohibit_cd_start='placeholder',
             )
 
+    def check_if_affects_stats(self, ability):
+        """
+        Checks if given ability
 
-    def affects_stats(self, ability):
+        Returns:
+            (bool)
+        """
+
+
+
+    def check_if_slow(self, ability):
         """
         Checks if given ability
 
@@ -935,10 +977,10 @@ if __name__ == '__main__':
             GeneralAbilityAttributes(api_spell_dct=abilityDct, champion_name='Mundo').run_class()
             break
 
-    testDmg = False
+    testDmg = True
     if testDmg is True:
-        for abilityDct in allAbilities:
-            dmgAttrInstance = DmgAbilityAttributes(api_spell_dct=abilityDct, ability_name='q')
+        for abilityName in 'qwer':
+            dmgAttrInstance = DmgAbilityAttributes(ability_name=abilityName, champion_name='malzahar')
             dmgAttrInstance.insert_dmg_type_and_mods()
             dmgAttrInstance.suggest_dmg_attr_values()
             d = dmgAttrInstance.dmgs_dct
@@ -948,7 +990,7 @@ if __name__ == '__main__':
     if testApiStorage is True:
         RequestAllAbilitiesFromAPI().store_all_champions_data(max_champions=None)
 
-    testExploration = True
+    testExploration = False
     if testExploration is True:
         exploreFunc = ExploreApiAbilities().mod_link_names()
         pp.pprint(exploreFunc)
