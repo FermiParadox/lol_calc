@@ -390,7 +390,7 @@ def suggest_attr_values(suggested_values_dct, modified_dct):
     Suggests a value and stores the choice.
 
     Returns:
-        None
+        (None)
     """
 
     print('\n'+'-'*40)
@@ -595,7 +595,7 @@ class GeneralAbilityAttributes(object):
         unless ability is passive (removes base_cd completely from dct).
 
         Returns:
-            None
+            (None)
         """
 
         # NOT CASTABLE
@@ -614,7 +614,7 @@ class GeneralAbilityAttributes(object):
         Does NOT insert secondary resources used (e.g. teemo R stack cost).
 
         Returns:
-            None
+            (None)
         """
 
         if self.resource_cost_type() is None:
@@ -628,7 +628,7 @@ class GeneralAbilityAttributes(object):
         Detects and inserts an ability's range.
 
         Returns:
-            None
+            (None)
         """
 
         range_val = self.api_spell_dct['range']
@@ -669,6 +669,12 @@ class DmgAbilityAttributes(object):
     Each "dmg" must have a single responsibility.
     """
 
+    def __init__(self, ability_name, api_spell_dct):
+        self.api_spell_dct = api_spell_dct
+        self.ability_name = ability_name
+        self.ability_num = 'qwer'.index(self.ability_name)
+        self.dmgs_dct = {}
+
     @staticmethod
     def dmg_attributes():
         return dict(
@@ -684,43 +690,36 @@ class DmgAbilityAttributes(object):
             radius='placeholder',
             dot='placeholder',
             max_targets='placeholder',
-            aoe='placeholder',
             )
 
     @staticmethod
-    def dmg_mod_attributes():
-        return dict()
-
-    SUGGESTED_VALUES_DMG_ATTR = dict(
-        target_type=('enemy', 'player'),
-        # TODO insert more categories in class and then here.
-        dmg_category=('standard_dmg', 'innate_dmg', 'chain_decay', 'chain_limited_decay', 'aa_dmg_value'),
-        dmg_source=('q', 'w', 'e', 'r', 'inn'),
-        life_conversion_type=('spellvamp', None, 'lifesteal'),
-        radius=(None, ),
-        dot=(False, True),
-        max_targets=(1, 2, 3, 4, 5, 'infinite'),
-        usual_max_targets=(1, 2, 3, 4, 5),
-        aoe=(False, True),
-        )
+    def suggested_values_dmg_attr():
+        
+        return dict(
+            target_type=('enemy', 'player'),
+            # TODO insert more categories in class and then here.
+            dmg_category=('standard_dmg', 'innate_dmg', 'chain_decay', 'chain_limited_decay', 'aa_dmg_value'),
+            dmg_source=('q', 'w', 'e', 'r', 'inn'),
+            life_conversion_type=('spellvamp', None, 'lifesteal'),
+            radius=(None, ),
+            dot=(False, True),
+            max_targets=(1, 2, 3, 4, 5, 'infinite'),
+            usual_max_targets=(1, 2, 3, 4, 5),
+            )
 
     AUTOMATICALLY_FILLED_DMG_ATTR = ()
 
-    MOD_STAT_NAME_MAP = dict(attackdamage='ad',
-                             bonusattackdamage='bonus_ad',
-                             spelldamage='ap',
-                             armor='armor',
-                             bonusarmor='bonus_armor',
-                             bonushealth='bonus_hp',
-                             bonusspellblock='bonus_ap',
-                             health='hp',
-                             mana='mp',)
-
-    def __init__(self, ability_name, api_spell_dct):
-        self.api_spell_dct = api_spell_dct
-        self.ability_name = ability_name
-        self.ability_num = 'qwer'.index(self.ability_name)
-        self.dmgs_dct = {}
+    @staticmethod
+    def mod_stat_name_map():
+        return dict(attackdamage='ad',
+                    bonusattackdamage='bonus_ad',
+                    spelldamage='ap',
+                    armor='armor',
+                    bonusarmor='bonus_armor',
+                    bonushealth='bonus_hp',
+                    bonusspellblock='bonus_ap',
+                    health='hp',
+                    mana='mp',)
 
     @staticmethod
     def single_dmg_dct_template_in_factory():
@@ -796,7 +795,7 @@ class DmgAbilityAttributes(object):
             if mod_dct['key'] == mod_shortcut:
 
                 link_name = mod_dct['link']
-                stat_name = self.MOD_STAT_NAME_MAP[link_name]
+                stat_name = self.mod_stat_name_map[link_name]
                 mod_coeff = mod_dct['coeff']
 
                 return {stat_name: mod_coeff}
@@ -807,7 +806,7 @@ class DmgAbilityAttributes(object):
         and list of dmg modifier abbreviations and their values.
 
         Returns:
-            None
+            (None)
         """
 
         dmgs_lst = self.raw_dmg_strings()
@@ -852,7 +851,7 @@ class DmgAbilityAttributes(object):
 
             print(msg)
 
-            suggest_attr_values(suggested_values_dct=self.SUGGESTED_VALUES_DMG_ATTR,
+            suggest_attr_values(suggested_values_dct=self.suggested_values_dmg_attr(),
                                 modified_dct=self.dmgs_dct[dmg_temp_name])
 
 
