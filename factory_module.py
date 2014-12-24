@@ -41,6 +41,8 @@ OPTIONAL_ATTR_BUFF = ('affects_stat', 'is_trigger', 'delay_cd_start', 'on_hit')
 """
 
 
+# ===============================================================
+# ===============================================================
 API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
 
 
@@ -175,9 +177,7 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
             (None)
         """
 
-        targeted_module = 'api_champions_database.py'
-
-        self._data_storage(targeted_module=targeted_module,
+        self._data_storage(targeted_module='api_champions_database.py',
                            obj_name='ALL_CHAMPIONS_ATTR',
                            str_to_insert=self.request_all_champions_from_api(max_champions=max_champions))
 
@@ -227,22 +227,8 @@ class RequestAllItemsFromAPI(RequestDataFromAPI):
 class ExploreApiAbilities(object):
 
     def __init__(self):
-        self.data_module = __import__('all_api_champion_data')
+        self.data_module = __import__('api_champions_database')
         self.all_champions_data_dct = self.data_module.ALL_CHAMPIONS_ATTR
-
-    @staticmethod
-    def dct_appender(source_dct, targeted_dct):
-        """
-        Increments a dict's key value. If key doesnt exist, assigns value 1.
-
-        Returns:
-            (None)
-        """
-        for elem in source_dct:
-            if elem not in targeted_dct:
-                targeted_dct.update({elem: 1})
-            else:
-                targeted_dct[elem] += 1
 
     @staticmethod
     def label_in_tooltip(label, ability_dct):
@@ -250,7 +236,8 @@ class ExploreApiAbilities(object):
         Checks if given label is inside the ability description.
 
         Strips label of any leading or trailing whitespaces,
-        to avoid API accidental naming inconsistency.
+        to avoid API accidental naming inconsistency,
+        and ignores case.
 
         Returns:
             (str)
@@ -302,6 +289,12 @@ class ExploreApiAbilities(object):
         return final_dct
 
     def mod_link_names(self):
+        """
+        Checks frequency of all stat names of mods and which champions have them.
+
+        Returns:
+            (dct)
+        """
         dct = {}
 
         for champ_name in self.all_champions_data_dct:
@@ -354,6 +347,7 @@ class ExploreApiAbilities(object):
 
 
 # ===============================================================
+# ===============================================================
 def check_all_same(lst):
     """
     Iterates through a list and checks if all its elements are the same.
@@ -390,7 +384,7 @@ def return_tpl_or_element(lst):
         return lst
 
 
-# ================================================================
+# ---------------------------------------------------------------
 def suggest_attr_values(suggested_values_dct, modified_dct):
     """
     Suggests a value and stores the choice.
@@ -447,7 +441,7 @@ def suggest_attr_values(suggested_values_dct, modified_dct):
         print(choice_msg)
 
 
-# ================================================================
+# ---------------------------------------------------------------
 def all_abilities_dct(champion_name):
     """
     Returns stored champion api abilities dict.
@@ -476,6 +470,8 @@ def ability_dct_by_name(ability_name, champion_name):
     raise BaseException('Invalid ability name.')
 
 
+# ===============================================================
+# ===============================================================
 class GeneralAbilityAttributes(object):
 
     @staticmethod
@@ -500,9 +496,9 @@ class GeneralAbilityAttributes(object):
             )
         )
 
-    def __init__(self, api_ability_dct, champion_name):
+    def __init__(self, api_spell_dct, champion_name):
         self.champion_name = champion_name
-        self.api_ability_dct = api_ability_dct
+        self.api_spell_dct = api_spell_dct
         self.general_attr_dct = self.general_attributes()
 
     AUTOMATICALLY_FILLED_GEN_ATTR = ('range', 'cost', )
@@ -527,7 +523,7 @@ class GeneralAbilityAttributes(object):
             None
         """
 
-        res_name = self.api_ability_dct['resource']
+        res_name = self.api_spell_dct['resource']
 
         # NO COST
         if 'No Cost' == res_name:
@@ -579,11 +575,11 @@ class GeneralAbilityAttributes(object):
         """
 
         # HEALTH COST
-        if 'Health' in self.api_ability_dct['resource']:
-            e_num = re.findall(r'e\d', self.api_ability_dct['resource'])[0]
+        if 'Health' in self.api_spell_dct['resource']:
+            e_num = re.findall(r'e\d', self.api_spell_dct['resource'])[0]
             effect_number = int(e_num[:][-1])
 
-            return tuple(self.api_ability_dct['effect'][effect_number])
+            return tuple(self.api_spell_dct['effect'][effect_number])
 
         # ABILITIES WITHOUT A COST
         elif self.resource_cost_type is None:
@@ -591,7 +587,7 @@ class GeneralAbilityAttributes(object):
 
         # NORMAL COST
         else:
-            return tuple(self.api_ability_dct['effect']['cost'])
+            return tuple(self.api_spell_dct['effect']['cost'])
 
     def insert_base_cd_values(self):
         """
@@ -603,13 +599,13 @@ class GeneralAbilityAttributes(object):
         """
 
         # NOT CASTABLE
-        if self.api_ability_dct['resource'] == 'Passive':
+        if self.api_spell_dct['resource'] == 'Passive':
             # Removes base_cd since its not applicable.
             del self.general_attr_dct['base_cd']
 
         # CASTABLE
         else:
-            self.general_attr_dct['base_cd'] = return_tpl_or_element(lst=self.api_ability_dct['cooldown'])
+            self.general_attr_dct['base_cd'] = return_tpl_or_element(lst=self.api_spell_dct['cooldown'])
 
     def insert_resource(self):
         """
@@ -635,7 +631,7 @@ class GeneralAbilityAttributes(object):
             None
         """
 
-        range_val = self.api_ability_dct['range']
+        range_val = self.api_spell_dct['range']
 
         # (if 'range' is 'self)
         if type(range_val) is str:
@@ -699,7 +695,6 @@ class DmgAbilityAttributes(object):
         target_type=('enemy', 'player'),
         # TODO insert more categories in class and then here.
         dmg_category=('standard_dmg', 'innate_dmg', 'chain_decay', 'chain_limited_decay', 'aa_dmg_value'),
-        dmg_type=('magic', 'physical', 'true', 'AA'),
         dmg_source=('q', 'w', 'e', 'r', 'inn'),
         life_conversion_type=('spellvamp', None, 'lifesteal'),
         radius=(None, ),
@@ -848,9 +843,15 @@ class DmgAbilityAttributes(object):
 
     def suggest_dmg_attr_values(self):
 
-        for dmg_temp_name in self.dmgs_dct:
-            print('\n%s\n' % ('='*40))
-            print(dmg_temp_name.upper())
+        for dmg_temp_name in sorted(self.dmgs_dct):
+
+            msg = '\n%s\n' % ('='*40)
+            msg += '\n%s' % dmg_temp_name.upper()
+            msg += '\ndmg_values: %s' % self.dmgs_dct[dmg_temp_name]['dmg_values']
+            msg += '\nmods: %s' % self.dmgs_dct[dmg_temp_name]['mods']
+
+            print(msg)
+
             suggest_attr_values(suggested_values_dct=self.SUGGESTED_VALUES_DMG_ATTR,
                                 modified_dct=self.dmgs_dct[dmg_temp_name])
 
@@ -884,6 +885,8 @@ class BuffAbilityAttributes(object):
             )
 
 
+# ===============================================================
+# ===============================================================
 if __name__ == '__main__':
 
     import api_champions_database
@@ -894,10 +897,10 @@ if __name__ == '__main__':
     testGen = False
     if testGen is True:
         for abilityDct in allAbilities:
-            GeneralAbilityAttributes(api_ability_dct=abilityDct, champion_name='Mundo').run_class()
+            GeneralAbilityAttributes(api_spell_dct=abilityDct, champion_name='Mundo').run_class()
             break
 
-    testDmg = True
+    testDmg = False
     if testDmg is True:
         for abilityDct in allAbilities:
             dmgAttrInstance = DmgAbilityAttributes(api_spell_dct=abilityDct, ability_name='q')
@@ -910,7 +913,7 @@ if __name__ == '__main__':
     if testApiStorage is True:
         RequestAllAbilitiesFromAPI().store_all_champions_data(max_champions=None)
 
-    testExploration = False
+    testExploration = True
     if testExploration is True:
         exploreFunc = ExploreApiAbilities().mod_link_names()
         pp.pprint(exploreFunc)
