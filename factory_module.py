@@ -345,6 +345,32 @@ class ExploreApiAbilities(object):
 
         pp.pprint(result)
 
+    def sanitized_tooltips(self, champion_name=None, print_results=False):
+        """
+        Returns all tooltips for given champion (or for all champions).
+
+        Returns:
+            (lst)
+        """
+        # All champions, or selected champion.
+        if champion_name is None:
+            champ_lst = self.all_champions_data_dct
+        else:
+            champ_lst = [champion_name, ]
+
+        tooltips_lst = []
+
+        for champ_name in champ_lst:
+            for spell_dct in self.all_champions_data_dct[champ_name]['spells']:
+                tooltips_lst.append(spell_dct['sanitizedTooltip'])
+
+        # Checks if print mode is selected.
+        if print_results is True:
+            for tooltip in tooltips_lst:
+                print()
+                pp.pprint(tooltip)
+        else:
+            return tooltips_lst
 
 # ===============================================================
 # ===============================================================
@@ -882,6 +908,16 @@ class BuffAbilityAttributes(object):
             ),
             prohibit_cd_start='placeholder',
             )
+
+
+    def affects_stats(self, ability):
+        """
+        Checks if given ability
+
+        Returns:
+            (bool)
+        """
+
 
 
 # ===============================================================
