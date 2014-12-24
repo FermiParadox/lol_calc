@@ -248,7 +248,8 @@ class ExploreApiAbilities(object):
 
         # (upper or lower case is irrelevant)
         label = label.lower()
-        if label in ability_dct['sanitizedTooltip']:
+
+        if label in ability_dct['sanitizedTooltip'].lower():
             return True
         else:
             return False
@@ -273,6 +274,8 @@ class ExploreApiAbilities(object):
         for champ_name in champ_lst:
             for spell_dct in self.all_champions_data_dct[champ_name]['spells']:
                 for label in spell_dct['leveltip']['label']:
+
+                    label = label.lower()
 
                     # Label frequency.
                     if label not in final_dct:
