@@ -90,7 +90,7 @@ def _return_or_print(print_mode, obj):
 
 
 # ---------------------------------------------------------------
-def suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg=''):
+def suggest_attr_values(usual_values_dct, modified_dct, extra_start_msg=''):
     """
     Suggests a value and stores the choice.
 
@@ -103,12 +103,12 @@ def suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg=''):
     start_msg += extra_start_msg
     print(start_msg)
 
-    for attr_name in suggested_values_dct:
+    for attr_name in usual_values_dct:
 
         display = [' ', '1', '2', '3', '4', '5']
         shortcuts = ['', '1', '2', '3', '4', '5']
 
-        suggested_val_tpl = suggested_values_dct[attr_name]
+        suggested_val_tpl = usual_values_dct[attr_name]
 
         # Ensures lists to be zipped have same length.
         shortcut_len = len(suggested_val_tpl)
@@ -123,7 +123,7 @@ def suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg=''):
 
         # CHOICE PROCESSING
         choice_num = None
-        input_given = input(msg)
+        input_given = input(msg + '\n')
 
         # (breaks loot prematurely if asked)
         if input_given == 'stop':
@@ -542,9 +542,12 @@ class ExploreApiAbilities(object):
         for champ_name in champ_lst:
             for spell_dct in self.all_champions_data_dct[champ_name]['spells']:
 
-                # Checks if required keyword is selected and present.
+                # If a key phrase is selected and not present..
                 if (required_keyword is not None) and (required_keyword.lower() not in spell_dct['sanitizedTooltip'].lower()):
-                    pass
+                        # .. does nothing.
+                        pass
+
+                # Else stores value.
                 else:
                     tooltips_lst.append(spell_dct['sanitizedTooltip'])
 
@@ -592,9 +595,7 @@ class GeneralAbilityAttributes(object):
 
         self.general_attr_dct = self.general_attributes()
 
-    AUTOMATICALLY_FILLED_GEN_ATTR = ('range', 'cost', )
-    
-    SUGGESTED_VALUES_GEN_ATTR = dict(
+    USUAL_VALUES_GEN_ATTR = dict(
         cast_time=(0.25, 0.5, 0),
         travel_time=(0, 0.25, 0.5),
         move_while_casting=(False, True),
@@ -684,7 +685,7 @@ class GeneralAbilityAttributes(object):
         else:
             return tuple(self.api_spell_dct['effect']['cost'])
 
-    def insert_base_cd_values(self):
+    def fill_base_cd_values(self):
         """
         Detects base_cd tuple and inserts value in dct,
         unless ability is passive (removes base_cd completely from dct).
@@ -702,7 +703,7 @@ class GeneralAbilityAttributes(object):
         else:
             self.general_attr_dct['base_cd'] = return_tpl_or_element(lst=self.api_spell_dct['cooldown'])
 
-    def insert_resource(self):
+    def fill_resource(self):
         """
         Inserts resource cost type and values in general attr dict.
 
@@ -718,7 +719,7 @@ class GeneralAbilityAttributes(object):
             self.general_attr_dct['cost'] = {}
             self.general_attr_dct['cost'].update({self.resource_cost_type(): self.resource_cost_values()})
 
-    def insert_range(self):
+    def fill_range(self):
         """
         Detects and inserts an ability's range.
 
@@ -735,23 +736,23 @@ class GeneralAbilityAttributes(object):
         else:
             self.general_attr_dct['range'] = return_tpl_or_element(lst=range_val)
 
-    def auto_insert_attributes(self):
+    def auto_fill_attributes(self):
         """
         Groups all auto inserted attributes.
 
         Returns:
             (None)
         """
-        self.insert_range()
-        self.insert_resource()
-        self.insert_base_cd_values()
+        self.fill_range()
+        self.fill_resource()
+        self.fill_base_cd_values()
 
     def suggest_gen_attr_values(self):
 
         extra_msg = '\nDMG ATTRIBUTE CREATION\n'
         extra_msg += self._dct_status_msg()
 
-        suggest_attr_values(suggested_values_dct=self.SUGGESTED_VALUES_GEN_ATTR,
+        suggest_attr_values(usual_values_dct=self.USUAL_VALUES_GEN_ATTR,
                             modified_dct=self.general_attr_dct,
                             extra_start_msg=extra_msg)
 
@@ -763,7 +764,7 @@ class GeneralAbilityAttributes(object):
             (None)
         """
 
-        self.auto_insert_attributes()
+        self.auto_fill_attributes()
         self.suggest_gen_attr_values()
 
         print("\nABILITY'S GENERAL ATTRIBUTES:" + self._dct_status_msg() + '\n')
@@ -784,6 +785,7 @@ class DmgAbilityAttributes(object):
 
         self.ability_num = 'qwer'.index(self.ability_name)
         self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][self.ability_num]
+        self.sanitized_tooltip = self.api_spell_dct['sanitizedTooltip']
 
         self.dmgs_dct = {}
 
@@ -805,7 +807,7 @@ class DmgAbilityAttributes(object):
             )
 
     @staticmethod
-    def suggested_values_dmg_attr():
+    def usual_values_dmg_attr():
 
         return dict(
             target_type=('enemy', 'player'),
@@ -861,12 +863,12 @@ class DmgAbilityAttributes(object):
             (list)
         """
 
-        api_string = self.api_spell_dct['sanitizedTooltip']
+        api_string = self.sanitized_tooltip
 
         # (e.g. ' {{ e1}} true damage' )
         p = re.compile(
             r"""
-            \s\{\{\s\w\d{1,2}\s\}\}          # ' {{ e1 }}'
+            \s\{\{\s\w\d{1,2}\s\}\}             # ' {{ e1 }}'
             [^,.]*?                             # any characters in between excluding , and .
             (?:true|magic|physical)             # true magic or physical
             \sdamage                            # ' damage'
@@ -912,15 +914,46 @@ class DmgAbilityAttributes(object):
 
                 return {stat_name: mod_coeff}
 
-    def dot_duration(self):
+    def _check_if_dot(self):
         """
-        Checks if given ability has a dot.
+        Check if given ability contains hints of a dot.
 
         Returns:
             (bool)
         """
 
-        string = self.api_spell_dct['sanitizedTooltip']
+        string = self.sanitized_tooltip
+
+        # 'damage over 2.5 seconds' or 'damage over {{ d1 }} seconds'
+        pattern_1 = re.compile(
+            r"""
+            damage
+            \s
+            (?: over | for )
+            \s
+            ( \d+\.?\d* | \{\{\s \w\d{1,2} \s\}\} )          # ('4' or '2.3') or '{{ e1 }}'
+            \s
+            seconds
+
+            """, re.IGNORECASE | re.VERBOSE)
+
+        result_1 = re.search(pattern_1, string)
+
+        if result_1:
+            return True
+        else:
+            return False
+
+    def fill_dot(self, dmg_dct):
+
+        dmg_dct['dot'] = self._check_if_dot()
+
+    def _Dot_duration(self):
+        """
+        Not complete (or needed at all probably).
+        """
+
+        string = self.sanitized_tooltip
 
         p = re.compile(
             r"""
@@ -944,13 +977,13 @@ class DmgAbilityAttributes(object):
 
         # Else converts string to float (or list of floats) and returns it.
         if '{' in duration_str:
-            abbr = re.search(r'\w\d', duration_str)
+            abbr = re.search(r'\w\d{1,2}', duration_str)
             return self.api_spell_dct['effects'][abbr]
 
         else:
             return float(duration_str)
 
-    def insert_dmg_type_and_mods(self):
+    def fill_dmg_type_and_mods_and_dot(self):
         """
         Detects dmg type, its abbreviation,
         and list of dmg modifier abbreviations and their values.
@@ -976,7 +1009,7 @@ class DmgAbilityAttributes(object):
 
             # INSERTS DMG TYPE
             dmg_type = re.search(r'true|magic|physical', tooltip_fragment, re.IGNORECASE).group()
-            curr_dmg_dct['dmg_type'] = dmg_type
+            curr_dmg_dct['dmg_type'] = dmg_type.lower()
 
             # INSERTS MODS IN DMG
             curr_dmg_dct.update({'mods': {}})
@@ -987,22 +1020,43 @@ class DmgAbilityAttributes(object):
                 curr_dmg_dct['mods'].update(self.mod_value_and_stat(mod_shortcut=mod_abbrev))
 
             # INSERTS DMGS
-
             self.dmgs_dct.update({new_dmg_name: curr_dmg_dct})
+
+            # INSERTS DOT
+            self.fill_dot(self.dmgs_dct[new_dmg_name])
 
     def suggest_dmg_attr_values(self):
 
         for dmg_temp_name in sorted(self.dmgs_dct):
 
-            msg = '\n%s\n' % ('='*40)
-            msg += '\n%s\n' % self.ability_name.upper()
+            msg = '\n%s\n' % ('-'*40)
+            msg += '\nABILITY: %s\n' % self.ability_name.upper()
             msg += '\ndmg_values: %s' % self.dmgs_dct[dmg_temp_name]['dmg_values']
             msg += '\nmods: %s' % self.dmgs_dct[dmg_temp_name]['mods']
 
             print(msg)
 
-            suggest_attr_values(suggested_values_dct=self.suggested_values_dmg_attr(),
+            suggest_attr_values(usual_values_dct=self.usual_values_dmg_attr(),
                                 modified_dct=self.dmgs_dct[dmg_temp_name])
+
+    def run_dmg_attr_creation(self):
+        """
+        Runs all relevant methods for each dmg attribute detected.
+
+        Returns:
+            (None)
+        """
+
+        start_msg = '\n%s\n' % ('='*40)
+        start_msg += '\nCHAMPION: %s, ABILITY: %s\n' % (self.champion_name, self.ability_name.upper())
+
+        print(start_msg)
+
+        self.fill_dmg_type_and_mods_and_dot()
+        self.suggest_dmg_attr_values()
+
+        print('\nRESULT\n')
+        pp.pprint(self.dmgs_dct)
 
 
 class BuffAbilityAttributes(object):
@@ -1010,6 +1064,16 @@ class BuffAbilityAttributes(object):
     """
     An ability can contain 0 or more 'buff' attributes in its _STATS.
     """
+
+    def __init__(self, ability_name, champion_name):
+        self.champion_name = champion_name
+        self.ability_name = ability_name
+
+        self.ability_num = 'qwer'.index(self.ability_name)
+        self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][self.ability_num]
+        self.sanitized_tooltip = self.api_spell_dct['sanitizedTooltip']
+
+        self.buffs_dct = {}
 
     @staticmethod
     def buff_attributes():
@@ -1033,13 +1097,25 @@ class BuffAbilityAttributes(object):
             prohibit_cd_start='placeholder',
             )
 
-    def check_if_affects_stats(self, ability):
+    STAT_NAMES_IN_TOOLTIPS = ('attack damage', 'a')
+
+    def check_if_affects_stats(self):
         """
-        Checks if given ability
+        Checks if ability contains buff, modifying stats.
 
         Returns:
             (bool)
         """
+
+        for stat_name in self.STAT_NAMES_IN_TOOLTIPS:
+            if stat_name in self.sanitized_tooltip:
+                return True
+
+        return False
+
+    def duration(self):
+
+        pass
 
     def check_if_slow(self, ability):
         """
@@ -1048,6 +1124,18 @@ class BuffAbilityAttributes(object):
         Returns:
             (bool)
         """
+
+        # 'for {{ f10 }} seconds'
+        pattern_1 = re.compile(r"""
+        for
+        \s
+        \{\{\s \w\d{1,2} \s\}\}
+        \s
+        seconds
+
+        """)
+
+        pass
 
 
 # ===============================================================
@@ -1065,20 +1153,16 @@ if __name__ == '__main__':
             GeneralAbilityAttributes(ability_name=abilityName, champion_name='drmundo').run_gen_attr_creation()
             break
 
-    testDmg = False
+    testDmg = True
     if testDmg is True:
-        for abilityName in 'qwer':
-            dmgAttrInstance = DmgAbilityAttributes(ability_name=abilityName, champion_name='malzahar')
-            dmgAttrInstance.insert_dmg_type_and_mods()
-            dmgAttrInstance.suggest_dmg_attr_values()
-            print(dmgAttrInstance.dot_duration())
-            d = dmgAttrInstance.dmgs_dct
-            pp.pprint(d)
+        for ability_shortcut in ('q', 'w', 'e', 'r'):
+            dmgAttrInstance = DmgAbilityAttributes(ability_name=ability_shortcut, champion_name='malzahar')
+            dmgAttrInstance.run_dmg_attr_creation()
 
     testApiStorage = False
     if testApiStorage is True:
         RequestAllRunesFromAPI().store_all_runes_from_api()
 
-    testExploration = True
+    testExploration = False
     if testExploration is True:
         ExploreApiAbilities().sanitized_tooltips(required_keyword='movement speed', print_mode=True)
