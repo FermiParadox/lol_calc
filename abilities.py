@@ -1,7 +1,7 @@
 import buffs
 import timers
 import runes
-import database_champion_stats
+import app_champions_base_stats
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
@@ -42,7 +42,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                                      initial_current_stats=initial_current_stats,
                                      items_lst=items_lst)
 
-        self.resource_used = database_champion_stats.CHAMPION_BASE_STATS[selected_champions_dct['player']]['resource_used']
+        self.resource_used = app_champions_base_stats.CHAMPION_BASE_STATS[selected_champions_dct['player']]['resource_used']
 
     def add_event_to_first_tar(self, effect_name, start_time):
         """
@@ -406,7 +406,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
         # Kalista has dash after each aa.
         if self.selected_champions_dct['player'] == 'kalista':
-            self.total_movement += database_champion_stats.CHAMPION_BASE_STATS['kalista']['dashed_distance_on_aa']
+            self.total_movement += app_champions_base_stats.CHAMPION_BASE_STATS['kalista']['dashed_distance_on_aa']
 
     # ABILITIES
     def reset_aa_cd(self, action_name):

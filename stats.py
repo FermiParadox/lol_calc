@@ -1,4 +1,4 @@
-import database_champion_stats
+import app_champions_base_stats
 import copy
 
 
@@ -142,7 +142,7 @@ class StatCalculation(StatFilters):
         Returns:
             (None)
         """
-        player_champ_stats = database_champion_stats.CHAMPION_BASE_STATS[self.selected_champions_dct['player']]
+        player_champ_stats = app_champions_base_stats.CHAMPION_BASE_STATS[self.selected_champions_dct['player']]
 
         for res_name in self.ALL_RESOURCE_NAMES:
             if res_name in player_champ_stats:
@@ -172,7 +172,7 @@ class StatCalculation(StatFilters):
         for tar_name in self.selected_champions_dct:
             # .. updates base_stats_dct with his base stats.
             dct.update(
-                {tar_name: database_champion_stats.CHAMPION_BASE_STATS[self.selected_champions_dct[tar_name]]})
+                {tar_name: app_champions_base_stats.CHAMPION_BASE_STATS[self.selected_champions_dct[tar_name]]})
 
         return dct
 

@@ -90,7 +90,7 @@ def _return_or_print(print_mode, obj):
 
 
 # ---------------------------------------------------------------
-def suggest_attr_values(suggested_values_dct, modified_dct):
+def suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg=''):
     """
     Suggests a value and stores the choice.
 
@@ -98,8 +98,10 @@ def suggest_attr_values(suggested_values_dct, modified_dct):
         (None)
     """
 
-    print('\n'+'-'*40)
-    print('\n(type "stop" at any point to exit)')
+    start_msg = '\n' + ('='*40)
+    start_msg += '\n(type "stop" at any point to exit)\n'
+    start_msg += extra_start_msg
+    print(start_msg)
 
     for attr_name in suggested_values_dct:
 
@@ -115,10 +117,9 @@ def suggest_attr_values(suggested_values_dct, modified_dct):
 
         # INITIAL CHOICE MESSAGE
         msg = '-'*20
-        msg += '\nATTRIBUTE: %s' % attr_name
+        msg += '\nATTRIBUTE: %s\n' % attr_name
         for shortcut_val, sugg_val, display_val in zip(shortcuts, suggested_val_tpl, display):
             msg += '\n%s: %s' % (display_val, sugg_val)
-        msg += '\n'
 
         # CHOICE PROCESSING
         choice_num = None
@@ -575,13 +576,17 @@ class GeneralAbilityAttributes(object):
             )
         )
 
-    def __init__(self, api_spell_dct, champion_name):
+    def __init__(self, ability_name, champion_name):
         self.champion_name = champion_name
-        self.api_spell_dct = api_spell_dct
+        self.ability_name = ability_name
+
+        self.ability_num = 'qwer'.index(self.ability_name)
+        self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][self.ability_num]
+
         self.general_attr_dct = self.general_attributes()
 
     AUTOMATICALLY_FILLED_GEN_ATTR = ('range', 'cost', )
-
+    
     SUGGESTED_VALUES_GEN_ATTR = dict(
         cast_time=(0.25, 0.5, 0),
         travel_time=(0, 0.25, 0.5),
@@ -590,6 +595,10 @@ class GeneralAbilityAttributes(object):
         channel_time=(None,),
         reset_aa=(False, True),
         )
+
+    def _dct_status_msg(self):
+
+        return '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, self.ability_name.upper())
 
     def resource_cost_type(self):
         """
@@ -731,13 +740,27 @@ class GeneralAbilityAttributes(object):
         self.insert_base_cd_values()
 
     def suggest_gen_attr_values(self):
-        suggest_attr_values(suggested_values_dct=self.SUGGESTED_VALUES_GEN_ATTR,
-                            modified_dct=self.general_attr_dct)
 
-    def run_class(self):
+        extra_msg = '\nDMG ATTRIBUTE CREATION\n'
+        extra_msg += self._dct_status_msg()
+
+        suggest_attr_values(suggested_values_dct=self.SUGGESTED_VALUES_GEN_ATTR,
+                            modified_dct=self.general_attr_dct,
+                            extra_start_msg=extra_msg)
+
+    def run_gen_attr_creation(self):
+        """
+        Inserts automatically some attributes and asks the user for the rest.
+
+        Returns:
+            (None)
+        """
 
         self.auto_insert_attributes()
         self.suggest_gen_attr_values()
+
+        print("\nABILITY'S GENERAL ATTRIBUTES:" + self._dct_status_msg() + '\n')
+        pp.pprint(self.general_attr_dct)
 
 
 class DmgAbilityAttributes(object):
@@ -751,9 +774,11 @@ class DmgAbilityAttributes(object):
     def __init__(self, ability_name, champion_name):
         self.champion_name = champion_name
         self.ability_name = ability_name
+
         self.ability_num = 'qwer'.index(self.ability_name)
-        self.dmgs_dct = {}
         self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][self.ability_num]
+
+        self.dmgs_dct = {}
 
     @staticmethod
     def dmg_attributes():
@@ -1026,11 +1051,12 @@ if __name__ == '__main__':
 
     champName = 'ashe'
     allAbilities = api_champions_database.ALL_CHAMPIONS_ATTR[champName]['spells']
+    abilityName = 'q'
 
-    testGen = False
+    testGen = True
     if testGen is True:
         for abilityDct in allAbilities:
-            GeneralAbilityAttributes(api_spell_dct=abilityDct, champion_name='Mundo').run_class()
+            GeneralAbilityAttributes(ability_name=abilityName, champion_name='drmundo').run_gen_attr_creation()
             break
 
     testDmg = False
@@ -1043,7 +1069,7 @@ if __name__ == '__main__':
             d = dmgAttrInstance.dmgs_dct
             pp.pprint(d)
 
-    testApiStorage = True
+    testApiStorage = False
     if testApiStorage is True:
         RequestAllRunesFromAPI().store_all_runes_from_api()
 
