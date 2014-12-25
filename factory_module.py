@@ -43,6 +43,140 @@ OPTIONAL_ATTR_BUFF = ('affects_stat', 'is_trigger', 'delay_cd_start', 'on_hit')
 
 # ===============================================================
 # ===============================================================
+def check_all_same(lst):
+    """
+    Iterates through a list and checks if all its elements are the same.
+
+    Returns:
+        (bool)
+    """
+
+    all_same = True
+
+    for item_num in range(len(lst)-1):
+
+        if lst[item_num] != lst[item_num+1]:
+            all_same = False
+            break
+
+    return all_same
+
+
+def return_tpl_or_element(lst):
+    """
+    Returns whole list if its elements are the same,
+    otherwise returns the first element.
+
+    Args:
+        tags: (str)
+    Returns:
+        (lst)
+        (float) or (int) or (str)
+    """
+    if check_all_same(lst=lst):
+        return lst[0]
+    else:
+        return lst
+
+
+# ---------------------------------------------------------------
+def _return_or_print(print_mode, obj):
+
+    if print_mode is True:
+        pp.pprint(obj)
+
+    else:
+        return obj
+
+
+# ---------------------------------------------------------------
+def suggest_attr_values(suggested_values_dct, modified_dct):
+    """
+    Suggests a value and stores the choice.
+
+    Returns:
+        (None)
+    """
+
+    print('\n'+'-'*40)
+    print('\n(type "stop" at any point to exit)')
+
+    for attr_name in suggested_values_dct:
+
+        display = [' ', '1', '2', '3', '4', '5']
+        shortcuts = ['', '1', '2', '3', '4', '5']
+
+        suggested_val_tpl = suggested_values_dct[attr_name]
+
+        # Ensures lists to be zipped have same length.
+        shortcut_len = len(suggested_val_tpl)
+        display = display[:shortcut_len]
+        shortcuts = shortcuts[:shortcut_len]
+
+        # INITIAL CHOICE MESSAGE
+        msg = '-'*20
+        msg += '\nATTRIBUTE: %s' % attr_name
+        for shortcut_val, sugg_val, display_val in zip(shortcuts, suggested_val_tpl, display):
+            msg += '\n%s: %s' % (display_val, sugg_val)
+        msg += '\n'
+
+        # CHOICE PROCESSING
+        choice_num = None
+        input_given = input(msg)
+
+        # (breaks loot prematurely if asked)
+        if input_given == 'stop':
+            print('#### LOOP STOPPED ####')
+            break
+
+        for val_num, val in enumerate(shortcuts):
+            if val == input_given:
+                choice_num = val_num
+                break
+
+        # Checks if user chose a suggested value.
+        if choice_num is not None:
+            chosen_value = suggested_val_tpl[choice_num]
+        else:
+            chosen_value = input_given
+
+        # Stores the choice and notifies user.
+        choice_msg = '\n%s: %s\n' % (attr_name, chosen_value)
+        modified_dct[attr_name] = chosen_value
+        print(choice_msg)
+
+
+# ---------------------------------------------------------------
+def all_abilities_dct(champion_name):
+    """
+    Returns stored champion api abilities dict.
+
+    Returns:
+        (dct)
+    """
+
+    champ_module = __import__('api_'+champion_name)
+
+    return champ_module.ABILITIES['spells']
+
+
+def ability_dct_by_name(ability_name, champion_name):
+    """
+    Returns an ability's information contained in api data.
+
+    Returns:
+        (dct)
+    """
+
+    for ability_num, ability_letter in enumerate('qwer'[:]):
+        if ability_letter == ability_name:
+            return all_abilities_dct(champion_name=champion_name)[ability_num]
+
+    raise BaseException('Invalid ability name.')
+
+
+# ===============================================================
+# ===============================================================
 API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
 
 
@@ -231,7 +365,7 @@ class ExploreApiAbilities(object):
         self.all_champions_data_dct = self.data_module.ALL_CHAMPIONS_ATTR
 
     @staticmethod
-    def label_in_tooltip(label, ability_dct):
+    def _label_in_tooltip(label, ability_dct):
         """
         Checks if given label is inside the ability description.
 
@@ -254,13 +388,14 @@ class ExploreApiAbilities(object):
         else:
             return False
 
-    def label_occurrences(self, champions_lst=None):
+    def label_occurrences(self, champions_lst=None, print_mode=False):
         """
-        Returns dict containing all possible effect labels,
+        Finds all possible effect labels,
         how many times they occur and their existence in ability description.
 
         Returns:
             (dct)
+            (None)
         """
 
         # All champions, or a list of champions.
@@ -284,12 +419,12 @@ class ExploreApiAbilities(object):
                         final_dct[label]['frequency'] += 1
 
                     # Label in description.
-                    in_tooltip = self.label_in_tooltip(label=label,
-                                                       ability_dct=spell_dct)
+                    in_tooltip = self._label_in_tooltip(label=label,
+                                                        ability_dct=spell_dct)
                     if in_tooltip:
                         final_dct[label]['in_tooltip'] += 1
 
-        return final_dct
+        return _return_or_print(print_mode=print_mode, obj=final_dct)
 
     def mod_link_names(self):
         """
@@ -318,24 +453,27 @@ class ExploreApiAbilities(object):
 
         return dct
 
-    def champion_base_stats(self, champion_name):
+    def champion_base_stats(self, champion_name, print_mode=False):
         """
-        Prints selected champion's base stats.
+        Finds selected champion's base stats.
 
         Returns:
+            (dct)
             (None)
         """
+
         champ_stats = self.all_champions_data_dct[champion_name]['stats']
 
-        pp.pprint(champ_stats)
+        return _return_or_print(print_mode=print_mode, obj=champ_stats)
 
-    def champion_abilities(self, champion_name, ability_name=None):
+    def champion_abilities(self, champion_name, ability_name=None, print_mode=False):
         """
-        Prints selected champion's abilities.
+        Finds selected champion's abilities.
 
         Returns:
             (None)
         """
+
         champ_dct = self.all_champions_data_dct[champion_name]
         if ability_name is None:
             result = champ_dct['spells']
@@ -346,7 +484,7 @@ class ExploreApiAbilities(object):
             else:
                 result = champ_dct['spells']['qwer'.index(ability_name)]
 
-        pp.pprint(result)
+        return _return_or_print(print_mode=print_mode, obj=result)
 
     def sanitized_tooltips(self, champion_name=None, print_mode=False):
         """
@@ -355,6 +493,7 @@ class ExploreApiAbilities(object):
         Returns:
             (lst)
         """
+
         # All champions, or selected champion.
         if champion_name is None:
             champ_lst = self.all_champions_data_dct
@@ -374,130 +513,6 @@ class ExploreApiAbilities(object):
                 pp.pprint(tooltip)
         else:
             return tooltips_lst
-
-
-# ===============================================================
-# ===============================================================
-def check_all_same(lst):
-    """
-    Iterates through a list and checks if all its elements are the same.
-
-    Returns:
-        (bool)
-    """
-
-    all_same = True
-
-    for item_num in range(len(lst)-1):
-
-        if lst[item_num] != lst[item_num+1]:
-            all_same = False
-            break
-
-    return all_same
-
-
-def return_tpl_or_element(lst):
-    """
-    Returns whole list if its elements are the same,
-    otherwise returns the first element.
-
-    Args:
-        tags: (str)
-    Returns:
-        (lst)
-        (float) or (int) or (str)
-    """
-    if check_all_same(lst=lst):
-        return lst[0]
-    else:
-        return lst
-
-
-# ---------------------------------------------------------------
-def suggest_attr_values(suggested_values_dct, modified_dct):
-    """
-    Suggests a value and stores the choice.
-
-    Returns:
-        (None)
-    """
-
-    print('\n'+'-'*40)
-    print('\n(type "stop" at any point to exit)')
-
-    for attr_name in suggested_values_dct:
-
-        display = [' ', '1', '2', '3', '4', '5']
-        shortcuts = ['', '1', '2', '3', '4', '5']
-
-        suggested_val_tpl = suggested_values_dct[attr_name]
-
-        # Ensures lists to be zipped have same length.
-        shortcut_len = len(suggested_val_tpl)
-        display = display[:shortcut_len]
-        shortcuts = shortcuts[:shortcut_len]
-
-        # INITIAL CHOICE MESSAGE
-        msg = '-'*20
-        msg += '\nATTRIBUTE: %s' % attr_name
-        for shortcut_val, sugg_val, display_val in zip(shortcuts, suggested_val_tpl, display):
-            msg += '\n%s: %s' % (display_val, sugg_val)
-        msg += '\n'
-
-        # CHOICE PROCESSING
-        choice_num = None
-        input_given = input(msg)
-
-        # (breaks loot prematurely if asked)
-        if input_given == 'stop':
-            print('#### LOOP STOPPED ####')
-            break
-
-        for val_num, val in enumerate(shortcuts):
-            if val == input_given:
-                choice_num = val_num
-                break
-
-        # Checks if user chose a suggested value.
-        if choice_num is not None:
-            chosen_value = suggested_val_tpl[choice_num]
-        else:
-            chosen_value = input_given
-
-        # Stores the choice and notifies user.
-        choice_msg = '\n%s: %s\n' % (attr_name, chosen_value)
-        modified_dct[attr_name] = chosen_value
-        print(choice_msg)
-
-
-# ---------------------------------------------------------------
-def all_abilities_dct(champion_name):
-    """
-    Returns stored champion api abilities dict.
-
-    Returns:
-        (dct)
-    """
-
-    champ_module = __import__('api_'+champion_name)
-
-    return champ_module.ABILITIES['spells']
-
-
-def ability_dct_by_name(ability_name, champion_name):
-    """
-    Returns an ability's information contained in api data.
-
-    Returns:
-        (dct)
-    """
-
-    for ability_num, ability_letter in enumerate('qwer'[:]):
-        if ability_letter == ability_name:
-            return all_abilities_dct(champion_name=champion_name)[ability_num]
-
-    raise BaseException('Invalid ability name.')
 
 
 # ===============================================================
@@ -960,8 +975,6 @@ class BuffAbilityAttributes(object):
             (bool)
         """
 
-
-
     def check_if_slow(self, ability):
         """
         Checks if given ability
@@ -987,7 +1000,7 @@ if __name__ == '__main__':
             GeneralAbilityAttributes(api_spell_dct=abilityDct, champion_name='Mundo').run_class()
             break
 
-    testDmg = True
+    testDmg = False
     if testDmg is True:
         for abilityName in 'qwer':
             dmgAttrInstance = DmgAbilityAttributes(ability_name=abilityName, champion_name='malzahar')
@@ -1003,5 +1016,5 @@ if __name__ == '__main__':
 
     testExploration = False
     if testExploration is True:
-        exploreFunc = ExploreApiAbilities().mod_link_names()
+        exploreFunc = ExploreApiAbilities().label_occurrences()
         pp.pprint(exploreFunc)
