@@ -183,7 +183,7 @@ API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
 class RequestDataFromAPI(object):
 
     @staticmethod
-    def _request_single_page_from_api(page_url):
+    def request_single_page_from_api(page_url):
         """
         Requests a page from API, after a brief delay.
 
@@ -199,7 +199,7 @@ class RequestDataFromAPI(object):
         return json.loads(page_as_str)
 
     @staticmethod
-    def _data_storage(targeted_module, obj_name, str_to_insert):
+    def data_storage(targeted_module, obj_name, str_to_insert):
         """
         Reads a file, informs user of file status (empty/full),
         and asks user action
@@ -247,9 +247,9 @@ class RequestDataFromAPI(object):
 
         print(completion_msg)
 
-    def _request_single_page_from_api_as_str(self, page_url):
+    def request_single_page_from_api_as_str(self, page_url):
 
-        page_as_dct = self._request_single_page_from_api(page_url=page_url)
+        page_as_dct = self.request_single_page_from_api(page_url=page_url)
         page_as_str = str(page_as_dct)
 
         return page_as_str
@@ -257,7 +257,7 @@ class RequestDataFromAPI(object):
 
 class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
 
-    def request_single_champ_from_api(self, champion_id):
+    def _request_single_champ_from_api(self, champion_id):
         """
         Requests all data for a champion from api.
 
@@ -273,11 +273,11 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
                     + "?champData=all&api_key="
                     + API_KEY)
 
-        page_as_dct = self._request_single_page_from_api(page_url=page_url)
+        page_as_dct = self.request_single_page_from_api(page_url=page_url)
 
         return page_as_dct
 
-    def request_all_champions_from_api(self, max_champions=None):
+    def _request_all_champions_from_api(self, max_champions=None):
         """
         Creates a dict containing champion data of all champions.
 
@@ -295,7 +295,7 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
                     break
 
             champ_name = champion_ids.CHAMPION_IDS[champ_id]
-            page_as_dct = self.request_single_champ_from_api(champion_id=champ_id)
+            page_as_dct = self._request_single_champ_from_api(champion_id=champ_id)
 
             all_champs_dct.update({champ_name: page_as_dct})
 
@@ -311,16 +311,16 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
             (None)
         """
 
-        self._data_storage(targeted_module='api_champions_database.py',
+        self.data_storage(targeted_module='api_champions_database.py',
                            obj_name='ALL_CHAMPIONS_ATTR',
-                           str_to_insert=self.request_all_champions_from_api(max_champions=max_champions))
+                           str_to_insert=self._request_all_champions_from_api(max_champions=max_champions))
 
 
 class RequestAllRunesFromAPI(RequestDataFromAPI):
 
     RUNES_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key=" + API_KEY
 
-    def request_all_runes_from_api(self):
+    def _request_all_runes_from_api(self):
         """
         Requests all runes from API.
 
@@ -328,20 +328,20 @@ class RequestAllRunesFromAPI(RequestDataFromAPI):
             (str)
         """
 
-        return self._request_single_page_from_api_as_str(page_url=self.RUNES_PAGE_URL)
+        return self.request_single_page_from_api_as_str(page_url=self.RUNES_PAGE_URL)
 
     def store_all_runes_from_api(self):
 
-        self._data_storage(targeted_module='api_runes_database.py',
+        self.data_storage(targeted_module='api_runes_database.py',
                            obj_name='ALL_RUNES',
-                           str_to_insert=self.request_all_runes_from_api())
+                           str_to_insert=self._request_all_runes_from_api())
 
 
 class RequestAllItemsFromAPI(RequestDataFromAPI):
 
     ITEMS_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/item?itemListData=all&api_key=" + API_KEY
 
-    def request_all_items_from_api(self):
+    def _request_all_items_from_api(self):
         """
         Requests all items from API.
 
@@ -349,13 +349,27 @@ class RequestAllItemsFromAPI(RequestDataFromAPI):
             (str)
         """
 
-        return self._request_single_page_from_api_as_str(page_url=self.ITEMS_PAGE_URL)
+        return self.request_single_page_from_api_as_str(page_url=self.ITEMS_PAGE_URL)
 
     def store_all_items_from_api(self):
 
-        self._data_storage(targeted_module='api_items_database.py',
-                           obj_name='ALL_ITEMS',
-                           str_to_insert=self.request_all_items_from_api())
+        self.data_storage(targeted_module='api_items_database.py',
+                          obj_name='ALL_ITEMS',
+                          str_to_insert=self._request_all_items_from_api())
+
+
+class RequestAllMasteriesFromAPI(RequestDataFromAPI):
+
+    MASTERIES_PAGE_URL = ('https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/mastery?masteryListData=all&api_key='
+                          + API_KEY)
+
+    def store_all_items_from_api(self):
+
+        page_as_str = self.request_single_page_from_api_as_str(page_url=self.MASTERIES_PAGE_URL)
+
+        self.data_storage(targeted_module='api_masteries_database.py',
+                          obj_name='ALL_MASTERIES',
+                          str_to_insert=page_as_str)
 
 
 class ExploreApiAbilities(object):
@@ -982,7 +996,6 @@ class BuffAbilityAttributes(object):
         Returns:
             (bool)
         """
-
 
 
 # ===============================================================
