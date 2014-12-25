@@ -175,21 +175,62 @@ def ability_dct_by_name(ability_name, champion_name):
     raise BaseException('Invalid ability name.')
 
 
+# ---------------------------------------------------------------
+def request_abortion_handler(func):
+    """
+    Used for handling Abortion exceptions raised during Requests.
+    """
+    def wrapped(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except RequestAborted as exc_msg:
+            print(exc_msg)
+        except InsertionAborted as exc_msg:
+            print(exc_msg)
+
+    return wrapped
 # ===============================================================
 # ===============================================================
 API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
 
 
+class RequestAborted(BaseException):
+    pass
+
+
+class InsertionAborted(BaseException):
+    pass
+
+
 class RequestDataFromAPI(object):
 
+    """
+    Base class of RequestClasses.
+    """
+
     @staticmethod
-    def request_single_page_from_api(page_url):
+    def request_single_page_from_api(page_url, requested_item):
         """
         Requests a page from API, after a brief delay.
 
+        Args:
+            requested_item: (str) Name of requested item from API, e.g. RUNES, ITEMS, ABILITIES.
         Return:
             (dct)
         """
+
+        # Messages
+        start_msg = '\n' + '-'*40
+        start_msg += '\nWARNING !!!\n'
+        start_msg += '\nStart API requests (%s)?\n' % requested_item
+
+        abort_msg = '\nData request ABORTED.\n'
+
+        user_start_question = input(start_msg)
+        if user_start_question.lower() in ('yes', 'y'):
+            pass
+        else:
+            raise RequestAborted(abort_msg)
 
         time.sleep(2)
 
@@ -209,32 +250,19 @@ class RequestDataFromAPI(object):
         """
 
         # Messages
-        start_msg = '\n' + '-'*40
-        start_msg += '\nWARNING !!!'
-        start_msg += '\nStart API requests?\n'
 
         abort_msg = '\nData insertion ABORTED.\n'
-
         completion_msg = '\nData insertion COMPLETE.\n'
-
-        # Confirms insertion
-        user_start_question = input(start_msg)
-        if user_start_question.lower() in ('yes', 'y'):
-            pass
-        else:
-            print(abort_msg)
-            return
 
         # Checks if module is non empty.
         with open(targeted_module, 'r') as read_module:
 
             if read_module.read() != '':
-                user_answer = input('Non empty module detected. \nReplace data?\n')
+                user_answer = input('Non empty module detected (%s). \nReplace data?\n' % targeted_module)
                 if user_answer.lower() in ('yes', 'y'):
                     print('Replacing existing file content..')
                 else:
-                    print(abort_msg)
-                    return
+                    raise InsertionAborted(abort_msg)
             else:
                 print('Inserting data..')
 
@@ -247,9 +275,9 @@ class RequestDataFromAPI(object):
 
         print(completion_msg)
 
-    def request_single_page_from_api_as_str(self, page_url):
+    def request_single_page_from_api_as_str(self, page_url, requested_item):
 
-        page_as_dct = self.request_single_page_from_api(page_url=page_url)
+        page_as_dct = self.request_single_page_from_api(page_url=page_url, requested_item=requested_item)
         page_as_str = str(page_as_dct)
 
         return page_as_str
@@ -273,7 +301,8 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
                     + "?champData=all&api_key="
                     + API_KEY)
 
-        page_as_dct = self.request_single_page_from_api(page_url=page_url)
+        page_as_dct = self.request_single_page_from_api(page_url=page_url,
+                                                        requested_item='CHAMPION_ABILITIES')
 
         return page_as_dct
 
@@ -303,6 +332,7 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
 
         return all_champs_as_str
 
+    @request_abortion_handler
     def store_all_champions_data(self, max_champions=None):
         """
         Stores all champions' data from API.
@@ -312,50 +342,38 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
         """
 
         self.data_storage(targeted_module='api_champions_database.py',
-                           obj_name='ALL_CHAMPIONS_ATTR',
-                           str_to_insert=self._request_all_champions_from_api(max_champions=max_champions))
+                          obj_name='ALL_CHAMPIONS_ATTR',
+                          str_to_insert=self._request_all_champions_from_api(max_champions=max_champions))
 
 
 class RequestAllRunesFromAPI(RequestDataFromAPI):
 
     RUNES_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key=" + API_KEY
 
-    def _request_all_runes_from_api(self):
-        """
-        Requests all runes from API.
-
-        Returns:
-            (str)
-        """
-
-        return self.request_single_page_from_api_as_str(page_url=self.RUNES_PAGE_URL)
-
+    @request_abortion_handler
     def store_all_runes_from_api(self):
 
+        page_as_str = self.request_single_page_from_api_as_str(page_url=self.RUNES_PAGE_URL,
+                                                               requested_item='RUNES')
+
         self.data_storage(targeted_module='api_runes_database.py',
-                           obj_name='ALL_RUNES',
-                           str_to_insert=self._request_all_runes_from_api())
+                          obj_name='ALL_RUNES',
+                          str_to_insert=page_as_str)
 
 
 class RequestAllItemsFromAPI(RequestDataFromAPI):
 
     ITEMS_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/item?itemListData=all&api_key=" + API_KEY
 
-    def _request_all_items_from_api(self):
-        """
-        Requests all items from API.
-
-        Returns:
-            (str)
-        """
-
-        return self.request_single_page_from_api_as_str(page_url=self.ITEMS_PAGE_URL)
-
+    @request_abortion_handler
     def store_all_items_from_api(self):
+
+        page_as_str = self.request_single_page_from_api_as_str(page_url=self.ITEMS_PAGE_URL,
+                                                               requested_item='ITEMS')
 
         self.data_storage(targeted_module='api_items_database.py',
                           obj_name='ALL_ITEMS',
-                          str_to_insert=self._request_all_items_from_api())
+                          str_to_insert=page_as_str)
 
 
 class RequestAllMasteriesFromAPI(RequestDataFromAPI):
@@ -363,9 +381,11 @@ class RequestAllMasteriesFromAPI(RequestDataFromAPI):
     MASTERIES_PAGE_URL = ('https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/mastery?masteryListData=all&api_key='
                           + API_KEY)
 
+    @request_abortion_handler
     def store_all_items_from_api(self):
 
-        page_as_str = self.request_single_page_from_api_as_str(page_url=self.MASTERIES_PAGE_URL)
+        page_as_str = self.request_single_page_from_api_as_str(page_url=self.MASTERIES_PAGE_URL,
+                                                               requested_item='MASTERIES')
 
         self.data_storage(targeted_module='api_masteries_database.py',
                           obj_name='ALL_MASTERIES',
@@ -754,7 +774,7 @@ class DmgAbilityAttributes(object):
 
     @staticmethod
     def suggested_values_dmg_attr():
-        
+
         return dict(
             target_type=('enemy', 'player'),
             # TODO insert more categories in class and then here.
@@ -1023,9 +1043,9 @@ if __name__ == '__main__':
             d = dmgAttrInstance.dmgs_dct
             pp.pprint(d)
 
-    testApiStorage = False
+    testApiStorage = True
     if testApiStorage is True:
-        RequestAllAbilitiesFromAPI().store_all_champions_data(max_champions=None)
+        RequestAllRunesFromAPI().store_all_runes_from_api()
 
     testExploration = False
     if testExploration is True:

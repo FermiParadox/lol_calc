@@ -1,23 +1,17 @@
-import api_champions_database as all_data
+def exception_handler(func):
 
-def new_dct(old_dct):
+    def wrapped(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
 
-    dct = {}
+        except BaseException as exc_msg:
+            print(exc_msg)
+    return wrapped
 
-    for key_name in old_dct:
-
-        dct.update({key_name.lower(): old_dct[key_name]})
-
-    return dct
-
-
-def change_file():
-
-    with open('api_champions_database.py', 'w') as edited_module:
-        s = new_dct(all_data.ALL_CHAMPIONS_ATTR)
-        s = 'ALL_CHAMPIONS_ATTR = '+str(s)
-        edited_module.write(s)
+@exception_handler
+def f(x):
+    raise BaseException('error')
 
 if __name__ == '__main__':
-    change_file()
-    print(all_data.ALL_CHAMPIONS_ATTR.keys())
+
+    f(1)
