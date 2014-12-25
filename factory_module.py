@@ -393,6 +393,8 @@ class RequestAllMasteriesFromAPI(RequestDataFromAPI):
                           str_to_insert=page_as_str)
 
 
+# ===============================================================
+# ===============================================================
 class ExploreApiAbilities(object):
 
     def __init__(self):
@@ -521,7 +523,7 @@ class ExploreApiAbilities(object):
 
         return _return_or_print(print_mode=print_mode, obj=result)
 
-    def sanitized_tooltips(self, champion_name=None, print_mode=False):
+    def sanitized_tooltips(self, champion_name=None, required_keyword=None, print_mode=False):
         """
         Returns all tooltips for given champion (or for all champions).
 
@@ -539,12 +541,17 @@ class ExploreApiAbilities(object):
 
         for champ_name in champ_lst:
             for spell_dct in self.all_champions_data_dct[champ_name]['spells']:
-                tooltips_lst.append(spell_dct['sanitizedTooltip'])
+
+                # Checks if required keyword is selected and present.
+                if (required_keyword is not None) and (required_keyword.lower() not in spell_dct['sanitizedTooltip'].lower()):
+                    pass
+                else:
+                    tooltips_lst.append(spell_dct['sanitizedTooltip'])
 
         # Checks if print mode is selected.
         if print_mode is True:
             for tooltip in tooltips_lst:
-                print()
+                print('-'*5)
                 pp.pprint(tooltip)
         else:
             return tooltips_lst
@@ -1050,12 +1057,11 @@ if __name__ == '__main__':
     import api_champions_database
 
     champName = 'ashe'
-    allAbilities = api_champions_database.ALL_CHAMPIONS_ATTR[champName]['spells']
     abilityName = 'q'
 
-    testGen = True
+    testGen = False
     if testGen is True:
-        for abilityDct in allAbilities:
+        for ability_shortcut in ('q', 'w', 'e', 'r'):
             GeneralAbilityAttributes(ability_name=abilityName, champion_name='drmundo').run_gen_attr_creation()
             break
 
@@ -1073,7 +1079,6 @@ if __name__ == '__main__':
     if testApiStorage is True:
         RequestAllRunesFromAPI().store_all_runes_from_api()
 
-    testExploration = False
+    testExploration = True
     if testExploration is True:
-        exploreFunc = ExploreApiAbilities().label_occurrences()
-        pp.pprint(exploreFunc)
+        ExploreApiAbilities().sanitized_tooltips(required_keyword='movement speed', print_mode=True)
