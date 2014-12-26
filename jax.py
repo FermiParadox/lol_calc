@@ -49,8 +49,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
             target='player',)
 
     INNATE_INITIATOR_BUFF = dict(
-        on_hit=dict(apply_buff=['innate_att_speed_buff'],
-                    cause_dmg=[],
+        on_hit=dict(cause_dmg=[],
+                    apply_buff=['innate_att_speed_buff'],
                     remove_buff=[]),
         target='player',
         duration='permanent',)
@@ -158,8 +158,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
         duration=W_STATS['general']['duration'],
         target='player',
         on_hit=dict(
-            apply_buff=[],
             cause_dmg=['w_dmg'],
+            apply_buff=[],
             remove_buff=['w_buff']
         ),
         special={'delay_cd_start': 'w'}
@@ -299,8 +299,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
 
         # If Jax has done less than 3 hits, increases his hit counter by one on hits, ..
         dct = dict(
-            on_hit=dict(apply_buff=['r_counter_buff'],
-                        cause_dmg=[],
+            on_hit=dict(cause_dmg=[],
+                        apply_buff=['r_counter_buff'],
                         remove_buff=[]),
             target='player',
             duration='permanent',)
@@ -309,8 +309,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
         if 'r_counter_buff' in self.act_buffs['player']:
             if self.act_buffs['player']['r_counter_buff']['current_stacks'] == 2:
                 dct['on_hit'] = dict(
-                    apply_buff=[],
                     cause_dmg=['r_dmg'],
+                    apply_buff=[],
                     remove_buff=['r_counter_buff'])
 
         return dct

@@ -105,8 +105,8 @@ def suggest_attr_values(usual_values_dct, modified_dct, extra_start_msg=''):
 
     for attr_name in usual_values_dct:
 
-        display = [' ', '1', '2', '3', '4', '5']
-        shortcuts = ['', '1', '2', '3', '4', '5']
+        display = ['1', '2', '3', '4', '5']
+        shortcuts = ['1', '2', '3', '4', '5']
 
         suggested_val_tpl = usual_values_dct[attr_name]
 
@@ -123,9 +123,16 @@ def suggest_attr_values(usual_values_dct, modified_dct, extra_start_msg=''):
 
         # CHOICE PROCESSING
         choice_num = None
-        input_given = input(msg + '\n')
 
-        # (breaks loot prematurely if asked)
+        # (only enter as input is not accepted)
+        while True:
+            input_given = input(msg + '\n')
+            if input_given != '':
+                break
+            else:
+                print('No value given')
+
+        # (breaks loop prematurely if asked)
         if input_given == 'stop':
             print('#### LOOP STOPPED ####')
             break
@@ -870,7 +877,7 @@ class DmgAbilityAttributes(object):
             r"""
             \s\{\{\s\w\d{1,2}\s\}\}             # ' {{ e1 }}'
             [^,.]*?                             # any characters in between excluding , and .
-            (?:true|magic|physical)             # true magic or physical
+            (?:true|magic|magical|physical)     # 'true', 'magic' (sometimes referred as 'magical') or 'physical'
             \sdamage                            # ' damage'
 
             """, re.IGNORECASE | re.VERBOSE)
@@ -1039,6 +1046,41 @@ class DmgAbilityAttributes(object):
             suggest_attr_values(usual_values_dct=self.usual_values_dmg_attr(),
                                 modified_dct=self.dmgs_dct[dmg_temp_name])
 
+    def modify_dmg_names(self):
+        """
+        Asks user to provide new names for each dmg of given ability.
+
+        Returns:
+            (None)
+        """
+
+        modification_start_msg = '\n\n' + ('-'*40)
+
+        print(modification_start_msg)
+
+        for dmg in self.dmgs_dct:
+
+            pp.pprint(self.dmgs_dct)
+            new_dmg_name = input('\nNew name for: %s?\n' % dmg)
+
+            while True:
+                if new_dmg_name == '':
+                    print('\nNo change.')
+
+                elif new_dmg_name in self.dmgs_dct:
+
+                    print('\nName already exists.')
+
+                else:
+                    # (stores temporarily previous content of dmg_x)
+                    dct_content = self.dmgs_dct[dmg]
+                    del self.dmgs_dct[dmg]
+                    self.dmgs_dct.update({new_dmg_name: dct_content})
+                    print('\nNew name: %s' % new_dmg_name)
+                    break
+
+        print('Dmg name modification ENDED.')
+
     def run_dmg_attr_creation(self):
         """
         Runs all relevant methods for each dmg attribute detected.
@@ -1054,6 +1096,7 @@ class DmgAbilityAttributes(object):
 
         self.fill_dmg_type_and_mods_and_dot()
         self.suggest_dmg_attr_values()
+        self.modify_dmg_names()
 
         print('\nRESULT\n')
         pp.pprint(self.dmgs_dct)
@@ -1156,7 +1199,7 @@ if __name__ == '__main__':
     testDmg = True
     if testDmg is True:
         for ability_shortcut in ('q', 'w', 'e', 'r'):
-            dmgAttrInstance = DmgAbilityAttributes(ability_name=ability_shortcut, champion_name='malzahar')
+            dmgAttrInstance = DmgAbilityAttributes(ability_name=ability_shortcut, champion_name='teemo')
             dmgAttrInstance.run_dmg_attr_creation()
 
     testApiStorage = False
