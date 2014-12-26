@@ -1,3 +1,7 @@
+class MyException(BaseException):
+    pass
+
+
 def exception_handler(func):
 
     def wrapped(*args, **kwargs):
@@ -10,7 +14,7 @@ def exception_handler(func):
 
 @exception_handler
 def f(x):
-    raise BaseException('error')
+    raise MyException('error')
 
 if __name__ == '__main__':
 

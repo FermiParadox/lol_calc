@@ -124,7 +124,7 @@ def suggest_attr_values(usual_values_dct, modified_dct, extra_start_msg=''):
         # CHOICE PROCESSING
         choice_num = None
 
-        # (only enter as input is not accepted)
+        # (only "enter" as input is not accepted)
         while True:
             input_given = input(msg + '\n')
             if input_given != '':
@@ -149,7 +149,7 @@ def suggest_attr_values(usual_values_dct, modified_dct, extra_start_msg=''):
             chosen_value = input_given
 
         # Stores the choice and notifies user.
-        choice_msg = '\n%s: %s\n' % (attr_name, chosen_value)
+        choice_msg = '%s: %s\n' % (attr_name, chosen_value)
         modified_dct[attr_name] = chosen_value
         print(choice_msg)
 
@@ -1018,14 +1018,41 @@ class DmgAbilityAttributes(object):
         else:
             return new_dmg_name
 
-    def _suggest_dmg_values(self):
+    def _suggest_dmg_values(self, dmg_name):
         """
-        Allows the user to choose between possible values from ability lists.
+        Allows the user to choose between possible values from ability's 'effect' list.
 
         Returns:
             (None)
         """
-        pass
+
+        ability_dct = ExploreApiAbilities().champion_abilities(champion_name=self.champion_name,
+                                                               ability_name=self.ability_name)
+
+        effect_lst = ability_dct['effect']
+
+        # Groups all possible lists in a list.
+        lst_of_values = []
+        for lst in effect_lst:
+            if lst is not None:
+                lst_of_values.append(lst)
+
+        while True:
+            msg = '\n' + ('-'*10)
+            msg += '\nSelect dmg values.'
+
+            for couple in enumerate(lst_of_values):
+                msg += '\n%s: %s' % couple
+
+            chosen_lst_num = input(msg + '\n')
+
+            try:
+                selected_lst = lst_of_values[int(chosen_lst_num)]
+                self.dmgs_dct[dmg_name]['dmg_values'] = selected_lst
+                return
+
+            except ValueError:
+                print('Invalid selection. Try again.')
 
     def fill_dmg_type_and_mods_and_dot(self):
         """
@@ -1103,9 +1130,9 @@ class DmgAbilityAttributes(object):
             pp.pprint(self.dmgs_dct)
 
             while True:
-                new_dmg_name = input('\nNew name for: %s?\n' % dmg)
+                new_dmg_name = input('\nNew name for %s? (press enter to skip)\n' % dmg)
                 if new_dmg_name == '':
-                    print('\nName will no change.')
+                    print('\nName will not change.\n')
                     break
 
                 elif new_dmg_name in self.dmgs_dct:
@@ -1120,7 +1147,7 @@ class DmgAbilityAttributes(object):
                     print('\nNew name: %s' % new_dmg_name)
                     break
 
-        print('Dmg name modification ENDED.')
+        print('\nDmg name modification ENDED. \n%s' % ('-'*10))
 
     def insert_extra_dmg(self):
         """
@@ -1132,16 +1159,23 @@ class DmgAbilityAttributes(object):
 
         while True:
             print('\n' + ('-'*10))
-            extra_dmg = '\nInsert extra dmg?'
+            extra_dmg = input('\nInsert extra dmg?')
 
             if extra_dmg.lower() in ('y', 'yes'):
-                self.dmgs_dct.update({self._new_automatic_dmg_name(): self.dmg_attributes()})
-                self._suggest_dmg_values()
-                self.suggest_dmg_attr_values()
+                new_dmg_name = self._new_automatic_dmg_name()
+                self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
+                self._suggest_dmg_values(dmg_name=new_dmg_name)
+                suggest_attr_values(usual_values_dct=self.usual_values_dmg_attr(),
+                                    modified_dct=self.dmgs_dct[new_dmg_name],
+                                    extra_start_msg='Manually inserted dmg.')
                 self.modify_dmg_names()
 
-            else:
+            # "enter", 'n' and 'no'
+            elif extra_dmg.lower() in ('n', 'no', ''):
                 break
+
+            else:
+                print('Invalid answer.')
 
     def run_dmg_attr_creation(self):
         """
@@ -1158,6 +1192,7 @@ class DmgAbilityAttributes(object):
 
         self.fill_dmg_type_and_mods_and_dot()
         self.suggest_dmg_attr_values()
+        self.insert_extra_dmg()
         self.modify_dmg_names()
 
         print('\nRESULT\n')
@@ -1260,7 +1295,7 @@ if __name__ == '__main__':
 
     testDmg = True
     if testDmg is True:
-        for ability_shortcut in ('q', 'w', 'e', 'r'):
+        for ability_shortcut in ('q',):
             dmgAttrInstance = DmgAbilityAttributes(ability_name=ability_shortcut, champion_name='teemo')
             dmgAttrInstance.run_dmg_attr_creation()
 
