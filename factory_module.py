@@ -130,7 +130,7 @@ def suggest_attr_values(usual_values_dct, modified_dct, extra_start_msg=''):
             if input_given != '':
                 break
             else:
-                print('No value given')
+                print('No value given. Try again.')
 
         # (breaks loop prematurely if asked)
         if input_given == 'stop':
@@ -781,9 +781,11 @@ class GeneralAbilityAttributes(object):
 class DmgAbilityAttributes(object):
 
     """
+    Each instance of this class is used for creation of all dmgs of a single ability.
+
     An ability can contain 0 or more "dmg attributes" in its _STATS.
 
-    Each "dmg" must have a single responsibility.
+    (Each "dmg" must have a single responsibility.)
     """
 
     def __init__(self, ability_name, champion_name):
@@ -990,6 +992,41 @@ class DmgAbilityAttributes(object):
         else:
             return float(duration_str)
 
+    def _new_automatic_dmg_name(self):
+        """
+        Creates a new name for a dmg.
+
+        Ensures no existing names are overwritten.
+
+        Returns:
+            (str)
+        """
+
+        new_dmg_name = 'dmg_1'
+
+        if self.dmgs_dct:
+
+            for num in range(20):
+                for existing_name in self.dmgs_dct:
+                    if str(num) not in existing_name:
+
+                        # If a suitable name has been found, exits method.
+                        new_dmg_name = 'dmg_' + str(num)
+                        return new_dmg_name
+
+        # If there was no existing dmg dict, returns preset name value.
+        else:
+            return new_dmg_name
+
+    def _suggest_dmg_values(self):
+        """
+        Allows the user to choose between possible values from ability lists.
+
+        Returns:
+            (None)
+        """
+        pass
+
     def fill_dmg_type_and_mods_and_dot(self):
         """
         Detects dmg type, its abbreviation,
@@ -1001,11 +1038,11 @@ class DmgAbilityAttributes(object):
 
         dmgs_lst = self.raw_dmg_strings()
 
-        for dmg_num, tooltip_fragment in enumerate(dmgs_lst):
+        for tooltip_fragment in dmgs_lst:
 
             # INSERTS DMG NAME AND ATTRS
             # New temporary dmg name.
-            new_dmg_name = 'dmg_' + str(dmg_num+1)
+            new_dmg_name = self._new_automatic_dmg_name()
             self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
 
             curr_dmg_dct = self.dmgs_dct[new_dmg_name]
@@ -1054,32 +1091,57 @@ class DmgAbilityAttributes(object):
             (None)
         """
 
+        # Checks if there is anything to rename.
+        if not self.dmgs_dct:
+            return
+
         modification_start_msg = '\n\n' + ('-'*40)
 
         print(modification_start_msg)
 
-        for dmg in self.dmgs_dct:
-
+        for dmg in sorted(self.dmgs_dct):
             pp.pprint(self.dmgs_dct)
-            new_dmg_name = input('\nNew name for: %s?\n' % dmg)
 
             while True:
+                new_dmg_name = input('\nNew name for: %s?\n' % dmg)
                 if new_dmg_name == '':
-                    print('\nNo change.')
+                    print('\nName will no change.')
+                    break
 
                 elif new_dmg_name in self.dmgs_dct:
-
                     print('\nName already exists.')
 
                 else:
                     # (stores temporarily previous content of dmg_x)
                     dct_content = self.dmgs_dct[dmg]
                     del self.dmgs_dct[dmg]
+                    # (and assigns it to new name)
                     self.dmgs_dct.update({new_dmg_name: dct_content})
                     print('\nNew name: %s' % new_dmg_name)
                     break
 
         print('Dmg name modification ENDED.')
+
+    def insert_extra_dmg(self):
+        """
+        Allows user to insert extra dmg dicts that have been missed by automatic inspection.
+
+        Returns:
+            (None)
+        """
+
+        while True:
+            print('\n' + ('-'*10))
+            extra_dmg = '\nInsert extra dmg?'
+
+            if extra_dmg.lower() in ('y', 'yes'):
+                self.dmgs_dct.update({self._new_automatic_dmg_name(): self.dmg_attributes()})
+                self._suggest_dmg_values()
+                self.suggest_dmg_attr_values()
+                self.modify_dmg_names()
+
+            else:
+                break
 
     def run_dmg_attr_creation(self):
         """
