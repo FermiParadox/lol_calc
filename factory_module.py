@@ -1,3 +1,4 @@
+import api_champions_database
 import re
 import time
 import urllib.request
@@ -1203,6 +1204,8 @@ class DmgAbilityAttributes(object):
 class BuffAbilityAttributes(object):
 
     """
+    Each instance of this class is used for a single ability.
+
     An ability can contain 0 or more 'buff' attributes in its _STATS.
     """
 
@@ -1213,6 +1216,7 @@ class BuffAbilityAttributes(object):
         self.ability_num = ('q', 'w', 'e', 'r').index(self.ability_name)
         self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][self.ability_num]
         self.sanitized_tooltip = self.api_spell_dct['sanitizedTooltip']
+        self.ability_effect_lst = self.api_spell_dct['effect']
 
         self.buffs_dct = {}
 
@@ -1263,17 +1267,6 @@ class BuffAbilityAttributes(object):
         return stats_lst
 
     def duration(self):
-
-        pass
-
-    def check_if_slow(self, ability):
-        """
-        Checks if given ability
-
-        Returns:
-            (bool)
-        """
-
         # 'for {{ f10 }} seconds'
         pattern_1 = re.compile(r"""
         for
@@ -1283,15 +1276,56 @@ class BuffAbilityAttributes(object):
         seconds
 
         """)
-
         pass
 
+    def slow_metrics(self):
+        """
+        Checks if given ability reduces movement speed,
+        and returns a list of most probable values.
+
+        Returns:
+            (lst)
+        """
+
+        string = self.api_spell_dct['sanitizedTooltip']
+
+        # 'slowing them by {{ e12 }}% (+{{ f1 }}%)'
+        pattern_1 = re.compile(r"""
+        slow\w*?  \s                                                    # 'slows', 'slowing', 'slowed' etc
+        [^{.]*?                                                         # any number of words that may follow
+        by \s
+
+        (?: \{\{\s (\w\d{1,2}) \s\}\}  | (\d+\.?\d+) )  %                # ' {{ e1 }}%' or '45%'
+
+        \s?
+        (?: \( \+ \{\{\s                                                # mod abbreviations, if existing
+        (\w\d{1,2})
+        \s\}\}%\) )*
+
+        """, re.IGNORECASE | re.VERBOSE)
+
+        results = pattern_1.findall(string)
+
+        # Converts list of tuples into list of non empty strings.
+        possible_values = []
+        for result_tpl in results:
+            for result_str in result_tpl:
+                if result_str != '':
+
+                    # (recovers effect value if it was an abbreviation)
+                    effect_abbr = re.findall(r'\D(\d{1,2})', result_str)
+                    if effect_abbr:
+                        result_str = self.ability_effect_lst[int(effect_abbr[0])]
+                    else:
+                        result_str = int(result_str)
+
+                    possible_values.append(result_str)
+
+        return possible_values
 
 # ===============================================================
 # ===============================================================
 if __name__ == '__main__':
-
-    import api_champions_database
 
     champName = 'ashe'
     abilityName = 'q'
@@ -1302,11 +1336,16 @@ if __name__ == '__main__':
             GeneralAbilityAttributes(ability_name=ability_shortcut, champion_name='drmundo').run_gen_attr_creation()
             break
 
-    testDmg = True
+    testDmg = False
     if testDmg is True:
         for ability_shortcut in ('q',):
             dmgAttrInstance = DmgAbilityAttributes(ability_name=ability_shortcut, champion_name='teemo')
             dmgAttrInstance.run_dmg_attr_creation()
+
+    testBuffs = True
+    if testBuffs is True:
+        buffInstance = BuffAbilityAttributes('q', 'drmundo').slow_metrics()
+        print(buffInstance)
 
     testApiStorage = False
     if testApiStorage is True:

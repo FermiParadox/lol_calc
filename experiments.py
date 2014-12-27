@@ -1,20 +1,11 @@
-class MyException(BaseException):
-    pass
+import re
 
-
-def exception_handler(func):
-
-    def wrapped(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-
-        except BaseException as exc_msg:
-            print(exc_msg)
-    return wrapped
-
-@exception_handler
 def f(x):
-    raise MyException('error')
+    p=re.compile(r'(?P<name>hi)(?:\wi)')
+    s=p.findall('hihhinibiii')
+    print(s)
+
+
 
 if __name__ == '__main__':
 
