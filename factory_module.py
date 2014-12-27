@@ -1266,19 +1266,60 @@ class BuffAbilityAttributes(object):
 
         return stats_lst
 
-    def duration(self):
+    def _re_findall_result_to_lst(self, findall_results):
+        """
+        Converts findall result (list of tuples) into list of non empty strings.
+        Then changes string to int or to abbreviation's corresponding values.
+
+        Args:
+            find_results: (str) string of a number, or string of an abbreviation e.g. 'e3'
+        Returns:
+            (lst)
+        """
+
+        # Converts list of tuples into list of non empty strings.
+        possible_values = []
+        for result_tpl in findall_results:
+            for result_str in result_tpl:
+                if result_str != '':
+
+                    # (recovers effect value if it was an abbreviation)
+                    effect_abbr = re.findall(r'\D(\d{1,2})', result_str)
+                    if effect_abbr:
+                        result_str = self.ability_effect_lst[int(effect_abbr[0])]
+                    else:
+                        result_str = int(result_str)
+
+                    possible_values.append(result_str)
+
+        return possible_values
+
+    def possible_duration_values(self):
+        """
+        Checks if given ability has durations,
+        and returns a list of most probable values.
+
+        Returns:
+            (lst)
+        """
+
+        string = self.api_spell_dct['sanitizedTooltip']
+
         # 'for {{ f10 }} seconds'
         pattern_1 = re.compile(r"""
         for
         \s
-        \{\{\s \w\d{1,2} \s\}\}
+        (?: \{\{\s (\w\d{1,2}) \s\}\}  | (\d+\.?\d*) )      # ' {{ e1 }}' or '2.4'
         \s
         seconds
 
-        """)
-        pass
+        """, re.IGNORECASE | re.VERBOSE)
 
-    def slow_metrics(self):
+        results = pattern_1.findall(string)
+
+        return self._re_findall_result_to_lst(findall_results=results)
+
+    def possible_slow_values(self):
         """
         Checks if given ability reduces movement speed,
         and returns a list of most probable values.
@@ -1295,10 +1336,10 @@ class BuffAbilityAttributes(object):
         [^{.]*?                                                         # any number of words that may follow
         by \s
 
-        (?: \{\{\s (\w\d{1,2}) \s\}\}  | (\d+\.?\d+) )  %                # ' {{ e1 }}%' or '45%'
+        (?: \{\{\s (\w\d{1,2}) \s\}\}  | (\d+\.?\d*) )  %               # ' {{ e1 }}%' or '45%'
 
         \s?
-        (?: \( \+ \{\{\s                                                # mod abbreviations, if existing
+        (?: \( \+ \{\{\s                                                # '(+{{ f1 }})', if existing
         (\w\d{1,2})
         \s\}\}%\) )*
 
@@ -1306,22 +1347,7 @@ class BuffAbilityAttributes(object):
 
         results = pattern_1.findall(string)
 
-        # Converts list of tuples into list of non empty strings.
-        possible_values = []
-        for result_tpl in results:
-            for result_str in result_tpl:
-                if result_str != '':
-
-                    # (recovers effect value if it was an abbreviation)
-                    effect_abbr = re.findall(r'\D(\d{1,2})', result_str)
-                    if effect_abbr:
-                        result_str = self.ability_effect_lst[int(effect_abbr[0])]
-                    else:
-                        result_str = int(result_str)
-
-                    possible_values.append(result_str)
-
-        return possible_values
+        return self._re_findall_result_to_lst(findall_results=results)
 
 # ===============================================================
 # ===============================================================
@@ -1344,7 +1370,7 @@ if __name__ == '__main__':
 
     testBuffs = True
     if testBuffs is True:
-        buffInstance = BuffAbilityAttributes('q', 'drmundo').slow_metrics()
+        buffInstance = BuffAbilityAttributes('q', 'drmundo').possible_slow_values()
         print(buffInstance)
 
     testApiStorage = False
