@@ -26,7 +26,7 @@ class Targeting(object):
 
         # If the effect targets the player..
         if tar_type == 'player':
-            #.. it sets current_target to 'player'.
+            # .. it sets current_target to 'player'.
             self.current_target = 'player'
         # Otherwise it sets it to the first alive enemy.
         else:

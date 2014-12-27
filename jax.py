@@ -86,10 +86,10 @@ class TotalChampionAttributes(dmg_categories.Categories):
                 bonus_ad=1.
             ),
 
-            cast_time=0.5)   # TODO: Find actual value. Consider using a higher one to include jump time.
+            cast_time=0.5)
     )
 
-    # TODO: Make all _dmg_value methods use standard_dmg (etc.) with single param (e.g. ability_dct=self.Q_STATS)
+    # TODO: Make all _dmg_value methods use 'standard_dmg' (etc.) with single param (e.g. ability_name='q')
     # TODO: and detect the dict in Q_STATS by name (that is, same name as dmg or buff).
     def q_dmg_value(self):
         return self.standard_dmg(ability_dct=self.Q_STATS['general'],

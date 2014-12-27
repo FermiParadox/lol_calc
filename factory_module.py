@@ -520,7 +520,8 @@ class ExploreApiAbilities(object):
 
         champ_dct = self.all_champions_data_dct[champion_name]
         if ability_name is None:
-            result = champ_dct['spells']
+            result = [champ_dct['passive'], ]
+            result += champ_dct['spells']
 
         else:
             if ability_name == 'inn':
@@ -1209,7 +1210,7 @@ class BuffAbilityAttributes(object):
         self.champion_name = champion_name
         self.ability_name = ability_name
 
-        self.ability_num = 'qwer'.index(self.ability_name)
+        self.ability_num = ('q', 'w', 'e', 'r').index(self.ability_name)
         self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][self.ability_num]
         self.sanitized_tooltip = self.api_spell_dct['sanitizedTooltip']
 
@@ -1237,21 +1238,29 @@ class BuffAbilityAttributes(object):
             prohibit_cd_start='placeholder',
             )
 
-    STAT_NAMES_IN_TOOLTIPS = ('attack damage', 'a')
+    STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP = {'attack damage': 'ad',
+                                         'attack speed': 'att_speed',
+                                         'movement speed': 'move_speed',
+                                         'armor': 'armor',
+                                         'magic resist': 'mr',
+                                         'critical strike chance': 'crit_chance',
+                                         'armor penetration': 'armor_penetration'}
 
-    def check_if_affects_stats(self):
+    def affected_stats(self):
         """
-        Checks if ability contains buff, modifying stats.
+        Checks if ability contains a buff that modifies stats.
 
         Returns:
-            (bool)
+            (lst)
         """
 
-        for stat_name in self.STAT_NAMES_IN_TOOLTIPS:
-            if stat_name in self.sanitized_tooltip:
-                return True
+        stats_lst = []
 
-        return False
+        for stat_name in self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP:
+            if stat_name in self.sanitized_tooltip:
+                stats_lst.append(stat_name)
+
+        return stats_lst
 
     def duration(self):
 
@@ -1290,7 +1299,7 @@ if __name__ == '__main__':
     testGen = False
     if testGen is True:
         for ability_shortcut in ('q', 'w', 'e', 'r'):
-            GeneralAbilityAttributes(ability_name=abilityName, champion_name='drmundo').run_gen_attr_creation()
+            GeneralAbilityAttributes(ability_name=ability_shortcut, champion_name='drmundo').run_gen_attr_creation()
             break
 
     testDmg = True
