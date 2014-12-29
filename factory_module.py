@@ -44,40 +44,12 @@ OPTIONAL_ATTR_BUFF = ('affects_stat', 'is_trigger', 'delay_cd_start', 'on_hit')
 
 # ===============================================================
 # ===============================================================
-def check_all_same(lst):
-    """
-    Iterates through a list and checks if all its elements are the same.
+def delimiter(num_of_lines):
 
-    Returns:
-        (bool)
-    """
+    string = '-'*num_of_lines
+    string += '\n%s'
 
-    all_same = True
-
-    for item_num in range(len(lst)-1):
-
-        if lst[item_num] != lst[item_num+1]:
-            all_same = False
-            break
-
-    return all_same
-
-
-def return_tpl_or_element(lst):
-    """
-    Returns whole list if its elements are the same,
-    otherwise returns the first element.
-
-    Args:
-        tags: (str)
-    Returns:
-        (lst)
-        (float) or (int) or (str)
-    """
-    if check_all_same(lst=lst):
-        return lst[0]
-    else:
-        return lst
+    return string
 
 
 # ---------------------------------------------------------------
@@ -119,7 +91,7 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='')
         shortcuts = shortcuts[:shortcut_len]
 
         # INITIAL CHOICE MESSAGE
-        msg = '-'*20
+        msg = delimiter(20)
         msg += '\nATTRIBUTE: %s\n' % attr_name
         for shortcut_val, sugg_val, display_val in zip(shortcuts, suggested_val_tpl, display):
             msg += '\n%s: %s' % (display_val, sugg_val)
@@ -181,51 +153,6 @@ def _new_automatic_attr_dct_name(targeted_dct, attr_type):
         return new_attr_name
 
 
-# ---------------------------------------------------------------
-def all_abilities_dct(champion_name):
-    """
-    Returns stored champion api abilities dict.
-
-    Returns:
-        (dct)
-    """
-
-    champ_module = __import__('api_'+champion_name)
-
-    return champ_module.ABILITIES['spells']
-
-
-def ability_dct_by_name(ability_name, champion_name):
-    """
-    Returns an ability's information contained in api data.
-
-    Returns:
-        (dct)
-    """
-
-    for ability_num, ability_letter in enumerate('qwer'[:]):
-        if ability_letter == ability_name:
-            return all_abilities_dct(champion_name=champion_name)[ability_num]
-
-    raise BaseException('Invalid ability name.')
-
-
-# ---------------------------------------------------------------
-def request_abortion_handler(func):
-    """
-    Used for handling Abortion exceptions raised during Requests.
-    """
-    def wrapped(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except RequestAborted as exc_msg:
-            print(exc_msg)
-        except InsertionAborted as exc_msg:
-            print(exc_msg)
-
-    return wrapped
-
-
 # ===============================================================
 # ===============================================================
 API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
@@ -246,6 +173,21 @@ class RequestDataFromAPI(object):
     """
 
     @staticmethod
+    def request_abortion_handler(func):
+        """
+        Used for handling Abortion exceptions raised during Requests.
+        """
+        def wrapped(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except RequestAborted as exc_msg:
+                print(exc_msg)
+            except InsertionAborted as exc_msg:
+                print(exc_msg)
+
+        return wrapped
+
+    @staticmethod
     def request_single_page_from_api(page_url, requested_item):
         """
         Requests a page from API, after a brief delay.
@@ -257,7 +199,7 @@ class RequestDataFromAPI(object):
         """
 
         # Messages
-        start_msg = '\n' + '-'*40
+        start_msg = '\n' + delimiter(40)
         start_msg += '\nWARNING !!!\n'
         start_msg += '\nStart API requests (%s)?\n' % requested_item
 
@@ -295,7 +237,8 @@ class RequestDataFromAPI(object):
         with open(targeted_module, 'r') as read_module:
 
             if read_module.read() != '':
-                user_answer = input('Non empty module detected (%s). \nReplace data?\n' % targeted_module)
+                replace_msg = 'Non empty module detected (%s). \nReplace data?\n' % targeted_module
+                user_answer = input(replace_msg)
                 if user_answer.lower() in ('yes', 'y'):
                     print('Replacing existing file content..')
                 else:
@@ -369,7 +312,7 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
 
         return all_champs_as_str
 
-    @request_abortion_handler
+    @RequestDataFromAPI.request_abortion_handler
     def store_all_champions_data(self, max_champions=None):
         """
         Stores all champions' data from API.
@@ -387,7 +330,7 @@ class RequestAllRunesFromAPI(RequestDataFromAPI):
 
     RUNES_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key=" + API_KEY
 
-    @request_abortion_handler
+    @RequestDataFromAPI.request_abortion_handler
     def store_all_runes_from_api(self):
 
         page_as_str = self.request_single_page_from_api_as_str(page_url=self.RUNES_PAGE_URL,
@@ -402,7 +345,7 @@ class RequestAllItemsFromAPI(RequestDataFromAPI):
 
     ITEMS_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/item?itemListData=all&api_key=" + API_KEY
 
-    @request_abortion_handler
+    @RequestDataFromAPI.request_abortion_handler
     def store_all_items_from_api(self):
 
         page_as_str = self.request_single_page_from_api_as_str(page_url=self.ITEMS_PAGE_URL,
@@ -418,7 +361,7 @@ class RequestAllMasteriesFromAPI(RequestDataFromAPI):
     MASTERIES_PAGE_URL = ('https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/mastery?masteryListData=all&api_key='
                           + API_KEY)
 
-    @request_abortion_handler
+    @RequestDataFromAPI.request_abortion_handler
     def store_all_items_from_api(self):
 
         page_as_str = self.request_single_page_from_api_as_str(page_url=self.MASTERIES_PAGE_URL,
@@ -591,7 +534,7 @@ class ExploreApiAbilities(object):
         # Checks if print mode is selected.
         if print_mode is True:
             for tooltip in tooltips_lst:
-                print('-'*5)
+                print(delimiter(5))
                 pp.pprint(tooltip)
         else:
             return tooltips_lst
@@ -599,7 +542,53 @@ class ExploreApiAbilities(object):
 
 # ===============================================================
 # ===============================================================
-class GeneralAbilityAttributes(object):
+class AttributesBase(object):
+
+    def __init__(self, ability_name, champion_name):
+        self.champion_name = champion_name
+        self.ability_name = ability_name
+        self.ability_num = ('q', 'w', 'e', 'r').index(self.ability_name)
+        self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][self.ability_num]
+        self.sanitized_tooltip = self.api_spell_dct['sanitizedTooltip']
+        self.ability_effect_lst = self.api_spell_dct['effect']
+
+    @staticmethod
+    def check_all_same(lst):
+        """
+        Iterates through a list and checks if all its elements are the same.
+
+        Returns:
+            (bool)
+        """
+
+        all_same = True
+
+        for item_num in range(len(lst)-1):
+
+            if lst[item_num] != lst[item_num+1]:
+                all_same = False
+                break
+
+        return all_same
+
+    def return_tpl_or_element(self, lst):
+        """
+        Returns whole list if its elements are the same,
+        otherwise returns the first element.
+
+        Args:
+            tags: (str)
+        Returns:
+            (lst)
+            (float) or (int) or (str)
+        """
+        if self.check_all_same(lst=lst):
+            return lst[0]
+        else:
+            return lst
+
+
+class GeneralAbilityAttributes(AttributesBase):
 
     @staticmethod
     def general_attributes():
@@ -624,11 +613,9 @@ class GeneralAbilityAttributes(object):
         )
 
     def __init__(self, ability_name, champion_name):
-        self.champion_name = champion_name
-        self.ability_name = ability_name
-
-        self.ability_num = 'qwer'.index(self.ability_name)
-        self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][self.ability_num]
+        AttributesBase.__init__(self,
+                                ability_name=ability_name,
+                                champion_name=champion_name)
 
         self.general_attr_dct = self.general_attributes()
 
@@ -738,7 +725,7 @@ class GeneralAbilityAttributes(object):
 
         # CASTABLE
         else:
-            self.general_attr_dct['base_cd'] = return_tpl_or_element(lst=self.api_spell_dct['cooldown'])
+            self.general_attr_dct['base_cd'] = self.return_tpl_or_element(lst=self.api_spell_dct['cooldown'])
 
     def fill_resource(self):
         """
@@ -771,7 +758,7 @@ class GeneralAbilityAttributes(object):
             self.general_attr_dct['range'] = 0
 
         else:
-            self.general_attr_dct['range'] = return_tpl_or_element(lst=range_val)
+            self.general_attr_dct['range'] = self.return_tpl_or_element(lst=range_val)
 
     def auto_fill_attributes(self):
         """
@@ -808,7 +795,7 @@ class GeneralAbilityAttributes(object):
         pp.pprint(self.general_attr_dct)
 
 
-class DmgAbilityAttributes(object):
+class DmgAbilityAttributes(AttributesBase):
 
     """
     Each instance of this class is used for creation of all dmgs of a single ability.
@@ -819,12 +806,9 @@ class DmgAbilityAttributes(object):
     """
 
     def __init__(self, ability_name, champion_name):
-        self.champion_name = champion_name
-        self.ability_name = ability_name
-
-        self.ability_num = 'qwer'.index(self.ability_name)
-        self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][self.ability_num]
-        self.sanitized_tooltip = self.api_spell_dct['sanitizedTooltip']
+        AttributesBase.__init__(self,
+                                ability_name=ability_name,
+                                champion_name=champion_name)
 
         self.dmgs_dct = {}
 
@@ -934,7 +918,7 @@ class DmgAbilityAttributes(object):
 
         mod_val = self.api_spell_dct['effect'][effect_num]
 
-        return return_tpl_or_element(lst=mod_val)
+        return self.return_tpl_or_element(lst=mod_val)
 
     def mod_value_and_stat(self, mod_shortcut):
         """
@@ -1163,7 +1147,7 @@ class DmgAbilityAttributes(object):
 
         while True:
             print('\n' + ('-'*10))
-            extra_dmg = input('\nInsert extra dmg?')
+            extra_dmg = input('\nInsert extra dmg?\n')
 
             if extra_dmg.lower() in ('y', 'yes'):
                 new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct, attr_type='dmg')
@@ -1175,7 +1159,7 @@ class DmgAbilityAttributes(object):
                 self.modify_dmg_names()
 
             # "enter", 'n' and 'no'
-            elif extra_dmg.lower() in ('n', 'no', ''):
+            elif extra_dmg.lower() in ('n', 'no'):
                 break
 
             else:
@@ -1203,7 +1187,7 @@ class DmgAbilityAttributes(object):
         pp.pprint(self.dmgs_dct)
 
 
-class BuffAbilityAttributes(object):
+class BuffAbilityAttributes(AttributesBase):
 
     """
     Each instance of this class is used for a single ability.
@@ -1212,13 +1196,9 @@ class BuffAbilityAttributes(object):
     """
 
     def __init__(self, ability_name, champion_name):
-        self.champion_name = champion_name
-        self.ability_name = ability_name
-
-        self.ability_num = ('q', 'w', 'e', 'r').index(self.ability_name)
-        self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][self.ability_num]
-        self.sanitized_tooltip = self.api_spell_dct['sanitizedTooltip']
-        self.ability_effect_lst = self.api_spell_dct['effect']
+        AttributesBase.__init__(self,
+                                ability_name=ability_name,
+                                champion_name=champion_name)
 
         self.buffs_dct = {}
 
@@ -1276,7 +1256,7 @@ class BuffAbilityAttributes(object):
         
         start_msg = '\n'
         start_msg += '-'*10
-        start_msg += '\n How many buffs in ability %s' % self.ability_name 
+        start_msg += '\nHow many buffs in ability %s' % self.ability_name
         
         num_of_buffs = input(start_msg + '\n')
         
@@ -1370,6 +1350,8 @@ class BuffAbilityAttributes(object):
         Checks if given ability reduces movement speed,
         and returns a list of most probable values.
 
+        Most probable values can be int or list type.
+
         Returns:
             (lst)
         """
@@ -1395,9 +1377,23 @@ class BuffAbilityAttributes(object):
 
         return self._re_findall_result_to_lst(findall_results=results)
 
+    def probable_buff_attributes(self, buff_name):
+        """
+        Finds most probable values for a given buff,
+        by checking tooltip and other buffs' content.
+
+        Returns:
+            (dct)
+        """
+
+        # every_x_hit buff type
+
+        #
+
     def run_buff_attr_creation(self):
 
-        1
+        self.suggest_total_buffs()
+
 
 # ===============================================================
 # ===============================================================
@@ -1417,7 +1413,7 @@ if __name__ == '__main__':
 
     testBuffs = True
     if testBuffs is True:
-        BuffAbilityAttributes('q', 'drmundo').suggest_total_buffs()
+        BuffAbilityAttributes('q', 'drmundo').run_buff_attr_creation()
 
     testApiStorage = False
     if testApiStorage is True:
