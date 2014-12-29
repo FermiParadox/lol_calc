@@ -157,29 +157,28 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='')
         print(choice_msg)
 
 
-def _new_automatic_attr_dct_name(targeted_dct):
+def _new_automatic_attr_dct_name(targeted_dct, attr_type):
     """
-    Creates a new name for a dmg, ensuring no existing names are overwritten.
+    Creates a new name for an attr dct, ensuring no existing names are overwritten.
 
     Returns:
         (str)
     """
 
-    new_dmg_name = 'dmg_1'
+    new_attr_name = attr_type + '_1'
 
     if targeted_dct:
 
-        for num in range(20):
-            for existing_name in targeted_dct:
-                if str(num) not in existing_name:
+        for num in range(1, 20, 1):
+            new_attr_name = attr_type + '_' + str(num)
 
-                    # If a suitable name has been found, exits method.
-                    new_dmg_name = 'dmg_' + str(num)
-                    return new_dmg_name
+            if new_attr_name not in targeted_dct:
+                # If a suitable name has been found, exits method.
+                return new_attr_name
 
-    # If there was no existing dmg dict, returns preset name value.
+    # If there was no existing attr dict, returns preset name value.
     else:
-        return new_dmg_name
+        return new_attr_name
 
 
 # ---------------------------------------------------------------
@@ -1074,7 +1073,7 @@ class DmgAbilityAttributes(object):
 
             # INSERTS DMG NAME AND ATTRS
             # New temporary dmg name.
-            new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct)
+            new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct, attr_type='dmg')
             self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
 
             curr_dmg_dct = self.dmgs_dct[new_dmg_name]
@@ -1167,7 +1166,7 @@ class DmgAbilityAttributes(object):
             extra_dmg = input('\nInsert extra dmg?')
 
             if extra_dmg.lower() in ('y', 'yes'):
-                new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct)
+                new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct, attr_type='dmg')
                 self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
                 self._suggest_dmg_values(dmg_name=new_dmg_name)
                 _suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attr(),
@@ -1282,8 +1281,8 @@ class BuffAbilityAttributes(object):
         num_of_buffs = input(start_msg + '\n')
         
         if num_of_buffs: 
-            for num in range(num_of_buffs):
-                new_buff_name = _new_automatic_attr_dct_name(targeted_dct=self.buffs_dct)
+            for num in range(int(num_of_buffs)):
+                new_buff_name = _new_automatic_attr_dct_name(targeted_dct=self.buffs_dct, attr_type='buff')
                 self.buffs_dct.update({new_buff_name: self.buff_attributes()})
         else:
             pass
@@ -1418,8 +1417,7 @@ if __name__ == '__main__':
 
     testBuffs = True
     if testBuffs is True:
-        buffInstance = BuffAbilityAttributes('q', 'drmundo').possible_slow_values()
-        print(buffInstance)
+        BuffAbilityAttributes('q', 'drmundo').suggest_total_buffs()
 
     testApiStorage = False
     if testApiStorage is True:
