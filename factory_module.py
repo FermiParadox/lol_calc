@@ -91,10 +91,12 @@ def _return_or_print(print_mode, obj):
 
 
 # ---------------------------------------------------------------
-def suggest_attr_values(usual_values_dct, modified_dct, extra_start_msg=''):
+def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg=''):
     """
     Suggests a value and stores the choice.
 
+    Args:
+        suggested_values_dct: (dct) e.g. {ability_attr: (val_1, val_2,), }
     Returns:
         (None)
     """
@@ -104,12 +106,12 @@ def suggest_attr_values(usual_values_dct, modified_dct, extra_start_msg=''):
     start_msg += extra_start_msg
     print(start_msg)
 
-    for attr_name in usual_values_dct:
+    for attr_name in suggested_values_dct:
 
         display = ['1', '2', '3', '4', '5']
         shortcuts = ['1', '2', '3', '4', '5']
 
-        suggested_val_tpl = usual_values_dct[attr_name]
+        suggested_val_tpl = suggested_values_dct[attr_name]
 
         # Ensures lists to be zipped have same length.
         shortcut_len = len(suggested_val_tpl)
@@ -155,6 +157,31 @@ def suggest_attr_values(usual_values_dct, modified_dct, extra_start_msg=''):
         print(choice_msg)
 
 
+def _new_automatic_attr_dct_name(targeted_dct):
+    """
+    Creates a new name for a dmg, ensuring no existing names are overwritten.
+
+    Returns:
+        (str)
+    """
+
+    new_dmg_name = 'dmg_1'
+
+    if targeted_dct:
+
+        for num in range(20):
+            for existing_name in targeted_dct:
+                if str(num) not in existing_name:
+
+                    # If a suitable name has been found, exits method.
+                    new_dmg_name = 'dmg_' + str(num)
+                    return new_dmg_name
+
+    # If there was no existing dmg dict, returns preset name value.
+    else:
+        return new_dmg_name
+
+
 # ---------------------------------------------------------------
 def all_abilities_dct(champion_name):
     """
@@ -198,6 +225,8 @@ def request_abortion_handler(func):
             print(exc_msg)
 
     return wrapped
+
+
 # ===============================================================
 # ===============================================================
 API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
@@ -532,7 +561,7 @@ class ExploreApiAbilities(object):
 
         return _return_or_print(print_mode=print_mode, obj=result)
 
-    def sanitized_tooltips(self, champion_name=None, required_keyword=None, print_mode=False):
+    def sanitized_tooltips(self, champion_name=None, phrase=None, print_mode=False):
         """
         Returns all tooltips for given champion (or for all champions).
 
@@ -552,9 +581,9 @@ class ExploreApiAbilities(object):
             for spell_dct in self.all_champions_data_dct[champ_name]['spells']:
 
                 # If a key phrase is selected and not present..
-                if (required_keyword is not None) and (required_keyword.lower() not in spell_dct['sanitizedTooltip'].lower()):
-                        # .. does nothing.
-                        pass
+                if (phrase is not None) and (phrase.lower() not in spell_dct['sanitizedTooltip'].lower()):
+                    # .. does nothing.
+                    pass
 
                 # Else stores value.
                 else:
@@ -761,9 +790,9 @@ class GeneralAbilityAttributes(object):
         extra_msg = '\nDMG ATTRIBUTE CREATION\n'
         extra_msg += self._dct_status_msg()
 
-        suggest_attr_values(usual_values_dct=self.USUAL_VALUES_GEN_ATTR,
-                            modified_dct=self.general_attr_dct,
-                            extra_start_msg=extra_msg)
+        _suggest_attr_values(suggested_values_dct=self.USUAL_VALUES_GEN_ATTR,
+                             modified_dct=self.general_attr_dct,
+                             extra_start_msg=extra_msg)
 
     def run_gen_attr_creation(self):
         """
@@ -994,32 +1023,6 @@ class DmgAbilityAttributes(object):
         else:
             return float(duration_str)
 
-    def _new_automatic_dmg_name(self):
-        """
-        Creates a new name for a dmg.
-
-        Ensures no existing names are overwritten.
-
-        Returns:
-            (str)
-        """
-
-        new_dmg_name = 'dmg_1'
-
-        if self.dmgs_dct:
-
-            for num in range(20):
-                for existing_name in self.dmgs_dct:
-                    if str(num) not in existing_name:
-
-                        # If a suitable name has been found, exits method.
-                        new_dmg_name = 'dmg_' + str(num)
-                        return new_dmg_name
-
-        # If there was no existing dmg dict, returns preset name value.
-        else:
-            return new_dmg_name
-
     def _suggest_dmg_values(self, dmg_name):
         """
         Allows the user to choose between possible values from ability's 'effect' list.
@@ -1071,7 +1074,7 @@ class DmgAbilityAttributes(object):
 
             # INSERTS DMG NAME AND ATTRS
             # New temporary dmg name.
-            new_dmg_name = self._new_automatic_dmg_name()
+            new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct)
             self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
 
             curr_dmg_dct = self.dmgs_dct[new_dmg_name]
@@ -1109,8 +1112,8 @@ class DmgAbilityAttributes(object):
 
             print(msg)
 
-            suggest_attr_values(usual_values_dct=self.usual_values_dmg_attr(),
-                                modified_dct=self.dmgs_dct[dmg_temp_name])
+            _suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attr(),
+                                 modified_dct=self.dmgs_dct[dmg_temp_name])
 
     def modify_dmg_names(self):
         """
@@ -1164,12 +1167,12 @@ class DmgAbilityAttributes(object):
             extra_dmg = input('\nInsert extra dmg?')
 
             if extra_dmg.lower() in ('y', 'yes'):
-                new_dmg_name = self._new_automatic_dmg_name()
+                new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct)
                 self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
                 self._suggest_dmg_values(dmg_name=new_dmg_name)
-                suggest_attr_values(usual_values_dct=self.usual_values_dmg_attr(),
-                                    modified_dct=self.dmgs_dct[new_dmg_name],
-                                    extra_start_msg='Manually inserted dmg.')
+                _suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attr(),
+                                     modified_dct=self.dmgs_dct[new_dmg_name],
+                                     extra_start_msg='Manually inserted dmg.')
                 self.modify_dmg_names()
 
             # "enter", 'n' and 'no'
@@ -1250,7 +1253,7 @@ class BuffAbilityAttributes(object):
                                          'critical strike chance': 'crit_chance',
                                          'armor penetration': 'armor_penetration'}
 
-    def affected_stats(self):
+    def _affected_stats(self):
         """
         Checks if ability contains a buff that modifies stats.
 
@@ -1265,6 +1268,50 @@ class BuffAbilityAttributes(object):
                 stats_lst.append(stat_name)
 
         return stats_lst
+
+    def suggest_total_buffs(self):
+        """
+        Returns:
+            (None)
+        """
+        
+        start_msg = '\n'
+        start_msg += '-'*10
+        start_msg += '\n How many buffs in ability %s' % self.ability_name 
+        
+        num_of_buffs = input(start_msg + '\n')
+        
+        if num_of_buffs: 
+            for num in range(num_of_buffs):
+                new_buff_name = _new_automatic_attr_dct_name(targeted_dct=self.buffs_dct)
+                self.buffs_dct.update({new_buff_name: self.buff_attributes()})
+        else:
+            pass
+        
+        pp.pprint(self.buffs_dct)
+
+    def suggest_possible_stat_values(self):
+        """
+        Suggests possible values for stats, and mod of the stats (if they are scaling),
+        in each buff.
+
+        Returns:
+            (None)
+        """
+
+        for buff_name in self.buffs_dct:
+
+            stats_in_buff = self.buffs_dct[buff_name]['stats_modified']
+            if stats_in_buff is not None:
+
+                for stat_name in stats_in_buff:
+                    msg = 'STAT: %s' % stats_in_buff
+
+                    self.buffs_dct.update({stat_name+'_buff'})
+
+                    _suggest_attr_values(suggested_values_dct=self.ability_effect_lst,
+                                         modified_dct=self.buffs_dct[buff_name],
+                                         extra_start_msg=msg)
 
     def _re_findall_result_to_lst(self, findall_results):
         """
@@ -1349,12 +1396,13 @@ class BuffAbilityAttributes(object):
 
         return self._re_findall_result_to_lst(findall_results=results)
 
+    def run_buff_attr_creation(self):
+
+        1
+
 # ===============================================================
 # ===============================================================
 if __name__ == '__main__':
-
-    champName = 'ashe'
-    abilityName = 'q'
 
     testGen = False
     if testGen is True:
@@ -1379,4 +1427,4 @@ if __name__ == '__main__':
 
     testExploration = False
     if testExploration is True:
-        ExploreApiAbilities().sanitized_tooltips(required_keyword='movement speed', print_mode=True)
+        ExploreApiAbilities().sanitized_tooltips(phrase='movement speed', print_mode=True)
