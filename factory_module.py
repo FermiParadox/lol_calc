@@ -573,7 +573,8 @@ class ExploreApiItems(object):
             -wards
             -trinkets
             -potions
-            -non purcha
+            -elixirs
+            -not in store
 
         Returns:
             (dct)
@@ -607,8 +608,18 @@ class ExploreApiItems(object):
 
             # Checks if all conditions are met.
             if allowed_on_map and allowed_tags and purchasable:
+
                 item_name = self.all_items_by_id[item_id]['name'].lower()
-                item_name.replace(' ', '_')
+
+                # (order below matters for correct naming)
+                item_name = item_name.replace('(ranged only)', '')
+                item_name = item_name.replace('(melee only)', '')
+                item_name = item_name.rstrip()
+                item_name = item_name.replace(' ', '_')
+
+                item_name = item_name.replace("'", '')
+                item_name = item_name.replace('-', '_')
+                item_name = item_name.replace(':', '_')
 
                 dct.update({item_name: self.all_items_by_id[item_id]})
 
