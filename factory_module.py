@@ -562,6 +562,7 @@ class ExploreApiItems(object):
         self.used_items = self._used_items()
 
     MANDATORY_MAP_ID = 1
+    DISALLOWED_ITEM_TAGS = ('trinket', 'consumable', )
 
     def _used_items(self):
         """
@@ -572,6 +573,7 @@ class ExploreApiItems(object):
             -wards
             -trinkets
             -potions
+            -non purcha
 
         Returns:
             (dct)
@@ -587,15 +589,28 @@ class ExploreApiItems(object):
             try:
                 if self.all_items_by_id[item_id]['maps']['1'] is False:
                     allowed_on_map = False
-
-            except ValueError:
+            except KeyError:
                 pass
 
+            # PURCHASABLE
+            purchasable = True
+            if 'inStore' in self.all_items_by_id[item_id]:
+                if self.all_items_by_id[item_id]['inStore'] is False:
+                    purchasable = False
 
-
+            # NON DISALLOWED TAG
+            allowed_tags = True
+            if 'tags' in self.all_items_by_id[item_id]:
+                for tag in self.all_items_by_id[item_id]['tags']:
+                    if tag.lower() in self.DISALLOWED_ITEM_TAGS:
+                        allowed_tags = False
 
             # Checks if all conditions are met.
-            if allowed_on_map and
+            if allowed_on_map and allowed_tags and purchasable:
+                item_name = self.all_items_by_id[item_id]['name'].lower()
+                item_name.replace(' ', '_')
+
+                dct.update({item_name: self.all_items_by_id[item_id]})
 
         return dct
 
