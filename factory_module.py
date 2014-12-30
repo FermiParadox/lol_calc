@@ -44,12 +44,25 @@ OPTIONAL_ATTR_BUFF = ('affects_stat', 'is_trigger', 'delay_cd_start', 'on_hit')
 
 # ===============================================================
 # ===============================================================
-def delimiter(num_of_lines):
+def delimiter(num_of_lines, line_type='-'):
+    """
+    Creates a newline and then a long line string.
 
-    string = '-'*num_of_lines
-    string += '\n%s'
+    Args:
+        line_type: (str) Smallest element used for the creation of the line.
+    Returns:
+        (str)
+    """
+
+    string = '\n'
+    string += line_type * num_of_lines
 
     return string
+
+
+def fat_delimiter(num_of_lines):
+
+    return delimiter(num_of_lines=num_of_lines, line_type='=')
 
 
 # ---------------------------------------------------------------
@@ -73,7 +86,7 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='')
         (None)
     """
 
-    start_msg = '\n' + ('='*40)
+    start_msg = '\n' + fat_delimiter(40)
     start_msg += '\n(type "stop" at any point to exit)\n'
     start_msg += extra_start_msg
     print(start_msg)
@@ -91,10 +104,10 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='')
         shortcuts = shortcuts[:shortcut_len]
 
         # INITIAL CHOICE MESSAGE
-        msg = delimiter(20)
+        msg = delimiter(num_of_lines=20)
         msg += '\nATTRIBUTE: %s\n' % attr_name
-        for shortcut_val, sugg_val, display_val in zip(shortcuts, suggested_val_tpl, display):
-            msg += '\n%s: %s' % (display_val, sugg_val)
+        for shortcut_val, suggested_val, display_val in zip(shortcuts, suggested_val_tpl, display):
+            msg += '\n%s: %s' % (display_val, suggested_val)
 
         # CHOICE PROCESSING
         choice_num = None
@@ -199,7 +212,7 @@ class RequestDataFromAPI(object):
         """
 
         # Messages
-        start_msg = '\n' + delimiter(40)
+        start_msg = '\n' + delimiter(num_of_lines=40)
         start_msg += '\nWARNING !!!\n'
         start_msg += '\nStart API requests (%s)?\n' % requested_item
 
@@ -534,7 +547,7 @@ class ExploreApiAbilities(object):
         # Checks if print mode is selected.
         if print_mode is True:
             for tooltip in tooltips_lst:
-                print(delimiter(5))
+                print(delimiter(num_of_lines=5))
                 pp.pprint(tooltip)
         else:
             return tooltips_lst
@@ -1026,7 +1039,7 @@ class DmgAbilityAttributes(AttributesBase):
                 lst_of_values.append(lst)
 
         while True:
-            msg = '\n' + ('-'*10)
+            msg = '\n' + delimiter(num_of_lines=10)
             msg += '\nSelect dmg values.'
 
             for couple in enumerate(lst_of_values):
@@ -1088,7 +1101,7 @@ class DmgAbilityAttributes(AttributesBase):
 
         for dmg_temp_name in sorted(self.dmgs_dct):
 
-            msg = '\n%s\n' % ('-'*40)
+            msg = '\n%s\n' % delimiter(num_of_lines=40)
             msg += '\nABILITY: %s\n' % self.ability_name.upper()
             msg += '\ndmg_values: %s' % self.dmgs_dct[dmg_temp_name]['dmg_values']
             msg += '\nmods: %s' % self.dmgs_dct[dmg_temp_name]['mods']
@@ -1110,7 +1123,7 @@ class DmgAbilityAttributes(AttributesBase):
         if not self.dmgs_dct:
             return
 
-        modification_start_msg = '\n\n' + ('-'*40)
+        modification_start_msg = '\n\n' + delimiter(num_of_lines=40)
 
         print(modification_start_msg)
 
@@ -1135,7 +1148,7 @@ class DmgAbilityAttributes(AttributesBase):
                     print('\nNew name: %s' % new_dmg_name)
                     break
 
-        print('\nDmg name modification ENDED. \n%s' % ('-'*10))
+        print('\nDmg name modification ENDED. \n%s' % delimiter(num_of_lines=10))
 
     def insert_extra_dmg(self):
         """
@@ -1146,7 +1159,7 @@ class DmgAbilityAttributes(AttributesBase):
         """
 
         while True:
-            print('\n' + ('-'*10))
+            print('\n' + delimiter(num_of_lines=10))
             extra_dmg = input('\nInsert extra dmg?\n')
 
             if extra_dmg.lower() in ('y', 'yes'):
@@ -1173,7 +1186,7 @@ class DmgAbilityAttributes(AttributesBase):
             (None)
         """
 
-        start_msg = '\n%s\n' % ('='*40)
+        start_msg = '\n%s\n' % fat_delimiter(40)
         start_msg += '\nCHAMPION: %s, ABILITY: %s\n' % (self.champion_name, self.ability_name.upper())
 
         print(start_msg)
@@ -1248,25 +1261,34 @@ class BuffAbilityAttributes(AttributesBase):
 
         return stats_lst
 
-    def suggest_total_buffs(self):
+    def suggest_amount_of_buffs(self):
         """
+        Asks user for amount of buffs for given ability.
+
         Returns:
             (None)
         """
         
         start_msg = '\n'
-        start_msg += '-'*10
-        start_msg += '\nHow many buffs in ability %s' % self.ability_name
-        
-        num_of_buffs = input(start_msg + '\n')
-        
-        if num_of_buffs: 
-            for num in range(int(num_of_buffs)):
-                new_buff_name = _new_automatic_attr_dct_name(targeted_dct=self.buffs_dct, attr_type='buff')
-                self.buffs_dct.update({new_buff_name: self.buff_attributes()})
-        else:
-            pass
-        
+        start_msg += delimiter(num_of_lines=10)
+        start_msg += '\nHow many buffs in ability %s?' % self.ability_name
+
+        # Repeat until valid answer is given.
+        while True:
+            num_of_buffs = input(start_msg + '\n')
+            try:
+                num_iter = range(int(num_of_buffs))
+
+                for num in num_iter:
+                    new_buff_name = _new_automatic_attr_dct_name(targeted_dct=self.buffs_dct, attr_type='buff')
+                    self.buffs_dct.update({new_buff_name: self.buff_attributes()})
+
+                break
+
+            except ValueError:
+                print('Invalid answer. Try again.')
+                pass
+
         pp.pprint(self.buffs_dct)
 
     def suggest_possible_stat_values(self):
@@ -1291,6 +1313,17 @@ class BuffAbilityAttributes(AttributesBase):
                     _suggest_attr_values(suggested_values_dct=self.ability_effect_lst,
                                          modified_dct=self.buffs_dct[buff_name],
                                          extra_start_msg=msg)
+
+    def suggest_stat_buff_attributes(self):
+
+        start_msg = delimiter(40)
+        start_msg += '\nABILITY %s' % self.ability_name
+        start_msg += '\nBuff modifies stats?'
+
+        mods_stat_question = input(start_msg + '\n')
+        if mods_stat_question.lower() in ('y', 'yes'):
+            self.suggest_unused_stats()
+
 
     def _re_findall_result_to_lst(self, findall_results):
         """
@@ -1392,7 +1425,12 @@ class BuffAbilityAttributes(AttributesBase):
 
     def run_buff_attr_creation(self):
 
-        self.suggest_total_buffs()
+        start_msg = fat_delimiter(40)
+        start_msg += '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, self.ability_name)
+
+        print(start_msg)
+
+        self.suggest_amount_of_buffs()
 
 
 # ===============================================================
