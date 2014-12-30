@@ -553,6 +553,64 @@ class ExploreApiAbilities(object):
             return tooltips_lst
 
 
+class ExploreApiItems(object):
+
+    def __init__(self):
+        self.data_module = __import__('api_items_database')
+        self.item_related_api_data = self.data_module.ALL_ITEMS
+        self.all_items_by_id = self.item_related_api_data['data']
+        self.used_items = self._used_items()
+
+    MANDATORY_MAP_ID = 1
+
+    def _used_items(self):
+        """
+        Creates a dict containing only items that will be used.
+
+        Excluded items:
+            -not usable in required map
+            -wards
+            -trinkets
+            -potions
+
+        Returns:
+            (dct)
+        """
+
+        dct = {}
+
+        for item_id in self.all_items_by_id:
+
+            # MAP
+            allowed_on_map = True
+            # (if there is no map exclusion, then it is usable on required map)
+            try:
+                if self.all_items_by_id[item_id]['maps']['1'] is False:
+                    allowed_on_map = False
+
+            except ValueError:
+                pass
+
+
+
+
+            # Checks if all conditions are met.
+            if allowed_on_map and
+
+        return dct
+
+    def item_dct(self, item_name):
+
+        dct = None
+        items_found = 0
+
+        for item_id in self.items_by_id:
+            if item_name in self.items_by_id[item_id]['name']:
+                items_found += 1
+
+                dct = {}
+
+
 # ===============================================================
 # ===============================================================
 class AttributesBase(object):
@@ -1323,7 +1381,6 @@ class BuffAbilityAttributes(AttributesBase):
         mods_stat_question = input(start_msg + '\n')
         if mods_stat_question.lower() in ('y', 'yes'):
             self.suggest_unused_stats()
-
 
     def _re_findall_result_to_lst(self, findall_results):
         """
