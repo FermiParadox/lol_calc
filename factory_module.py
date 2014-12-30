@@ -625,16 +625,39 @@ class ExploreApiItems(object):
 
         return dct
 
-    def item_dct(self, item_name):
+    def item_dct(self, given_name, print_mode=False):
+        """
+        Checks for an exact match of given name,
+        or a partial match otherwise.
 
+        Raises:
+            (KeyValue) if more than one matches found.
+        Returns:
+            (dct)
+        """
+
+        # EXACT MATCH
+        try:
+            return self.used_items[given_name]
+        except KeyError:
+            pass
+
+        # PARTIAL MATCH
         dct = None
         items_found = 0
 
-        for item_id in self.items_by_id:
-            if item_name in self.items_by_id[item_id]['name']:
+        for existing_name in self.used_items:
+            if given_name in existing_name:
                 items_found += 1
 
-                dct = {}
+                dct = self.used_items[existing_name]
+
+        if items_found == 1:
+            return _return_or_print(print_mode=print_mode, obj=dct)
+        elif items_found > 1:
+            raise KeyError('More than one matches found.')
+        else:
+            raise KeyError('No match.')
 
 
 # ===============================================================
