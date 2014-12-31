@@ -1348,7 +1348,7 @@ class BuffAbilityAttributes(AttributesBase):
     @staticmethod
     def affected_stat_attributes():
         return dict(
-            stat_type='placeholder',
+            bonus_type='placeholder',
             stat_values='placeholder',
             stat_mods={})
 
@@ -1365,6 +1365,12 @@ class BuffAbilityAttributes(AttributesBase):
                                          'magic resist': 'mr',
                                          'critical strike chance': 'crit_chance',
                                          'armor penetration': 'armor_penetration'}
+
+    USUAL_BUFF_ATTR_VALUES = dict(
+        target_type=('player', 'enemy'),
+        max_stacks=(1,),
+        duration=(1,)
+        )
 
     def _stat_names_in_tooltip(self):
         """
@@ -1497,11 +1503,12 @@ class BuffAbilityAttributes(AttributesBase):
                                              extra_start_msg=extra_msg)
                         break
                     elif stat_mods_answer.lower() in ('n', 'no'):
+                        self.buffs_dct[buff_name]['affected_stats'][affected_stat_app_form]['stat_mods'] = None
                         break
                     else:
                         print('\nInvalid answer. Try again.')
 
-    def suggest_affected_stats_and_their_mods(self, buff_name):
+    def suggest_affected_stats_and_their_attrs(self, buff_name):
         """
         Suggests stats that may be affected by a buff,
         and each stat's mods.
@@ -1526,7 +1533,8 @@ class BuffAbilityAttributes(AttributesBase):
                     self.buffs_dct[buff_name]['affected_stats'].update({stat_name: self.affected_stat_attributes()})
 
                     # (dict form effects for parameter below)
-                    eff_values_dct = {'stat_values': self.ability_effect_lst}
+                    eff_values_dct = {'stat_values': self.ability_effect_lst,
+                                      'bonus_type': ('additive', 'multiplicative')}
 
                     _suggest_attr_values(suggested_values_dct=eff_values_dct,
                                          modified_dct=self.buffs_dct[buff_name]['affected_stats'][stat_name],
@@ -1569,7 +1577,7 @@ class BuffAbilityAttributes(AttributesBase):
                     del self.buffs_dct[buff_name]['affected_stats']['placeholder_stat_1']
 
                     # Inserts each affected stat.
-                    self.suggest_affected_stats_and_their_mods(buff_name=buff_name)
+                    self.suggest_affected_stats_and_their_attrs(buff_name=buff_name)
 
                 break
 
@@ -1671,18 +1679,7 @@ class BuffAbilityAttributes(AttributesBase):
 
         return self._re_findall_result_to_lst(findall_results=results)
 
-    def probable_buff_attributes(self, buff_name):
-        """
-        Finds most probable values for a given buff,
-        by checking tooltip and other buffs' content.
-
-        Returns:
-            (dct)
-        """
-
-        # every_x_hit buff type
-
-        #
+    # TODO: Allow duration link to another buff (that is, buff_3_duration = buff_1_duration
 
     def run_buff_attr_creation(self):
 
@@ -1697,6 +1694,12 @@ class BuffAbilityAttributes(AttributesBase):
 
         for buff_name in sorted(self.buffs_dct):
             self.suggest_possible_stat_attributes(buff_name=buff_name)
+
+            usual_attrs_msg = 'USUAL BUFF ATTRIBUTES\n'
+            usual_attrs_msg += '\nBUFF: %s' % buff_name
+            _suggest_attr_values(suggested_values_dct=self.USUAL_BUFF_ATTR_VALUES,
+                                 modified_dct=self.buffs_dct[buff_name],
+                                 extra_start_msg=usual_attrs_msg)
 
         print(delimiter(40))
         pp.pprint(self.buffs_dct)
