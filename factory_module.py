@@ -5,6 +5,7 @@ import urllib.request
 import champion_ids
 import json
 import pprint as pp
+import copy
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -167,6 +168,7 @@ def _new_automatic_attr_dct_name(targeted_dct, attr_type):
 
 
 # ===============================================================
+#       API REQUESTS
 # ===============================================================
 API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
 
@@ -386,6 +388,7 @@ class RequestAllMasteriesFromAPI(RequestDataFromAPI):
 
 
 # ===============================================================
+#       API EXPLORATION
 # ===============================================================
 class ExploreApiAbilities(object):
 
@@ -661,6 +664,7 @@ class ExploreApiItems(object):
 
 
 # ===============================================================
+#       ATTRIBUTE CREATION
 # ===============================================================
 class AttributesBase(object):
 
@@ -670,7 +674,7 @@ class AttributesBase(object):
         self.ability_num = ('q', 'w', 'e', 'r').index(self.ability_name)
         self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][self.ability_num]
         self.sanitized_tooltip = self.api_spell_dct['sanitizedTooltip']
-        self.ability_effect_lst = self.api_spell_dct['effect']
+        self.ability_effect_lst = copy.copy(self.api_spell_dct['effect'])[1:]
 
     @staticmethod
     def check_all_same(lst):
@@ -1328,13 +1332,14 @@ class BuffAbilityAttributes(AttributesBase):
             target_type='placeholder',
             duration='placeholder',
             max_stacks='placeholder',
-            affected_stat=dict(
+            affected_stats=dict(
                 names=dict(
-                    stat_1=dict(
-                        percent='placeholder',
-                        additive='placeholder',),),
+                    placeholder_stat_1=dict(
+                        type='placeholder',
+                        values='placeholder',
+                        mods='placeholder'),),
                 affected_by=dict(
-                    stat_1='placeholder',)
+                    placeholder_stat_1='placeholder',)
             ),
             on_hit=dict(
                 apply_buff=['placeholder', ],
@@ -1343,6 +1348,10 @@ class BuffAbilityAttributes(AttributesBase):
             ),
             prohibit_cd_start='placeholder',
             )
+
+    @staticmethod
+    def stat_mods():
+        return dict(placeholder_stat_1='placeholder',)
 
     STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP = {'attack damage': 'ad',
                                          'attack speed': 'att_speed',
@@ -1363,12 +1372,12 @@ class BuffAbilityAttributes(AttributesBase):
         stats_lst = []
 
         for stat_name in self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP:
-            if stat_name in self.sanitized_tooltip:
+            if stat_name in self.sanitized_tooltip.lower():
                 stats_lst.append(stat_name)
 
         return stats_lst
 
-    def suggest_amount_of_buffs(self):
+    def ask_amount_of_buffs(self):
         """
         Asks user for amount of buffs for given ability.
 
@@ -1390,13 +1399,13 @@ class BuffAbilityAttributes(AttributesBase):
                     new_buff_name = _new_automatic_attr_dct_name(targeted_dct=self.buffs_dct, attr_type='buff')
                     self.buffs_dct.update({new_buff_name: self.buff_attributes()})
 
+                end_msg = '\n%s buffs selected.' % num_of_buffs
+                print(end_msg)
                 break
 
             except ValueError:
                 print('Invalid answer. Try again.')
                 pass
-
-        pp.pprint(self.buffs_dct)
 
     def suggest_possible_stat_values(self):
         """
@@ -1408,16 +1417,24 @@ class BuffAbilityAttributes(AttributesBase):
         """
 
         for buff_name in self.buffs_dct:
+            start_msg = delimiter(40)
+            start_msg += '\nBUFF: %s' % buff_name
+            start_msg += '\nDoes it modify stats?'
 
-            stats_in_buff = self.buffs_dct[buff_name]['stats_modified']
-            if stats_in_buff is not None:
 
-                for stat_name in stats_in_buff:
-                    msg = 'STAT: %s' % stats_in_buff
+            affects_stats = input(start_msg + '\n')
+            if self._affected_stats():
 
-                    self.buffs_dct.update({stat_name+'_buff'})
+                for affected_stat in self._affected_stats():
+                    stat_name = self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP[affected_stat]
+                    msg = 'STAT: %s' % stat_name
 
-                    _suggest_attr_values(suggested_values_dct=self.ability_effect_lst,
+                    self.buffs_dct[buff_name]['affected_stats'].update({stat_name+'_buff': {}})
+
+                    # (dict form effects for parameter below)
+                    eff_values_dct = {stat_name: self.ability_effect_lst}
+
+                    _suggest_attr_values(suggested_values_dct=eff_values_dct,
                                          modified_dct=self.buffs_dct[buff_name],
                                          extra_start_msg=msg)
 
@@ -1536,7 +1553,8 @@ class BuffAbilityAttributes(AttributesBase):
 
         print(start_msg)
 
-        self.suggest_amount_of_buffs()
+        self.ask_amount_of_buffs()
+        self.suggest_possible_stat_values()
 
 
 # ===============================================================
@@ -1557,7 +1575,7 @@ if __name__ == '__main__':
 
     testBuffs = True
     if testBuffs is True:
-        BuffAbilityAttributes('q', 'drmundo').run_buff_attr_creation()
+        BuffAbilityAttributes('w', 'fiora').run_buff_attr_creation()
 
     testApiStorage = False
     if testApiStorage is True:
