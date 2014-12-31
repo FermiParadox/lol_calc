@@ -158,6 +158,20 @@ class Categories(object):
         else:
             return value
 
+    # TODO execute_dmg
+    def execute_dmg(self,):
+        """
+
+        """
+        pass
+
+    # TODO multi_dot
+    def multi_dot(self):
+        """
+
+        """
+        pass
+
     @staticmethod
     def aa_dmg():
         """Returns dmg dictionary of an AA.
