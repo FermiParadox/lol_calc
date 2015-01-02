@@ -155,7 +155,7 @@ def _new_automatic_attr_dct_name(targeted_dct, attr_type):
 
     if targeted_dct:
 
-        for num in range(1, 20, 1):
+        for num in range(1, 100, 1):
             new_attr_name = attr_type + '_' + str(num)
 
             if new_attr_name not in targeted_dct:
@@ -165,6 +165,11 @@ def _new_automatic_attr_dct_name(targeted_dct, attr_type):
     # If there was no existing attr dict, returns preset name value.
     else:
         return new_attr_name
+
+
+# ---------------------------------------------------------------
+def spell_num(ability_name):
+    return ('q', 'w', 'e', 'r').index(ability_name)
 
 
 # ===============================================================
@@ -519,31 +524,41 @@ class ExploreApiAbilities(object):
 
         return _return_or_print(print_mode=print_mode, obj=result)
 
-    def sanitized_tooltips(self, champion_name=None, phrase=None, print_mode=False):
+    def sanitized_tooltips(self, champ=None, r_str=None, print_mode=False):
         """
         Returns all tooltips for given champion (or for all champions).
 
+        If r_str is provided it, searches for its pattern.
+
+        WARNING: VERBOSE flag chosen.
+
+        Args:
+            champ: (str) or (None)
+            r_str: (str) Normal str or raw str
         Returns:
             (lst)
         """
 
         # All champions, or selected champion.
-        if champion_name is None:
+        if champ is None:
             champ_lst = self.all_champions_data_dct
         else:
-            champ_lst = [champion_name, ]
+            # (need a list so it inserts selection into a list)
+            champ_lst = [champ, ]
 
         tooltips_lst = []
 
         for champ_name in champ_lst:
             for spell_dct in self.all_champions_data_dct[champ_name]['spells']:
 
-                # If a key phrase is selected and not present..
-                if (phrase is not None) and (phrase.lower() not in spell_dct['sanitizedTooltip'].lower()):
-                    # .. does nothing.
-                    pass
+                # If a key phrase is selected and present stores value.
+                if r_str is not None:
+                    pattern_1 = re.compile(r_str, re.IGNORECASE | re.VERBOSE)
+                    if re.search(pattern_1, spell_dct['sanitizedTooltip']) is not None:
 
-                # Else stores value.
+                        tooltips_lst.append(spell_dct['sanitizedTooltip'])
+
+                # If no required pattern, simply stores value.
                 else:
                     tooltips_lst.append(spell_dct['sanitizedTooltip'])
 
@@ -671,12 +686,14 @@ class AttributesBase(object):
     def __init__(self, ability_name, champion_name):
         self.champion_name = champion_name
         self.ability_name = ability_name
-        self.ability_num = ('q', 'w', 'e', 'r').index(self.ability_name)
-        self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][self.ability_num]
+        self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][spell_num(ability_name=ability_name)]
         self.sanitized_tooltip = self.api_spell_dct['sanitizedTooltip']
         # (removes None from API effect list)
         self.ability_effect_lst = copy.copy(self.api_spell_dct['effect'])[1:]
-        self.ability_vars_dct = self.api_spell_dct['vars']
+        try:
+            self.ability_vars_dct = self.api_spell_dct['vars']
+        except KeyError:
+            self.ability_vars_dct = []
 
     @staticmethod
     def check_all_same(lst):
@@ -712,6 +729,25 @@ class AttributesBase(object):
             return lst[0]
         else:
             return lst
+
+    def effect_values_by_abbr(self, abbr):
+        """
+        Detects the values of an effect,
+        and returns a tuple or float based on whether it changes or not.
+
+        To be used ONLY for 'effect' contents (e.g. not dmg mods).
+
+        Returns:
+            (tpl)
+            (float)
+        """
+
+        # (last character of modifier)
+        effect_num = int(abbr[-1:])
+
+        mod_val = self.api_spell_dct['effect'][effect_num]
+
+        return self.return_tpl_or_element(lst=mod_val)
 
 
 class GeneralAbilityAttributes(AttributesBase):
@@ -1026,25 +1062,6 @@ class DmgAbilityAttributes(AttributesBase):
         lst = p.findall(api_string)
 
         return lst
-
-    def effect_values_by_abbr(self, abbr):
-        """
-        Detects the values of an effect,
-        and returns a tuple or float based on whether it changes or not.
-
-        To be used ONLY for 'effect' contents (e.g. not dmg mods).
-
-        Returns:
-            (tpl)
-            (float)
-        """
-
-        # (last character of modifier)
-        effect_num = int(abbr[-1:])
-
-        mod_val = self.api_spell_dct['effect'][effect_num]
-
-        return self.return_tpl_or_element(lst=mod_val)
 
     def mod_value_and_stat(self, mod_shortcut):
         """
@@ -1366,6 +1383,8 @@ class BuffAbilityAttributes(AttributesBase):
                                          'critical strike chance': 'crit_chance',
                                          'armor penetration': 'armor_penetration'}
 
+    NTH_TUPLE = ('second', 'third', 'forth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth')
+
     USUAL_BUFF_ATTR_VALUES = dict(
         target_type=('player', 'enemy'),
         max_stacks=(1,),
@@ -1584,6 +1603,83 @@ class BuffAbilityAttributes(AttributesBase):
             else:
                 print('\nInvalid answer. Try again.')
 
+    def every_nth_attack(self):
+        """
+        Checks if ability tooltip indicates every_x_hits functionality,
+        and if so returns the nth value as a string.
+
+        NOTE: Not designed for multiple matches in tooltip.
+        Should it happen, only first valid match is returned.
+
+        Returns:
+            (str)
+            (None)
+        """
+
+        ability_dct = ExploreApiAbilities().champion_abilities(champion_name=self.champion_name,
+                                                               ability_name=self.ability_name)
+
+        tooltip = ability_dct['sanitizedTooltip']
+
+        pattern_1 = re.compile(r"""
+
+            every
+            \s
+            (?: \{\{\s (\w\d{1,2}) \s\}\} | (third) | (\d+)\w*)
+            \s
+            (?: consecutive\s | basic\s)?
+
+            (?:  hit | strike | attack )
+
+            """, re.IGNORECASE | re.VERBOSE)
+
+        # (findall result is a list of tuples, usually single tuple, with multiple strings)
+        findall_result = re.findall(pattern_1, tooltip)
+
+        if not findall_result == []:
+
+            # Finds non empty string.
+            for single_str in findall_result[0]:
+                if single_str != '':
+                    return single_str
+
+    def refined_nth_attack(self):
+        """
+        Converts to int form the "nth" hit.
+
+        Returns:
+            (int)
+        """
+
+        nth_as_str = self.every_nth_attack()
+
+        nth_as_int = None
+
+        # Determines to which value it corresponds.
+        if nth_as_str is None:
+            return
+
+        # (e.g. 'e10')
+        elif re.search(r'[a-z]\d{1,2}', nth_as_str):
+
+            nth_as_int = self.effect_values_by_abbr(abbr=nth_as_str)
+            # (ensures non static "nth" type attacks don't pass unnoticed)
+            if type(nth_as_int) is list:
+                raise ValueError('Non stable value handling not accounted for.')
+
+        # (e.g. '3rd')
+        elif re.search(r'\d{1,2}[a-z]{2}', nth_as_str):
+            # (slices last two letters off, leaving only the number)
+            nth_as_int = nth_as_str[:-2]
+
+        # (e.g. 'third')
+        elif nth_as_str in self.NTH_TUPLE:
+            for num, nth_str in enumerate(self.NTH_TUPLE, start=1):
+                if nth_str == nth_as_str:
+                    nth_as_int = num
+
+        return nth_as_int
+
     def suggest_stat_buff_attributes(self):
 
         start_msg = delimiter(40)
@@ -1723,7 +1819,11 @@ if __name__ == '__main__':
 
     testBuffs = True
     if testBuffs is True:
-        BuffAbilityAttributes('r', 'jax').run_buff_attr_creation()
+        for champName in ExploreApiAbilities().all_champions_data_dct:
+            for abilityName in ('q', 'w', 'e', 'r'):
+                res = BuffAbilityAttributes(abilityName, champName).refined_nth_attack()
+                if res:
+                    print((champName, res))
 
     testApiStorage = False
     if testApiStorage is True:
@@ -1731,4 +1831,4 @@ if __name__ == '__main__':
 
     testExploration = False
     if testExploration is True:
-        ExploreApiAbilities().sanitized_tooltips(phrase='movement speed', print_mode=True)
+        ExploreApiAbilities().sanitized_tooltips(champ='jax', r_str=r'every\s\d+hit', print_mode=True)
