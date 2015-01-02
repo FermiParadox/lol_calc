@@ -190,6 +190,9 @@ class RequestDataFromAPI(object):
 
     """
     Base class of RequestClasses.
+
+    Champion data do not derive from the final method of this class,
+    since multiple individual page requests must be combined.
     """
 
     @staticmethod
@@ -208,7 +211,24 @@ class RequestDataFromAPI(object):
         return wrapped
 
     @staticmethod
-    def request_single_page_from_api(page_url, requested_item):
+    def request_confirmation(requested_item):
+
+        # Messages
+        start_msg = '\n' + delimiter(num_of_lines=40)
+        start_msg += '\nWARNING !!!\n'
+        start_msg += '\nAPI KEY USED: %s\n' % API_KEY
+        start_msg += '\nStart API requests (%s)?\n' % requested_item
+
+        abort_msg = '\nData request ABORTED.\n'
+
+        user_start_question = input(start_msg)
+        if user_start_question.lower() == 'y':
+            pass
+        else:
+            raise RequestAborted(abort_msg)
+
+    @staticmethod
+    def request_single_page_from_api(page_url):
         """
         Requests a page from API, after a brief delay.
 
@@ -218,20 +238,8 @@ class RequestDataFromAPI(object):
             (dct)
         """
 
-        # Messages
-        start_msg = '\n' + delimiter(num_of_lines=40)
-        start_msg += '\nWARNING !!!\n'
-        start_msg += '\nStart API requests (%s)?\n' % requested_item
-
-        abort_msg = '\nData request ABORTED.\n'
-
-        user_start_question = input(start_msg)
-        if user_start_question.lower() in ('yes', 'y'):
-            pass
-        else:
-            raise RequestAborted(abort_msg)
-
         time.sleep(2)
+        print('\nRequest time: \n%s' % time.asctime())
 
         page_as_bytes_type = urllib.request.urlopen(page_url).read()
         page_as_str = page_as_bytes_type.decode('utf-8')
@@ -259,7 +267,7 @@ class RequestDataFromAPI(object):
             if read_module.read() != '':
                 replace_msg = 'Non empty module detected (%s). \nReplace data?\n' % targeted_module
                 user_answer = input(replace_msg)
-                if user_answer.lower() in ('yes', 'y'):
+                if user_answer.lower() == 'y':
                     print('Replacing existing file content..')
                 else:
                     raise InsertionAborted(abort_msg)
@@ -276,8 +284,18 @@ class RequestDataFromAPI(object):
         print(completion_msg)
 
     def request_single_page_from_api_as_str(self, page_url, requested_item):
+        """
+        Requests a page after confirmation of the user.
 
-        page_as_dct = self.request_single_page_from_api(page_url=page_url, requested_item=requested_item)
+        Champion data requests are not derivatives of this method.
+
+        Returns:
+            (str)
+        """
+
+        self.request_confirmation(requested_item=requested_item)
+
+        page_as_dct = self.request_single_page_from_api(page_url=page_url)
         page_as_str = str(page_as_dct)
 
         return page_as_str
@@ -289,20 +307,19 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
         """
         Requests all data for a champion from api.
 
-        Each champion's full data is at a separate page.
+        Each champion's full data is a page request of its own,
+        therefor
 
         Return:
             (dct)
         """
 
-        time.sleep(2)
         page_url = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/champion/"
                     + champion_id
                     + "?champData=all&api_key="
                     + API_KEY)
 
-        page_as_dct = self.request_single_page_from_api(page_url=page_url,
-                                                        requested_item='CHAMPION_ABILITIES')
+        page_as_dct = self.request_single_page_from_api(page_url=page_url)
 
         return page_as_dct
 
@@ -313,6 +330,8 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
         Returns:
             (dct)
         """
+
+        self.request_confirmation(requested_item='CHAMPION DATA')
 
         all_champs_dct = {}
         all_champs_as_str = None
@@ -336,6 +355,9 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
     def store_all_champions_data(self, max_champions=None):
         """
         Stores all champions' data from API.
+
+        Data stored is a dict with champion names as keywords,
+        and champion ability content as value.
 
         Returns:
             (None)
@@ -1817,7 +1839,7 @@ if __name__ == '__main__':
             dmgAttrInstance = DmgAbilityAttributes(ability_name=ability_shortcut, champion_name='teemo')
             dmgAttrInstance.run_dmg_attr_creation()
 
-    testBuffs = True
+    testBuffs = False
     if testBuffs is True:
         for champName in ExploreApiAbilities().all_champions_data_dct:
             for abilityName in ('q', 'w', 'e', 'r'):
@@ -1825,9 +1847,9 @@ if __name__ == '__main__':
                 if res:
                     print((champName, res))
 
-    testApiStorage = False
+    testApiStorage = True
     if testApiStorage is True:
-        RequestAllRunesFromAPI().store_all_runes_from_api()
+        RequestAllAbilitiesFromAPI().store_all_champions_data()
 
     testExploration = False
     if testExploration is True:
