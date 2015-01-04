@@ -68,7 +68,7 @@ def fat_delimiter(num_of_lines):
 
 
 # ---------------------------------------------------------------
-def _return_or_print(print_mode, obj):
+def _return_or_pprint(print_mode, obj):
 
     if print_mode is True:
         pp.pprint(obj)
@@ -485,7 +485,7 @@ class ExploreApiAbilities(object):
                     if in_tooltip:
                         final_dct[label]['in_tooltip'] += 1
 
-        return _return_or_print(print_mode=print_mode, obj=final_dct)
+        return _return_or_pprint(print_mode=print_mode, obj=final_dct)
 
     def mod_link_names(self):
         """
@@ -525,7 +525,7 @@ class ExploreApiAbilities(object):
 
         champ_stats = self.all_champions_data_dct[champion_name]['stats']
 
-        return _return_or_print(print_mode=print_mode, obj=champ_stats)
+        return _return_or_pprint(print_mode=print_mode, obj=champ_stats)
 
     def champion_abilities(self, champion_name, ability_name=None, print_mode=False):
         """
@@ -546,7 +546,7 @@ class ExploreApiAbilities(object):
             else:
                 result = champ_dct['spells']['qwer'.index(ability_name)]
 
-        return _return_or_print(print_mode=print_mode, obj=result)
+        return _return_or_pprint(print_mode=print_mode, obj=result)
 
     def champion_innates(self, champion_name=None, print_mode=False):
         """
@@ -717,7 +717,7 @@ class ExploreApiItems(object):
                 dct = self.used_items[existing_name]
 
         if items_found == 1:
-            return _return_or_print(print_mode=print_mode, obj=dct)
+            return _return_or_pprint(print_mode=print_mode, obj=dct)
         elif items_found > 1:
             raise KeyError('More than one matches found.')
         else:
@@ -1309,7 +1309,7 @@ class DmgAbilityAttributes(AttributesBase):
             pp.pprint(self.dmgs_dct)
 
             while True:
-                new_dmg_name = input('\nNew name for %s? (press enter to skip)\n' % dmg)
+                new_dmg_name = input('\nNew dmg name for %s. (press enter to skip)\n' % dmg)
                 if new_dmg_name == '':
                     print('\nName will not change.\n')
                     break
@@ -1494,31 +1494,34 @@ class BuffAbilityAttributes(AttributesBase):
             (None)
         """
 
-        msg = delimiter(40)
-        msg += '\nChange buff names?\n'
+        # Does nothing if no buffs exist.
+        if self.buffs_dct:
 
-        while True:
-            change_buffs_answer = input(msg)
+            msg = delimiter(40)
+            msg += '\nChange buff names?\n'
 
-            if change_buffs_answer == 'y':
-                for previous_buff_name in sorted(self.buffs_dct):
-                    new_name_msg = delimiter(10)
-                    new_name_msg += '\nNew name for: %s. (press enter to skip)\n' % previous_buff_name
+            while True:
+                change_buffs_answer = input(msg)
 
-                    new_name = input(new_name_msg)
+                if change_buffs_answer == 'y':
+                    for previous_buff_name in sorted(self.buffs_dct):
+                        new_name_msg = delimiter(10)
+                        new_name_msg += '\nNew name for: %s. (press enter to skip)\n' % previous_buff_name
 
-                    if new_name == '':
-                        print('\nNot changed.')
-                    # If new name is selected, creates new buff with previous value,
-                    # .. then removes previous buff.
-                    else:
-                        self.buffs_dct.update({new_name: self.buffs_dct[previous_buff_name]})
-                        del self.buffs_dct[previous_buff_name]
-                break
-            elif change_buffs_answer == 'n':
-                break
-            else:
-                print('Invalid answer. Try again.')
+                        new_name = input(new_name_msg)
+
+                        if new_name == '':
+                            print('\nNot changed.')
+                        # If new name is selected, creates new buff with previous value,
+                        # .. then removes previous buff.
+                        else:
+                            self.buffs_dct.update({new_name: self.buffs_dct[previous_buff_name]})
+                            del self.buffs_dct[previous_buff_name]
+                    break
+                elif change_buffs_answer == 'n':
+                    break
+                else:
+                    print('Invalid answer. Try again.')
 
     def suggest_stat_mods(self, buff_name, affected_stat):
         """
@@ -1866,20 +1869,29 @@ class SpellsAttributes(object):
         Returns:
             (None)
         """
+
+        dct = self.single_spell_attrs()
+
         gen_instance = GeneralAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
         gen_instance.run_gen_attr_creation()
 
-        self.single_spell_attrs()['general'] = gen_instance.general_attr_dct
+        dct['general'] = gen_instance.general_attr_dct
 
         dmgs_instance = DmgAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
         dmgs_instance.run_dmg_attr_creation()
 
-        self.single_spell_attrs()['dmgs'] = dmgs_instance.dmgs_dct
+        dct['dmgs'] = dmgs_instance.dmgs_dct
 
         buffs_inst = BuffAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
         buffs_inst.run_buff_attr_creation()
 
-        self.single_spell_attrs()['buffs'] = buffs_inst.buffs_dct
+        dct['buffs'] = buffs_inst.buffs_dct
+
+        # Message
+        msg = fat_delimiter(10)
+        msg += '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, spell_name)
+        print(msg)
+        pp.pprint(dct)
 
 
 # ===============================================================
@@ -1916,4 +1928,4 @@ if __name__ == '__main__':
 
     testCombination = True
     if testCombination is True:
-        SpellsAttributes(champion_name='ashe').create_single_spell_attrs('q')
+        SpellsAttributes(champion_name='jax').create_single_spell_attrs('q')
