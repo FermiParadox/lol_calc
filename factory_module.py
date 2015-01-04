@@ -6,6 +6,7 @@ import champion_ids
 import json
 import pprint as pp
 import copy
+import api_key
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -175,9 +176,6 @@ def spell_num(ability_name):
 # ===============================================================
 #       API REQUESTS
 # ===============================================================
-API_KEY = "9e0d1a10-04dc-4915-9995-67c4d6cb7ff2"
-
-
 class RequestAborted(BaseException):
     pass
 
@@ -211,12 +209,17 @@ class RequestDataFromAPI(object):
         return wrapped
 
     @staticmethod
-    def request_confirmation(requested_item):
+    def _request_confirmation(requested_item):
+        """
+        Asks user if he wants to proceed with data requests from API with given API key.
 
+        Args:
+            requested_item: (str) Name of requested item from API, e.g. RUNES, ITEMS, ABILITIES.
+        """
         # Messages
         start_msg = '\n' + delimiter(num_of_lines=40)
         start_msg += '\nWARNING !!!\n'
-        start_msg += '\nAPI KEY USED: %s\n' % API_KEY
+        start_msg += '\nAPI KEY USED: %s\n' % api_key.KEY
         start_msg += '\nStart API requests (%s)?\n' % requested_item
 
         abort_msg = '\nData request ABORTED.\n'
@@ -232,8 +235,6 @@ class RequestDataFromAPI(object):
         """
         Requests a page from API, after a brief delay.
 
-        Args:
-            requested_item: (str) Name of requested item from API, e.g. RUNES, ITEMS, ABILITIES.
         Return:
             (dct)
         """
@@ -293,7 +294,7 @@ class RequestDataFromAPI(object):
             (str)
         """
 
-        self.request_confirmation(requested_item=requested_item)
+        self._request_confirmation(requested_item=requested_item)
 
         page_as_dct = self.request_single_page_from_api(page_url=page_url)
         page_as_str = str(page_as_dct)
@@ -317,7 +318,7 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
         page_url = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/champion/"
                     + champion_id
                     + "?champData=all&api_key="
-                    + API_KEY)
+                    + api_key.KEY)
 
         page_as_dct = self.request_single_page_from_api(page_url=page_url)
 
@@ -331,7 +332,7 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
             (dct)
         """
 
-        self.request_confirmation(requested_item='CHAMPION DATA')
+        self._request_confirmation(requested_item='CHAMPION DATA')
 
         all_champs_dct = {}
         all_champs_as_str = None
@@ -370,7 +371,7 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
 
 class RequestAllRunesFromAPI(RequestDataFromAPI):
 
-    RUNES_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key=" + API_KEY
+    RUNES_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key=" + api_key.KEY
 
     @RequestDataFromAPI.request_abortion_handler
     def store_all_runes_from_api(self):
@@ -385,7 +386,7 @@ class RequestAllRunesFromAPI(RequestDataFromAPI):
 
 class RequestAllItemsFromAPI(RequestDataFromAPI):
 
-    ITEMS_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/item?itemListData=all&api_key=" + API_KEY
+    ITEMS_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/item?itemListData=all&api_key=" + api_key.KEY
 
     @RequestDataFromAPI.request_abortion_handler
     def store_all_items_from_api(self):
@@ -401,7 +402,7 @@ class RequestAllItemsFromAPI(RequestDataFromAPI):
 class RequestAllMasteriesFromAPI(RequestDataFromAPI):
 
     MASTERIES_PAGE_URL = ('https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/mastery?masteryListData=all&api_key='
-                          + API_KEY)
+                          + api_key.KEY)
 
     @RequestDataFromAPI.request_abortion_handler
     def store_all_items_from_api(self):
@@ -422,6 +423,7 @@ class ExploreApiAbilities(object):
     def __init__(self):
         self.data_module = __import__('api_champions_database')
         self.all_champions_data_dct = self.data_module.ALL_CHAMPIONS_ATTR
+        self.champions_lst = sorted(self.all_champions_data_dct)
 
     @staticmethod
     def _label_in_tooltip(label, ability_dct):
@@ -546,9 +548,30 @@ class ExploreApiAbilities(object):
 
         return _return_or_print(print_mode=print_mode, obj=result)
 
+    def champion_innates(self, champion_name=None, print_mode=False):
+        """
+        Returns a champion's (or all champions') innate dict,
+        or prints it.
+
+        Returns:
+            (lst)
+            (None)
+        """
+        if champion_name is not None:
+            champ_lst = [champion_name, ]
+        else:
+            champ_lst = self.champions_lst
+
+        for champ in champ_lst:
+            if print_mode is True:
+                self.champion_abilities(champion_name=champ, ability_name='inn', print_mode=True)
+            else:
+                return self.champion_abilities(champion_name=champ, ability_name='inn', print_mode=False)
+
     def sanitized_tooltips(self, champ=None, r_str=None, print_mode=False):
         """
-        Returns all tooltips for given champion (or for all champions).
+        Returns all tooltips for given champion (or for all champions),
+        or prints it.
 
         If r_str is provided it, searches for its pattern.
 
@@ -559,6 +582,7 @@ class ExploreApiAbilities(object):
             r_str: (str) Normal str or raw str
         Returns:
             (lst)
+            (None)
         """
 
         # All champions, or selected champion.
@@ -709,9 +733,11 @@ class AttributesBase(object):
         self.champion_name = champion_name
         self.ability_name = ability_name
         self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][spell_num(ability_name=ability_name)]
+        self.api_innate_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['passive']
         self.sanitized_tooltip = self.api_spell_dct['sanitizedTooltip']
         # (removes None from API effect list)
         self.ability_effect_lst = copy.copy(self.api_spell_dct['effect'])[1:]
+        # (some spells don't contain 'vars')
         try:
             self.ability_vars_dct = self.api_spell_dct['vars']
         except KeyError:
@@ -891,7 +917,7 @@ class GeneralAbilityAttributes(AttributesBase):
 
         # NORMAL COST
         else:
-            return tuple(self.api_spell_dct['effect']['cost'])
+            return tuple(self.api_spell_dct['cost'])
 
     def fill_base_cd_values(self):
         """
@@ -1020,7 +1046,7 @@ class DmgAbilityAttributes(AttributesBase):
             target_type=('enemy', 'player'),
             # TODO insert more categories in class and then here.
             dmg_category=('standard_dmg', 'innate_dmg', 'chain_decay', 'chain_limited_decay', 'aa_dmg_value'),
-            dmg_source=('q', 'w', 'e', 'r', 'inn'),
+            dmg_source=('q', 'w', 'e', 'r', 'inn', 'q2', 'w2', 'e2', 'r2',),
             life_conversion_type=('spellvamp', None, 'lifesteal'),
             radius=(None, ),
             dot=(False, True),
@@ -1314,7 +1340,7 @@ class DmgAbilityAttributes(AttributesBase):
             print('\n' + delimiter(num_of_lines=10))
             extra_dmg = input('\nInsert extra dmg?\n')
 
-            if extra_dmg.lower() in ('y', 'yes'):
+            if extra_dmg.lower() == 'y':
                 new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct, attr_type='dmg')
                 self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
                 self._suggest_dmg_values(dmg_name=new_dmg_name)
@@ -1324,7 +1350,7 @@ class DmgAbilityAttributes(AttributesBase):
                 self.modify_dmg_names()
 
             # "enter", 'n' and 'no'
-            elif extra_dmg.lower() in ('n', 'no'):
+            elif extra_dmg.lower() == 'n':
                 break
 
             else:
@@ -1525,7 +1551,7 @@ class BuffAbilityAttributes(AttributesBase):
 
                 while True:
                     stat_mods_answer = input(stat_mod_msg + '\n')
-                    if stat_mods_answer.lower() in ('y', 'yes'):
+                    if stat_mods_answer.lower() == 'y':
 
                         # Inserts new mod name.
                         self.buffs_dct[buff_name]['affected_stats'][affected_stat_app_form]['stat_mods'].update(
@@ -1565,7 +1591,7 @@ class BuffAbilityAttributes(AttributesBase):
 
             while True:
                 buff_affects_stat = input(msg)
-                if buff_affects_stat.lower() in ('y', 'yes'):
+                if buff_affects_stat.lower() == 'y':
 
                     stat_name = self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP[affected_stat]
 
@@ -1607,12 +1633,12 @@ class BuffAbilityAttributes(AttributesBase):
         while True:
             changes_stats = input(start_msg + '\n')
 
-            if changes_stats.lower() in ('n', 'no'):
+            if changes_stats.lower() == 'n':
                 print("\nDoesn't modify stats.")
                 self.buffs_dct[buff_name]['affected_stats'] = None
                 break
 
-            elif changes_stats.lower() in ('y', 'yes'):
+            elif changes_stats.lower() == 'y':
                 if self._stat_names_in_tooltip():
                     # (clears placeholder)
                     del self.buffs_dct[buff_name]['affected_stats']['placeholder_stat_1']
@@ -1709,7 +1735,7 @@ class BuffAbilityAttributes(AttributesBase):
         start_msg += '\nBuff modifies stats?'
 
         mods_stat_question = input(start_msg + '\n')
-        if mods_stat_question.lower() in ('y', 'yes'):
+        if mods_stat_question.lower() == 'y':
             self.suggest_unused_stats()
 
     def _re_findall_result_to_lst(self, findall_results):
@@ -1823,6 +1849,39 @@ class BuffAbilityAttributes(AttributesBase):
         pp.pprint(self.buffs_dct)
 
 
+class SpellsAttributes(object):
+
+    def __init__(self, champion_name):
+        self.champion_name = champion_name
+        self.spells_attributes = {}
+
+    @staticmethod
+    def single_spell_attrs():
+        return dict(general={}, dmgs={}, buffs={})
+
+    def create_single_spell_attrs(self, spell_name):
+        """
+        Creates all attributes of an ability.
+
+        Returns:
+            (None)
+        """
+        gen_instance = GeneralAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
+        gen_instance.run_gen_attr_creation()
+
+        self.single_spell_attrs()['general'] = gen_instance.general_attr_dct
+
+        dmgs_instance = DmgAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
+        dmgs_instance.run_dmg_attr_creation()
+
+        self.single_spell_attrs()['dmgs'] = dmgs_instance.dmgs_dct
+
+        buffs_inst = BuffAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
+        buffs_inst.run_buff_attr_creation()
+
+        self.single_spell_attrs()['buffs'] = buffs_inst.buffs_dct
+
+
 # ===============================================================
 # ===============================================================
 if __name__ == '__main__':
@@ -1847,10 +1906,14 @@ if __name__ == '__main__':
                 if res:
                     print((champName, res))
 
-    testApiStorage = True
+    testApiStorage = False
     if testApiStorage is True:
         RequestAllAbilitiesFromAPI().store_all_champions_data()
 
     testExploration = False
     if testExploration is True:
         ExploreApiAbilities().sanitized_tooltips(champ='jax', r_str=r'every\s\d+hit', print_mode=True)
+
+    testCombination = True
+    if testCombination is True:
+        SpellsAttributes(champion_name='ashe').create_single_spell_attrs('q')
