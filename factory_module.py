@@ -7,6 +7,7 @@ import json
 import pprint as pp
 import copy
 import api_key
+import palette
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -27,7 +28,7 @@ Automatic functionality:
 
 e.g.
 garen=ChampionClassFactory(module_name='garen')
-garen.q().gen_attr('reset_aa', 'no_cost')
+garen.q().gen_attr('resets_aa', 'no_cost')
 
 """
 
@@ -88,7 +89,7 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='')
         (None)
     """
 
-    start_msg = '\n' + fat_delimiter(40)
+    start_msg = '\n' + delimiter(40)
     start_msg += '\n(type "stop" at any point to exit)\n'
     start_msg += extra_start_msg
     print(start_msg)
@@ -616,6 +617,36 @@ class ExploreApiAbilities(object):
         else:
             return tooltips_lst
 
+    def cost_categories(self, print_mode=False):
+        """
+        Finds all cost categories and their frequency of occurrence.
+
+        Returns:
+            (dct)
+            (None) Prints results instead.
+        """
+
+        cost_categories_dct = {}
+
+        for champ in self.champions_lst:
+            champ_spells = self.champion_abilities(champion_name=champ)[1:]
+            for spell_dct in champ_spells:
+
+                category_name = spell_dct['costType']
+
+                if category_name not in cost_categories_dct:
+                    cost_categories_dct.update(
+                        {category_name: dict(
+                            frequency=1,
+                            champions=[])})
+                else:
+                    cost_categories_dct[category_name]['frequency'] += 1
+
+                # Notes champion name.
+                if champ not in cost_categories_dct[category_name]['champions']:
+                    cost_categories_dct[category_name]['champions'].append(champ)
+
+        _return_or_pprint(print_mode=print_mode, obj=cost_categories_dct)
 
 class ExploreApiItems(object):
 
@@ -800,6 +831,13 @@ class AttributesBase(object):
 
 class GeneralAbilityAttributes(AttributesBase):
 
+    def __init__(self, ability_name, champion_name):
+        AttributesBase.__init__(self,
+                                ability_name=ability_name,
+                                champion_name=champion_name)
+
+        self.general_attr_dct = self.general_attributes()
+
     @staticmethod
     def general_attributes():
         return dict(
@@ -809,25 +847,23 @@ class GeneralAbilityAttributes(AttributesBase):
             dmg_effect_names=['placeholder', ],
             buff_effect_names=['placeholder', ],
             base_cd='placeholder',
-            cost=dict(
+            cost=[
                 # Main type auto inserted. Secondary manually.
-                type_1_placeholder='value_tpl_1_placeholder',
-                ),
+                dict(
+                    resource_type='placeholder',
+                    values='values_tpl_placeholder',
+                    cost_category='placeholder'
+                ), ],
             move_while_casting='placeholder',
             dashed_distance='placeholder',
             channel_time='placeholder',
-            reset_aa='placeholder',
+            resets_aa='placeholder',
             reduce_ability_cd=dict(
                 name_placeholder='duration_placeholder'
             )
         )
 
-    def __init__(self, ability_name, champion_name):
-        AttributesBase.__init__(self,
-                                ability_name=ability_name,
-                                champion_name=champion_name)
-
-        self.general_attr_dct = self.general_attributes()
+    COST_CATEGORIES = ('normal', 'per_hit', 'per_second')
 
     USUAL_VALUES_GEN_ATTR = dict(
         cast_time=(0.25, 0.5, 0),
@@ -835,7 +871,7 @@ class GeneralAbilityAttributes(AttributesBase):
         move_while_casting=(False, True),
         dashed_distance=(None,),
         channel_time=(None,),
-        reset_aa=(False, True),
+        resets_aa=(False, True),
         )
 
     def _dct_status_msg(self):
@@ -896,7 +932,7 @@ class GeneralAbilityAttributes(AttributesBase):
 
     def resource_cost_values(self):
         """
-        Detects cost value tuple.
+        Detects cost values tuple.
 
         All resource costs are in a list named "cost", except health related costs.
 
@@ -919,9 +955,13 @@ class GeneralAbilityAttributes(AttributesBase):
         else:
             return tuple(self.api_spell_dct['cost'])
 
+    def cost_category(self):
+
+        return
+
     def fill_base_cd_values(self):
         """
-        Detects base_cd tuple and inserts value in dct,
+        Detects base_cd tuple and inserts values in dct,
         unless ability is passive (removes base_cd completely from dct).
 
         Returns:
@@ -950,8 +990,12 @@ class GeneralAbilityAttributes(AttributesBase):
         if self.resource_cost_type() is None:
             self.general_attr_dct['cost'] = None
         else:
+            # Clears contents of 'cost' keyword,
+            # and replaces them.
             self.general_attr_dct['cost'] = {}
-            self.general_attr_dct['cost'].update({self.resource_cost_type(): self.resource_cost_values()})
+            self.general_attr_dct['cost'].update({'resource_type': self.resource_cost_type()})
+            self.general_attr_dct['cost'].update({'values': self.resource_cost_values()})
+            self.general_attr_dct['cost'].update({'cost_category': self.cost_category()})
 
     def fill_range(self):
         """
@@ -1852,17 +1896,17 @@ class BuffAbilityAttributes(AttributesBase):
         pp.pprint(self.buffs_dct)
 
 
-class SpellsAttributes(object):
+class AbilitiesAttributes(object):
 
     def __init__(self, champion_name):
         self.champion_name = champion_name
-        self.spells_attributes = {}
+        self.spells_attributes = {letter: {} for letter in 'qwer'}
 
     @staticmethod
     def single_spell_attrs():
         return dict(general={}, dmgs={}, buffs={})
 
-    def create_single_spell_attrs(self, spell_name):
+    def _create_single_spell_attrs(self, spell_name):
         """
         Creates all attributes of an ability.
 
@@ -1893,12 +1937,65 @@ class SpellsAttributes(object):
         print(msg)
         pp.pprint(dct)
 
+    def _create_singe_spell_effects_dct(self, spell_name):
+        """
+        Creates effects dict of a single spell, for given champion.
+
+        User is asked about possible dmg and buff names,
+        and cd modifiers.
+
+        Returns:
+            (dct)
+        """
+
+        print(fat_delimiter(40))
+        print('\nSPELL EFFECTS')
+
+        univ_msg = '\nCHAMPION %s, ABILITY %s' % (self.champion_name, spell_name)
+
+        dmgs_names = sorted(self.spells_attributes[spell_name]['dmgs'])
+        buffs_names = sorted(self.spells_attributes[spell_name]['buffs'])
+
+        suggested_dmgs_names = {num: key for num, key in enumerate(dmgs_names)}
+        suggested_buffs_names = {num: key for num, key in enumerate(buffs_names)}
+
+        spell_effects_dct = palette.ChampionsStats.spell_effects()
+
+        for tar_type in ('enemy', 'player'):
+            for application_type in ('passives', 'actives'):
+                # DMGS
+                temp_dct = {}
+                dmg_msg = '%s\nDMG (%s) (%s)' % (univ_msg, tar_type, application_type)
+                _suggest_attr_values(suggested_values_dct=suggested_dmgs_names,
+                                     modified_dct=temp_dct,
+                                     extra_start_msg=dmg_msg)
+                print(temp_dct)
+
+
+
+                # BUFFS APPLICATION
+                buffs_applied_msg = '%s\nBUFFS (%s) (%s)' % (univ_msg, tar_type, application_type)
+                _suggest_attr_values(suggested_values_dct=suggested_buffs_names,
+                                     modified_dct=spell_effects_dct[tar_type][application_type]['buffs'],
+                                     extra_start_msg=buffs_applied_msg)
+
+                # BUFF REMOVAL
+                buff_removal_msg = '%s\nBUFFS REMOVED (%s) (%s)' % (univ_msg, tar_type, application_type)
+                _suggest_attr_values(suggested_values_dct=suggested_buffs_names,
+                                     modified_dct=spell_effects_dct[tar_type][application_type]['remove_buff'],
+                                     extra_start_msg=buff_removal_msg)
+
+        # CD MODIFICATION
+        cd_mod_msg = '\nCDs MODIFIED ON CAST'
+        _suggest_attr_values(suggested_values_dct=['0'],
+                             modified_dct=spell_effects_dct['player']['actives'],
+                             extra_start_msg=cd_mod_msg)
 
 # ===============================================================
 # ===============================================================
 if __name__ == '__main__':
 
-    testGen = False
+    testGen = True
     if testGen is True:
         for ability_shortcut in ('q', 'w', 'e', 'r'):
             GeneralAbilityAttributes(ability_name=ability_shortcut, champion_name='drmundo').run_gen_attr_creation()
@@ -1926,6 +2023,6 @@ if __name__ == '__main__':
     if testExploration is True:
         ExploreApiAbilities().sanitized_tooltips(champ='jax', r_str=r'every\s\d+hit', print_mode=True)
 
-    testCombination = True
+    testCombination = False
     if testCombination is True:
-        SpellsAttributes(champion_name='jax').create_single_spell_attrs('q')
+        AbilitiesAttributes(champion_name='jax')._create_singe_spell_effects_dct('q')

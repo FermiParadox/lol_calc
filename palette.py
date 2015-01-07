@@ -55,7 +55,7 @@ class ChampionsStats(object):
         )
 
     @staticmethod
-    def q_effects():
+    def spell_effects():
         return dict(
             enemy=dict(
 
@@ -79,7 +79,8 @@ class ChampionsStats(object):
                 # Buffs and effects activated on cast.
                 actives=dict(buffs=[],
                              remove_buff=[],
-                             dmg=[]))
+                             dmg=[],
+                             cds_modified={}))
         )
 
     @staticmethod
@@ -165,26 +166,3 @@ class BaseStatsWithMana(object):
             _stat=dict(additive_bonus='_buff'),
             duration=0
         )
-
-
-# Palette
-class _Ability(object):
-    _STATS = dict(
-        displayed_name='',
-
-        range=0,
-        radius=0,
-
-        base_cd_tpl=(),
-
-        resource_used='mana',
-        cost_tpl=(),                # or cost=0
-
-        base_dmg_tpl=(),
-        dmg_type='',
-        scaling_stats=dict(
-            _ap=0,
-            _bonus_ad=0.
-        ),
-        cast_time=0
-    )

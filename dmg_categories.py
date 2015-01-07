@@ -161,14 +161,7 @@ class Categories(object):
     # TODO execute_dmg
     def execute_dmg(self,):
         """
-
-        """
-        pass
-
-    # TODO multi_dot
-    def multi_dot(self):
-        """
-
+        Calculates dmg value, when it depends on target's missing hp.
         """
         pass
 

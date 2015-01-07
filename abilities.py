@@ -1527,4 +1527,4 @@ if __name__ == '__main__':
 # dps: 331.07415420245394 (after changing dps method)
 # dps: 338.4234113818222 (unexpected change, after changing bonus_ad method to get stats by 'evaluate' instead of direct)
 # dps: 406.06856388086914 (rotation and targets changed)
-# dps: 414.08610981856975 (rotation and targets changed)
+# dps: 414.08610981856975 (rotation and targets changed) 1.1sec / 100 rotations
