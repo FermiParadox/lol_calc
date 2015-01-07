@@ -79,18 +79,32 @@ def _return_or_pprint(print_mode, obj):
 
 
 # ---------------------------------------------------------------
-def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg=''):
+class OuterLoopExit(BaseException):
+    pass
+
+
+OUTER_LOOP_KEY = '!'
+
+
+def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='', stop_key='XX',
+                         error_key=OUTER_LOOP_KEY):
     """
     Suggests a value and stores the choice.
 
+    Value can be either picked from suggested values,
+    or created by user.
+
     Args:
         suggested_values_dct: (dct) e.g. {ability_attr: (val_1, val_2,), }
+        stop_key: (str) When given as answer, exits this loop.
+        error_key: (str) When given as answer, raises error to exit outer loop.
     Returns:
         (None)
     """
 
     start_msg = '\n' + delimiter(40)
-    start_msg += '\n(type "stop" at any point to exit)\n'
+    start_msg += '\n(type "%s" to exit inner loops)\n' % stop_key
+    start_msg += '\n(type "%s" to exit outer loops)\n' % error_key
     start_msg += extra_start_msg
     print(start_msg)
 
@@ -124,9 +138,11 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='')
                 print('No value given. Try again.')
 
         # (breaks loop prematurely if asked)
-        if input_given == 'stop':
+        if input_given == stop_key:
             print('#### LOOP STOPPED ####')
             break
+        elif input_given == error_key:
+            raise OuterLoopExit
 
         for val_num, val in enumerate(shortcuts):
             if val == input_given:
@@ -143,6 +159,20 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='')
         choice_msg = '%s: %s\n' % (attr_name, chosen_value)
         modified_dct[attr_name] = chosen_value
         print(choice_msg)
+
+
+def outer_loop_exit_handler(func):
+    """
+    Used for handling Abortion exceptions raised during Requests.
+    """
+
+    def wrapped(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except OuterLoopExit as exception_msg:
+            print(exception_msg)
+
+    return wrapped
 
 
 def _new_automatic_attr_dct_name(targeted_dct, attr_type):
@@ -174,6 +204,14 @@ def spell_num(ability_name):
     return ('q', 'w', 'e', 'r').index(ability_name)
 
 
+def ability_num(ability_name):
+
+    if ability_name == 'inn':
+        return 0
+    else:
+        return spell_num(ability_name=ability_name) + 1
+
+
 # ===============================================================
 #       API REQUESTS
 # ===============================================================
@@ -199,13 +237,14 @@ class RequestDataFromAPI(object):
         """
         Used for handling Abortion exceptions raised during Requests.
         """
+
         def wrapped(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except RequestAborted as exc_msg:
-                print(exc_msg)
-            except InsertionAborted as exc_msg:
-                print(exc_msg)
+            except RequestAborted as exception_msg:
+                print(exception_msg)
+            except InsertionAborted as exception_msg:
+                print(exception_msg)
 
         return wrapped
 
@@ -450,6 +489,26 @@ class ExploreApiAbilities(object):
         else:
             return False
 
+    @staticmethod
+    def _store_and_note_frequency(string, modified_dct, champ):
+        """
+        Modifies a dict by noting a string's frequency.
+
+        Returns:
+            (None)
+        """
+        if string not in modified_dct:
+            modified_dct.update(
+                {string: dict(
+                    frequency=1,
+                    champions=[])})
+        else:
+            modified_dct[string]['frequency'] += 1
+
+        # Notes champion name.
+        if champ not in modified_dct[string]['champions']:
+            modified_dct[string]['champions'].append(champ)
+
     def label_occurrences(self, champions_lst=None, print_mode=False):
         """
         Finds all possible effect labels,
@@ -617,9 +676,42 @@ class ExploreApiAbilities(object):
         else:
             return tooltips_lst
 
+    def single_cost_category(self, champ_name, ability_name):
+        """
+        Finds a 'costType' in API for given champion and ability.
+
+        Returns:
+            (str)
+        """
+
+        return self.champion_abilities(champion_name=champ_name, ability_name=ability_name)['costType']
+
     def cost_categories(self, print_mode=False):
         """
-        Finds all cost categories and their frequency of occurrence.
+        Finds all costType categories and their frequency of occurrence.
+
+        Returns:
+            (dct)
+            (None) Prints results instead.
+        """
+
+        cost_categories_dct = {}
+
+        for champ in self.champions_lst:
+            for ability_name in ('q', 'w', 'e', 'r'):
+
+                category_name = self.single_cost_category(champ_name=champ, ability_name=ability_name)['costType']
+                category_name.rstrip().lower().lstrip()
+
+                self._store_and_note_frequency(string=category_name,
+                                               modified_dct=cost_categories_dct,
+                                               champ=champ)
+
+        return _return_or_pprint(print_mode=print_mode, obj=cost_categories_dct)
+
+    def resource_names(self, print_mode=False):
+        """
+        Finds all resources in API and their frequency of occurrence.
 
         Returns:
             (dct)
@@ -632,21 +724,17 @@ class ExploreApiAbilities(object):
             champ_spells = self.champion_abilities(champion_name=champ)[1:]
             for spell_dct in champ_spells:
 
-                category_name = spell_dct['costType']
+                try:
+                    resource_name = spell_dct['resource'].rstrip().lower().lstrip()
 
-                if category_name not in cost_categories_dct:
-                    cost_categories_dct.update(
-                        {category_name: dict(
-                            frequency=1,
-                            champions=[])})
-                else:
-                    cost_categories_dct[category_name]['frequency'] += 1
+                    self._store_and_note_frequency(string=resource_name,
+                                                   modified_dct=cost_categories_dct,
+                                                   champ=champ)
+                except KeyError:
+                    pass
 
-                # Notes champion name.
-                if champ not in cost_categories_dct[category_name]['champions']:
-                    cost_categories_dct[category_name]['champions'].append(champ)
+        return _return_or_pprint(print_mode=print_mode, obj=cost_categories_dct)
 
-        _return_or_pprint(print_mode=print_mode, obj=cost_categories_dct)
 
 class ExploreApiItems(object):
 
@@ -957,7 +1045,8 @@ class GeneralAbilityAttributes(AttributesBase):
 
     def cost_category(self):
 
-        return
+        return ExploreApiAbilities().champion_abilities(champion_name=self.champion_name,
+                                                        ability_name=self.ability_name)['costType']
 
     def fill_base_cd_values(self):
         """
@@ -977,9 +1066,9 @@ class GeneralAbilityAttributes(AttributesBase):
         else:
             self.general_attr_dct['base_cd'] = self.return_tpl_or_element(lst=self.api_spell_dct['cooldown'])
 
-    def fill_resource(self):
+    def fill_cost_attrs(self):
         """
-        Inserts resource cost type and values in general attr dict.
+        Inserts cost attributes in general attr dict.
 
         Does NOT insert secondary resources used (e.g. teemo R stack cost).
 
@@ -1022,9 +1111,10 @@ class GeneralAbilityAttributes(AttributesBase):
             (None)
         """
         self.fill_range()
-        self.fill_resource()
+        self.fill_cost_attrs()
         self.fill_base_cd_values()
 
+    @outer_loop_exit_handler
     def suggest_gen_attr_values(self):
 
         extra_msg = '\nDMG ATTRIBUTE CREATION\n'
@@ -1400,7 +1490,8 @@ class DmgAbilityAttributes(AttributesBase):
             else:
                 print('Invalid answer.')
 
-    def run_dmg_attr_creation(self):
+    @outer_loop_exit_handler
+    def _run_dmg_attr_creation_without_result_msg(self):
         """
         Runs all relevant methods for each dmg attribute detected.
 
@@ -1417,6 +1508,16 @@ class DmgAbilityAttributes(AttributesBase):
         self.suggest_dmg_attr_values()
         self.insert_extra_dmg()
         self.modify_dmg_names()
+
+    def run_dmg_attr_creation(self):
+        """
+        Runs all relevant methods for each dmg attribute detected.
+
+        Returns:
+            (None)
+        """
+
+        self._run_dmg_attr_creation_without_result_msg()
 
         print('\nRESULT\n')
         pp.pprint(self.dmgs_dct)
@@ -1514,6 +1615,10 @@ class BuffAbilityAttributes(AttributesBase):
         # Repeat until valid answer is given.
         while True:
             num_of_buffs = input(start_msg + '\n')
+
+            if num_of_buffs == OUTER_LOOP_KEY:
+                raise OuterLoopExit
+
             try:
                 num_iter = range(int(num_of_buffs))
 
@@ -1872,7 +1977,8 @@ class BuffAbilityAttributes(AttributesBase):
 
     # TODO: Allow duration link to another buff (that is, buff_3_duration = buff_1_duration
 
-    def run_buff_attr_creation(self):
+    @outer_loop_exit_handler
+    def _run_buff_attr_creation_without_result_msg(self):
 
         start_msg = fat_delimiter(40)
         start_msg += '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, self.ability_name)
@@ -1892,6 +1998,9 @@ class BuffAbilityAttributes(AttributesBase):
                                  modified_dct=self.buffs_dct[buff_name],
                                  extra_start_msg=usual_attrs_msg)
 
+    def run_buff_attr_creation(self):
+
+        self._run_buff_attr_creation_without_result_msg()
         print(delimiter(40))
         pp.pprint(self.buffs_dct)
 
@@ -1900,7 +2009,12 @@ class AbilitiesAttributes(object):
 
     def __init__(self, champion_name):
         self.champion_name = champion_name
-        self.spells_attributes = {letter: {} for letter in 'qwer'}
+        self.abilities_attributes = dict(
+            inn={},
+            Q_STATS={},
+            W_STATS={},
+            E_STATS={},
+            R_STATS={})
 
     @staticmethod
     def single_spell_attrs():
@@ -1911,7 +2025,7 @@ class AbilitiesAttributes(object):
         Creates all attributes of an ability.
 
         Returns:
-            (None)
+            (dct)
         """
 
         dct = self.single_spell_attrs()
@@ -1937,7 +2051,21 @@ class AbilitiesAttributes(object):
         print(msg)
         pp.pprint(dct)
 
-    def _create_singe_spell_effects_dct(self, spell_name):
+        return dct
+
+    def create_all_spell_attrs(self):
+        """
+        Creates all attributes for all abilities of given champion.
+
+        Returns
+            (dct)
+        """
+
+        for spell_name in ('q', 'w', 'e', 'r'):
+            key = spell_name.upper() + '_STATS'
+            self.abilities_attributes[key] = self._create_single_spell_attrs(spell_name=spell_name)
+
+    def _create_single_spell_effects_dct(self, spell_name):
         """
         Creates effects dict of a single spell, for given champion.
 
@@ -1991,11 +2119,12 @@ class AbilitiesAttributes(object):
                              modified_dct=spell_effects_dct['player']['actives'],
                              extra_start_msg=cd_mod_msg)
 
+
 # ===============================================================
 # ===============================================================
 if __name__ == '__main__':
 
-    testGen = True
+    testGen = False
     if testGen is True:
         for ability_shortcut in ('q', 'w', 'e', 'r'):
             GeneralAbilityAttributes(ability_name=ability_shortcut, champion_name='drmundo').run_gen_attr_creation()
@@ -2023,6 +2152,6 @@ if __name__ == '__main__':
     if testExploration is True:
         ExploreApiAbilities().sanitized_tooltips(champ='jax', r_str=r'every\s\d+hit', print_mode=True)
 
-    testCombination = False
+    testCombination = True
     if testCombination is True:
-        AbilitiesAttributes(champion_name='jax')._create_singe_spell_effects_dct('q')
+        AbilitiesAttributes(champion_name='jax').create_all_spell_attrs()
