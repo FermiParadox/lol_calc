@@ -83,10 +83,26 @@ class OuterLoopExit(BaseException):
     pass
 
 
-OUTER_LOOP_KEY = '!'
+class InnerLoopExit(BaseException):
+    pass
 
 
-def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='', stop_key='XX',
+# Loop exit keys.
+INNER_LOOP_KEY = '!'
+OUTER_LOOP_KEY = '!!'
+
+
+def check_for_loop_exit(key):
+
+    if key == OUTER_LOOP_KEY:
+        print('#### OUTER LOOP EXITED ####')
+        raise OuterLoopExit
+    elif key == INNER_LOOP_KEY:
+        print('#### INNER LOOP EXITED ####')
+        raise InnerLoopExit
+
+
+def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='', stop_key=INNER_LOOP_KEY,
                          error_key=OUTER_LOOP_KEY):
     """
     Suggests a value and stores the choice.
@@ -138,11 +154,7 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='',
                 print('No value given. Try again.')
 
         # (breaks loop prematurely if asked)
-        if input_given == stop_key:
-            print('#### LOOP STOPPED ####')
-            break
-        elif input_given == error_key:
-            raise OuterLoopExit
+        check_for_loop_exit(key=input_given)
 
         for val_num, val in enumerate(shortcuts):
             if val == input_given:
@@ -161,7 +173,7 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='',
         print(choice_msg)
 
 
-def outer_loop_exit_handler(func):
+def loop_exit_handler(func):
     """
     Used for handling Abortion exceptions raised during Requests.
     """
@@ -169,8 +181,10 @@ def outer_loop_exit_handler(func):
     def wrapped(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except OuterLoopExit as exception_msg:
-            print(exception_msg)
+        except OuterLoopExit:
+            pass
+        except InnerLoopExit:
+            pass
 
     return wrapped
 
@@ -916,6 +930,10 @@ class AttributesBase(object):
 
         return self.return_tpl_or_element(lst=mod_val)
 
+    def _champion_and_ability_msg(self):
+
+        return '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, self.ability_name.upper())
+
 
 class GeneralAbilityAttributes(AttributesBase):
 
@@ -961,10 +979,6 @@ class GeneralAbilityAttributes(AttributesBase):
         channel_time=(None,),
         resets_aa=(False, True),
         )
-
-    def _dct_status_msg(self):
-
-        return '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, self.ability_name.upper())
 
     def resource_cost_type(self):
         """
@@ -1114,11 +1128,11 @@ class GeneralAbilityAttributes(AttributesBase):
         self.fill_cost_attrs()
         self.fill_base_cd_values()
 
-    @outer_loop_exit_handler
+    @loop_exit_handler
     def suggest_gen_attr_values(self):
 
         extra_msg = '\nDMG ATTRIBUTE CREATION\n'
-        extra_msg += self._dct_status_msg()
+        extra_msg += self._champion_and_ability_msg()
 
         _suggest_attr_values(suggested_values_dct=self.USUAL_VALUES_GEN_ATTR,
                              modified_dct=self.general_attr_dct,
@@ -1132,10 +1146,15 @@ class GeneralAbilityAttributes(AttributesBase):
             (None)
         """
 
+        msg = fat_delimiter(40)
+        msg += "\nABILITY'S GENERAL ATTRIBUTES:" + self._champion_and_ability_msg() + '\n'
+
+        print(msg)
+
         self.auto_fill_attributes()
         self.suggest_gen_attr_values()
 
-        print("\nABILITY'S GENERAL ATTRIBUTES:" + self._dct_status_msg() + '\n')
+        print(msg)
         pp.pprint(self.general_attr_dct)
 
 
@@ -1413,9 +1432,7 @@ class DmgAbilityAttributes(AttributesBase):
 
         for dmg_temp_name in sorted(self.dmgs_dct):
 
-            msg = '\n%s\n' % delimiter(num_of_lines=40)
-            msg += '\nABILITY: %s\n' % self.ability_name.upper()
-            msg += '\ndmg_values: %s' % self.dmgs_dct[dmg_temp_name]['dmg_values']
+            msg = '\ndmg_values: %s' % self.dmgs_dct[dmg_temp_name]['dmg_values']
             msg += '\nmods: %s' % self.dmgs_dct[dmg_temp_name]['mods']
 
             print(msg)
@@ -1490,7 +1507,7 @@ class DmgAbilityAttributes(AttributesBase):
             else:
                 print('Invalid answer.')
 
-    @outer_loop_exit_handler
+    @loop_exit_handler
     def _run_dmg_attr_creation_without_result_msg(self):
         """
         Runs all relevant methods for each dmg attribute detected.
@@ -1498,11 +1515,6 @@ class DmgAbilityAttributes(AttributesBase):
         Returns:
             (None)
         """
-
-        start_msg = '\n%s\n' % fat_delimiter(40)
-        start_msg += '\nCHAMPION: %s, ABILITY: %s\n' % (self.champion_name, self.ability_name.upper())
-
-        print(start_msg)
 
         self.fill_dmg_type_and_mods_and_dot()
         self.suggest_dmg_attr_values()
@@ -1517,8 +1529,14 @@ class DmgAbilityAttributes(AttributesBase):
             (None)
         """
 
+        msg = fat_delimiter(40)
+        msg += '\nDMG ATTRIBUTES:'
+        msg += self._champion_and_ability_msg()
+        print(msg)
+
         self._run_dmg_attr_creation_without_result_msg()
 
+        print(msg)
         print('\nRESULT\n')
         pp.pprint(self.dmgs_dct)
 
@@ -1616,8 +1634,7 @@ class BuffAbilityAttributes(AttributesBase):
         while True:
             num_of_buffs = input(start_msg + '\n')
 
-            if num_of_buffs == OUTER_LOOP_KEY:
-                raise OuterLoopExit
+            check_for_loop_exit(key=num_of_buffs)
 
             try:
                 num_iter = range(int(num_of_buffs))
@@ -1977,13 +1994,8 @@ class BuffAbilityAttributes(AttributesBase):
 
     # TODO: Allow duration link to another buff (that is, buff_3_duration = buff_1_duration
 
-    @outer_loop_exit_handler
+    @loop_exit_handler
     def _run_buff_attr_creation_without_result_msg(self):
-
-        start_msg = fat_delimiter(40)
-        start_msg += '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, self.ability_name)
-
-        print(start_msg)
 
         self.ask_amount_of_buffs()
         self.change_buff_names()
@@ -2000,6 +2012,11 @@ class BuffAbilityAttributes(AttributesBase):
 
     def run_buff_attr_creation(self):
 
+        start_msg = fat_delimiter(40)
+        start_msg += '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, self.ability_name)
+
+        print(start_msg)
+
         self._run_buff_attr_creation_without_result_msg()
         print(delimiter(40))
         pp.pprint(self.buffs_dct)
@@ -2011,10 +2028,10 @@ class AbilitiesAttributes(object):
         self.champion_name = champion_name
         self.abilities_attributes = dict(
             inn={},
-            Q_STATS={},
-            W_STATS={},
-            E_STATS={},
-            R_STATS={})
+            q={},
+            w={},
+            e={},
+            r={})
 
     @staticmethod
     def single_spell_attrs():
@@ -2027,6 +2044,8 @@ class AbilitiesAttributes(object):
         Returns:
             (dct)
         """
+
+        print(fat_delimiter(100))
 
         dct = self.single_spell_attrs()
 
@@ -2045,10 +2064,7 @@ class AbilitiesAttributes(object):
 
         dct['buffs'] = buffs_inst.buffs_dct
 
-        # Message
-        msg = fat_delimiter(10)
-        msg += '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, spell_name)
-        print(msg)
+        print(fat_delimiter(40))
         pp.pprint(dct)
 
         return dct
@@ -2062,8 +2078,7 @@ class AbilitiesAttributes(object):
         """
 
         for spell_name in ('q', 'w', 'e', 'r'):
-            key = spell_name.upper() + '_STATS'
-            self.abilities_attributes[key] = self._create_single_spell_attrs(spell_name=spell_name)
+            self.abilities_attributes[spell_name] = self._create_single_spell_attrs(spell_name=spell_name)
 
     def _create_single_spell_effects_dct(self, spell_name):
         """
@@ -2076,7 +2091,7 @@ class AbilitiesAttributes(object):
             (dct)
         """
 
-        print(fat_delimiter(40))
+        print(fat_delimiter(100))
         print('\nSPELL EFFECTS')
 
         univ_msg = '\nCHAMPION %s, ABILITY %s' % (self.champion_name, spell_name)
@@ -2098,8 +2113,6 @@ class AbilitiesAttributes(object):
                                      modified_dct=temp_dct,
                                      extra_start_msg=dmg_msg)
                 print(temp_dct)
-
-
 
                 # BUFFS APPLICATION
                 buffs_applied_msg = '%s\nBUFFS (%s) (%s)' % (univ_msg, tar_type, application_type)
