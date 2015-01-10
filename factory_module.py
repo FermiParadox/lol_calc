@@ -126,24 +126,18 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='',
 
     for attr_name in sorted(suggested_values_dct):
 
-        display = ['1', '2', '3', '4', '5']
-        shortcuts = ['1', '2', '3', '4', '5']
-
         suggested_val_tpl = suggested_values_dct[attr_name]
 
         # Ensures lists to be zipped have same length.
         shortcut_len = len(suggested_val_tpl)
-        display = display[:shortcut_len]
-        shortcuts = shortcuts[:shortcut_len]
 
         # INITIAL CHOICE MESSAGE
         msg = delimiter(num_of_lines=20)
         msg += '\nATTRIBUTE: %s\n' % attr_name
-        for shortcut_val, suggested_val, display_val in zip(shortcuts, suggested_val_tpl, display):
+        for display_val, suggested_val in enumerate(suggested_val_tpl, 1):
             msg += '\n%s: %s' % (display_val, suggested_val)
 
         # CHOICE PROCESSING
-        choice_num = None
 
         # (only "enter" as input is not accepted)
         while True:
@@ -156,12 +150,16 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='',
         # (breaks loop prematurely if asked)
         check_for_loop_exit(key=input_given)
 
-        for val_num, val in enumerate(shortcuts):
-            if val == input_given:
-                choice_num = val_num
-                break
+        choice_num = None
+        # (checks if input is an int corresponding to a suggested value shortcut)
+        try:
+            int_form_input = int(input_given)
+            if int_form_input >= 1:
+                if int_form_input <= shortcut_len:
+                    choice_num = int_form_input - 1
+        except ValueError:
+            pass
 
-        # Checks if user chose a suggested value.
         if choice_num is not None:
             chosen_value = suggested_val_tpl[choice_num]
         else:
@@ -211,6 +209,35 @@ def _new_automatic_attr_dct_name(targeted_dct, attr_type):
     # If there was no existing attr dict, returns preset name value.
     else:
         return new_attr_name
+
+
+# ---------------------------------------------------------------
+def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_msg='', stop_key=INNER_LOOP_KEY,
+                                error_key=OUTER_LOOP_KEY):
+
+    start_msg = '\n' + delimiter(40)
+    start_msg += '\n(type "%s" to exit inner loops)\n' % stop_key
+    start_msg += '\n(type "%s" to exit outer loops)\n' % error_key
+    start_msg += extra_start_msg
+    print(start_msg)
+
+    for num, val in enumerate(suggested_values_lst):
+        print('\n%s: %s' % (num, val))
+
+    user_choice = input('Select all valid names.')
+
+    # Exits loop if requested.
+    check_for_loop_exit(user_choice)
+
+    user_choice.remove(' ', '')
+
+    # ('7,5,' repeatedly)
+    pattern = re.compile('(\d{1,2},)+')
+    matches = re.findall(pattern, user_choice)
+
+
+
+
 
 
 # ---------------------------------------------------------------
@@ -492,8 +519,7 @@ class ExploreApiAbilities(object):
             (str)
         """
 
-        label = label.lstrip()
-        label = label.rstrip()
+        label = label.strip()
 
         # (upper or lower case is irrelevant)
         label = label.lower()
@@ -715,7 +741,7 @@ class ExploreApiAbilities(object):
             for ability_name in ('q', 'w', 'e', 'r'):
 
                 category_name = self.single_cost_category(champ_name=champ, ability_name=ability_name)['costType']
-                category_name.rstrip().lower().lstrip()
+                category_name.lower().strip()
 
                 self._store_and_note_frequency(string=category_name,
                                                modified_dct=cost_categories_dct,
@@ -2080,6 +2106,20 @@ class AbilitiesAttributes(object):
         for spell_name in ('q', 'w', 'e', 'r'):
             self.abilities_attributes[spell_name] = self._create_single_spell_attrs(spell_name=spell_name)
 
+
+
+
+
+            break
+
+
+
+
+
+    def create_passive_attrs(self):
+        # TODO
+        ''
+
     def _create_single_spell_effects_dct(self, spell_name):
         """
         Creates effects dict of a single spell, for given champion.
@@ -2092,15 +2132,12 @@ class AbilitiesAttributes(object):
         """
 
         print(fat_delimiter(100))
-        print('\nSPELL EFFECTS')
+        print('\nEFFECTS DICT')
 
-        univ_msg = '\nCHAMPION %s, ABILITY %s' % (self.champion_name, spell_name)
+        univ_msg = '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, spell_name)
 
-        dmgs_names = sorted(self.spells_attributes[spell_name]['dmgs'])
-        buffs_names = sorted(self.spells_attributes[spell_name]['buffs'])
-
-        suggested_dmgs_names = {num: key for num, key in enumerate(dmgs_names)}
-        suggested_buffs_names = {num: key for num, key in enumerate(buffs_names)}
+        dmgs_names = sorted(self.abilities_attributes[spell_name]['dmgs'])
+        buffs_names = sorted(self.abilities_attributes[spell_name]['buffs'])
 
         spell_effects_dct = palette.ChampionsStats.spell_effects()
 
@@ -2108,7 +2145,10 @@ class AbilitiesAttributes(object):
             for application_type in ('passives', 'actives'):
                 # DMGS
                 temp_dct = {}
+
                 dmg_msg = '%s\nDMG (%s) (%s)' % (univ_msg, tar_type, application_type)
+                dmg_msg = dmg_msg.upper()
+
                 _suggest_attr_values(suggested_values_dct=suggested_dmgs_names,
                                      modified_dct=temp_dct,
                                      extra_start_msg=dmg_msg)
@@ -2116,12 +2156,16 @@ class AbilitiesAttributes(object):
 
                 # BUFFS APPLICATION
                 buffs_applied_msg = '%s\nBUFFS (%s) (%s)' % (univ_msg, tar_type, application_type)
+                buffs_applied_msg = buffs_applied_msg.upper()
+
                 _suggest_attr_values(suggested_values_dct=suggested_buffs_names,
                                      modified_dct=spell_effects_dct[tar_type][application_type]['buffs'],
                                      extra_start_msg=buffs_applied_msg)
-
+                # TODO reverse msg content up and down from here
                 # BUFF REMOVAL
                 buff_removal_msg = '%s\nBUFFS REMOVED (%s) (%s)' % (univ_msg, tar_type, application_type)
+                buff_removal_msg = buff_removal_msg.upper()
+
                 _suggest_attr_values(suggested_values_dct=suggested_buffs_names,
                                      modified_dct=spell_effects_dct[tar_type][application_type]['remove_buff'],
                                      extra_start_msg=buff_removal_msg)
@@ -2132,6 +2176,7 @@ class AbilitiesAttributes(object):
                              modified_dct=spell_effects_dct['player']['actives'],
                              extra_start_msg=cd_mod_msg)
 
+        return spell_effects_dct
 
 # ===============================================================
 # ===============================================================
@@ -2167,4 +2212,6 @@ if __name__ == '__main__':
 
     testCombination = True
     if testCombination is True:
-        AbilitiesAttributes(champion_name='jax').create_all_spell_attrs()
+        inst = AbilitiesAttributes(champion_name='jax')
+        inst.create_all_spell_attrs()
+        inst._create_single_spell_effects_dct('q')
