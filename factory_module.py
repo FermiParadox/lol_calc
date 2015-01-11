@@ -569,6 +569,32 @@ class ExploreBase(object):
         else:
             modified_lst.append(examined_str)
 
+    @staticmethod
+    def _store_and_note_frequency(string, modified_dct, name, only_freq=False, champions_or_items='champions'):
+        """
+        Modifies a dict by noting a string's frequency.
+
+        Args:
+            only_freq: (bool)
+            champions_or_items: (str) 'champions' or 'items'. Used as dict keyword.
+        Returns:
+            (None)
+        """
+        if string not in modified_dct:
+            modified_dct.update(
+                {string: dict(
+                    frequency=1,)})
+        else:
+            modified_dct[string]['frequency'] += 1
+
+        if only_freq is False:
+            if champions_or_items not in modified_dct[string]:
+                modified_dct[string].update({champions_or_items: []})
+
+            # Notes champion (or item) name.
+            if name not in modified_dct[string][champions_or_items]:
+                modified_dct[string][champions_or_items].append(name)
+
 
 class ExploreApiAbilities(ExploreBase):
 
@@ -599,26 +625,6 @@ class ExploreApiAbilities(ExploreBase):
             return True
         else:
             return False
-
-    @staticmethod
-    def _store_and_note_frequency(string, modified_dct, champ):
-        """
-        Modifies a dict by noting a string's frequency.
-
-        Returns:
-            (None)
-        """
-        if string not in modified_dct:
-            modified_dct.update(
-                {string: dict(
-                    frequency=1,
-                    champions=[])})
-        else:
-            modified_dct[string]['frequency'] += 1
-
-        # Notes champion name.
-        if champ not in modified_dct[string]['champions']:
-            modified_dct[string]['champions'].append(champ)
 
     def label_occurrences(self, champions_lst=None, print_mode=False):
         """
@@ -773,7 +779,7 @@ class ExploreApiAbilities(ExploreBase):
                                                  raw_str=raw_str)
 
         # Checks if print mode is selected.
-        _return_or_pprint_lst(print_mode=print_mode, lst=tooltips_lst)
+        return _return_or_pprint_lst(print_mode=print_mode, lst=tooltips_lst)
 
     def single_cost_category(self, champ_name, ability_name):
         """
@@ -804,7 +810,7 @@ class ExploreApiAbilities(ExploreBase):
 
                 self._store_and_note_frequency(string=category_name,
                                                modified_dct=cost_categories_dct,
-                                               champ=champ)
+                                               name=champ)
 
         return _return_or_pprint_complex_obj(print_mode=print_mode, dct=cost_categories_dct)
 
@@ -828,7 +834,7 @@ class ExploreApiAbilities(ExploreBase):
 
                     self._store_and_note_frequency(string=resource_name,
                                                    modified_dct=cost_categories_dct,
-                                                   champ=champ)
+                                                   name=champ)
                 except KeyError:
                     pass
 
@@ -969,12 +975,15 @@ class ExploreApiItems(ExploreBase):
 
         for item_name in item_lst:
 
-            self._append_all_or_matching_str(examined_str=self.used_items[item_name][element_name],
-                                             modified_lst=descriptions_lst,
-                                             raw_str=raw_str)
+            try:
+                self._append_all_or_matching_str(examined_str=self.used_items[item_name][element_name],
+                                                 modified_lst=descriptions_lst,
+                                                 raw_str=raw_str)
+            except KeyError:
+                print("\n'%s' has no element '%s'" % (item_name, element_name))
 
         # Checks if print mode is selected.
-        _return_or_pprint_lst(print_mode=print_mode, lst=descriptions_lst)
+        return _return_or_pprint_lst(print_mode=print_mode, lst=descriptions_lst)
 
     def sanitized_descriptions(self, item=None, raw_str=None, print_mode=False):
         """
@@ -986,6 +995,26 @@ class ExploreApiItems(ExploreBase):
 
         return self._item_elements(element_name='sanitizedDescription', item=item,
                                    raw_str=raw_str, print_mode=print_mode)
+
+    def item_tags(self, only_freq=False, print_mode=False):
+        """
+        Returns or pretty prints all item tags.
+        """
+        item_occurrence_dct = {}
+
+        for item_name in self.used_items:
+
+            try:
+                tags_lst = self.used_items[item_name]['tags']
+
+                for tag_str in tags_lst:
+                    self._store_and_note_frequency(string=tag_str, modified_dct=item_occurrence_dct,
+                                                   champions_or_items='items', name=item_name, only_freq=only_freq)
+
+            except KeyError:
+                print("\n'%s' has no element '%s'" % (item_name, 'tags'))
+
+        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=item_occurrence_dct)
 
 
 # ===============================================================
