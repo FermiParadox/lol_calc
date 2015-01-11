@@ -546,7 +546,31 @@ class RequestAllMasteriesFromAPI(RequestDataFromAPI):
 # ===============================================================
 #       API EXPLORATION
 # ===============================================================
-class ExploreApiAbilities(object):
+class ExploreBase(object):
+
+    @staticmethod
+    def _append_all_or_matching_str(examined_str, modified_lst, raw_str=None):
+        """
+        Modifies a list by inserting strings that match given pattern.
+        If no required string is given, simply appends string to list.
+
+        Args:
+            raw_str: (str) raw string or None
+
+        """
+        # If a key phrase is selected and present stores value.
+        if raw_str is not None:
+            pattern_1 = re.compile(raw_str, re.IGNORECASE | re.VERBOSE)
+            if re.search(pattern_1, examined_str) is not None:
+
+                modified_lst.append(examined_str)
+
+        # If no required pattern, simply stores value.
+        else:
+            modified_lst.append(examined_str)
+
+
+class ExploreApiAbilities(ExploreBase):
 
     def __init__(self):
         self.data_module = __import__('api_champions_database')
@@ -715,18 +739,18 @@ class ExploreApiAbilities(object):
             else:
                 return self.champion_abilities(champion_name=champ, ability_name='inn', print_mode=False)
 
-    def sanitized_tooltips(self, champ=None, r_str=None, print_mode=False):
+    def sanitized_tooltips(self, champ=None, raw_str=None, print_mode=False):
         """
         Returns all tooltips for given champion (or for all champions),
         or prints it.
 
-        If r_str is provided it, searches for its pattern.
+        If raw_str is provided, searches for its pattern.
 
         WARNING: VERBOSE flag chosen.
 
         Args:
             champ: (str) or (None)
-            r_str: (str) Normal str or raw str
+            raw_str: (str) Normal str or raw str
         Returns:
             (lst)
             (None)
@@ -744,16 +768,9 @@ class ExploreApiAbilities(object):
         for champ_name in champ_lst:
             for spell_dct in self.all_champions_data_dct[champ_name]['spells']:
 
-                # If a key phrase is selected and present stores value.
-                if r_str is not None:
-                    pattern_1 = re.compile(r_str, re.IGNORECASE | re.VERBOSE)
-                    if re.search(pattern_1, spell_dct['sanitizedTooltip']) is not None:
-
-                        tooltips_lst.append(spell_dct['sanitizedTooltip'])
-
-                # If no required pattern, simply stores value.
-                else:
-                    tooltips_lst.append(spell_dct['sanitizedTooltip'])
+                self._append_all_or_matching_str(examined_str=spell_dct['sanitizedTooltip'],
+                                                 modified_lst=tooltips_lst,
+                                                 raw_str=raw_str)
 
         # Checks if print mode is selected.
         _return_or_pprint_lst(print_mode=print_mode, lst=tooltips_lst)
@@ -818,7 +835,7 @@ class ExploreApiAbilities(object):
         return _return_or_pprint_complex_obj(print_mode=print_mode, dct=cost_categories_dct)
 
 
-class ExploreApiItems(object):
+class ExploreApiItems(ExploreBase):
 
     def __init__(self):
         self.data_module = __import__('api_items_database')
@@ -923,6 +940,52 @@ class ExploreApiItems(object):
             raise KeyError('More than one matches found.')
         else:
             raise KeyError('No match.')
+
+    def _item_elements(self, element_name, item=None, raw_str=None, print_mode=False):
+        """
+        Returns element for given item (or for all items),
+        or prints it.
+
+        If raw_str is provided, searches for its pattern.
+
+        WARNING: VERBOSE flag chosen.
+
+        Args:
+            item: (str) or (None)
+            raw_str: (str) Normal str or raw str
+        Returns:
+            (lst)
+            (None)
+        """
+
+        # All items, or selected item.
+        if item is None:
+            item_lst = self.used_items
+        else:
+            # (need a list so it inserts selection into a list)
+            item_lst = [item, ]
+
+        descriptions_lst = []
+
+        for item_name in item_lst:
+
+            self._append_all_or_matching_str(examined_str=self.used_items[item_name][element_name],
+                                             modified_lst=descriptions_lst,
+                                             raw_str=raw_str)
+
+        # Checks if print mode is selected.
+        _return_or_pprint_lst(print_mode=print_mode, lst=descriptions_lst)
+
+    def sanitized_descriptions(self, item=None, raw_str=None, print_mode=False):
+        """
+        Returns "descriptions" for given item (or for all items),
+        or prints it.
+
+        Check parent method for more details.
+        """
+
+        return self._item_elements(element_name='sanitizedDescription', item=item,
+                                   raw_str=raw_str, print_mode=print_mode)
 
 
 # ===============================================================
@@ -2255,7 +2318,7 @@ if __name__ == '__main__':
 
     testExploration = False
     if testExploration is True:
-        ExploreApiAbilities().sanitized_tooltips(champ='jax', r_str=r'every\s\d+hit', print_mode=True)
+        ExploreApiAbilities().sanitized_tooltips(champ='jax', raw_str=r'every\s\d+hit', print_mode=True)
 
     testCombination = True
     if testCombination is True:
