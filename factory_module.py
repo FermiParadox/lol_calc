@@ -69,13 +69,41 @@ def fat_delimiter(num_of_lines):
 
 
 # ---------------------------------------------------------------
-def _return_or_pprint(print_mode, obj):
+def _return_or_pprint_complex_obj(print_mode, dct):
+    """
+    Used for pretty printing a dict or returning it.
+
+    Args:
+        print_mode: (bool)
+    Returns:
+        (None)
+        (dct)
+    """
 
     if print_mode is True:
-        pp.pprint(obj)
+        pp.pprint(dct)
 
     else:
-        return obj
+        return dct
+
+
+def _return_or_pprint_lst(print_mode, lst):
+    """
+    Used for pretty printing a list with separators between elements, or returning it.
+
+    Args:
+        print_mode: (bool)
+    Returns:
+        (None)
+        (lst)
+    """
+
+    if print_mode is True:
+        for elem in lst:
+            pp.pprint(elem)
+            print(delimiter(num_of_lines=5))
+    else:
+        return lst
 
 
 # ---------------------------------------------------------------
@@ -604,7 +632,7 @@ class ExploreApiAbilities(object):
                     if in_tooltip:
                         final_dct[label]['in_tooltip'] += 1
 
-        return _return_or_pprint(print_mode=print_mode, obj=final_dct)
+        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=final_dct)
 
     def mod_link_names(self):
         """
@@ -644,7 +672,7 @@ class ExploreApiAbilities(object):
 
         champ_stats = self.all_champions_data_dct[champion_name]['stats']
 
-        return _return_or_pprint(print_mode=print_mode, obj=champ_stats)
+        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=champ_stats)
 
     def champion_abilities(self, champion_name, ability_name=None, print_mode=False):
         """
@@ -665,7 +693,7 @@ class ExploreApiAbilities(object):
             else:
                 result = champ_dct['spells']['qwer'.index(ability_name)]
 
-        return _return_or_pprint(print_mode=print_mode, obj=result)
+        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=result)
 
     def champion_innates(self, champion_name=None, print_mode=False):
         """
@@ -728,12 +756,7 @@ class ExploreApiAbilities(object):
                     tooltips_lst.append(spell_dct['sanitizedTooltip'])
 
         # Checks if print mode is selected.
-        if print_mode is True:
-            for tooltip in tooltips_lst:
-                print(delimiter(num_of_lines=5))
-                pp.pprint(tooltip)
-        else:
-            return tooltips_lst
+        _return_or_pprint_lst(print_mode=print_mode, lst=tooltips_lst)
 
     def single_cost_category(self, champ_name, ability_name):
         """
@@ -766,7 +789,7 @@ class ExploreApiAbilities(object):
                                                modified_dct=cost_categories_dct,
                                                champ=champ)
 
-        return _return_or_pprint(print_mode=print_mode, obj=cost_categories_dct)
+        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=cost_categories_dct)
 
     def resource_names(self, print_mode=False):
         """
@@ -792,7 +815,7 @@ class ExploreApiAbilities(object):
                 except KeyError:
                     pass
 
-        return _return_or_pprint(print_mode=print_mode, obj=cost_categories_dct)
+        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=cost_categories_dct)
 
 
 class ExploreApiItems(object):
@@ -873,7 +896,7 @@ class ExploreApiItems(object):
         or a partial match otherwise.
 
         Raises:
-            (KeyValue) if more than one matches found.
+            (KeyValue) if more than one matches found, or no matches
         Returns:
             (dct)
         """
@@ -895,7 +918,7 @@ class ExploreApiItems(object):
                 dct = self.used_items[existing_name]
 
         if items_found == 1:
-            return _return_or_pprint(print_mode=print_mode, obj=dct)
+            return _return_or_pprint_complex_obj(print_mode=print_mode, dct=dct)
         elif items_found > 1:
             raise KeyError('More than one matches found.')
         else:
@@ -2117,32 +2140,6 @@ class AbilitiesAttributes(object):
 
         return dct
 
-    def create_all_spell_attrs(self):
-        """
-        Creates all attributes for all abilities of given champion.
-
-        Returns
-            (dct)
-        """
-
-        for spell_name in ('q', 'w', 'e', 'r'):
-            self.abilities_attributes[spell_name] = self._create_single_spell_attrs(spell_name=spell_name)
-
-
-
-
-
-            break
-
-    def set_spells_effects(self):
-
-        for spell_name in ('q', 'w', 'e', 'r'):
-            self.spells_effects.update({spell_name: palette.ChampionsStats.spell_effects()})
-
-    def create_passive_attrs(self):
-        # TODO
-        ''
-
     def _create_single_spell_effects_dct(self, spell_name):
         """
         Creates effects dict of a single spell, for given champion.
@@ -2203,6 +2200,31 @@ class AbilitiesAttributes(object):
 
         pp.pprint(self.spells_effects)
 
+    def create_spells_attrs_and_effects(self):
+        """
+        Creates all attributes for all spells of given champion,
+        including spell effects.
+
+        Returns
+            (dct)
+        """
+
+        for spell_name in ('q', 'w', 'e', 'r'):
+            self.abilities_attributes[spell_name] = self._create_single_spell_attrs(spell_name=spell_name)
+            self._create_single_spell_effects_dct(spell_name=spell_name)
+
+
+
+    def set_spells_effects(self):
+
+        for spell_name in ('q', 'w', 'e', 'r'):
+            self.spells_effects.update({spell_name: palette.ChampionsStats.spell_effects()})
+
+    def create_passive_attrs(self):
+        # TODO
+        ''
+
+
 # ===============================================================
 # ===============================================================
 if __name__ == '__main__':
@@ -2238,5 +2260,5 @@ if __name__ == '__main__':
     testCombination = True
     if testCombination is True:
         inst = AbilitiesAttributes(champion_name='jax')
-        inst.create_all_spell_attrs()
+        inst.create_spells_attrs_and_effects()
         inst._create_single_spell_effects_dct('q')
