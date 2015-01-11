@@ -214,30 +214,49 @@ def _new_automatic_attr_dct_name(targeted_dct, attr_type):
 # ---------------------------------------------------------------
 def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_msg='', stop_key=INNER_LOOP_KEY,
                                 error_key=OUTER_LOOP_KEY):
+    """
+    Suggests values from a list to user.
 
+    User has to pick all valid values in his single answer.
+
+    Returns:
+        (None)
+    """
     start_msg = '\n' + delimiter(40)
     start_msg += '\n(type "%s" to exit inner loops)\n' % stop_key
     start_msg += '\n(type "%s" to exit outer loops)\n' % error_key
     start_msg += extra_start_msg
     print(start_msg)
 
-    for num, val in enumerate(suggested_values_lst):
-        print('\n%s: %s' % (num, val))
+    for num, val in enumerate(suggested_values_lst, 1):
+        print('%s: %s' % (num, val))
 
-    user_choice = input('Select all valid names.')
+    # Asks user.
+    while True:
+        user_choice = input('\nSelect all valid names. (press only enter for empty)\n')
 
-    # Exits loop if requested.
-    check_for_loop_exit(user_choice)
+        # Exits loop if requested.
+        check_for_loop_exit(user_choice)
 
-    user_choice.remove(' ', '')
+        # (only comma, whitespace and digits are valid characters, or empty string)
+        if re.search(r'[^\d,\s]', user_choice) is not None:
+            print("\nInvalid answer. Answer may contain only digits, whitespaces and comma.")
 
-    # ('7,5,' repeatedly)
-    pattern = re.compile('(\d{1,2},)+')
-    matches = re.findall(pattern, user_choice)
+        else:
+            # Checks if given values correspond to actual indexes.
+            # If not, message is repeated.
+            try:
+                # (e.g. '2, 7,5, 1')
+                pattern = re.compile(r'(\d{1,2})+')
+                matches = re.findall(pattern, user_choice)
 
+                for match in matches:
+                    index_num = int(match)
+                    modified_lst.append(suggested_values_lst[index_num-1])
+                break
 
-
-
+            except IndexError:
+                print("\nInvalid answer. Indexes out of range.")
 
 
 # ---------------------------------------------------------------
@@ -1399,13 +1418,13 @@ class DmgAbilityAttributes(AttributesBase):
             msg = '\n' + delimiter(num_of_lines=10)
             msg += '\nSelect dmg values.'
 
-            for couple in enumerate(lst_of_values):
+            for couple in enumerate(lst_of_values, 1):
                 msg += '\n%s: %s' % couple
 
             chosen_lst_num = input(msg + '\n')
 
             try:
-                selected_lst = lst_of_values[int(chosen_lst_num)]
+                selected_lst = lst_of_values[int(chosen_lst_num-1)]
                 self.dmgs_dct[dmg_name]['dmg_values'] = selected_lst
                 return
 
@@ -2059,6 +2078,9 @@ class AbilitiesAttributes(object):
             e={},
             r={})
 
+        self.spells_effects = {}
+        self.set_spells_effects()
+
     @staticmethod
     def single_spell_attrs():
         return dict(general={}, dmgs={}, buffs={})
@@ -2112,9 +2134,10 @@ class AbilitiesAttributes(object):
 
             break
 
+    def set_spells_effects(self):
 
-
-
+        for spell_name in ('q', 'w', 'e', 'r'):
+            self.spells_effects.update({spell_name: palette.ChampionsStats.spell_effects()})
 
     def create_passive_attrs(self):
         # TODO
@@ -2128,7 +2151,7 @@ class AbilitiesAttributes(object):
         and cd modifiers.
 
         Returns:
-            (dct)
+            (None)
         """
 
         print(fat_delimiter(100))
@@ -2139,44 +2162,46 @@ class AbilitiesAttributes(object):
         dmgs_names = sorted(self.abilities_attributes[spell_name]['dmgs'])
         buffs_names = sorted(self.abilities_attributes[spell_name]['buffs'])
 
-        spell_effects_dct = palette.ChampionsStats.spell_effects()
+        effects_dct = self.spells_effects[spell_name]
 
         for tar_type in ('enemy', 'player'):
             for application_type in ('passives', 'actives'):
                 # DMGS
-                temp_dct = {}
 
-                dmg_msg = '%s\nDMG (%s) (%s)' % (univ_msg, tar_type, application_type)
+                dmg_msg = '%s\n' % univ_msg
+                dmg_msg += '%s -- %s -- DMG APPLIED\n' % (tar_type, application_type)
                 dmg_msg = dmg_msg.upper()
 
-                _suggest_attr_values(suggested_values_dct=suggested_dmgs_names,
-                                     modified_dct=temp_dct,
-                                     extra_start_msg=dmg_msg)
-                print(temp_dct)
+                _suggest_lst_of_attr_values(suggested_values_lst=dmgs_names,
+                                            modified_lst=effects_dct[tar_type][application_type]['dmg'],
+                                            extra_start_msg=dmg_msg)
 
                 # BUFFS APPLICATION
-                buffs_applied_msg = '%s\nBUFFS (%s) (%s)' % (univ_msg, tar_type, application_type)
+                buffs_applied_msg = '%s\n' % univ_msg
+                buffs_applied_msg += '%s -- %s -- BUFFS APPLIED' % (tar_type, application_type)
                 buffs_applied_msg = buffs_applied_msg.upper()
 
-                _suggest_attr_values(suggested_values_dct=suggested_buffs_names,
-                                     modified_dct=spell_effects_dct[tar_type][application_type]['buffs'],
-                                     extra_start_msg=buffs_applied_msg)
-                # TODO reverse msg content up and down from here
+                _suggest_lst_of_attr_values(suggested_values_lst=buffs_names,
+                                            modified_lst=effects_dct[tar_type][application_type]['buffs'],
+                                            extra_start_msg=buffs_applied_msg)
+
                 # BUFF REMOVAL
-                buff_removal_msg = '%s\nBUFFS REMOVED (%s) (%s)' % (univ_msg, tar_type, application_type)
+                buff_removal_msg = '%s\n' % univ_msg
+                buff_removal_msg += '%s -- %s -- BUFFS REMOVED' % (tar_type, application_type)
                 buff_removal_msg = buff_removal_msg.upper()
 
-                _suggest_attr_values(suggested_values_dct=suggested_buffs_names,
-                                     modified_dct=spell_effects_dct[tar_type][application_type]['remove_buff'],
-                                     extra_start_msg=buff_removal_msg)
+                _suggest_lst_of_attr_values(suggested_values_lst=buffs_names,
+                                            modified_lst=effects_dct[tar_type][application_type]['remove_buff'],
+                                            extra_start_msg=buff_removal_msg)
 
         # CD MODIFICATION
+        """
         cd_mod_msg = '\nCDs MODIFIED ON CAST'
         _suggest_attr_values(suggested_values_dct=['0'],
                              modified_dct=spell_effects_dct['player']['actives'],
-                             extra_start_msg=cd_mod_msg)
+                             extra_start_msg=cd_mod_msg)"""
 
-        return spell_effects_dct
+        pp.pprint(self.spells_effects)
 
 # ===============================================================
 # ===============================================================
