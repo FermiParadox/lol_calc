@@ -2200,7 +2200,12 @@ class AbilitiesAttributes(object):
             r={})
 
         self.spells_effects = {}
-        self.set_spells_effects()
+        self._set_spells_effects()
+
+    def _set_spells_effects(self):
+
+        for spell_name in SPELL_SHORTCUTS:
+            self.spells_effects.update({spell_name: palette.ChampionsStats.spell_effects()})
 
     @staticmethod
     def single_spell_attrs():
@@ -2325,14 +2330,10 @@ class AbilitiesAttributes(object):
 
         for spell_name in SPELL_SHORTCUTS:
             self.abilities_attributes[spell_name] = self._create_single_spell_attrs(spell_name=spell_name)
-            self._create_single_spell_effects_dct(spell_name=spell_name)
-
-
-
-    def set_spells_effects(self):
-
+        
+        # (has to follow all buff and dmg creation so that all names are available)
         for spell_name in SPELL_SHORTCUTS:
-            self.spells_effects.update({spell_name: palette.ChampionsStats.spell_effects()})
+            self._create_single_spell_effects_dct(spell_name=spell_name)
 
     def create_passive_attrs(self):
         # TODO
