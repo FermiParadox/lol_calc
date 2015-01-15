@@ -268,7 +268,7 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
 
         # (only comma, whitespace and digits are valid characters, or empty string)
         if re.search(r'[^\d,\s]', user_choice) is not None:
-            print("\nInvalid answer. Answer may contain only digits, whitespaces and comma.")
+            print("\nInvalid answer. Answer may contain only digits, whitespaces and comma. (or enter)")
 
         else:
             # Checks if given values correspond to actual indexes.
@@ -288,8 +288,14 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
 
 
 # ---------------------------------------------------------------
+SPELL_SHORTCUTS = ('q', 'w', 'e', 'r')
+ABILITY_SHORTCUTS = ('inn', ) + SPELL_SHORTCUTS
+EXTRA_SPELL_SHORTCUTS = ('q2', 'w2', 'e2', 'r2')
+ALL_POSSIBLE_ABILITIES_SHORTCUTS = ABILITY_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
+
+
 def spell_num(ability_name):
-    return ('q', 'w', 'e', 'r').index(ability_name)
+    return SPELL_SHORTCUTS.index(ability_name)
 
 
 def ability_num(ability_name):
@@ -803,7 +809,7 @@ class ExploreApiAbilities(ExploreBase):
         cost_categories_dct = {}
 
         for champ in self.champions_lst:
-            for ability_name in ('q', 'w', 'e', 'r'):
+            for ability_name in SPELL_SHORTCUTS:
 
                 category_name = self.single_cost_category(champ_name=champ, ability_name=ability_name)['costType']
                 category_name.lower().strip()
@@ -1291,7 +1297,7 @@ class GeneralAbilityAttributes(AttributesBase):
     @loop_exit_handler
     def suggest_gen_attr_values(self):
 
-        extra_msg = '\nDMG ATTRIBUTE CREATION\n'
+        extra_msg = '\nGENERAL ATTRIBUTE CREATION\n'
         extra_msg += self._champion_and_ability_msg()
 
         _suggest_attr_values(suggested_values_dct=self.USUAL_VALUES_GEN_ATTR,
@@ -1359,7 +1365,7 @@ class DmgAbilityAttributes(AttributesBase):
             target_type=('enemy', 'player'),
             # TODO insert more categories in class and then here.
             dmg_category=('standard_dmg', 'innate_dmg', 'chain_decay', 'chain_limited_decay', 'aa_dmg_value'),
-            dmg_source=('q', 'w', 'e', 'r', 'inn', 'q2', 'w2', 'e2', 'r2',),
+            dmg_source=ALL_POSSIBLE_ABILITIES_SHORTCUTS,
             life_conversion_type=('spellvamp', None, 'lifesteal'),
             radius=(None, ),
             dot=(False, True),
@@ -2284,11 +2290,27 @@ class AbilitiesAttributes(object):
                                             extra_start_msg=buff_removal_msg)
 
         # CD MODIFICATION
-        """
+        lst_of_modified = []
         cd_mod_msg = '\nCDs MODIFIED ON CAST'
-        _suggest_attr_values(suggested_values_dct=['0'],
-                             modified_dct=spell_effects_dct['player']['actives'],
-                             extra_start_msg=cd_mod_msg)"""
+        _suggest_lst_of_attr_values(suggested_values_lst=SPELL_SHORTCUTS,
+                                    modified_lst=lst_of_modified,
+                                    extra_start_msg=cd_mod_msg)
+
+        for cd_modified in lst_of_modified:
+
+            mod_value = None
+            while True:
+                mod_value = input('\nHow much is it modified for?\n')
+
+                try:
+                    if float(mod_value) > 0:
+                        break
+                    else:
+                        print('\nValue has to be higher than 0. Try again.')
+                except ValueError:
+                    print('\nValue has to be num. Try again.')
+
+            effects_dct['player']['actives']['cds_modified'].update({cd_modified: mod_value})
 
         pp.pprint(self.spells_effects)
 
@@ -2301,7 +2323,7 @@ class AbilitiesAttributes(object):
             (dct)
         """
 
-        for spell_name in ('q', 'w', 'e', 'r'):
+        for spell_name in SPELL_SHORTCUTS:
             self.abilities_attributes[spell_name] = self._create_single_spell_attrs(spell_name=spell_name)
             self._create_single_spell_effects_dct(spell_name=spell_name)
 
@@ -2309,7 +2331,7 @@ class AbilitiesAttributes(object):
 
     def set_spells_effects(self):
 
-        for spell_name in ('q', 'w', 'e', 'r'):
+        for spell_name in SPELL_SHORTCUTS:
             self.spells_effects.update({spell_name: palette.ChampionsStats.spell_effects()})
 
     def create_passive_attrs(self):
@@ -2323,7 +2345,7 @@ if __name__ == '__main__':
 
     testGen = False
     if testGen is True:
-        for ability_shortcut in ('q', 'w', 'e', 'r'):
+        for ability_shortcut in SPELL_SHORTCUTS:
             GeneralAbilityAttributes(ability_name=ability_shortcut, champion_name='drmundo').run_gen_attr_creation()
             break
 
@@ -2336,7 +2358,7 @@ if __name__ == '__main__':
     testBuffs = False
     if testBuffs is True:
         for champName in ExploreApiAbilities().all_champions_data_dct:
-            for abilityName in ('q', 'w', 'e', 'r'):
+            for abilityName in SPELL_SHORTCUTS:
                 res = BuffAbilityAttributes(abilityName, champName).refined_nth_attack()
                 if res:
                     print((champName, res))
