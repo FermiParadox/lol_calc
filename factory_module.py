@@ -294,8 +294,8 @@ EXTRA_SPELL_SHORTCUTS = ('q2', 'w2', 'e2', 'r2')
 ALL_POSSIBLE_ABILITIES_SHORTCUTS = ABILITY_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
 
 
-def spell_num(ability_name):
-    return SPELL_SHORTCUTS.index(ability_name)
+def spell_num(spell_name):
+    return SPELL_SHORTCUTS.index(spell_name)
 
 
 def ability_num(ability_name):
@@ -303,7 +303,7 @@ def ability_num(ability_name):
     if ability_name == 'inn':
         return 0
     else:
-        return spell_num(ability_name=ability_name) + 1
+        return spell_num(spell_name=ability_name) + 1
 
 
 # ===============================================================
@@ -553,6 +553,58 @@ class RequestAllMasteriesFromAPI(RequestDataFromAPI):
 #       API EXPLORATION
 # ===============================================================
 class ExploreBase(object):
+
+    @staticmethod
+    def _full_or_partial_match(searched_name, iterable):
+        """
+        Searches for given name, looking for an exact match, or a partial otherwise.
+
+        Raises:
+            (KeyValue) if more than one matches found, or no matches
+        Returns:
+            (str)
+        """
+
+        # EXACT MATCH
+        try:
+            for elem in iterable:
+                if elem == searched_name:
+                    return searched_name
+        except KeyError:
+            pass
+
+        # PARTIAL MATCH
+        partial_matches_lst = []
+
+        for existing_name in iterable:
+            existing_name = existing_name.lower()
+
+            if searched_name.lower() in existing_name:
+                partial_matches_lst.append(existing_name)
+
+        tot_partial_matches = len(partial_matches_lst)
+        if tot_partial_matches == 1:
+            return partial_matches_lst[0]
+        elif tot_partial_matches > 1:
+            raise KeyError('More than one partial matches found.')
+        else:
+            raise KeyError('No full or partial match.')
+
+    def champion_id(self, searched_name):
+        """
+        Finds a champion's id number.
+
+        Returns:
+            (int)
+        """
+
+        champ_ids_dct = champion_ids.CHAMPION_IDS
+        # Dict with champ names as keys and ids as values.
+        inverted_ids_dct = {val.lower(): key for key, val in champ_ids_dct.items()}
+
+        match_found = self._full_or_partial_match(searched_name=searched_name, iterable=inverted_ids_dct)
+
+        return int(inverted_ids_dct[match_found])
 
     @staticmethod
     def _append_all_or_matching_str(examined_str, modified_lst, raw_str=None):
@@ -930,28 +982,9 @@ class ExploreApiItems(ExploreBase):
             (dct)
         """
 
-        # EXACT MATCH
-        try:
-            return self.used_items[given_name]
-        except KeyError:
-            pass
+        matched_name = self._full_or_partial_match(searched_name=given_name, iterable=self.used_items)
 
-        # PARTIAL MATCH
-        dct = None
-        items_found = 0
-
-        for existing_name in self.used_items:
-            if given_name in existing_name:
-                items_found += 1
-
-                dct = self.used_items[existing_name]
-
-        if items_found == 1:
-            return _return_or_pprint_complex_obj(print_mode=print_mode, dct=dct)
-        elif items_found > 1:
-            raise KeyError('More than one matches found.')
-        else:
-            raise KeyError('No match.')
+        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=self.used_items[matched_name])
 
     def _item_elements(self, element_name, item=None, raw_str=None, print_mode=False):
         """
@@ -1031,7 +1064,7 @@ class AttributesBase(object):
     def __init__(self, ability_name, champion_name):
         self.champion_name = champion_name
         self.ability_name = ability_name
-        self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][spell_num(ability_name=ability_name)]
+        self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][spell_num(spell_name=ability_name)]
         self.api_innate_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['passive']
         self.sanitized_tooltip = self.api_spell_dct['sanitizedTooltip']
         # (removes None from API effect list)
@@ -1805,7 +1838,7 @@ class BuffAbilityAttributes(AttributesBase):
             try:
                 num_iter = range(int(num_of_buffs))
 
-                for num in num_iter:
+                for _ in num_iter:
                     new_buff_name = _new_automatic_attr_dct_name(targeted_dct=self.buffs_dct, attr_type='buff')
                     self.buffs_dct.update({new_buff_name: self.buff_attributes()})
 
@@ -2372,8 +2405,12 @@ if __name__ == '__main__':
     if testExploration is True:
         ExploreApiAbilities().sanitized_tooltips(champ='jax', raw_str=r'every\s\d+hit', print_mode=True)
 
-    testCombination = True
+    testCombination = False
     if testCombination is True:
         inst = AbilitiesAttributes(champion_name='jax')
         inst.create_spells_attrs_and_effects()
         inst._create_single_spell_effects_dct('q')
+
+    testChampIDs = False
+    if testChampIDs is True:
+        print(ExploreApiAbilities().champion_id('dariu'))
