@@ -732,8 +732,9 @@ class DmgApplication(Counters):
             # If it's not an AA checks if either lifesteal or spellvamp is applicable.
             if dmg_type != 'AA':
 
+                life_conversion_type = getattr(self, dmg_name)()['life_conversion_type']
                 # If it can cause spellvamp..
-                if 'spellvamp' in getattr(self, dmg_name)()['special']:
+                if life_conversion_type == 'spellvamp':
 
                     # .. sets the healing done.
                     spellvamp_value = dmg_value * self.request_stat(target_name='player',
@@ -751,7 +752,7 @@ class DmgApplication(Counters):
 
                 # (Lifesteal and spellvamp are exclusive so 'elif' is used)
                 # If the dmg can cause lifesteal..
-                elif 'lifesteal' in getattr(self, dmg_name)()['special']:
+                elif life_conversion_type == 'lifesteal':
 
                     # .. sets the healing done.
                     lifesteal_value = dmg_value * self.request_stat(target_name='player', stat_name='lifesteal')

@@ -100,6 +100,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dmg_type=Q_STATS['general']['dmg_type'],
         target='enemy',
         dmg_source='q',
+        life_conversion_type='spellvamp',
         special=dict(spellvamp=None, dash_distance=Q_STATS['general']['range']),)
 
     def q_dmg(self):
@@ -150,7 +151,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dmg_category='standard_dmg',
         target='enemy',
         dmg_source='w',
-        special=dict(spellvamp=None, )
+        life_conversion_type='spellvamp',
+        special=dict( )
     )
 
     def w_dmg(self):
@@ -220,7 +222,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
         max_targets=E_STATS['general']['max_targets'],
         delay=E_STATS['general']['delay'],
         dmg_source='e',
-        special=dict(spellvamp=None, aoe=None, ),)
+        life_conversion_type='spellvamp',
+        special=dict(aoe=None, ),)
 
     def e_dmg(self):
         return self.E_DMG
@@ -283,7 +286,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dmg_category='standard_dmg',
         target='enemy',
         dmg_source='r',
-        special=dict(spellvamp=None, ),)
+        life_conversion_type='spellvamp',
+        special=dict( ),)
 
     def r_dmg(self):
         return self.R_DMG

@@ -2413,7 +2413,7 @@ if __name__ == '__main__':
     testCombination = True
     if testCombination is True:
         inst = AbilitiesAttributes(champion_name='jax')
-        inst.create_spells_attrs_and_effects()
+        inst._create_single_spell_attrs('q')
 
     testChampIDs = False
     if testChampIDs is True:
