@@ -733,7 +733,8 @@ class DmgApplication(Counters):
             # If it's not an AA checks if either lifesteal or spellvamp is applicable.
             if dmg_type != 'AA':
 
-                life_conversion_type = getattr(self, dmg_name)()['life_conversion_type']
+                dmg_dct = getattr(self, dmg_name)()
+                life_conversion_type = dmg_dct['life_conversion_type']
                 # If it can cause spellvamp..
                 if life_conversion_type == 'spellvamp':
 
@@ -742,7 +743,7 @@ class DmgApplication(Counters):
                                                                     stat_name='spellvamp')
 
                     # If it's an aoe affect, applies modifier.
-                    if 'aoe' in getattr(self, dmg_name)()['special']:
+                    if dmg_dct['max_targets'] != 1:
                         spellvamp_value *= self.AOE_SPELLVAMP_MOD
 
                     self.apply_heal_value(tar_name='player',
@@ -1008,7 +1009,7 @@ class DeathAndRegen(DmgApplication):
             period=self.NATURAL_REGEN_PERIOD,
             dmg_type='true',
             target='enemy',
-            special={'dot': None},
+            dot=True,
             duration='permanent',)
 
     @staticmethod
@@ -1029,7 +1030,7 @@ class DeathAndRegen(DmgApplication):
             period=self.NATURAL_REGEN_PERIOD,
             dmg_type='true',
             target='player',
-            special={'dot': None},
+            dot=True,
             duration='permanent',)
 
     @staticmethod
@@ -1053,7 +1054,7 @@ class DeathAndRegen(DmgApplication):
             period=self.NATURAL_REGEN_PERIOD,
             resource_type='mp',
             target='player',
-            special={'dot': None},
+            dot=True,
             duration='permanent',
         )
 

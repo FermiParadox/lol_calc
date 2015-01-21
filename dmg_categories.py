@@ -176,7 +176,7 @@ class Categories(object):
             dmg_type='AA',
             target='enemy',
             dmg_source='AA',
-            special=dict())
+            dot=False,)
 
 
 # Test module.

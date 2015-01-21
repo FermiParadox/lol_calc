@@ -228,17 +228,16 @@ class EventsGeneral(buffs.DeathAndRegen):
         dmg_dct = getattr(self, dmg_name)()
 
         # Checks if event is periodic.
-        if 'special' in dmg_dct:
-            if 'dot' in dmg_dct['special']:
-                # If only temporary periodic events are re-applied..
-                if only_temporary:
-                    # ..checks if their duration is not permanent.
-                    if dmg_dct['duration'] != 'permanent':
-                        self.refresh_periodic_event(dmg_name=dmg_name, tar_name=tar_name, dmg_dct=dmg_dct)
-
-                # Otherwise checks both permanent and temporary dots.
-                else:
+        if dmg_dct['dot'] is True:
+            # If only temporary periodic events are re-applied..
+            if only_temporary:
+                # ..checks if their duration is not permanent.
+                if dmg_dct['duration'] != 'permanent':
                     self.refresh_periodic_event(dmg_name=dmg_name, tar_name=tar_name, dmg_dct=dmg_dct)
+
+            # Otherwise checks both permanent and temporary dots.
+            else:
+                self.refresh_periodic_event(dmg_name=dmg_name, tar_name=tar_name, dmg_dct=dmg_dct)
 
 
 class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
@@ -424,16 +423,15 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        if 'special' in self.request_ability_stats(ability_name=action_name)['general']:
-            if 'resets_aa' in self.request_ability_stats(ability_name=action_name)['general']['special']:
+        if self.request_ability_stats(ability_name=action_name)['general']['resets_aa']:
 
-                for action_time in sorted(self.actions_dct, reverse=True):
+            for action_time in sorted(self.actions_dct, reverse=True):
 
-                    # If an AA has been casted earlier...
-                    if 'AA' == self.actions_dct[action_time]['action_name']:
-                        # ..sets its cd_end to current_time.
-                        self.actions_dct[action_time]['cd_end'] = self.current_time
-                        break
+                # If an AA has been casted earlier...
+                if 'AA' == self.actions_dct[action_time]['action_name']:
+                    # ..sets its cd_end to current_time.
+                    self.actions_dct[action_time]['cd_end'] = self.current_time
+                    break
 
     def action_cast_start(self, action_name):
         """

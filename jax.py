@@ -1,9 +1,5 @@
 import dmg_categories
 
-"""
-Temp note: 'special={}' must be inside all dmg dicts of all champs.
-"""
-
 
 class TotalChampionAttributes(dmg_categories.Categories):
 
@@ -84,6 +80,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
             resource_cost_type='mp',
             fixed_cost=65,
 
+            resets_aa=False,
+
             base_dmg_tpl=(70, 110, 150, 190, 230),
             dmg_type='physical',
             scaling_stats=dict(
@@ -104,9 +102,11 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dmg_category='standard_dmg',
         dmg_type=Q_STATS['general']['dmg_type'],
         target='enemy',
+        max_targets=1,
         dmg_source='q',
+        dot=False,
         life_conversion_type='spellvamp',
-        special=dict(dash_distance=Q_STATS['general']['range']),)
+        )
 
     def q_dmg(self):
         return self.Q_DMG
@@ -139,6 +139,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
             resource_cost_type='mp',
             fixed_cost=30,
 
+            resets_aa=True,
+
             base_dmg_tpl=(40, 75, 110, 145, 180),
             dmg_type='magic',
             scaling_stats=dict(
@@ -147,7 +149,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
 
             duration=10,
             cast_time=0.,
-            special=dict(resets_aa=None, cd_extendable='w_buff'))
+            )
     )
 
     def w_dmg_value(self):
@@ -158,9 +160,10 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dmg_type=W_STATS['general']['dmg_type'],
         dmg_category='standard_dmg',
         target='enemy',
+        max_targets=1,
         dmg_source='w',
+        dot=False,
         life_conversion_type='spellvamp',
-        special=dict( )
     )
 
     def w_dmg(self):
@@ -175,7 +178,6 @@ class TotalChampionAttributes(dmg_categories.Categories):
             remove_buff=['w_buff']
         ),
         prohibit_cd_start='w',
-        special=dict()
     )
 
     def w_buff(self):
@@ -198,6 +200,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
 
             dashed_distance=0,
             move_while_casting=False,
+            resets_aa=False,
 
             base_cd_tpl=(18, 16, 14, 12, 10),
 
@@ -220,7 +223,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
             duration=1,
             max_targets='unlimited',
             special_effect='stun',
-            aoe=None,
+            aoe=True,
         ),
         buff=dict(
             stats=dict(aoe_percent_dmg_reduction=0.25)
@@ -234,8 +237,9 @@ class TotalChampionAttributes(dmg_categories.Categories):
         max_targets=E_STATS['general']['max_targets'],
         delay=E_STATS['general']['delay'],
         dmg_source='e',
+        dot=False,
         life_conversion_type='spellvamp',
-        special=dict(aoe=None, ),)
+        aoe=True,)
 
     def e_dmg(self):
         return self.E_DMG
@@ -271,6 +275,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
             resource_cost_type='mp',
             fixed_cost=100,
 
+            resets_aa=False,
+
             dashed_distance=0,
             move_while_casting=False,
 
@@ -300,9 +306,10 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dmg_type=R_STATS['general']['dmg_type'],
         dmg_category='standard_dmg',
         target='enemy',
+        max_targets=1,
         dmg_source='r',
-        life_conversion_type='spellvamp',
-        special=dict( ),)
+        dot=False,
+        life_conversion_type='spellvamp',)
 
     def r_dmg(self):
         return self.R_DMG
