@@ -1801,7 +1801,8 @@ class BuffAbilityAttributes(AttributesBase):
     USUAL_BUFF_ATTR_VALUES = dict(
         target_type=('player', 'enemy'),
         max_stacks=(1,),
-        duration=(1,)
+        duration=(1,),
+        prohibit_cd_start=(None, )
         )
 
     def _stat_names_in_tooltip(self):

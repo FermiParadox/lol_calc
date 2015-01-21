@@ -590,19 +590,19 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         buff_dct = getattr(self, buff_name)()
 
         # Checks if buff delays the start of an action's cd.
-        if 'special' in buff_dct:
-            if 'delay_cd_start' in buff_dct['special']:
+        if buff_dct['prohibit_cd_start']:
+            prohibited_ability_dc = buff_dct['prohibit_cd_start']
 
-                # Finds the affected action..
-                for action_time in sorted(self.actions_dct, reverse=True):
-                    if self.actions_dct[action_time]['action_name'] == buff_dct['special']['delay_cd_start']:
+            # Finds the affected action..
+            for action_time in sorted(self.actions_dct, reverse=True):
+                if self.actions_dct[action_time]['action_name'] == prohibited_ability_dc:
 
-                        # .. and applies the new cd.
-                        self.actions_dct[action_time]['cd_end'] = self.ability_cooldown(
-                            ability_name=self.actions_dct[action_time]['action_name'],
-                            stats_function=self.request_stat)
+                    # .. and applies the new cd.
+                    self.actions_dct[action_time]['cd_end'] = self.ability_cooldown(
+                        ability_name=self.actions_dct[action_time]['action_name'],
+                        stats_function=self.request_stat)
 
-                        break
+                    break
 
         # Removes buff.
         del self.active_buffs['player'][buff_name]

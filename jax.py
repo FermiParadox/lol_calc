@@ -37,7 +37,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
                 att_speed=dict(
                     percent=(4., 6., 8., 10., 12., 14.))),
             duration=2.5,
-            target='player', ))
+            target='player',
+            prohibit_cd_start=None,))
 
     def innate_att_speed_buff(self):
         return dict(
@@ -46,14 +47,16 @@ class TotalChampionAttributes(dmg_categories.Categories):
                 att_speed=dict(
                     percent=self.innate_value(self.INNATE_ATT_SPEED_TPL))),
             duration=2.5,
-            target='player',)
+            target='player',
+            prohibit_cd_start=None,)
 
     INNATE_INITIATOR_BUFF = dict(
         on_hit=dict(cause_dmg=[],
                     apply_buff=['innate_att_speed_buff'],
                     remove_buff=[]),
         target='player',
-        duration='permanent',)
+        duration='permanent',
+        prohibit_cd_start=None,)
 
     def innate_initiator_buff(self):
         """
@@ -171,7 +174,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
             apply_buff=[],
             remove_buff=['w_buff']
         ),
-        special=dict(delay_cd_start='w')
+        prohibit_cd_start='w',
+        special=dict()
     )
 
     def w_buff(self):
@@ -306,7 +310,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
     R_COUNTER_BUFF = dict(
         duration=R_STATS['counter_buff']['duration'],
         target='player',
-        max_stacks=2)
+        max_stacks=2,
+        prohibit_cd_start=None,)
 
     def r_counter_buff(self):
         return self.R_COUNTER_BUFF
@@ -322,7 +327,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
                         apply_buff=['r_counter_buff'],
                         remove_buff=[]),
             target='player',
-            duration='permanent',)
+            duration='permanent',
+            prohibit_cd_start=None,)
 
         # .. otherwise it causes the dmg and resets the counter.
         if 'r_counter_buff' in self.act_buffs['player']:
@@ -344,6 +350,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dct = dict(
             duration=self.R_STATS['armor_buff']['duration'],
             target='player',
+            prohibit_cd_start=None,
             stats=dict(
                 armor=dict(
                     additive=self.scaling_stat_buff(list_of_values=self.R_STATS['armor_buff']['base_stat_tpl'],
