@@ -83,7 +83,8 @@ class Gunblade(ItemsBase):
             dmg_category='standard_dmg',
             dmg_type=self.GUNBLADE_ATTRIBUTES['active']['dmg_type'],
             target='enemy',
-            special={'spellvamp': None, 'dmg_source': 'gunblade'}
+            dmg_source='gunblade',
+            special=dict(spellvamp=None, )
         )
 
     def gunblade_dmg_value(self):

@@ -651,7 +651,7 @@ class Counters(BuffsGeneral):
         Returns:
             (None)
         """
-        source_name = dmg_dct['special']['dmg_source']
+        source_name = dmg_dct['dmg_source']
 
         if source_name in self.combat_results['player']['source']:
             self.combat_results['player']['source'][source_name] += final_dmg_value

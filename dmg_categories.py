@@ -175,7 +175,8 @@ class Categories(object):
             dmg_category='aa_dmg_value',
             dmg_type='AA',
             target='enemy',
-            special={'dmg_source': 'AA'})
+            dmg_source='AA',
+            special=dict())
 
 
 # Test module.

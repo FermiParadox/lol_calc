@@ -99,7 +99,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dmg_category='standard_dmg',
         dmg_type=Q_STATS['general']['dmg_type'],
         target='enemy',
-        special={'spellvamp': None, 'dmg_source': 'q', 'dash_distance': Q_STATS['general']['range']},)
+        dmg_source='q',
+        special=dict(spellvamp=None, dash_distance=Q_STATS['general']['range']),)
 
     def q_dmg(self):
         return self.Q_DMG
@@ -137,7 +138,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
 
             duration=10,
             cast_time=0.,
-            special={'resets_aa': None, 'cd_extendable': 'w_buff'})
+            special=dict(resets_aa=None, cd_extendable='w_buff'))
     )
 
     def w_dmg_value(self):
@@ -148,7 +149,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dmg_type=W_STATS['general']['dmg_type'],
         dmg_category='standard_dmg',
         target='enemy',
-        special={'spellvamp': None, 'dmg_source': 'w'}
+        dmg_source='w',
+        special=dict(spellvamp=None, )
     )
 
     def w_dmg(self):
@@ -162,7 +164,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
             apply_buff=[],
             remove_buff=['w_buff']
         ),
-        special={'delay_cd_start': 'w'}
+        special=dict(delay_cd_start='w')
     )
 
     def w_buff(self):
@@ -217,7 +219,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
         target='enemy',
         max_targets=E_STATS['general']['max_targets'],
         delay=E_STATS['general']['delay'],
-        special={'spellvamp': None, 'aoe': None, 'dmg_source': 'e'},)
+        dmg_source='e',
+        special=dict(spellvamp=None, aoe=None, ),)
 
     def e_dmg(self):
         return self.E_DMG
@@ -279,7 +282,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
         dmg_type=R_STATS['general']['dmg_type'],
         dmg_category='standard_dmg',
         target='enemy',
-        special={'spellvamp': None, 'dmg_source': 'r'},)
+        dmg_source='r',
+        special=dict(spellvamp=None, ),)
 
     def r_dmg(self):
         return self.R_DMG
