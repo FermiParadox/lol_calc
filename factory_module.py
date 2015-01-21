@@ -609,14 +609,16 @@ class ExploreBase(object):
     @staticmethod
     def _append_all_or_matching_str(examined_str, modified_lst, raw_str=None):
         """
-        Modifies a list by inserting strings that match given pattern.
-        If no required string is given, simply appends string to list.
+        Modifies a list by inserting a string that match given pattern.
+        If no required pattern is given, simply appends string to list.
 
         Args:
-            raw_str: (str) raw string or None
-
+            raw_str: (str) pattern of string in raw form or None
+        Returns:
+            (None)
         """
-        # If a key phrase is selected and present stores value.
+
+        # If a key phrase is selected and present, stores value.
         if raw_str is not None:
             pattern_1 = re.compile(raw_str, re.IGNORECASE | re.VERBOSE)
             if re.search(pattern_1, examined_str) is not None:
@@ -1259,7 +1261,7 @@ class GeneralAbilityAttributes(AttributesBase):
     def cost_category(self):
 
         return ExploreApiAbilities().champion_abilities(champion_name=self.champion_name,
-                                                        ability_name=self.ability_name)['costType']
+                                                        ability_name=self.ability_name)['costType'].lower()
 
     def fill_base_cd_values(self):
         """
@@ -1767,6 +1769,7 @@ class BuffAbilityAttributes(AttributesBase):
             on_hit=dict(
                 apply_buff=['placeholder', ],
                 add_dmg=['placeholder', ],
+                reduce_cd={},
                 remove_buff=['placeholder', ]
             ),
             prohibit_cd_start='placeholder',
@@ -1921,6 +1924,8 @@ class BuffAbilityAttributes(AttributesBase):
                     stat_mods_answer = input(stat_mod_msg + '\n')
                     if stat_mods_answer.lower() == 'y':
 
+                        # Creates new mod dict for affected stat.
+                        self.buffs_dct[buff_name]['affected_stats'][affected_stat_app_form].update({'stat_mods': {}})
                         # Inserts new mod name.
                         self.buffs_dct[buff_name]['affected_stats'][affected_stat_app_form]['stat_mods'].update(
                             {stat_mod_app_form: None})
@@ -2405,11 +2410,10 @@ if __name__ == '__main__':
     if testExploration is True:
         ExploreApiAbilities().sanitized_tooltips(champ='jax', raw_str=r'every\s\d+hit', print_mode=True)
 
-    testCombination = False
+    testCombination = True
     if testCombination is True:
         inst = AbilitiesAttributes(champion_name='jax')
         inst.create_spells_attrs_and_effects()
-        inst._create_single_spell_effects_dct('q')
 
     testChampIDs = False
     if testChampIDs is True:
