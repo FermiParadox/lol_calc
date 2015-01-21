@@ -74,6 +74,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         general=dict(
             range=700,
             dashed_distance=700,
+            move_while_casting=False,
 
             base_cd_tpl=(10, 9, 8, 7, 6),
 
@@ -130,6 +131,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
             base_cd_tpl=(7, 6, 5, 4, 3),
 
             dashed_distance=0,
+            move_while_casting=False,
 
             resource_cost_type='mp',
             fixed_cost=30,
@@ -191,6 +193,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
             radius=187.5,
 
             dashed_distance=0,
+            move_while_casting=False,
 
             base_cd_tpl=(18, 16, 14, 12, 10),
 
@@ -265,6 +268,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
             fixed_cost=100,
 
             dashed_distance=0,
+            move_while_casting=False,
 
             base_dmg_tpl=(100, 160, 220),
             dmg_type='magic',

@@ -379,9 +379,17 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         else:
             pre_last_action_start = sorted_action_times[1]
 
-        # Movement starts after cast (or channelling) ends.
-        if 'channel_end' in self.actions_dct[pre_last_action_start]:
+        pre_last_action_name = self.actions_dct[pre_last_action_start]['action_name']
+
+        # Movement starts after cast (or channelling) ends,
+        # unless action allows movement during cast.
+        if ((pre_last_action_name != 'AA') and
+                (self.request_ability_stats(ability_name=pre_last_action_name)['general']['move_while_casting'] is True)):
+                lower_limit = pre_last_action_start
+
+        elif 'channel_end' in self.actions_dct[pre_last_action_start]:
             lower_limit = self.actions_dct[pre_last_action_start]['channel_end']
+
         else:
             lower_limit = self.actions_dct[pre_last_action_start]['cast_end']
 

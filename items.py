@@ -25,7 +25,10 @@ class ItemsBase(dmg_categories.Categories):
 
 class Gunblade(ItemsBase):
 
-    GUNBLADE_ATTRIBUTES = dict(
+    GUNBLADE_STATS = dict(
+        general=dict(
+            move_while_casting=True
+        ),
         passive=dict(
             ad=45,
             ap=65,
@@ -56,11 +59,11 @@ class Gunblade(ItemsBase):
         return dict(
             stats=dict(
                 ad=dict(
-                    additive=self.GUNBLADE_ATTRIBUTES['passive']['ad']),
+                    additive=self.GUNBLADE_STATS['passive']['ad']),
                 ap=dict(
-                    additive=self.GUNBLADE_ATTRIBUTES['passive']['ap']),
+                    additive=self.GUNBLADE_STATS['passive']['ap']),
                 lifesteal=dict(
-                    additive=self.GUNBLADE_ATTRIBUTES['passive']['lifesteal']),
+                    additive=self.GUNBLADE_STATS['passive']['lifesteal']),
             ),
 
             # (up to 6 gunblades can provide this bonus)
@@ -72,7 +75,7 @@ class Gunblade(ItemsBase):
         return dict(
             stats=dict(
                 spellvamp=dict(
-                    additive=self.GUNBLADE_ATTRIBUTES['passive']['spellvamp']),),
+                    additive=self.GUNBLADE_STATS['passive']['spellvamp']),),
 
             target='player',
             duration='permanent',)
@@ -81,7 +84,7 @@ class Gunblade(ItemsBase):
 
         return dict(
             dmg_category='standard_dmg',
-            dmg_type=self.GUNBLADE_ATTRIBUTES['active']['dmg_type'],
+            dmg_type=self.GUNBLADE_STATS['active']['dmg_type'],
             target='enemy',
             dmg_source='gunblade',
             life_conversion_type='spellvamp',
@@ -90,17 +93,17 @@ class Gunblade(ItemsBase):
 
     def gunblade_dmg_value(self):
 
-        return self.standard_dmg(ability_dct=self.GUNBLADE_ATTRIBUTES['active'])
+        return self.standard_dmg(ability_dct=self.GUNBLADE_STATS['active'])
 
     def gunblade_slow_buff(self):
 
         return dict(
             stats=dict(
                 speed_reduction=dict(
-                    percent=self.GUNBLADE_ATTRIBUTES['active']['speed_reduction']),
+                    percent=self.GUNBLADE_STATS['active']['speed_reduction']),
             ),
 
-            duration=self.GUNBLADE_ATTRIBUTES['active']['duration'],
+            duration=self.GUNBLADE_STATS['active']['duration'],
             target='enemy')
 
     @staticmethod

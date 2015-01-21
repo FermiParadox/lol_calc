@@ -22,9 +22,7 @@ class Timers(object):
             (dict)
         """
 
-        dct_name = self.ABILITIES_STATS_NAMES[ability_name]
-
-        return getattr(self, dct_name)
+        return getattr(self, ability_name.upper()+'_STATS')
 
     def cast_end(self, ability_name, action_cast_start):
         """
