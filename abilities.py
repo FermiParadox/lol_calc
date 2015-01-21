@@ -397,12 +397,9 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
         # Abilities
         if previous_action_name in 'qwer':
-            ability_stats = self.request_ability_stats(ability_name=previous_action_name)
+            ability_gen_stats = self.request_ability_stats(ability_name=previous_action_name)['general']
 
-            try:
-                self.total_movement += ability_stats['special']['dashed_distance']
-            except KeyError:
-                pass
+            self.total_movement += ability_gen_stats['dashed_distance']
 
         # Kalista has dash after each aa.
         if self.selected_champions_dct['player'] == 'kalista':

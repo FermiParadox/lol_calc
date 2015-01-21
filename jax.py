@@ -73,6 +73,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
     Q_STATS = dict(
         general=dict(
             range=700,
+            dashed_distance=700,
 
             base_cd_tpl=(10, 9, 8, 7, 6),
 
@@ -101,7 +102,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         target='enemy',
         dmg_source='q',
         life_conversion_type='spellvamp',
-        special=dict(spellvamp=None, dash_distance=Q_STATS['general']['range']),)
+        special=dict(dash_distance=Q_STATS['general']['range']),)
 
     def q_dmg(self):
         return self.Q_DMG
@@ -127,6 +128,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
     W_STATS = dict(
         general=dict(
             base_cd_tpl=(7, 6, 5, 4, 3),
+
+            dashed_distance=0,
 
             resource_cost_type='mp',
             fixed_cost=30,
@@ -186,6 +189,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
         general=dict(
             range=0,
             radius=187.5,
+
+            dashed_distance=0,
 
             base_cd_tpl=(18, 16, 14, 12, 10),
 
@@ -258,6 +263,8 @@ class TotalChampionAttributes(dmg_categories.Categories):
             fixed_base_cd=80,
             resource_cost_type='mp',
             fixed_cost=100,
+
+            dashed_distance=0,
 
             base_dmg_tpl=(100, 160, 220),
             dmg_type='magic',
