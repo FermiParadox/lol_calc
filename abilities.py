@@ -397,21 +397,33 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         if move_value > 0.1:
             self.total_movement += move_value
 
-    def previous_action_dash(self):
+    def add_action_dash(self):
+        """
+        Adds last action's dash distance.
 
-        previous_action_time = sorted(self.actions_dct, reverse=True)[0]
-        previous_action_name = self.actions_dct[previous_action_time]['action_name']
+        Returns:
+            (None)
+        """
+        last_action_time = sorted(self.actions_dct, reverse=True)[0]
+        last_action_name = self.actions_dct[last_action_time]['action_name']
 
         # Abilities
-        if previous_action_name in 'qwer':
-            ability_gen_stats = self.request_ability_stats(ability_name=previous_action_name)['general']
+        if last_action_name in 'qwer':
+            ability_gen_stats = self.request_ability_stats(ability_name=last_action_name)['general']
 
             self.total_movement += ability_gen_stats['dashed_distance']
+    
+    def add_kalista_dash(self):
+        """
+        Adds Kalista's dash after an AA.
+        
+        Returns:
+            (None)
+        """
 
-        # Kalista has dash after each aa.
         if self.selected_champions_dct['player'] == 'kalista':
             self.total_movement += app_champions_base_stats.CHAMPION_BASE_STATS['kalista']['dashed_distance_on_aa']
-
+    
     # ABILITIES
     def reset_aa_cd(self, action_name):
         """
@@ -526,6 +538,8 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
             # Checks if ability resets AA's cd_end, and applies it.
             self.reset_aa_cd(action_name=action_name)
+            # Movement
+            self.add_action_dash()
 
         # AAs
         elif action_name == 'AA':
@@ -534,6 +548,8 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                     cd_end=cast_start + 1./self.request_stat(target_name='player', stat_name='att_speed'),
                     action_name=action_name,
                     cast_end=cast_start + self.AA_COOLDOWN)})
+            
+            self.add_kalista_dash()
 
         # ITEM ACTIVES OR SUMMONER SPELLS
         else:
@@ -857,7 +873,6 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                 self.add_new_action(new_action)
 
                 # (movement distance)
-                self.previous_action_dash()
                 self.between_action_walking()
 
                 self.apply_pre_action_events()
@@ -1103,9 +1118,10 @@ class VisualRepresentation(Actions):
                 current_hp = self.combat_history[tar_name]['current_hp'][event_time]
                 x_1 = event_time
 
-            # When events finish, adds one last point so that last event cluster is included.
-            x_values.append(hp_change_times[-1])
-            y_values.append(current_hp)
+            if hp_change_times:
+                # When events finish, adds one last point so that last event cluster is included.
+                x_values.append(hp_change_times[-1])
+                y_values.append(current_hp)
 
             subplot_name.plot(x_values, y_values, color=color_lst[color_counter_var], alpha=0.7)
             color_counter_var += 1
@@ -1232,8 +1248,14 @@ class VisualRepresentation(Actions):
 
         # Dps
         dps_value = self.combat_results['player']['dps']
-        dps_value = round(dps_value, 1)
+        # (too short combat time results in string dps)
+        if type(dps_value) is not str:
+            dps_value = round(dps_value, 1)
         table_lst.append((dps_value,))
+
+        # Movement
+        table_lst.append(('MOVEMENT',))
+        table_lst.append((int(self.total_movement),))
 
         subplot_name.axis('off')
         subplot_name.table(
@@ -1504,6 +1526,7 @@ if __name__ == '__main__':
     rot3 = ['AA', 'AA', 'AA']
     rot4 = ['AA']
     rot5 = ['e', 'e']
+    rot6 = ['q', 'AA']
 
     itemLst0 = []
     itemLst1 = ['gunblade']
@@ -1531,3 +1554,4 @@ if __name__ == '__main__':
 # dps: 338.4234113818222 (unexpected change, after changing bonus_ad method to get stats by 'evaluate' instead of direct)
 # dps: 406.06856388086914 (rotation and targets changed)
 # dps: 414.08610981856975 (rotation and targets changed) 1.1sec / 100 rotations
+# dps: 414.1, 2434 movement, 1.1sec / 100 rotations
