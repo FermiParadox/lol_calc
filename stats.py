@@ -186,11 +186,11 @@ class StatCalculation(StatFilters):
         Returns:
             (None)
         Raises:
-            (BaseException) If dict is not empty.
+            (ValueError) If dict is not empty.
         """
 
         if dct:
-            raise BaseException('Target will be replaced.')
+            raise ValueError('Target will be replaced.')
 
         for tar in self.all_target_names:
             dct.update({tar: {}})

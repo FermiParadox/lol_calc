@@ -1186,7 +1186,7 @@ class GeneralAbilityAttributes(AttributesBase):
         Detects cost type and returns its name.
 
         Raises:
-            (BaseException)
+            (ValueError)
         Returns:
             (str)
             None
@@ -1231,7 +1231,7 @@ class GeneralAbilityAttributes(AttributesBase):
             return None
 
         else:
-            raise BaseException('Unknown cost type detected.')
+            raise ValueError('Unknown cost type detected.')
 
     def resource_cost_values(self):
         """
