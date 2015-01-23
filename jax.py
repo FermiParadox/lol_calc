@@ -1,7 +1,7 @@
-import dmg_categories
+import dmg_and_buff_categories
 
 
-class TotalChampionAttributes(dmg_categories.Categories):
+class TotalChampionAttributes(dmg_and_buff_categories.DmgCategories):
 
     def __init__(self,
                  ability_lvls_dct,
@@ -17,12 +17,12 @@ class TotalChampionAttributes(dmg_categories.Categories):
         self.hits_dodged = hits_dodged
         self.ability_lvls_dct = ability_lvls_dct
 
-        dmg_categories.Categories.__init__(self,
-                                           req_stats_func=req_stats_func,
-                                           current_stats=current_stats,
-                                           current_target=current_target,
-                                           champion_lvls_dct=champion_lvls_dct,
-                                           current_target_num=current_target_num)
+        dmg_and_buff_categories.DmgCategories.__init__(self,
+                                              req_stats_func=req_stats_func,
+                                              current_stats=current_stats,
+                                              current_target=current_target,
+                                              champion_lvls_dct=champion_lvls_dct,
+                                              current_target_num=current_target_num)
 
     INNATE_ATT_SPEED_TPL = (4., 6., 8., 10., 12., 14.)
 

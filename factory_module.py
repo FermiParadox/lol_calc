@@ -136,7 +136,7 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='',
     Suggests a value and stores the choice.
 
     Value can be either picked from suggested values,
-    or created by user.
+    or created by dev.
 
     Args:
         suggested_values_dct: (dct) e.g. {ability_attr: (val_1, val_2,), }
@@ -193,7 +193,7 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='',
         else:
             chosen_value = input_given
 
-        # Stores the choice and notifies user.
+        # Stores the choice and notifies dev.
         choice_msg = '%s: %s\n' % (attr_name, chosen_value)
         modified_dct[attr_name] = chosen_value
         print(choice_msg)
@@ -243,7 +243,7 @@ def _new_automatic_attr_dct_name(targeted_dct, attr_type):
 def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_msg='', stop_key=INNER_LOOP_KEY,
                                 error_key=OUTER_LOOP_KEY):
     """
-    Suggests values from a list to user.
+    Suggests values from a list to dev.
 
     User has to pick all valid values in his single answer.
 
@@ -259,15 +259,15 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
     for num, val in enumerate(suggested_values_lst, 1):
         print('%s: %s' % (num, val))
 
-    # Asks user.
+    # Asks dev.
     while True:
-        user_choice = input('\nSelect all valid names. (press only enter for empty)\n')
+        dev_choice = input('\nSelect all valid names. (press only enter for empty)\n')
 
         # Exits loop if requested.
-        check_for_loop_exit(user_choice)
+        check_for_loop_exit(dev_choice)
 
         # (only comma, whitespace and digits are valid characters, or empty string)
-        if re.search(r'[^\d,\s]', user_choice) is not None:
+        if re.search(r'[^\d,\s]', dev_choice) is not None:
             print("\nInvalid answer. Answer may contain only digits, whitespaces and comma. (or enter)")
 
         else:
@@ -276,7 +276,7 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
             try:
                 # (e.g. '2, 7,5, 1')
                 pattern = re.compile(r'(\d{1,2})+')
-                matches = re.findall(pattern, user_choice)
+                matches = re.findall(pattern, dev_choice)
 
                 for match in matches:
                     index_num = int(match)
@@ -345,7 +345,7 @@ class RequestDataFromAPI(object):
     @staticmethod
     def _request_confirmation(requested_item):
         """
-        Asks user if he wants to proceed with data requests from API with given API key.
+        Asks dev if he wants to proceed with data requests from API with given API key.
 
         Args:
             requested_item: (str) Name of requested item from API, e.g. RUNES, ITEMS, ABILITIES.
@@ -358,8 +358,8 @@ class RequestDataFromAPI(object):
 
         abort_msg = '\nData request ABORTED.\n'
 
-        user_start_question = input(start_msg)
-        if user_start_question.lower() == 'y':
+        dev_start_question = input(start_msg)
+        if dev_start_question.lower() == 'y':
             pass
         else:
             raise RequestAborted(abort_msg)
@@ -384,8 +384,8 @@ class RequestDataFromAPI(object):
     @staticmethod
     def data_storage(targeted_module, obj_name, str_to_insert):
         """
-        Reads a file, informs user of file status (empty/full),
-        and asks user action
+        Reads a file, informs dev of file status (empty/full),
+        and asks dev action.
 
         Returns:
             (None)
@@ -401,8 +401,8 @@ class RequestDataFromAPI(object):
 
             if read_module.read() != '':
                 replace_msg = 'Non empty module detected (%s). \nReplace data?\n' % targeted_module
-                user_answer = input(replace_msg)
-                if user_answer.lower() == 'y':
+                dev_answer = input(replace_msg)
+                if dev_answer.lower() == 'y':
                     print('Replacing existing file content..')
                 else:
                     raise InsertionAborted(abort_msg)
@@ -420,7 +420,7 @@ class RequestDataFromAPI(object):
 
     def request_single_page_from_api_as_str(self, page_url, requested_item):
         """
-        Requests a page after confirmation of the user.
+        Requests a page after confirmation of the dev.
 
         Champion data requests are not derivatives of this method.
 
@@ -1341,7 +1341,7 @@ class GeneralAbilityAttributes(AttributesBase):
 
     def run_gen_attr_creation(self):
         """
-        Inserts automatically some attributes and asks the user for the rest.
+        Inserts automatically some attributes and asks the dev for the rest.
 
         Returns:
             (None)
@@ -1553,7 +1553,7 @@ class DmgAbilityAttributes(AttributesBase):
 
     def _suggest_dmg_values(self, dmg_name):
         """
-        Allows the user to choose between possible values from ability's 'effect' list.
+        Allows dev to choose between possible values from ability's 'effect' list.
 
         Returns:
             (None)
@@ -1643,7 +1643,7 @@ class DmgAbilityAttributes(AttributesBase):
 
     def modify_dmg_names(self):
         """
-        Asks user to provide new names for each dmg of given ability.
+        Asks dev to provide new names for each dmg of given ability.
 
         Returns:
             (None)
@@ -1682,7 +1682,7 @@ class DmgAbilityAttributes(AttributesBase):
 
     def insert_extra_dmg(self):
         """
-        Allows user to insert extra dmg dicts that have been missed by automatic inspection.
+        Allows dev to insert extra dmg dicts that have been missed by automatic inspection.
 
         Returns:
             (None)
@@ -1823,7 +1823,7 @@ class BuffAbilityAttributes(AttributesBase):
 
     def ask_amount_of_buffs(self):
         """
-        Asks user for amount of buffs for given ability.
+        Asks dev for amount of buffs for given ability.
 
         Returns:
             (None)
@@ -2377,6 +2377,43 @@ class AbilitiesAttributes(object):
     def create_passive_attrs(self):
         # TODO
         ''
+
+
+class ChampionModuleCreation(object):
+
+    def __init__(self):
+        self.external_vars_dct = {}
+
+    def external_vars(self):
+        """
+        Asks dev for externally set extra variables (set optionally by user, e.g. jax's dodged hits during E).
+        
+        Returns:
+            (None)
+        """
+
+        print(fat_delimiter(40))
+
+        question_msg = '\nExternally set var name? (press enter to skip)'
+
+        while True:
+
+            external_val_name = input(question_msg)
+
+            if external_val_name == '':
+                print('\nNo external variable selected.')
+                break
+            else:
+                external_val_initial_value = input('\nInitial value for %s' % external_val_name)
+
+                self.external_vars_dct.update({external_val_name: external_val_initial_value})
+
+
+
+
+
+
+
 
 
 # ===============================================================

@@ -1,11 +1,11 @@
-import dmg_categories
+import dmg_and_buff_categories
 
 """
 Temp note: 'special={}' must be inside all dmg dicts of all champs.
 """
 
 
-class TotalChampionAttributes(dmg_categories.Categories):
+class TotalChampionAttributes(dmg_and_buff_categories.DmgCategories):
 
     def __init__(self,
                  ability_lvls_dct,
@@ -20,7 +20,7 @@ class TotalChampionAttributes(dmg_categories.Categories):
         self.act_buffs = act_buffs
         self.ability_lvls_dct = ability_lvls_dct
 
-        dmg_categories.Categories.__init__(self,
+        dmg_and_buff_categories.DmgCategories.__init__(self,
                                            tot_stats=tot_stats,
                                            current_stats=current_stats,
                                            current_target=current_target,

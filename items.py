@@ -1,9 +1,9 @@
-import dmg_categories
+import dmg_and_buff_categories
 import palette
 import copy
 
 
-class ItemsBase(dmg_categories.Categories):
+class ItemsBase(dmg_and_buff_categories.DmgCategories):
 
     def __init__(self,
                  req_stats_func,
@@ -15,7 +15,7 @@ class ItemsBase(dmg_categories.Categories):
 
         self.active_buffs = act_buffs
 
-        dmg_categories.Categories.__init__(self,
+        dmg_and_buff_categories.DmgCategories.__init__(self,
                                            req_stats_func=req_stats_func,
                                            current_stats=current_stats,
                                            current_target=current_target,

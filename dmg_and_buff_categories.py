@@ -1,4 +1,4 @@
-class Categories(object):
+class DmgCategories(object):
 
     def __init__(self,
                  req_stats_func,
@@ -179,6 +179,9 @@ class Categories(object):
             dot=False,)
 
 
-# Test module.
-if __name__ == '__main__':
-    print('\nNo tests found.')
+class BuffCategories(object):
+
+    @staticmethod
+    def on_nth_hit(trig_name, trig_stats, trig_owner,):
+
+        pass
