@@ -1,12 +1,23 @@
-import re
+class Hi(object):
+    def __init__(self):
+        self.cat = None
 
-def f(x):
-    p=re.compile(r'(?P<name>hi)(?:\wi)')
-    s=p.findall('hihhinibiii')
-    print(s)
-
-
+    def func(self):
+        pass
 
 if __name__ == '__main__':
 
-    f(1)
+    import ast
+    import pprint as pp
+
+    code = """
+class Hi(object):
+    def __init__(self):
+        self.cat = None
+
+    def func(self):
+        pass"""
+
+    tree = ast.parse(code)
+
+    pp.pprint(ast.dump(tree))

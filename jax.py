@@ -1,7 +1,7 @@
-import dmg_and_buff_categories
+import dmgs_buffs_categories
 
 
-class TotalChampionAttributes(dmg_and_buff_categories.DmgCategories):
+class TotalChampionAttributes(dmgs_buffs_categories.Categories):
 
     def __init__(self,
                  ability_lvls_dct,
@@ -17,12 +17,13 @@ class TotalChampionAttributes(dmg_and_buff_categories.DmgCategories):
         self.hits_dodged = hits_dodged
         self.ability_lvls_dct = ability_lvls_dct
 
-        dmg_and_buff_categories.DmgCategories.__init__(self,
-                                              req_stats_func=req_stats_func,
-                                              current_stats=current_stats,
-                                              current_target=current_target,
-                                              champion_lvls_dct=champion_lvls_dct,
-                                              current_target_num=current_target_num)
+        dmgs_buffs_categories.Categories.__init__(self,
+                                                  req_stats_func=req_stats_func,
+                                                  current_stats=current_stats,
+                                                  current_target=current_target,
+                                                  champion_lvls_dct=champion_lvls_dct,
+                                                  current_target_num=current_target_num,
+                                                  active_buffs=act_buffs)
 
     INNATE_ATT_SPEED_TPL = (4., 6., 8., 10., 12., 14.)
 
@@ -164,7 +165,7 @@ class TotalChampionAttributes(dmg_and_buff_categories.DmgCategories):
         dmg_source='w',
         dot=False,
         life_conversion_type='spellvamp',
-    )
+        )
 
     def w_dmg(self):
         return self.W_DMG
@@ -178,7 +179,7 @@ class TotalChampionAttributes(dmg_and_buff_categories.DmgCategories):
             remove_buff=['w_buff']
         ),
         prohibit_cd_start='w',
-    )
+        )
 
     def w_buff(self):
         return self.W_BUFF
@@ -224,7 +225,7 @@ class TotalChampionAttributes(dmg_and_buff_categories.DmgCategories):
             max_targets='unlimited',
             special_effect='stun',
             aoe=True,
-        ),
+            ),
         buff=dict(
             stats=dict(aoe_percent_dmg_reduction=0.25)
         )

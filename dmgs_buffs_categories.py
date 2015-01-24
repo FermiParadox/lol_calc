@@ -1,11 +1,12 @@
-class DmgCategories(object):
+class Categories(object):
 
     def __init__(self,
                  req_stats_func,
                  current_stats,
                  current_target,
                  champion_lvls_dct,
-                 current_target_num):
+                 current_target_num,
+                 active_buffs):
 
         self.champion_lvls_dct = champion_lvls_dct
         self.player_lvl = self.champion_lvls_dct['player']
@@ -13,7 +14,9 @@ class DmgCategories(object):
         self.current_stats = current_stats
         self.current_target = current_target
         self.current_target_num = current_target_num
+        self.active_buffs = active_buffs
 
+    # GENERAL
     def innate_value(self, list_of_values):
         """
         Returns the value of the player's innate, based on the current champion lvl.
@@ -21,21 +24,30 @@ class DmgCategories(object):
         lvl_partition_size = 18 // len(list_of_values)
         return list_of_values[(self.player_lvl - 1) // lvl_partition_size]
 
-    def scaling_stat_buff(self, list_of_values, scaling_dct, req_stat_function):
+    def on_nth_hit(self, trig_buff_name, trig_stacks, trig_owner_type, pre_trig_lst, post_trig_lst):
         """
-        Calculates the value of a bonus to a stat from a buff.
+        Checks active buffs for trigger buff stacks, and returns corresponding list of effects.
 
         Returns:
-            (float)
+            (list)
         """
 
-        value = list_of_values * (self.player_lvl-1)
+        if trig_owner_type == 'player':
+            tar = 'player'
 
-        for scaling_stat in scaling_dct:
-            value += scaling_dct[scaling_stat] * req_stat_function(stat_name=scaling_stat, tar_name='player')
+        else:
+            tar = self.current_target
 
-        return value
+        tar_act_buffs = self.active_buffs[tar]
+        if trig_buff_name in tar_act_buffs:
+            # (effect must trigger one stack earlier)
+            if tar_act_buffs[trig_buff_name]['current_stacks'] >= trig_stacks-1:
+                return post_trig_lst
 
+        # If buff not active or
+        return pre_trig_lst
+
+    # DMGS
     def standard_dmg(self, ability_dct, ability_lvl=1):
         """
         (int, dict, dict) -> float
@@ -158,7 +170,6 @@ class DmgCategories(object):
         else:
             return value
 
-    # TODO execute_dmg
     def execute_dmg(self,):
         """
         Calculates dmg value, when it depends on target's missing hp.
@@ -178,10 +189,19 @@ class DmgCategories(object):
             dmg_source='AA',
             dot=False,)
 
+    # BUFFS
+    def scaling_stat_buff(self, list_of_values, scaling_dct, req_stat_function):
+        """
+        Calculates the value of a bonus to a stat from a buff.
 
-class BuffCategories(object):
+        Returns:
+            (float)
+        """
 
-    @staticmethod
-    def on_nth_hit(trig_name, trig_stats, trig_owner,):
+        value = list_of_values * (self.player_lvl-1)
 
-        pass
+        for scaling_stat in scaling_dct:
+            value += scaling_dct[scaling_stat] * req_stat_function(stat_name=scaling_stat, tar_name='player')
+
+        return value
+
