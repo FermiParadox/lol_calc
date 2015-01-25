@@ -8,41 +8,10 @@ import pprint as pp
 import copy
 import api_key
 import palette
+import ast
+
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
-
-"""
-Module used for setting attributes for a champion's abilities.
-There is always one 'general' keyword in _STATS, and 0 or more secondary effects.
-
-Approach: Interactive.
-
-Run as main and set attributes interactively.
-
-Automatic functionality:
-    -suggests ability attributes
-    -suggests data source (that is, which tuple in api data to be used for given situation)
-    -checks missing attributes
-    -asks choice confirmation
-    -creates source code (that is, champion module)
-
-e.g.
-garen=ChampionClassFactory(module_name='garen')
-garen.q().gen_attr('resets_aa', 'no_cost')
-
-"""
-
-"""
-# Independent of effect type
-MANDATORY_ATTR_EFFECT = ('target_type',)
-OPTIONAL_ATTR_EFFECT = ('radius', 'aoe', 'max_targets', )
-# Dmg effect tags
-MANDATORY_ATTR_DMG = ('dmg_category', )
-OPTIONAL_ATTR_DMG = ('lifesteal', 'spellvamp', 'dmg_source', 'dot')
-# Buff effect tags
-MANDATORY_ATTR_BUFF = ('duration', )
-OPTIONAL_ATTR_BUFF = ('affects_stat', 'is_trigger', 'delay_cd_start', 'on_hit')
-"""
 
 
 # ===============================================================
@@ -306,14 +275,48 @@ def ability_num(ability_name):
         return spell_num(spell_name=ability_name) + 1
 
 
+# ---------------------------------------------------------------
+def data_storage(targeted_module, obj_name, str_to_insert):
+    """
+    Reads a file, informs dev of file status (empty/full),
+    and asks dev action.
+
+    Returns:
+        (None)
+    """
+
+    # Messages
+    abort_msg = '\nData insertion ABORTED.\n'
+    completion_msg = '\nData insertion COMPLETE.\n'
+
+    # Checks if module is non empty.
+    with open(targeted_module, 'r') as read_module:
+
+        if read_module.read() != '':
+            replace_msg = 'Non empty module detected (%s). \nReplace data?\n' % targeted_module
+            dev_answer = input(replace_msg)
+            if dev_answer.lower() == 'y':
+                print('Replacing existing file content..')
+            else:
+                print(abort_msg)
+                return 
+        else:
+            print('Inserting data..')
+
+    # Creates file content.
+    file_as_str = obj_name + ' = ' + str_to_insert
+
+    # Replaces module content.
+    with open(targeted_module, 'w') as edited_module:
+        edited_module.write(file_as_str)
+
+    print(completion_msg)
+
+
 # ===============================================================
 #       API REQUESTS
 # ===============================================================
 class RequestAborted(BaseException):
-    pass
-
-
-class InsertionAborted(BaseException):
     pass
 
 
@@ -337,8 +340,6 @@ class RequestDataFromAPI(object):
                 return func(*args, **kwargs)
             except RequestAborted as exception_msg:
                 print(exception_msg)
-            except InsertionAborted as exception_msg:
-                print(exception_msg)
 
         return wrapped
 
@@ -350,6 +351,7 @@ class RequestDataFromAPI(object):
         Args:
             requested_item: (str) Name of requested item from API, e.g. RUNES, ITEMS, ABILITIES.
         """
+
         # Messages
         start_msg = '\n' + delimiter(num_of_lines=40)
         start_msg += '\nWARNING !!!\n'
@@ -380,43 +382,6 @@ class RequestDataFromAPI(object):
         page_as_str = page_as_bytes_type.decode('utf-8')
 
         return json.loads(page_as_str)
-
-    @staticmethod
-    def data_storage(targeted_module, obj_name, str_to_insert):
-        """
-        Reads a file, informs dev of file status (empty/full),
-        and asks dev action.
-
-        Returns:
-            (None)
-        """
-
-        # Messages
-
-        abort_msg = '\nData insertion ABORTED.\n'
-        completion_msg = '\nData insertion COMPLETE.\n'
-
-        # Checks if module is non empty.
-        with open(targeted_module, 'r') as read_module:
-
-            if read_module.read() != '':
-                replace_msg = 'Non empty module detected (%s). \nReplace data?\n' % targeted_module
-                dev_answer = input(replace_msg)
-                if dev_answer.lower() == 'y':
-                    print('Replacing existing file content..')
-                else:
-                    raise InsertionAborted(abort_msg)
-            else:
-                print('Inserting data..')
-
-        # Creates file content.
-        file_as_str = obj_name + ' = ' + str_to_insert
-
-        # Replaces module content.
-        with open(targeted_module, 'w') as edited_module:
-            edited_module.write(file_as_str)
-
-        print(completion_msg)
 
     def request_single_page_from_api_as_str(self, page_url, requested_item):
         """
@@ -498,9 +463,9 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
             (None)
         """
 
-        self.data_storage(targeted_module='api_champions_database.py',
-                          obj_name='ALL_CHAMPIONS_ATTR',
-                          str_to_insert=self._request_all_champions_from_api(max_champions=max_champions))
+        data_storage(targeted_module='api_champions_database.py',
+                     obj_name='ALL_CHAMPIONS_ATTR',
+                     str_to_insert=self._request_all_champions_from_api(max_champions=max_champions))
 
 
 class RequestAllRunesFromAPI(RequestDataFromAPI):
@@ -513,9 +478,9 @@ class RequestAllRunesFromAPI(RequestDataFromAPI):
         page_as_str = self.request_single_page_from_api_as_str(page_url=self.RUNES_PAGE_URL,
                                                                requested_item='RUNES')
 
-        self.data_storage(targeted_module='api_runes_database.py',
-                          obj_name='ALL_RUNES',
-                          str_to_insert=page_as_str)
+        data_storage(targeted_module='api_runes_database.py',
+                     obj_name='ALL_RUNES',
+                     str_to_insert=page_as_str)
 
 
 class RequestAllItemsFromAPI(RequestDataFromAPI):
@@ -528,9 +493,9 @@ class RequestAllItemsFromAPI(RequestDataFromAPI):
         page_as_str = self.request_single_page_from_api_as_str(page_url=self.ITEMS_PAGE_URL,
                                                                requested_item='ITEMS')
 
-        self.data_storage(targeted_module='api_items_database.py',
-                          obj_name='ALL_ITEMS',
-                          str_to_insert=page_as_str)
+        data_storage(targeted_module='api_items_database.py',
+                     obj_name='ALL_ITEMS',
+                     str_to_insert=page_as_str)
 
 
 class RequestAllMasteriesFromAPI(RequestDataFromAPI):
@@ -544,9 +509,9 @@ class RequestAllMasteriesFromAPI(RequestDataFromAPI):
         page_as_str = self.request_single_page_from_api_as_str(page_url=self.MASTERIES_PAGE_URL,
                                                                requested_item='MASTERIES')
 
-        self.data_storage(targeted_module='api_masteries_database.py',
-                          obj_name='ALL_MASTERIES',
-                          str_to_insert=page_as_str)
+        data_storage(targeted_module='api_masteries_database.py',
+                     obj_name='ALL_MASTERIES',
+                     str_to_insert=page_as_str)
 
 
 # ===============================================================
@@ -2379,15 +2344,19 @@ class AbilitiesAttributes(object):
         ''
 
 
-class ChampionModuleCreation(object):
+# ===============================================================
+#       MODULE CREATION
+# ===============================================================
+class ModuleCreator(object):
 
-    def __init__(self):
+    def __init__(self, champion_name):
+        self.champion_name = champion_name
         self.external_vars_dct = {}
 
     def external_vars(self):
         """
         Asks dev for externally set extra variables (set optionally by user, e.g. jax's dodged hits during E).
-        
+
         Returns:
             (None)
         """
@@ -2408,12 +2377,17 @@ class ChampionModuleCreation(object):
 
                 self.external_vars_dct.update({external_val_name: external_val_initial_value})
 
+    def insert_attrs(self):
+        """
+        instance = AbilitiesAttributes(champion_name=self.champion_name)
+        instance.create_spells_attrs_and_effects()
+        effects = instance.spells_effects
+        """
 
 
-
-
-
-
+        data_storage(targeted_module='champions/jax.py',
+                     obj_name='ABILITIES_EFFECTS',
+                     str_to_insert=1)
 
 
 # ===============================================================
@@ -2448,7 +2422,7 @@ if __name__ == '__main__':
     if testExploration is True:
         ExploreApiAbilities().sanitized_tooltips(champ='jax', raw_str=r'every\s\d+hit', print_mode=True)
 
-    testCombination = True
+    testCombination = False
     if testCombination is True:
         inst = AbilitiesAttributes(champion_name='jax')
         inst._create_single_spell_attrs('q')
@@ -2456,3 +2430,7 @@ if __name__ == '__main__':
     testChampIDs = False
     if testChampIDs is True:
         print(ExploreApiAbilities().champion_id('dariu'))
+
+    testModuleInsertion = False
+    if testModuleInsertion is True:
+        ModuleCreator(champion_name='jax').insert_attrs()
