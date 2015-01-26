@@ -37,6 +37,15 @@ API_TO_APP_STAT_NAME_MAP = dict(
 )
 
 
+class ChampionBase(object):
+
+    def __init__(self):
+        pass
+
+    def abilities_effects(self):
+        pass
+
+
 class ChampionsStats(object):
     @staticmethod
     def inn_effects():

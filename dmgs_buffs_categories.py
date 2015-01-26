@@ -170,6 +170,15 @@ class Categories(object):
         else:
             return value
 
+    def splash_dmg(self, ability_dct, ability_lvl):
+        """
+        Used for spells that do full dmg on first target and smaller steady amount on any other targets.
+        """
+        if self.current_target_num == 1:
+            return self.standard_dmg(ability_dct=ability_dct, ability_lvl=ability_lvl)
+        else:
+            return self.chain_decay(ability_dct=ability_dct, ability_lvl=ability_lvl)
+
     def execute_dmg(self,):
         """
         Calculates dmg value, when it depends on target's missing hp.

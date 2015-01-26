@@ -2379,15 +2379,24 @@ class ModuleCreator(object):
 
     def insert_attrs(self):
         """
-        instance = AbilitiesAttributes(champion_name=self.champion_name)
-        instance.create_spells_attrs_and_effects()
-        effects = instance.spells_effects
+        Inserts abilities' attributes and effects,
+        after pretty formatting them.
+
+        Returns:
+            (None)
         """
 
+        instance = AbilitiesAttributes(champion_name=self.champion_name)
+        instance.create_spells_attrs_and_effects()
+        abilities_attrs = instance.abilities_attributes
+        effects = instance.spells_effects
 
-        data_storage(targeted_module='champions/jax.py',
-                     obj_name='ABILITIES_EFFECTS',
-                     str_to_insert=1)
+        for dct in (abilities_attrs, effects):
+            dct_as_str = '{\n' + pp.pformat(dct, indent=0)[1:-1] + '\n}'
+
+            data_storage(targeted_module='champions/jax.py',
+                         obj_name='ABILITIES_EFFECTS',
+                         str_to_insert=dct_as_str)
 
 
 # ===============================================================
@@ -2431,6 +2440,6 @@ if __name__ == '__main__':
     if testChampIDs is True:
         print(ExploreApiAbilities().champion_id('dariu'))
 
-    testModuleInsertion = False
+    testModuleInsertion = True
     if testModuleInsertion is True:
         ModuleCreator(champion_name='jax').insert_attrs()
