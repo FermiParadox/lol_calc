@@ -214,7 +214,7 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
     """
     Suggests values from a list to dev.
 
-    User has to pick all valid values in his single answer.
+    Dev has to pick all valid values in his single answer.
 
     Returns:
         (None)
@@ -2196,15 +2196,12 @@ class AbilitiesAttributes(object):
 
     def __init__(self, champion_name):
         self.champion_name = champion_name
-        self.abilities_attributes = dict(
-            inn={},
-            q={},
-            w={},
-            e={},
-            r={})
+        self.abilities_attributes = {key: self.single_spell_attrs() for key in ABILITY_SHORTCUTS}
 
         self.spells_effects = {}
         self._set_spells_effects()
+        
+        self.existing_attr_names = {'dmgs': [], 'buffs': []}
 
     def _set_spells_effects(self):
 
@@ -2214,6 +2211,17 @@ class AbilitiesAttributes(object):
     @staticmethod
     def single_spell_attrs():
         return dict(general={}, dmgs={}, buffs={})
+
+    def add_name_to_existing_attr_names(self, attr_type, attr_names_lst):
+        """
+        Adds all dmg or buff names from selected names list.
+
+        Returns:
+            (None)
+        """
+        for attr_name in attr_names_lst:
+            if attr_name not in self.existing_attr_names[attr_type]:
+                self.existing_attr_names[attr_type].append(attr_name)
 
     def _create_single_spell_attrs(self, spell_name):
         """
@@ -2236,11 +2244,13 @@ class AbilitiesAttributes(object):
         dmgs_instance.run_dmg_attr_creation()
 
         dct['dmgs'] = dmgs_instance.dmgs_dct
+        self.add_name_to_existing_attr_names(attr_type='dmgs', attr_names_lst=dct['dmgs'])
 
         buffs_inst = BuffAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
         buffs_inst.run_buff_attr_creation()
 
         dct['buffs'] = buffs_inst.buffs_dct
+        self.add_name_to_existing_attr_names(attr_type='buffs', attr_names_lst=dct['buffs'])
 
         print(fat_delimiter(40))
         pp.pprint(dct)
@@ -2251,7 +2261,7 @@ class AbilitiesAttributes(object):
         """
         Creates effects dict of a single spell, for given champion.
 
-        User is asked about possible dmg and buff names,
+        Dev is asked about possible dmg and buff names,
         and cd modifiers.
 
         Returns:
@@ -2263,8 +2273,8 @@ class AbilitiesAttributes(object):
 
         univ_msg = '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, spell_name)
 
-        dmgs_names = sorted(self.abilities_attributes[spell_name]['dmgs'])
-        buffs_names = sorted(self.abilities_attributes[spell_name]['buffs'])
+        dmgs_names = self.existing_attr_names['dmgs']
+        buffs_names = self.existing_attr_names['buffs']
 
         effects_dct = self.spells_effects[spell_name]
 
@@ -2334,7 +2344,7 @@ class AbilitiesAttributes(object):
 
         for spell_name in SPELL_SHORTCUTS:
             self.abilities_attributes[spell_name] = self._create_single_spell_attrs(spell_name=spell_name)
-        
+
         # (has to follow all buff and dmg creation so that all names are available)
         for spell_name in SPELL_SHORTCUTS:
             self._create_single_spell_effects_dct(spell_name=spell_name)

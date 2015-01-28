@@ -1,10 +1,21 @@
-s = '{{ asdasd{} }} {{ }}'
+import timeit
 
+setup = """
+class MyClass(object):
 
-if __name__ == '__main__':
+    D = {'a': {'b': {'c': 2}}}
 
-    import re
+    B = D['a']['b']
 
-    pattern = re.compile(r'\{\{.*?\}\}', re.DOTALL)
+    def b1(self):
+        return self.D['a']['b']
 
-    print(re.findall(pattern, s))
+    def b2(self):
+        return self.B
+"""
+
+t1 = timeit.timeit("MyClass().b1()['c']", setup)
+t2 = timeit.timeit("MyClass().b2()['c']", setup)
+
+print(t1)
+print(t2)
