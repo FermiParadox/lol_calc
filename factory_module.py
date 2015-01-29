@@ -33,7 +33,6 @@ def delimiter(num_of_lines, line_type='-'):
 
 
 def fat_delimiter(num_of_lines):
-
     return delimiter(num_of_lines=num_of_lines, line_type='=')
 
 
@@ -90,7 +89,6 @@ OUTER_LOOP_KEY = '!!'
 
 
 def check_for_loop_exit(key):
-
     if key == OUTER_LOOP_KEY:
         print('#### OUTER LOOP EXITED ####')
         raise OuterLoopExit
@@ -249,7 +247,7 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
 
                 for match in matches:
                     index_num = int(match)
-                    modified_lst.append(suggested_values_lst[index_num-1])
+                    modified_lst.append(suggested_values_lst[index_num - 1])
                 break
 
             except IndexError:
@@ -268,7 +266,6 @@ def spell_num(spell_name):
 
 
 def ability_num(ability_name):
-
     if ability_name == 'inn':
         return 0
     else:
@@ -299,7 +296,7 @@ def data_storage(targeted_module, obj_name, str_to_insert):
                 print('Replacing existing file content..')
             else:
                 print(abort_msg)
-                return 
+                return
         else:
             print('Inserting data..')
 
@@ -314,14 +311,13 @@ def data_storage(targeted_module, obj_name, str_to_insert):
 
 
 # ===============================================================
-#       API REQUESTS
+# API REQUESTS
 # ===============================================================
 class RequestAborted(BaseException):
     pass
 
 
 class RequestDataFromAPI(object):
-
     """
     Base class of RequestClasses.
 
@@ -402,7 +398,6 @@ class RequestDataFromAPI(object):
 
 
 class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
-
     def _request_single_champ_from_api(self, champion_id):
         """
         Requests all data for a champion from api.
@@ -469,12 +464,10 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
 
 
 class RequestAllRunesFromAPI(RequestDataFromAPI):
-
     RUNES_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key=" + api_key.KEY
 
     @RequestDataFromAPI.request_abortion_handler
     def store_all_runes_from_api(self):
-
         page_as_str = self.request_single_page_from_api_as_str(page_url=self.RUNES_PAGE_URL,
                                                                requested_item='RUNES')
 
@@ -484,12 +477,10 @@ class RequestAllRunesFromAPI(RequestDataFromAPI):
 
 
 class RequestAllItemsFromAPI(RequestDataFromAPI):
-
     ITEMS_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/item?itemListData=all&api_key=" + api_key.KEY
 
     @RequestDataFromAPI.request_abortion_handler
     def store_all_items_from_api(self):
-
         page_as_str = self.request_single_page_from_api_as_str(page_url=self.ITEMS_PAGE_URL,
                                                                requested_item='ITEMS')
 
@@ -499,13 +490,11 @@ class RequestAllItemsFromAPI(RequestDataFromAPI):
 
 
 class RequestAllMasteriesFromAPI(RequestDataFromAPI):
-
     MASTERIES_PAGE_URL = ('https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/mastery?masteryListData=all&api_key='
                           + api_key.KEY)
 
     @RequestDataFromAPI.request_abortion_handler
     def store_all_items_from_api(self):
-
         page_as_str = self.request_single_page_from_api_as_str(page_url=self.MASTERIES_PAGE_URL,
                                                                requested_item='MASTERIES')
 
@@ -518,7 +507,6 @@ class RequestAllMasteriesFromAPI(RequestDataFromAPI):
 #       API EXPLORATION
 # ===============================================================
 class ExploreBase(object):
-
     @staticmethod
     def _full_or_partial_match(searched_name, iterable):
         """
@@ -587,7 +575,6 @@ class ExploreBase(object):
         if raw_str is not None:
             pattern_1 = re.compile(raw_str, re.IGNORECASE | re.VERBOSE)
             if re.search(pattern_1, examined_str) is not None:
-
                 modified_lst.append(examined_str)
 
         # If no required pattern, simply stores value.
@@ -608,7 +595,7 @@ class ExploreBase(object):
         if string not in modified_dct:
             modified_dct.update(
                 {string: dict(
-                    frequency=1,)})
+                    frequency=1, )})
         else:
             modified_dct[string]['frequency'] += 1
 
@@ -622,7 +609,6 @@ class ExploreBase(object):
 
 
 class ExploreApiAbilities(ExploreBase):
-
     def __init__(self):
         self.data_module = __import__('api_champions_database')
         self.all_champions_data_dct = self.data_module.ALL_CHAMPIONS_ATTR
@@ -798,7 +784,6 @@ class ExploreApiAbilities(ExploreBase):
 
         for champ_name in champ_lst:
             for spell_dct in self.all_champions_data_dct[champ_name]['spells']:
-
                 self._append_all_or_matching_str(examined_str=spell_dct['sanitizedTooltip'],
                                                  modified_lst=tooltips_lst,
                                                  raw_str=raw_str)
@@ -829,7 +814,6 @@ class ExploreApiAbilities(ExploreBase):
 
         for champ in self.champions_lst:
             for ability_name in SPELL_SHORTCUTS:
-
                 category_name = self.single_cost_category(champ_name=champ, ability_name=ability_name)['costType']
                 category_name.lower().strip()
 
@@ -867,7 +851,6 @@ class ExploreApiAbilities(ExploreBase):
 
 
 class ExploreApiItems(ExploreBase):
-
     def __init__(self):
         self.data_module = __import__('api_items_database')
         self.item_related_api_data = self.data_module.ALL_ITEMS
@@ -921,7 +904,6 @@ class ExploreApiItems(ExploreBase):
 
             # Checks if all conditions are met.
             if allowed_on_map and allowed_tags and purchasable:
-
                 item_name = self.all_items_by_id[item_id]['name'].lower()
 
                 # (order below matters for correct naming)
@@ -1027,11 +1009,11 @@ class ExploreApiItems(ExploreBase):
 #       ATTRIBUTE CREATION
 # ===============================================================
 class AttributesBase(object):
-
     def __init__(self, ability_name, champion_name):
         self.champion_name = champion_name
         self.ability_name = ability_name
-        self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][spell_num(spell_name=ability_name)]
+        self.api_spell_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['spells'][
+            spell_num(spell_name=ability_name)]
         self.api_innate_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['passive']
         self.sanitized_tooltip = self.api_spell_dct['sanitizedTooltip']
         # (removes None from API effect list)
@@ -1053,9 +1035,9 @@ class AttributesBase(object):
 
         all_same = True
 
-        for item_num in range(len(lst)-1):
+        for item_num in range(len(lst) - 1):
 
-            if lst[item_num] != lst[item_num+1]:
+            if lst[item_num] != lst[item_num + 1]:
                 all_same = False
                 break
 
@@ -1102,7 +1084,6 @@ class AttributesBase(object):
 
 
 class GeneralAbilityAttributes(AttributesBase):
-
     def __init__(self, ability_name, champion_name):
         AttributesBase.__init__(self,
                                 ability_name=ability_name,
@@ -1144,7 +1125,7 @@ class GeneralAbilityAttributes(AttributesBase):
         dashed_distance=(None,),
         channel_time=(None,),
         resets_aa=(False, True),
-        )
+    )
 
     def resource_cost_type(self):
         """
@@ -1312,6 +1293,9 @@ class GeneralAbilityAttributes(AttributesBase):
             (None)
         """
 
+        # Reset dict content
+        self.general_attr_dct = {}
+
         msg = fat_delimiter(40)
         msg += "\nABILITY'S GENERAL ATTRIBUTES:" + self._champion_and_ability_msg() + '\n'
 
@@ -1325,7 +1309,6 @@ class GeneralAbilityAttributes(AttributesBase):
 
 
 class DmgAbilityAttributes(AttributesBase):
-
     """
     Each instance of this class is used for creation of all dmgs of a single ability.
 
@@ -1356,7 +1339,7 @@ class DmgAbilityAttributes(AttributesBase):
             radius='placeholder',
             dot='placeholder',
             max_targets='placeholder',
-            )
+        )
 
     @staticmethod
     def usual_values_dmg_attr():
@@ -1371,7 +1354,7 @@ class DmgAbilityAttributes(AttributesBase):
             dot=(False, True),
             max_targets=(1, 2, 3, 4, 5, 'infinite'),
             usual_max_targets=(1, 2, 3, 4, 5),
-            )
+        )
 
     AUTOMATICALLY_FILLED_DMG_ATTR = ()
 
@@ -1385,7 +1368,7 @@ class DmgAbilityAttributes(AttributesBase):
                     bonushealth='bonus_hp',
                     bonusspellblock='bonus_ap',
                     health='hp',
-                    mana='mp',)
+                    mana='mp', )
 
     @staticmethod
     def single_dmg_dct_template_in_factory():
@@ -1394,14 +1377,14 @@ class DmgAbilityAttributes(AttributesBase):
             abbr_in_effects='placeholder',
             mod_1='placeholder',
 
-            )
+        )
 
     @staticmethod
     def single_mod_dct_template_in_factory():
         return dict(
             abbr_in_effects='placeholder',
 
-            )
+        )
 
     def raw_dmg_strings(self):
         """
@@ -1440,7 +1423,6 @@ class DmgAbilityAttributes(AttributesBase):
 
         for mod_dct in self.api_spell_dct['vars']:
             if mod_dct['key'] == mod_shortcut:
-
                 link_name = mod_dct['link']
                 stat_name = self.mod_stat_name_map()[link_name]
                 mod_coeff = mod_dct['coeff']
@@ -1545,7 +1527,7 @@ class DmgAbilityAttributes(AttributesBase):
             chosen_lst_num = input(msg + '\n')
 
             try:
-                selected_lst = lst_of_values[int(chosen_lst_num-1)]
+                selected_lst = lst_of_values[int(chosen_lst_num) - 1]
                 self.dmgs_dct[dmg_name]['dmg_values'] = selected_lst
                 return
 
@@ -1597,7 +1579,6 @@ class DmgAbilityAttributes(AttributesBase):
     def suggest_dmg_attr_values(self):
 
         for dmg_temp_name in sorted(self.dmgs_dct):
-
             msg = '\ndmg_values: %s' % self.dmgs_dct[dmg_temp_name]['dmg_values']
             msg += '\nmods: %s' % self.dmgs_dct[dmg_temp_name]['mods']
 
@@ -1626,7 +1607,7 @@ class DmgAbilityAttributes(AttributesBase):
             pp.pprint(self.dmgs_dct)
 
             while True:
-                new_dmg_name = input('\nNew dmg name for %s. (press enter to skip)\n' % dmg)
+                new_dmg_name = input('\nInsert new dmg name for %s. (press enter to skip)\n' % dmg)
                 if new_dmg_name == '':
                     print('\nName will not change.\n')
                     break
@@ -1663,7 +1644,7 @@ class DmgAbilityAttributes(AttributesBase):
                 self._suggest_dmg_values(dmg_name=new_dmg_name)
                 _suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attr(),
                                      modified_dct=self.dmgs_dct[new_dmg_name],
-                                     extra_start_msg='Manually inserted dmg.')
+                                     extra_start_msg='\nManually inserted dmg.')
                 self.modify_dmg_names()
 
             # "enter", 'n' and 'no'
@@ -1700,6 +1681,9 @@ class DmgAbilityAttributes(AttributesBase):
         msg += self._champion_and_ability_msg()
         print(msg)
 
+        # Resets dict contents.
+        self.dmgs_dct = {}
+
         self._run_dmg_attr_creation_without_result_msg()
 
         print(msg)
@@ -1708,7 +1692,6 @@ class DmgAbilityAttributes(AttributesBase):
 
 
 class BuffAbilityAttributes(AttributesBase):
-
     """
     Each instance of this class is used for a single ability.
 
@@ -1738,7 +1721,7 @@ class BuffAbilityAttributes(AttributesBase):
                 remove_buff=['placeholder', ]
             ),
             prohibit_cd_start='placeholder',
-            )
+        )
 
     @staticmethod
     def affected_stat_attributes():
@@ -1768,7 +1751,7 @@ class BuffAbilityAttributes(AttributesBase):
         max_stacks=(1,),
         duration=(1,),
         prohibit_cd_start=(None, )
-        )
+    )
 
     def _stat_names_in_tooltip(self):
         """
@@ -1793,7 +1776,7 @@ class BuffAbilityAttributes(AttributesBase):
         Returns:
             (None)
         """
-        
+
         start_msg = '\n'
         start_msg += delimiter(num_of_lines=10)
         start_msg += '\nHow many buffs in ability %s?' % self.ability_name
@@ -1840,7 +1823,7 @@ class BuffAbilityAttributes(AttributesBase):
                 if change_buffs_answer == 'y':
                     for previous_buff_name in sorted(self.buffs_dct):
                         new_name_msg = delimiter(10)
-                        new_name_msg += '\nNew name for: %s. (press enter to skip)\n' % previous_buff_name
+                        new_name_msg += '\nInsert new name for: %s. (press enter to skip)\n' % previous_buff_name
 
                         new_name = input(new_name_msg)
 
@@ -2068,7 +2051,9 @@ class BuffAbilityAttributes(AttributesBase):
         return nth_as_int
 
     def suggest_stat_buff_attributes(self):
-
+        """
+        Not finished.
+        """
         start_msg = delimiter(40)
         start_msg += '\nABILITY %s' % self.ability_name
         start_msg += '\nBuff modifies stats?'
@@ -2182,6 +2167,9 @@ class BuffAbilityAttributes(AttributesBase):
 
     def run_buff_attr_creation(self):
 
+        # Reset dict content
+        self.buffs_dct = {}
+
         start_msg = fat_delimiter(40)
         start_msg += '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, self.ability_name)
 
@@ -2193,14 +2181,13 @@ class BuffAbilityAttributes(AttributesBase):
 
 
 class AbilitiesAttributes(object):
-
     def __init__(self, champion_name):
         self.champion_name = champion_name
         self.abilities_attributes = {key: self.single_spell_attrs() for key in ABILITY_SHORTCUTS}
 
         self.spells_effects = {}
         self._set_spells_effects()
-        
+
         self.existing_attr_names = {'dmgs': [], 'buffs': []}
 
     def _set_spells_effects(self):
@@ -2358,7 +2345,6 @@ class AbilitiesAttributes(object):
 #       MODULE CREATION
 # ===============================================================
 class ModuleCreator(object):
-
     def __init__(self, champion_name):
         self.champion_name = champion_name
         self.external_vars_dct = {}

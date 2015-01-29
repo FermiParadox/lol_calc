@@ -1,21 +1,18 @@
-import timeit
+from abc import ABCMeta
 
-setup = """
-class MyClass(object):
 
-    D = {'a': {'b': {'c': 2}}}
+class BaseClass(metaclass=ABCMeta):
 
-    B = D['a']['b']
+    def d(self):
+        return self.D
 
-    def b1(self):
-        return self.D['a']['b']
 
-    def b2(self):
-        return self.B
-"""
+class InClass(BaseClass):
 
-t1 = timeit.timeit("MyClass().b1()['c']", setup)
-t2 = timeit.timeit("MyClass().b2()['c']", setup)
+    D = {1: 2}
 
-print(t1)
-print(t2)
+
+
+inst = InClass()
+
+print(inst.d())
