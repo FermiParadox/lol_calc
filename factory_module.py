@@ -37,6 +37,18 @@ def fat_delimiter(num_of_lines):
 
 
 # ---------------------------------------------------------------
+def print_invalid_answer(extra_msg=''):
+    """
+    Prints to notify user of invalid answer given.
+
+    Returns:
+        (None)
+    """
+
+    print('\nInvalid answer. ' + extra_msg)
+
+
+# ---------------------------------------------------------------
 def _return_or_pprint_complex_obj(print_mode, dct):
     """
     Used for pretty printing a dict or returning it.
@@ -235,7 +247,7 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
 
         # (only comma, whitespace and digits are valid characters, or empty string)
         if re.search(r'[^\d,\s]', dev_choice) is not None:
-            print("\nInvalid answer. Answer may contain only digits, whitespaces and comma. (or enter)")
+            print_invalid_answer(extra_msg='Answer may contain only digits, whitespaces and comma. (or enter)')
 
         else:
             # Checks if given values correspond to actual indexes.
@@ -251,7 +263,7 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
                 break
 
             except IndexError:
-                print("\nInvalid answer. Indexes out of range.")
+                print_invalid_answer(extra_msg='Indexes out of range.')
 
 
 # ---------------------------------------------------------------
@@ -1652,7 +1664,7 @@ class DmgAbilityAttributes(AttributesBase):
                 break
 
             else:
-                print('Invalid answer.')
+                print_invalid_answer()
 
     @loop_exit_handler
     def _run_dmg_attr_creation_without_result_msg(self):
@@ -1799,7 +1811,7 @@ class BuffAbilityAttributes(AttributesBase):
                 break
 
             except ValueError:
-                print('Invalid answer. Try again.')
+                print_invalid_answer()
                 pass
 
     def change_buff_names(self):
@@ -1838,7 +1850,7 @@ class BuffAbilityAttributes(AttributesBase):
                 elif change_buffs_answer == 'n':
                     break
                 else:
-                    print('Invalid answer. Try again.')
+                    print_invalid_answer()
 
     def suggest_stat_mods(self, buff_name, affected_stat):
         """
@@ -1895,7 +1907,7 @@ class BuffAbilityAttributes(AttributesBase):
                         self.buffs_dct[buff_name]['affected_stats'][affected_stat_app_form]['stat_mods'] = None
                         break
                     else:
-                        print('\nInvalid answer. Try again.')
+                        print_invalid_answer()
 
     def suggest_affected_stats_and_their_attrs(self, buff_name):
         """
@@ -1936,7 +1948,7 @@ class BuffAbilityAttributes(AttributesBase):
                 elif buff_affects_stat.lower() == 'n':
                     break
                 else:
-                    print('Invalid answer. Try again')
+                    print_invalid_answer()
 
     def suggest_possible_stat_attributes(self, buff_name):
         """
@@ -1971,7 +1983,7 @@ class BuffAbilityAttributes(AttributesBase):
                 break
 
             else:
-                print('\nInvalid answer. Try again.')
+                print_invalid_answer()
 
     def every_nth_attack(self):
         """
@@ -2183,10 +2195,9 @@ class BuffAbilityAttributes(AttributesBase):
 class AbilitiesAttributes(object):
     def __init__(self, champion_name):
         self.champion_name = champion_name
-        self.abilities_attributes = {key: self.single_spell_attrs() for key in ABILITY_SHORTCUTS}
+        self.abilities_attributes = {shortcut: self.single_spell_attrs() for shortcut in ABILITY_SHORTCUTS}
 
         self.spells_effects = {}
-        self._set_spells_effects()
 
         self.existing_attr_names = {'dmgs': [], 'buffs': []}
 
@@ -2210,7 +2221,51 @@ class AbilitiesAttributes(object):
             if attr_name not in self.existing_attr_names[attr_type]:
                 self.existing_attr_names[attr_type].append(attr_name)
 
-    def _create_single_spell_attrs(self, spell_name):
+    def _gen_attr(self, attrs_dct, spell_name):
+        """
+        Modifies given dict by inserting 'general' attributes.
+
+        Returns:
+            (None)
+        """
+
+        gen_instance = GeneralAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
+        gen_instance.run_gen_attr_creation()
+
+        attrs_dct['general'] = gen_instance.general_attr_dct
+
+        print(delimiter(10))
+        print('\nGeneral attributes')
+        pp.pprint(attrs_dct['general'])
+
+    def _dmg_attrs(self, attrs_dct, spell_name):
+        """
+        Modifies given dict by inserting 'general' attributes.
+
+        Returns:
+            (None)
+        """
+        dmgs_instance = DmgAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
+        dmgs_instance.run_dmg_attr_creation()
+
+        attrs_dct['dmgs'] = dmgs_instance.dmgs_dct
+        self.add_name_to_existing_attr_names(attr_type='dmgs', attr_names_lst=attrs_dct['dmgs'])
+
+    def _buff_attrs(self, attrs_dct, spell_name):
+        """
+        Modifies given dict by inserting 'general' attributes.
+
+        Returns:
+            (None)
+        """
+
+        buffs_inst = BuffAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
+        buffs_inst.run_buff_attr_creation()
+
+        attrs_dct['buffs'] = buffs_inst.buffs_dct
+        self.add_name_to_existing_attr_names(attr_type='buffs', attr_names_lst=attrs_dct['buffs'])
+
+    def _single_spell_attrs(self, spell_name):
         """
         Creates all attributes of an ability.
 
@@ -2220,29 +2275,21 @@ class AbilitiesAttributes(object):
 
         print(fat_delimiter(100))
 
-        dct = self.single_spell_attrs()
+        attrs_dct = self.single_spell_attrs()
 
-        gen_instance = GeneralAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
-        gen_instance.run_gen_attr_creation()
+        # GENERAL ATTRIBUTES
+        self._gen_attr(attrs_dct=attrs_dct, spell_name=spell_name)
 
-        dct['general'] = gen_instance.general_attr_dct
+        # DMG ATTRIBUTES
+        self._dmg_attrs(attrs_dct=attrs_dct, spell_name=spell_name)
 
-        dmgs_instance = DmgAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
-        dmgs_instance.run_dmg_attr_creation()
-
-        dct['dmgs'] = dmgs_instance.dmgs_dct
-        self.add_name_to_existing_attr_names(attr_type='dmgs', attr_names_lst=dct['dmgs'])
-
-        buffs_inst = BuffAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
-        buffs_inst.run_buff_attr_creation()
-
-        dct['buffs'] = buffs_inst.buffs_dct
-        self.add_name_to_existing_attr_names(attr_type='buffs', attr_names_lst=dct['buffs'])
+        # BUFF ATTRIBUTES
+        self._buff_attrs(attrs_dct=attrs_dct, spell_name=spell_name)
 
         print(fat_delimiter(40))
-        pp.pprint(dct)
+        pp.pprint(attrs_dct)
 
-        return dct
+        return attrs_dct
 
     def _create_single_spell_effects_dct(self, spell_name):
         """
@@ -2262,6 +2309,8 @@ class AbilitiesAttributes(object):
 
         dmgs_names = self.existing_attr_names['dmgs']
         buffs_names = self.existing_attr_names['buffs']
+
+        self._set_spells_effects()
 
         effects_dct = self.spells_effects[spell_name]
 
@@ -2320,21 +2369,74 @@ class AbilitiesAttributes(object):
 
         pp.pprint(self.spells_effects)
 
-    def create_spells_attrs_and_effects(self):
+    def _create_or_redo_spells_attrs(self):
+        """
+        Creates attributes of every spell.
+        Allows redoing creation for each spell, if needed.
+
+        Returns:
+            (None)
+        """
+
+        for spell_name in SPELL_SHORTCUTS:
+
+            # Creates spell att
+            self.abilities_attributes[spell_name] = self._single_spell_attrs(spell_name=spell_name)
+
+            # Redo spell attributes if needed.
+            while True:
+                redo_all_attr_of_spell = input('\nRedo all attributes of %s?\n' % spell_name.upper())
+
+                if redo_all_attr_of_spell == 'y':
+                    # (not breaking after this allows redoing multiple times)
+                    self.abilities_attributes[spell_name] = self._single_spell_attrs(spell_name=spell_name)
+
+                elif redo_all_attr_of_spell == 'n':
+                    break
+                else:
+                    print_invalid_answer()
+
+    def _create_or_redo_spells_effects(self):
+        """
+        Creates effects of every spell.
+        Allows redoing creation for each spell, if needed.
+
+        Returns:
+            (None)
+        """
+
+        for spell_name in SPELL_SHORTCUTS:
+
+            # Creates a spell's effects.
+            self._create_single_spell_effects_dct(spell_name=spell_name)
+
+            # Redo
+            while True:
+                redo_all_eff_of_spell = input('\nRedo all effects of %s?\n' % spell_name.upper())
+
+                # Redo spell effects if needed.
+                if redo_all_eff_of_spell == 'y':
+                    # (not breaking after this allows redoing multiple times)
+                    self._create_single_spell_effects_dct(spell_name=spell_name)
+
+                elif redo_all_eff_of_spell == 'n':
+                    break
+                else:
+                    print_invalid_answer()
+
+    def run_spell_attrs_and_effects_creation(self):
         """
         Creates all attributes for all spells of given champion,
         including spell effects.
 
         Returns
-            (dct)
+            (None)
         """
 
-        for spell_name in SPELL_SHORTCUTS:
-            self.abilities_attributes[spell_name] = self._create_single_spell_attrs(spell_name=spell_name)
+        self._create_or_redo_spells_attrs()
 
         # (has to follow all buff and dmg creation so that all names are available)
-        for spell_name in SPELL_SHORTCUTS:
-            self._create_single_spell_effects_dct(spell_name=spell_name)
+        self._create_or_redo_spells_effects()
 
     def create_passive_attrs(self):
         # TODO
@@ -2383,7 +2485,7 @@ class ModuleCreator(object):
         """
 
         instance = AbilitiesAttributes(champion_name=self.champion_name)
-        instance.create_spells_attrs_and_effects()
+        instance.run_spell_attrs_and_effects_creation()
         abilities_attrs = instance.abilities_attributes
         effects = instance.spells_effects
 
@@ -2430,7 +2532,7 @@ if __name__ == '__main__':
     testCombination = False
     if testCombination is True:
         inst = AbilitiesAttributes(champion_name='jax')
-        inst._create_single_spell_attrs('q')
+        inst._single_spell_attrs('q')
 
     testChampIDs = False
     if testChampIDs is True:
