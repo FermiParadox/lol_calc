@@ -48,6 +48,18 @@ def print_invalid_answer(extra_msg=''):
     print('\nInvalid answer. ' + extra_msg)
 
 
+def pretty_formatted_str_to_dct(given_dct):
+    """
+    Converts given dct to a pretty formatted string.
+    Used for file writing.
+
+    Returns:
+        (str)
+    """
+
+    return '{\n' + pp.pformat(given_dct, indent=0)[1:-1] + '\n}'
+
+
 # ---------------------------------------------------------------
 def _return_or_pprint_complex_obj(print_mode, dct):
     """
@@ -285,7 +297,7 @@ def ability_num(ability_name):
 
 
 # ---------------------------------------------------------------
-def data_storage(targeted_module, obj_name, str_to_insert):
+def data_storage(targeted_module, obj_name, str_to_insert, write_mode='w', force_write=False):
     """
     Reads and writes a file, after informing dev of file status (empty/full).
 
@@ -296,26 +308,38 @@ def data_storage(targeted_module, obj_name, str_to_insert):
     # Messages
     abort_msg = '\nData insertion ABORTED.\n'
     completion_msg = '\nData insertion COMPLETE.\n'
+    if write_mode == 'w':
+        insertion_question = 'Replace data?'
+    else:
+        insertion_question = 'Append data?'
 
     # Checks if module is non empty.
     with open(targeted_module, 'r') as read_module:
 
-        if read_module.read() != '':
-            replace_msg = 'Non empty module detected (%s). \nReplace data?\n' % targeted_module
-            dev_answer = input(replace_msg)
-            if dev_answer.lower() == 'y':
-                print('Replacing existing file content..')
-            else:
-                print(abort_msg)
-                return
+        if force_write is True:
+            print('\nForce writing.')
+
+        elif read_module.read() != '':
+            replace_msg = 'Non empty module detected (%s). \n%s\n' % (targeted_module, insertion_question)
+            # Repeats question.
+            while True:
+                dev_answer = input(replace_msg)
+                if dev_answer == 'y':
+                    print('Replacing existing file content..')
+                elif dev_answer == 'n':
+                    print(abort_msg)
+                    return
+                else:
+                    print_invalid_answer()
+
         else:
             print('Inserting data..')
 
     # Creates file content.
-    file_as_str = obj_name + ' = ' + str_to_insert
+    file_as_str = '\n' + obj_name + ' = ' + str_to_insert
 
     # Replaces module content.
-    with open(targeted_module, 'w') as edited_module:
+    with open(targeted_module, write_mode) as edited_module:
         edited_module.write(file_as_str)
 
     print(completion_msg)
@@ -2061,18 +2085,6 @@ class BuffAbilityAttributes(AttributesBase):
 
         return nth_as_int
 
-    def suggest_stat_buff_attributes(self):
-        """
-        Not finished.
-        """
-        start_msg = delimiter(40)
-        start_msg += '\nABILITY %s' % self.ability_name
-        start_msg += '\nBuff modifies stats?'
-
-        mods_stat_question = input(start_msg + '\n')
-        if mods_stat_question.lower() == 'y':
-            self.suggest_unused_stats()
-
     def _re_findall_result_to_lst(self, findall_results):
         """
         Converts findall result (list of tuples) into list of non empty strings.
@@ -2199,8 +2211,6 @@ class AbilitiesAttributes(object):
 
         self.spells_effects = {}
 
-        self.existing_attr_names = {'dmgs': [], 'buffs': []}
-
     def _set_spells_effects(self):
 
         for spell_name in SPELL_SHORTCUTS:
@@ -2209,18 +2219,6 @@ class AbilitiesAttributes(object):
     @staticmethod
     def single_spell_attrs():
         return dict(general={}, dmgs={}, buffs={})
-
-    def add_name_to_existing_attr_names(self, attr_type, attr_names_lst):
-        """
-        Adds all dmg or buff names from selected names list.
-
-        Returns:
-            (None)
-        """
-
-        for attr_name in attr_names_lst:
-            if attr_name not in self.existing_attr_names[attr_type]:
-                self.existing_attr_names[attr_type].append(attr_name)
 
     def _gen_attr(self, attrs_dct, spell_name):
         """
@@ -2251,7 +2249,6 @@ class AbilitiesAttributes(object):
         dmgs_instance.run_dmg_attr_creation()
 
         attrs_dct['dmgs'] = dmgs_instance.dmgs_dct
-        self.add_name_to_existing_attr_names(attr_type='dmgs', attr_names_lst=attrs_dct['dmgs'])
 
     def _buff_attrs(self, attrs_dct, spell_name):
         """
@@ -2265,7 +2262,6 @@ class AbilitiesAttributes(object):
         buffs_inst.run_buff_attr_creation()
 
         attrs_dct['buffs'] = buffs_inst.buffs_dct
-        self.add_name_to_existing_attr_names(attr_type='buffs', attr_names_lst=attrs_dct['buffs'])
 
     def _single_spell_attrs(self, spell_name):
         """
@@ -2309,8 +2305,8 @@ class AbilitiesAttributes(object):
 
         univ_msg = '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, spell_name)
 
-        dmgs_names = self.final_abilities_attrs['dmgs']
-        buffs_names = self.final_abilities_attrs['buffs']
+        dmgs_names = sorted(self.final_abilities_attrs['dmgs'])
+        buffs_names = sorted(self.final_abilities_attrs['buffs'])
 
         self._set_spells_effects()
 
@@ -2328,6 +2324,8 @@ class AbilitiesAttributes(object):
                                             modified_lst=effects_dct[tar_type][application_type]['dmg'],
                                             extra_start_msg=dmg_msg)
 
+                pp.pprint(effects_dct[tar_type][application_type]['dmg'])
+
                 # BUFFS APPLICATION
                 buffs_applied_msg = '%s\n' % univ_msg
                 buffs_applied_msg += '%s -- %s -- BUFFS APPLIED' % (tar_type, application_type)
@@ -2336,6 +2334,8 @@ class AbilitiesAttributes(object):
                 _suggest_lst_of_attr_values(suggested_values_lst=buffs_names,
                                             modified_lst=effects_dct[tar_type][application_type]['buffs'],
                                             extra_start_msg=buffs_applied_msg)
+
+                pp.pprint(effects_dct[tar_type][application_type]['buffs'])
 
                 # BUFF REMOVAL
                 buff_removal_msg = '%s\n' % univ_msg
@@ -2346,6 +2346,8 @@ class AbilitiesAttributes(object):
                                             modified_lst=effects_dct[tar_type][application_type]['remove_buff'],
                                             extra_start_msg=buff_removal_msg)
 
+                pp.pprint(effects_dct[tar_type][application_type]['remove_buff'])
+
         # CD MODIFICATION
         lst_of_modified = []
         cd_mod_msg = '\nCDs MODIFIED ON CAST'
@@ -2353,11 +2355,11 @@ class AbilitiesAttributes(object):
                                     modified_lst=lst_of_modified,
                                     extra_start_msg=cd_mod_msg)
 
-        for cd_modified in lst_of_modified:
+        for cd_modified_name in lst_of_modified:
 
             mod_value = None
             while True:
-                mod_value = input('\nHow much is it modified for?\n')
+                mod_value = input('\nHow much is %s modified for?\n' % cd_modified_name)
 
                 try:
                     if float(mod_value) > 0:
@@ -2367,7 +2369,7 @@ class AbilitiesAttributes(object):
                 except ValueError:
                     print('\nValue has to be num. Try again.')
 
-            effects_dct['player']['actives']['cds_modified'].update({cd_modified: mod_value})
+            effects_dct['player']['actives']['cds_modified'].update({cd_modified_name: mod_value})
 
         pp.pprint(self.spells_effects)
 
@@ -2393,7 +2395,8 @@ class AbilitiesAttributes(object):
                     # (not breaking after this allows redoing multiple times)
                     self.initial_abilities_attrs[spell_name] = self._single_spell_attrs(spell_name=spell_name)
 
-                elif redo_all_attr_of_spell == 'n':
+                # (exit keys added for convenience when debugging)
+                elif redo_all_attr_of_spell in ('n', INNER_LOOP_KEY, OUTER_LOOP_KEY):
                     break
                 else:
                     print_invalid_answer()
@@ -2417,7 +2420,8 @@ class AbilitiesAttributes(object):
                 redo_all_eff_of_spell = input('\nRedo all effects of %s?\n' % spell_name.upper())
 
                 # Redo spell effects if needed.
-                if redo_all_eff_of_spell == 'y':
+                # (exit keys added for convenience when debugging)
+                if redo_all_eff_of_spell in ('y', INNER_LOOP_KEY, OUTER_LOOP_KEY):
                     # (not breaking after this allows redoing multiple times)
                     self._create_single_spell_effects_dct(spell_name=spell_name)
 
@@ -2437,7 +2441,9 @@ class AbilitiesAttributes(object):
             (None)
         """
 
-        all_dmgs_or_buffs_names = {'dmgs': [], 'buffs': []}
+        print(fat_delimiter(80))
+        print('\nFINAL ATTRIBUTE DICT')
+
         self.final_abilities_attrs = {'general_attributes': {}, 'dmgs': {}, 'buffs': {}}
 
         # GENERAL ATTRIBUTES
@@ -2448,29 +2454,34 @@ class AbilitiesAttributes(object):
         # DMGS AND BUFFS
         for shortcut in ABILITY_SHORTCUTS:
             for attr_type in ('dmgs', 'buffs'):
-                for existing_name in self.initial_abilities_attrs[shortcut][[attr_type]]:
+                for existing_name in self.initial_abilities_attrs[shortcut][attr_type]:
 
                     # Checks for common elements.
-                    if existing_name not in all_dmgs_or_buffs_names[attr_type]:
-                        all_dmgs_or_buffs_names[attr_type].append(existing_name)
+                    if existing_name not in self.final_abilities_attrs[attr_type]:
+                        # Inserts new name and assigns the corresponding dict content to it.
+                        old_attr_dct = self.initial_abilities_attrs[shortcut][attr_type][existing_name]
+
+                        self.final_abilities_attrs[attr_type].update({existing_name: old_attr_dct})
 
                     # If duplicate found, asks user until valid answer.
                     else:
+                        print(delimiter(10))
+                        print('\nDuplicate found in %s %s.' % (attr_type, existing_name))
                         while True:
-                            new_name = input('\nNew name for %s?' % existing_name)
+                            new_name = input('\nGive new name for %s:\n' % existing_name)
 
                             # Invalid answer (enter).
                             if new_name == '':
                                 print_invalid_answer('No name given.')
 
                             # Invalid answer (existing name).
-                            elif new_name in all_dmgs_or_buffs_names[attr_type]:
+                            elif new_name in self.final_abilities_attrs[attr_type]:
                                 print_invalid_answer('Name already exists.')
 
                             # Valid answer.
                             else:
                                 # Inserts new name and assigns the corresponding dict content to it.
-                                old_attr_dct = self.initial_abilities_attrs[shortcut][[attr_type]][existing_name]
+                                old_attr_dct = self.initial_abilities_attrs[shortcut][attr_type][existing_name]
 
                                 self.final_abilities_attrs[attr_type].update({new_name: old_attr_dct})
                                 break
@@ -2486,11 +2497,11 @@ class AbilitiesAttributes(object):
 
         self._create_or_redo_spells_attrs()
 
-        # (has to follow all buff and dmg creation so that all names are available)
-        self._create_or_redo_spells_effects()
-
         # Creates final attribute dict.
         self._join_spells_buffs_and_dmgs()
+
+        # (has to follow all buff and dmg creation so that all names are available)
+        self._create_or_redo_spells_effects()
 
     def create_innate_attrs(self):
         # TODO
@@ -2544,11 +2555,16 @@ class ModuleCreator(object):
 
         final_dct = instance.final_abilities_attrs
 
-        dct_as_str = '{\n' + pp.pformat(final_dct, indent=0)[1:-1] + '\n}'
+        data_storage(targeted_module='champions/jax.py',
+                     obj_name='ABILITIES_ATTRIBUTES',
+                     str_to_insert=pretty_formatted_str_to_dct(given_dct=final_dct))
+
+        effects_dct = instance.spells_effects
 
         data_storage(targeted_module='champions/jax.py',
                      obj_name='ABILITIES_EFFECTS',
-                     str_to_insert=dct_as_str)
+                     str_to_insert=pretty_formatted_str_to_dct(given_dct=effects_dct),
+                     write_mode='a')
 
 
 # ===============================================================
