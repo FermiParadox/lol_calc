@@ -287,8 +287,7 @@ def ability_num(ability_name):
 # ---------------------------------------------------------------
 def data_storage(targeted_module, obj_name, str_to_insert):
     """
-    Reads a file, informs dev of file status (empty/full),
-    and asks dev action.
+    Reads and writes a file, after informing dev of file status (empty/full).
 
     Returns:
         (None)
@@ -2195,7 +2194,8 @@ class BuffAbilityAttributes(AttributesBase):
 class AbilitiesAttributes(object):
     def __init__(self, champion_name):
         self.champion_name = champion_name
-        self.abilities_attributes = {shortcut: self.single_spell_attrs() for shortcut in ABILITY_SHORTCUTS}
+        self.initial_abilities_attrs = {shortcut: self.single_spell_attrs() for shortcut in ABILITY_SHORTCUTS}
+        self.final_abilities_attrs = {}     # e.g. {'general': {'q':{},}, 'buffs':{}, 'dmgs':{} }
 
         self.spells_effects = {}
 
@@ -2217,6 +2217,7 @@ class AbilitiesAttributes(object):
         Returns:
             (None)
         """
+
         for attr_name in attr_names_lst:
             if attr_name not in self.existing_attr_names[attr_type]:
                 self.existing_attr_names[attr_type].append(attr_name)
@@ -2245,6 +2246,7 @@ class AbilitiesAttributes(object):
         Returns:
             (None)
         """
+
         dmgs_instance = DmgAbilityAttributes(ability_name=spell_name, champion_name=self.champion_name)
         dmgs_instance.run_dmg_attr_creation()
 
@@ -2307,8 +2309,8 @@ class AbilitiesAttributes(object):
 
         univ_msg = '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, spell_name)
 
-        dmgs_names = self.existing_attr_names['dmgs']
-        buffs_names = self.existing_attr_names['buffs']
+        dmgs_names = self.final_abilities_attrs['dmgs']
+        buffs_names = self.final_abilities_attrs['buffs']
 
         self._set_spells_effects()
 
@@ -2381,7 +2383,7 @@ class AbilitiesAttributes(object):
         for spell_name in SPELL_SHORTCUTS:
 
             # Creates spell att
-            self.abilities_attributes[spell_name] = self._single_spell_attrs(spell_name=spell_name)
+            self.initial_abilities_attrs[spell_name] = self._single_spell_attrs(spell_name=spell_name)
 
             # Redo spell attributes if needed.
             while True:
@@ -2389,7 +2391,7 @@ class AbilitiesAttributes(object):
 
                 if redo_all_attr_of_spell == 'y':
                     # (not breaking after this allows redoing multiple times)
-                    self.abilities_attributes[spell_name] = self._single_spell_attrs(spell_name=spell_name)
+                    self.initial_abilities_attrs[spell_name] = self._single_spell_attrs(spell_name=spell_name)
 
                 elif redo_all_attr_of_spell == 'n':
                     break
@@ -2424,6 +2426,55 @@ class AbilitiesAttributes(object):
                 else:
                     print_invalid_answer()
 
+    def _join_spells_buffs_and_dmgs(self):
+        """
+        Creates final attribute dict.
+
+        Renames duplicate buff or dmg names and stores them in two groups,
+        and merges general attributes.
+
+        Returns:
+            (None)
+        """
+
+        all_dmgs_or_buffs_names = {'dmgs': [], 'buffs': []}
+        self.final_abilities_attrs = {'general_attributes': {}, 'dmgs': {}, 'buffs': {}}
+
+        # GENERAL ATTRIBUTES
+        for ability_name in ABILITY_SHORTCUTS:
+            self.final_abilities_attrs['general_attributes'].update(
+                {ability_name: self.initial_abilities_attrs[ability_name]['general']})
+
+        # DMGS AND BUFFS
+        for shortcut in ABILITY_SHORTCUTS:
+            for attr_type in ('dmgs', 'buffs'):
+                for existing_name in self.initial_abilities_attrs[shortcut][[attr_type]]:
+
+                    # Checks for common elements.
+                    if existing_name not in all_dmgs_or_buffs_names[attr_type]:
+                        all_dmgs_or_buffs_names[attr_type].append(existing_name)
+
+                    # If duplicate found, asks user until valid answer.
+                    else:
+                        while True:
+                            new_name = input('\nNew name for %s?' % existing_name)
+
+                            # Invalid answer (enter).
+                            if new_name == '':
+                                print_invalid_answer('No name given.')
+
+                            # Invalid answer (existing name).
+                            elif new_name in all_dmgs_or_buffs_names[attr_type]:
+                                print_invalid_answer('Name already exists.')
+
+                            # Valid answer.
+                            else:
+                                # Inserts new name and assigns the corresponding dict content to it.
+                                old_attr_dct = self.initial_abilities_attrs[shortcut][[attr_type]][existing_name]
+
+                                self.final_abilities_attrs[attr_type].update({new_name: old_attr_dct})
+                                break
+
     def run_spell_attrs_and_effects_creation(self):
         """
         Creates all attributes for all spells of given champion,
@@ -2438,7 +2489,10 @@ class AbilitiesAttributes(object):
         # (has to follow all buff and dmg creation so that all names are available)
         self._create_or_redo_spells_effects()
 
-    def create_passive_attrs(self):
+        # Creates final attribute dict.
+        self._join_spells_buffs_and_dmgs()
+
+    def create_innate_attrs(self):
         # TODO
         ''
 
@@ -2447,6 +2501,7 @@ class AbilitiesAttributes(object):
 #       MODULE CREATION
 # ===============================================================
 class ModuleCreator(object):
+
     def __init__(self, champion_name):
         self.champion_name = champion_name
         self.external_vars_dct = {}
@@ -2475,7 +2530,7 @@ class ModuleCreator(object):
 
                 self.external_vars_dct.update({external_val_name: external_val_initial_value})
 
-    def insert_attrs(self):
+    def insert_attrs_to_module(self):
         """
         Inserts abilities' attributes and effects,
         after pretty formatting them.
@@ -2486,15 +2541,14 @@ class ModuleCreator(object):
 
         instance = AbilitiesAttributes(champion_name=self.champion_name)
         instance.run_spell_attrs_and_effects_creation()
-        abilities_attrs = instance.abilities_attributes
-        effects = instance.spells_effects
 
-        for dct in (abilities_attrs, effects):
-            dct_as_str = '{\n' + pp.pformat(dct, indent=0)[1:-1] + '\n}'
+        final_dct = instance.final_abilities_attrs
 
-            data_storage(targeted_module='champions/jax.py',
-                         obj_name='ABILITIES_EFFECTS',
-                         str_to_insert=dct_as_str)
+        dct_as_str = '{\n' + pp.pformat(final_dct, indent=0)[1:-1] + '\n}'
+
+        data_storage(targeted_module='champions/jax.py',
+                     obj_name='ABILITIES_EFFECTS',
+                     str_to_insert=dct_as_str)
 
 
 # ===============================================================
@@ -2540,4 +2594,4 @@ if __name__ == '__main__':
 
     testModuleInsertion = True
     if testModuleInsertion is True:
-        ModuleCreator(champion_name='jax').insert_attrs()
+        ModuleCreator(champion_name='jax').insert_attrs_to_module()

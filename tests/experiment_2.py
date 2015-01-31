@@ -1,22 +1,3 @@
-import re
-
-my_str = """
-
-**1**,**A**,**United Kingdom**,**"62 RRR"de AAA, Paris, France 10929A5"**
-
-**2**,**IN**,**IN Airways**,**'1 Col Blv, Pitts, PA 057'**
-
-"""
-
-pattern = re.compile(r'\*\*\.*?\*\*')
-result = re.findall(pattern, my_str)
-
-
-s = """
-‘**1**’,’**A**’,’ **United Kingdom**’,’ **62 RRR"de AAA, Paris, France 10929A5**’
-
-‘**2**’,’**IN**’,’**IN Airways**’,'**1 Col Blv, Pitts, PA 057**'"""
-
-
-print(result)
-print(s)
+501418.209 5314160.484 512.216
+501418.215 5314160.471 512.186
+501418.188 5314160.513 512.216
