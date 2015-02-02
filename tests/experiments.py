@@ -1,46 +1,95 @@
-from scipy.integrate import quad
-from scipy.special import jn
-from scipy import exp, zeros, linspace
-from scipy.linalg import norm
- 
-Inf = float("inf")
- 
-K = [5, 3, 2]
- 
- 
-def f(lmbd, a, b):
-    l = b - a
-    return exp(-2 * b * lmbd) * (-1 - 2 * b * lmbd + 4 * K[2]) \
-    + exp(-2 * (b + l) * lmbd) * (1 + 2 * a * lmbd - 4 * K[2]) \
-    + exp(-2 * l * lmbd) * (2 + 4 * l * lmbd - 8 * K[2]) \
-    + 2 * exp(2 * a * lmbd) * (2 * K[2] + a * lmbd) ** 2 \
-    + 2 * exp(-4 * l * lmbd) * K[0] \
-    + exp(2 * (b - 3 * l) * lmbd) \
-    * (2 * b ** 2 * lmbd ** 2 - 2 * b * lmbd * (1 + 2 * l * lmbd)
-    + 2 * lmbd * (l + l ** 2 * lmbd + 4 * a * K[2]) + K[1] ** 2
-    + 4 * K[2] ** 2) \
-    + exp(2 * (b - 2 * l) * lmbd) \
-    * (2 * lmbd * (a - l - 2 * a ** 2 * lmbd - 8 * a * K[2])
-    - K[1] ** 2 - 12 * K[2] ** 2)
- 
- 
-def ank(n, k, a, b):
-    return quad(lambda lmbd: f(lmbd, a, b) / lmbd
-        * jn(n + 1, lmbd) * jn(k + 1, lmbd),
-        0, Inf)[0]
+import sympy
+import re
 
- 
-def main():
-    sz = 20
-    amatrix = zeros((sz, sz))
-    ls = linspace(1, 10, 20)
-    for l in ls:
-        a = -l / 2
-        b = a + l
-        for n in range(0, sz):
-            for k in range(0, sz):
-                amatrix[n, k] = ank(n, k, a, b)
-        print(norm(amatrix))
- 
-if __name__ == '__main__':
-    main()
+SYMPY_IMPORTED_AS = 'sympy' + '.'
+
+#########################################################
+# Your input
+given_str = 'a+b+f1(f2(x,y),x)+g(A,v,d)'
+function_names = {
+    'f1(x,y)': 'sin(x+y)',
+    'f2(x, y)': 'x+y^2',
+    'g(x, y, z)': 'cot(x+y/z)'}
+#########################################################
+
+# --------------------------------------------------
+# SYMBOL DETECTION (x, y, z, mz,..)
+
+# Prohibited symbols.
+prohibited_symbols = []
+for method_name in dir(sympy):
+    # (filters out private methods since they are irrelevant anyway)
+    if method_name[0] != '_':
+        prohibited_symbols.append(method_name)
+
+
+symbol_pattern = re.compile(r'[A-Za-z]+')
+symbols_in_given_str = re.findall(symbol_pattern, given_str)
+# Filters out prohibited.
+symbols_in_given_str = [i for i in symbols_in_given_str if (i not in prohibited_symbols)]
+
+# Converts  "3x" to "x".
+strings_to_remove = []
+strings_to_insert = []
+for symbol in symbols_in_given_str:
+    if re.sub(r'\d+', '', symbol) != symbol:
+        strings_to_remove.append(symbol)
+        strings_to_insert.append(re.sub(r'\d+', '', symbol))
+
+# Filters out duplicate.
+symbols_in_given_str = frozenset(symbols_in_given_str)
+# Filters out functions
+symbols_in_given_str = [i for i in symbols_in_given_str if i not in function_names]
+
+# ----------------------------------------------------------------
+# EXEC SYMBOL STRING
+# e.g. " x, y, sd = sympy.symbols('x y sd') "
+symbol_string_to_exec = ', '.join(symbols_in_given_str)
+symbol_string_to_exec += ' = '
+symbol_string_to_exec += "sympy.symbols('%s')" % ' '.join(symbols_in_given_str)
+
+exec(symbol_string_to_exec)
+
+
+# ----------------------------------------------------------------
+# INSERT ALL CUSTOM FUNCTIONS
+# e.g. f1=sin(x) will be defined as def f1(x): return sin(x)
+def function_as_executable_str(func_name, func_body):
+    """
+    Creates a string to be evaluated.
+
+    :param func_name: (str) Includes the function arguments, e.g. "f1(x,y)"
+    :param func_body: (str)
+    :sympy_imported_as: (str)
+    :return: str
+    """
+
+    # Converts function names in function body to appropriate format
+    # e.g. (x + ln(y)) -> (x + sympy.ln(y))
+    for sympy_func_name in prohibited_symbols:
+        sympy_func_full_name = SYMPY_IMPORTED_AS+sympy_func_name
+        func_body = re.sub(r'%s' % sympy_func_name, sympy_func_full_name, func_body)
+
+    # e.g. x^2, is x**2 in python
+    func_body = func_body.replace('^', '**')
+
+    string = '\ndef %s:' % (func_name, )
+    string += '\n    return %s' % func_body
+
+    return string
+
+func_string_to_execute = [function_as_executable_str(i, function_names[i]) for i in function_names]
+func_string_to_execute = '\n'.join(func_string_to_execute)
+
+exec(func_string_to_execute)
+
+
+# OUTPUT
+# -------------------------------------------------------------------
+result = given_str.replace('^', '**')
+for method_name in dir(sympy):
+    # (filters out private methods since they are irrelevant anyway)
+    result = result.replace(method_name, SYMPY_IMPORTED_AS+method_name)
+
+exec('final_result = %s' % result)
+print (final_result )

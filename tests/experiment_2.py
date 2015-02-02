@@ -22,7 +22,8 @@ for method_name in dir(sympy):
         prohibited_symbols.append(method_name)
 
 
-symbol_pattern = re.compile(r'[A-Za-z]+')
+# Allowed examples: Na, x1, Xaasd, xa123
+symbol_pattern = re.compile(r'[A-Za-z]+\d*')
 symbols_in_given_str = re.findall(symbol_pattern, given_str)
 # Filters out prohibited.
 symbols_in_given_str = [i for i in symbols_in_given_str if (i not in prohibited_symbols)]
