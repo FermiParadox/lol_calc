@@ -798,7 +798,7 @@ class ExploreApiAbilities(ExploreBase):
 
         If raw_str is provided, searches for its pattern.
 
-        WARNING: VERBOSE flag chosen.
+        WARNING: VERBOSE and IGNORECASE flags chosen.
 
         Args:
             champ: (str) or (None)
@@ -1341,6 +1341,10 @@ class GeneralAbilityAttributes(AttributesBase):
 
         print(msg)
         pp.pprint(self.general_attr_dct)
+
+
+class DmgBonusesFeatures(object):
+    pass
 
 
 class DmgAbilityAttributes(AttributesBase):
@@ -2597,7 +2601,7 @@ if __name__ == '__main__':
 
     testExploration = False
     if testExploration is True:
-        ExploreApiAbilities().sanitized_tooltips(champ='jax', raw_str=r'every\s\d+hit', print_mode=True)
+        ExploreApiAbilities().sanitized_tooltips(champ='sejuani', raw_str=None, print_mode=True)
 
     testCombination = False
     if testCombination is True:
@@ -2610,4 +2614,4 @@ if __name__ == '__main__':
 
     testModuleInsertion = True
     if testModuleInsertion is True:
-        ModuleCreator(champion_name='jax').insert_attrs_to_module()
+        ModuleCreator(champion_name='amumu').insert_attrs_to_module()
