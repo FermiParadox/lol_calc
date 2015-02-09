@@ -1119,6 +1119,7 @@ class AttributesBase(object):
 
 
 class GeneralAbilityAttributes(AttributesBase):
+
     def __init__(self, ability_name, champion_name):
         AttributesBase.__init__(self,
                                 ability_name=ability_name,
@@ -2601,7 +2602,9 @@ if __name__ == '__main__':
 
     testExploration = False
     if testExploration is True:
-        ExploreApiAbilities().sanitized_tooltips(champ='sejuani', raw_str=None, print_mode=True)
+        champName = 'soraka'
+        ExploreApiAbilities().champion_abilities(champion_name=champName, print_mode=True)
+        ExploreApiAbilities().sanitized_tooltips(champ=champName, raw_str=None, print_mode=True)
 
     testCombination = False
     if testCombination is True:
@@ -2612,6 +2615,6 @@ if __name__ == '__main__':
     if testChampIDs is True:
         print(ExploreApiAbilities().champion_id('dariu'))
 
-    testModuleInsertion = True
+    testModuleInsertion = False
     if testModuleInsertion is True:
-        ModuleCreator(champion_name='amumu').insert_attrs_to_module()
+        ModuleCreator(champion_name='missfortune').insert_attrs_to_module()

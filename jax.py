@@ -1,7 +1,7 @@
 import dmgs_buffs_categories
 
 
-class TotalChampionAttributes(dmgs_buffs_categories.Categories):
+class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
 
     def __init__(self,
                  ability_lvls_dct,
@@ -17,7 +17,7 @@ class TotalChampionAttributes(dmgs_buffs_categories.Categories):
         self.hits_dodged = hits_dodged
         self.ability_lvls_dct = ability_lvls_dct
 
-        dmgs_buffs_categories.Categories.__init__(self,
+        dmgs_buffs_categories.DmgCategories.__init__(self,
                                                   req_stats_func=req_stats_func,
                                                   current_stats=current_stats,
                                                   current_target=current_target,

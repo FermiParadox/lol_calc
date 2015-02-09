@@ -26,12 +26,13 @@ class EventsGeneral(buffs.DeathAndRegen):
                  initial_current_stats=None,
                  items_lst=None):
 
-        self.max_targets_dct = max_targets_dct  # User defined dict containing number of targets abilities affected.
+        # (User defined dict containing number of targets affected by abilities.)
+        self.max_targets_dct = max_targets_dct
         self.event_times = {}
         self.current_time = 0
         self.current_target = None
-        self.intermediate_events_changed = None     # Used to note that a periodic event might have been added between
-                                                    # current events and last action.
+        # (Used to note that a periodic event might have been added between current events and last action.)
+        self.intermediate_events_changed = None
 
         buffs.DeathAndRegen.__init__(self,
                                      current_time=self.current_time,
@@ -42,7 +43,8 @@ class EventsGeneral(buffs.DeathAndRegen):
                                      initial_current_stats=initial_current_stats,
                                      items_lst=items_lst)
 
-        self.resource_used = app_champions_base_stats.CHAMPION_BASE_STATS[selected_champions_dct['player']]['resource_used']
+        self.resource_used = app_champions_base_stats.CHAMPION_BASE_STATS[selected_champions_dct['player']][
+            'resource_used']
 
     def add_event_to_first_tar(self, effect_name, start_time):
         """
@@ -108,7 +110,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                     self.add_event_to_first_tar(effect_name=regen_event_name,
                                                 start_time=self.NATURAL_REGEN_START_TIME)
 
-    def add_splash_events(self, effect_name, start_time):
+    def add_aoe_events(self, effect_name, start_time):
         """
         Adds an aoe dmg event to affected target. If all unaffected targets are dead raises exception.
 
@@ -170,7 +172,7 @@ class EventsGeneral(buffs.DeathAndRegen):
 
                 # While the last target number is less than max targets, adds event.
                 while self.targets_already_hit < self.max_targets_dct[effect_name]:
-                    self.add_splash_events(effect_name=effect_name, start_time=start_time)
+                    self.add_aoe_events(effect_name=effect_name, start_time=start_time)
 
             # If it has max_targets (implying it's aoe).
             elif 'max_targets' in effect_dct:
@@ -178,11 +180,11 @@ class EventsGeneral(buffs.DeathAndRegen):
 
                     # While the last target number is less than max targets, adds event.
                     while self.targets_already_hit < len(self.enemy_target_names):
-                        self.add_splash_events(effect_name=effect_name, start_time=start_time)
+                        self.add_aoe_events(effect_name=effect_name, start_time=start_time)
 
                 else:
                     while self.targets_already_hit < effect_dct['max_targets']:
-                        self.add_splash_events(effect_name=effect_name, start_time=start_time)
+                        self.add_aoe_events(effect_name=effect_name, start_time=start_time)
 
         except EnemyTargetsDeadException:
             pass

@@ -3,7 +3,7 @@ import palette
 import copy
 
 
-class ItemsBase(dmgs_buffs_categories.Categories):
+class ItemsBase(dmgs_buffs_categories.DmgCategories):
 
     def __init__(self,
                  req_stats_func,
@@ -15,7 +15,7 @@ class ItemsBase(dmgs_buffs_categories.Categories):
 
         self.active_buffs = act_buffs
 
-        dmgs_buffs_categories.Categories.__init__(self,
+        dmgs_buffs_categories.DmgCategories.__init__(self,
                                                   req_stats_func=req_stats_func,
                                                   current_stats=current_stats,
                                                   current_target=current_target,

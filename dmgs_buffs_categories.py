@@ -1,4 +1,4 @@
-class Categories(object):
+class GeneralCategories(object):
 
     def __init__(self,
                  req_stats_func,
@@ -16,7 +16,6 @@ class Categories(object):
         self.current_target_num = current_target_num
         self.active_buffs = active_buffs
 
-    # GENERAL
     def innate_value(self, list_of_values):
         """
         Returns the value of the player's innate, based on the current champion lvl.
@@ -47,7 +46,27 @@ class Categories(object):
         # If buff not active or
         return pre_trig_lst
 
-    # DMGS
+
+class BuffCategories(GeneralCategories):
+
+    def scaling_stat_buff(self, list_of_values, scaling_dct, req_stat_function):
+        """
+        Calculates the value of a bonus to a stat from a buff.
+
+        Returns:
+            (float)
+        """
+
+        value = list_of_values * (self.player_lvl-1)
+
+        for scaling_stat in scaling_dct:
+            value += scaling_dct[scaling_stat] * req_stat_function(stat_name=scaling_stat, tar_name='player')
+
+        return value
+
+
+class DmgCategories(BuffCategories):
+
     def standard_dmg(self, ability_dct, ability_lvl=1):
         """
         (int, dict, dict) -> float
@@ -179,12 +198,6 @@ class Categories(object):
         else:
             return self.chain_decay(ability_dct=ability_dct, ability_lvl=ability_lvl)
 
-    def execute_dmg(self,):
-        """
-        Calculates dmg value, when it depends on target's missing hp.
-        """
-        pass
-
     @staticmethod
     def aa_dmg():
         """Returns dmg dictionary of an AA.
@@ -197,20 +210,3 @@ class Categories(object):
             target='enemy',
             dmg_source='AA',
             dot=False,)
-
-    # BUFFS
-    def scaling_stat_buff(self, list_of_values, scaling_dct, req_stat_function):
-        """
-        Calculates the value of a bonus to a stat from a buff.
-
-        Returns:
-            (float)
-        """
-
-        value = list_of_values * (self.player_lvl-1)
-
-        for scaling_stat in scaling_dct:
-            value += scaling_dct[scaling_stat] * req_stat_function(stat_name=scaling_stat, tar_name='player')
-
-        return value
-
