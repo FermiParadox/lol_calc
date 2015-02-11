@@ -99,20 +99,25 @@ def _return_or_pprint_lst(print_mode, lst):
 
 
 # ---------------------------------------------------------------
-class OuterLoopExit(BaseException):
+class OuterLoopExit(Exception):
     pass
 
 
-class InnerLoopExit(BaseException):
+class InnerLoopExit(Exception):
+    pass
+
+
+class RepeatChoiceError(Exception):
     pass
 
 
 # Loop exit keys.
 INNER_LOOP_KEY = '!'
 OUTER_LOOP_KEY = '!!'
+REPEAT_CHOICE_KEY = '^'
 
 
-def check_for_loop_exit(key):
+def _check_for_loop_exit(key):
     if key == OUTER_LOOP_KEY:
         print('#### OUTER LOOP EXITED ####')
         raise OuterLoopExit
@@ -121,8 +126,13 @@ def check_for_loop_exit(key):
         raise InnerLoopExit
 
 
-def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='', stop_key=INNER_LOOP_KEY,
-                         error_key=OUTER_LOOP_KEY):
+def _check_for_repeat_choice_error(key):
+    if key == REPEAT_CHOICE_KEY:
+        print('# Repeating previous choice #')
+        raise RepeatChoiceError
+
+
+def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct):
     """
     Suggests a value and stores the choice.
 
@@ -131,6 +141,60 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='',
 
     Args:
         suggested_values_dct: (dct) e.g. {ability_attr: (val_1, val_2,), }
+    Returns:
+        (None)
+    """
+    suggested_val_tpl = suggested_values_dct[attr_name]
+
+    # Ensures lists to be zipped have same length.
+    shortcut_len = len(suggested_val_tpl)
+
+    # INITIAL CHOICE MESSAGE
+    msg = delimiter(num_of_lines=20)
+    msg += '\nATTRIBUTE: %s\n' % attr_name
+    for display_val, suggested_val in enumerate(suggested_val_tpl, 1):
+        msg += '\n%s: %s' % (display_val, suggested_val)
+
+    # CHOICE PROCESSING
+
+    # (only "enter" as input is not accepted)
+    while True:
+        input_given = input(msg + '\n')
+        if input_given != '':
+            break
+        else:
+            print('No value given. Try again.')
+
+    # (breaks loop prematurely if asked)
+    _check_for_loop_exit(key=input_given)
+    _check_for_repeat_choice_error(key=input_given)
+
+    choice_num = None
+    # (checks if input is an int corresponding to a suggested value shortcut)
+    try:
+        int_form_input = int(input_given)
+        if int_form_input >= 1:
+            if int_form_input <= shortcut_len:
+                choice_num = int_form_input - 1
+    except ValueError:
+        pass
+
+    if choice_num is not None:
+        chosen_value = suggested_val_tpl[choice_num]
+    else:
+        chosen_value = input_given
+
+    # Stores the choice and notifies dev.
+    choice_msg = '%s: %s\n' % (attr_name, chosen_value)
+    modified_dct[attr_name] = chosen_value
+    print(choice_msg)
+
+
+def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='', stop_key=INNER_LOOP_KEY,
+                         error_key=OUTER_LOOP_KEY, repeat_key=REPEAT_CHOICE_KEY):
+    """
+    Stores each chosen attribute value or repeats a choice.
+
         stop_key: (str) When given as answer, exits this loop.
         error_key: (str) When given as answer, raises error to exit outer loop.
     Returns:
@@ -140,54 +204,27 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='',
     start_msg = '\n' + delimiter(40)
     start_msg += '\n(type "%s" to exit inner loops)\n' % stop_key
     start_msg += '\n(type "%s" to exit outer loops)\n' % error_key
+    start_msg += '\n(type "%s" to repeat previous choices)\n' % repeat_key
     start_msg += extra_start_msg
     print(start_msg)
 
-    for attr_name in sorted(suggested_values_dct):
+    num_name_couples = {num: name for num, name in enumerate(suggested_values_dct)}
+    for attr_num in sorted(num_name_couples):
 
-        suggested_val_tpl = suggested_values_dct[attr_name]
-
-        # Ensures lists to be zipped have same length.
-        shortcut_len = len(suggested_val_tpl)
-
-        # INITIAL CHOICE MESSAGE
-        msg = delimiter(num_of_lines=20)
-        msg += '\nATTRIBUTE: %s\n' % attr_name
-        for display_val, suggested_val in enumerate(suggested_val_tpl, 1):
-            msg += '\n%s: %s' % (display_val, suggested_val)
-
-        # CHOICE PROCESSING
-
-        # (only "enter" as input is not accepted)
         while True:
-            input_given = input(msg + '\n')
-            if input_given != '':
+            curr_attr_name = num_name_couples[attr_num]
+
+            try:
+                # (current)
+                _suggest_single_attr_value(attr_name=curr_attr_name,
+                                           suggested_values_dct=suggested_values_dct,
+                                           modified_dct=modified_dct)
                 break
-            else:
-                print('No value given. Try again.')
 
-        # (breaks loop prematurely if asked)
-        check_for_loop_exit(key=input_given)
-
-        choice_num = None
-        # (checks if input is an int corresponding to a suggested value shortcut)
-        try:
-            int_form_input = int(input_given)
-            if int_form_input >= 1:
-                if int_form_input <= shortcut_len:
-                    choice_num = int_form_input - 1
-        except ValueError:
-            pass
-
-        if choice_num is not None:
-            chosen_value = suggested_val_tpl[choice_num]
-        else:
-            chosen_value = input_given
-
-        # Stores the choice and notifies dev.
-        choice_msg = '%s: %s\n' % (attr_name, chosen_value)
-        modified_dct[attr_name] = chosen_value
-        print(choice_msg)
+            except RepeatChoiceError:
+                # (reduces attr_num, and ensures it doesn't reach negative values)
+                attr_num -= 1
+                attr_num = max(attr_num, 0)
 
 
 def loop_exit_handler(func):
@@ -241,6 +278,7 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
     Returns:
         (None)
     """
+
     start_msg = '\n' + delimiter(40)
     start_msg += '\n(type "%s" to exit inner loops)\n' % stop_key
     start_msg += '\n(type "%s" to exit outer loops)\n' % error_key
@@ -255,7 +293,7 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
         dev_choice = input('\nSelect all valid names. (press only enter for empty)\n')
 
         # Exits loop if requested.
-        check_for_loop_exit(dev_choice)
+        _check_for_loop_exit(dev_choice)
 
         # (only comma, whitespace and digits are valid characters, or empty string)
         if re.search(r'[^\d,\s]', dev_choice) is not None:
@@ -348,7 +386,7 @@ def data_storage(targeted_module, obj_name, str_to_insert, write_mode='w', force
 # ===============================================================
 # API REQUESTS
 # ===============================================================
-class RequestAborted(BaseException):
+class RequestAborted(Exception):
     pass
 
 
@@ -1161,7 +1199,7 @@ class GeneralAbilityAttributes(AttributesBase):
         dashed_distance=(None,),
         channel_time=(None,),
         resets_aa=(False, True),
-    )
+        )
 
     def resource_cost_type(self):
         """
@@ -1379,7 +1417,7 @@ class DmgAbilityAttributes(AttributesBase):
             radius='placeholder',
             dot='placeholder',
             max_targets='placeholder',
-        )
+            )
 
     @staticmethod
     def usual_values_dmg_attr():
@@ -1394,7 +1432,7 @@ class DmgAbilityAttributes(AttributesBase):
             dot=(False, True),
             max_targets=(1, 2, 3, 4, 5, 'infinite'),
             usual_max_targets=(1, 2, 3, 4, 5),
-        )
+            )
 
     AUTOMATICALLY_FILLED_DMG_ATTR = ()
 
@@ -1417,14 +1455,13 @@ class DmgAbilityAttributes(AttributesBase):
             abbr_in_effects='placeholder',
             mod_1='placeholder',
 
-        )
+            )
 
     @staticmethod
     def single_mod_dct_template_in_factory():
         return dict(
             abbr_in_effects='placeholder',
-
-        )
+            )
 
     def raw_dmg_strings(self):
         """
@@ -1647,7 +1684,7 @@ class DmgAbilityAttributes(AttributesBase):
             pp.pprint(self.dmgs_dct)
 
             while True:
-                new_dmg_name = input('\nInsert new dmg name for %s. (press enter to skip)\n' % dmg)
+                new_dmg_name = input('\nNew name for %s: (press enter to skip)\n' % dmg)
                 if new_dmg_name == '':
                     print('\nName will not change.\n')
                     break
@@ -1761,7 +1798,7 @@ class BuffAbilityAttributes(AttributesBase):
                 remove_buff=['placeholder', ]
             ),
             prohibit_cd_start='placeholder',
-        )
+            )
 
     @staticmethod
     def affected_stat_attributes():
@@ -1789,7 +1826,7 @@ class BuffAbilityAttributes(AttributesBase):
     USUAL_BUFF_ATTR_VALUES = dict(
         target_type=('player', 'enemy'),
         max_stacks=(1,),
-        duration=(1,),
+        duration=(1, 2, 3, 4, 5, 6, 7),
         prohibit_cd_start=(None, )
     )
 
@@ -1825,7 +1862,7 @@ class BuffAbilityAttributes(AttributesBase):
         while True:
             num_of_buffs = input(start_msg + '\n')
 
-            check_for_loop_exit(key=num_of_buffs)
+            _check_for_loop_exit(key=num_of_buffs)
 
             try:
                 num_iter = range(int(num_of_buffs))
@@ -2615,6 +2652,6 @@ if __name__ == '__main__':
     if testChampIDs is True:
         print(ExploreApiAbilities().champion_id('dariu'))
 
-    testModuleInsertion = False
+    testModuleInsertion = True
     if testModuleInsertion is True:
-        ModuleCreator(champion_name='missfortune').insert_attrs_to_module()
+        ModuleCreator(champion_name='jax').insert_attrs_to_module()

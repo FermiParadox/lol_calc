@@ -386,7 +386,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         # unless action allows movement during cast.
         if ((pre_last_action_name != 'AA') and
                 (self.request_ability_stats(ability_name=pre_last_action_name)['general']['move_while_casting'] is True)):
-                lower_limit = pre_last_action_start
+            lower_limit = pre_last_action_start
 
         elif 'channel_end' in self.actions_dct[pre_last_action_start]:
             lower_limit = self.actions_dct[pre_last_action_start]['channel_end']
@@ -414,7 +414,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             ability_gen_stats = self.request_ability_stats(ability_name=last_action_name)['general']
 
             self.total_movement += ability_gen_stats['dashed_distance']
-    
+
     def add_kalista_dash(self):
         """
         Adds Kalista's dash after an AA.
@@ -425,7 +425,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
 
         if self.selected_champions_dct['player'] == 'kalista':
             self.total_movement += app_champions_base_stats.CHAMPION_BASE_STATS['kalista']['dashed_distance_on_aa']
-    
+
     # ABILITIES
     def reset_aa_cd(self, action_name):
         """
@@ -550,7 +550,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
                     cd_end=cast_start + 1./self.request_stat(target_name='player', stat_name='att_speed'),
                     action_name=action_name,
                     cast_end=cast_start + self.AA_COOLDOWN)})
-            
+
             self.add_kalista_dash()
 
         # ITEM ACTIVES OR SUMMONER SPELLS
@@ -790,7 +790,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
         self.intermediate_events_changed = True
 
         while self.intermediate_events_changed:
-            
+
             self.intermediate_events_changed = False
 
             # If for loop ends with new events being added,

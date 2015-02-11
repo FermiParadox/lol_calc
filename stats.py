@@ -120,8 +120,8 @@ class StatCalculation(StatFilters):
         self.active_buffs = {}
 
         self.base_stats_dct = {}
-        self.set_base_stats_dct()        
-        
+        self.set_base_stats_dct()
+
         self.current_stats = {}
         self.stat_dependencies = {}     # e.g. {tar_name: {stat_1: [controller_stat_1, controller_stat_2,], }, }
         self.stored_stats = {}
@@ -177,7 +177,7 @@ class StatCalculation(StatFilters):
                 {tar_name: app_champions_base_stats.CHAMPION_BASE_STATS[self.selected_champions_dct[tar_name]]})
 
         self.base_stats_dct = dct
-        
+
     def place_tar_and_empty_dct_in_dct(self, dct):
         """
         Inserts into a dct target names as keywords, and empty dict as value for each targets.
@@ -286,7 +286,7 @@ class StatCalculation(StatFilters):
         """
 
         return self.base_stats_dct[tar_name]['ad'] + (self.champion_lvls_dct[tar_name] *
-                                                        self.base_stats_dct[tar_name]['ad_per_lvl'])
+                                                      self.base_stats_dct[tar_name]['ad_per_lvl'])
 
     def att_speed(self, tar_name):
         """
@@ -709,13 +709,13 @@ class DmgReductionStats(StatRequest):
             percent_penetration='percent_armor_penetration',
             flat_reduction='flat_armor_reduction',
             flat_penetration='flat_armor_penetration',
-        ),
+            ),
         mr=dict(
             percent_reduction='percent_mr_reduction',
             percent_penetration='percent_mr_penetration',
             flat_reduction='flat_mr_reduction',
             flat_penetration='flat_mr_penetration',
-        )
+            )
     )
 
     # structure: {tar_name: {stat_1: [controller_stat_1, controller_stat_2,], }, }

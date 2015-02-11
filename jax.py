@@ -18,12 +18,12 @@ class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
         self.ability_lvls_dct = ability_lvls_dct
 
         dmgs_buffs_categories.DmgCategories.__init__(self,
-                                                  req_stats_func=req_stats_func,
-                                                  current_stats=current_stats,
-                                                  current_target=current_target,
-                                                  champion_lvls_dct=champion_lvls_dct,
-                                                  current_target_num=current_target_num,
-                                                  active_buffs=act_buffs)
+                                                     req_stats_func=req_stats_func,
+                                                     current_stats=current_stats,
+                                                     current_target=current_target,
+                                                     champion_lvls_dct=champion_lvls_dct,
+                                                     current_target_num=current_target_num,
+                                                     active_buffs=act_buffs)
 
     INNATE_ATT_SPEED_TPL = (4., 6., 8., 10., 12., 14.)
 
