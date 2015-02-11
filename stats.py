@@ -108,10 +108,9 @@ class StatCalculation(StatFilters):
         self.player_resource_name = ''
         self.player_current_resource_name = ''
 
-        self.all_target_names = sorted(self.selected_champions_dct)   # e.g. ['player', 'enemy_1', ]
+        self.all_target_names = self.selected_champions_dct.keys()   # e.g. ['player', 'enemy_1', ]
 
-        self.enemy_target_names = sorted(self.selected_champions_dct)
-        self.enemy_target_names.remove('player')
+        self.enemy_target_names = tuple(tar for tar in self.all_target_names if tar != 'player')
 
         self.initial_active_buffs = initial_active_buffs    # Can contain 0 to all targets and their buffs.
         self.bonuses_dct = {}   # e.g. {target: {stat: {bonus type: {bonus name: }, }, }, }
@@ -120,6 +119,9 @@ class StatCalculation(StatFilters):
 
         self.active_buffs = {}
 
+        self.base_stats_dct = {}
+        self.set_base_stats_dct()        
+        
         self.current_stats = {}
         self.stat_dependencies = {}     # e.g. {tar_name: {stat_1: [controller_stat_1, controller_stat_2,], }, }
         self.stored_stats = {}
@@ -158,24 +160,24 @@ class StatCalculation(StatFilters):
 
         self.player_current_resource_name = 'current_' + self.player_resource_name
 
-    def base_stats_dct(self):
+    def set_base_stats_dct(self):
         """
-        Creates a dict containing champion base stats for all targets.
+        Creates base stats dict.
 
         Returns:
-            (dict) Base stats of all targets.
+            (None)
         """
 
         dct = {}
 
         # For each selected champion..
-        for tar_name in self.selected_champions_dct:
+        for tar_name in self.all_target_names:
             # .. updates base_stats_dct with his base stats.
             dct.update(
                 {tar_name: app_champions_base_stats.CHAMPION_BASE_STATS[self.selected_champions_dct[tar_name]]})
 
-        return dct
-
+        self.base_stats_dct = dct
+        
     def place_tar_and_empty_dct_in_dct(self, dct):
         """
         Inserts into a dct target names as keywords, and empty dict as value for each targets.
@@ -233,7 +235,7 @@ class StatCalculation(StatFilters):
         """
 
         value = 0
-        base_stats_tar = self.base_stats_dct()[tar_name]
+        base_stats_tar = self.base_stats_dct[tar_name]
 
         # BASE VALUE
         # If the stat exists in target's base stats..
@@ -283,8 +285,8 @@ class StatCalculation(StatFilters):
             (float)
         """
 
-        return self.base_stats_dct()[tar_name]['ad'] + (self.champion_lvls_dct[tar_name] *
-                                                        self.base_stats_dct()[tar_name]['ad_per_lvl'])
+        return self.base_stats_dct[tar_name]['ad'] + (self.champion_lvls_dct[tar_name] *
+                                                        self.base_stats_dct[tar_name]['ad_per_lvl'])
 
     def att_speed(self, tar_name):
         """
@@ -303,12 +305,12 @@ class StatCalculation(StatFilters):
             (float)
         """
 
-        value = self.base_stats_dct()[tar_name]['base_att_speed']
+        value = self.base_stats_dct[tar_name]['base_att_speed']
 
         # _PER_LVL
         # Adds _per_lvl bonus of att_speed to the modifier.
         multiplication_mod = 100
-        multiplication_mod += self.base_stats_dct()[tar_name]['att_speed_per_lvl'] * (self.champion_lvls_dct[tar_name]-1)
+        multiplication_mod += self.base_stats_dct[tar_name]['att_speed_per_lvl'] * (self.champion_lvls_dct[tar_name]-1)
 
         # ITEM AND BUFF BONUSES
         # Adds item and buff bonuses of att_speed to the modifier.
@@ -674,7 +676,7 @@ class StatRequest(StatCalculation):
 
                 # Also creates the player's 'current_'resource.
                 if tar == 'player':
-                    resource_used = self.base_stats_dct()['player']['resource_used']
+                    resource_used = self.base_stats_dct['player']['resource_used']
 
                     if ('current_' + resource_used) not in self.current_stats[tar]:
 

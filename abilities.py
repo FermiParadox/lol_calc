@@ -642,9 +642,7 @@ class Actions(EventsGeneral, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        player_active_buffs = sorted(self.active_buffs['player'])
-
-        for buff_name in player_active_buffs:
+        for buff_name in tuple(self.active_buffs['player']):
             buff_dct = getattr(self, buff_name)()
 
             if 'on_hit' in buff_dct:

@@ -286,7 +286,7 @@ class Counters(BuffsGeneral):
             (list)
         """
 
-        lst = list(self.base_stats_dct()['player'])
+        lst = list(self.base_stats_dct['player'])
         lst += self.SPECIAL_STATS_LST
         lst += self.EXTRA_STATS_TPL
 
