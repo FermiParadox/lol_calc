@@ -228,7 +228,7 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='',
 
 def loop_exit_handler(func):
     """
-    Used for handling Abortion exceptions raised during Requests.
+    Decorator used for handling Abortion exceptions raised during Requests.
     """
 
     def wrapped(*args, **kwargs):
@@ -316,34 +316,38 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
 
 
 # ---------------------------------------------------------------
-def repeat_cluster(func):
+def repeat_cluster(cluster_name):
     """
-    Wrapper used for repeating cluster of suggestions.
+    Decorator used for repeating cluster of suggestions.
+
+    Args:
+        cluster_name: (str)
     """
+    def dec(func):
 
-    def wrapped(*args, **kwargs):
+        def wrapped(*args, **kwargs):
 
-        # Suggestion repetition
-        while True:
-            func(*args, **kwargs)
-
-            # Question repetition
-            answer = None
+            # Suggestion repetition
             while True:
-                answer = input('\nRepeat previous cluster? (press enter to skip)\n')
-                if answer == 'y':
-                    print('\nRepeating cluster.')
+                func(*args, **kwargs)
+
+                # Question repetition
+                answer = None
+                while True:
+                    answer = input('\nRepeat previous cluster? (press enter to skip)\n')
+                    if answer == 'y':
+                        print('\n############ Repeating %s. ############' % cluster_name)
+                        break
+                    elif answer == '':
+                        break
+                    else:
+                        print_invalid_answer()
+
+                if answer != 'y':
                     break
-                elif answer == '':
-                    break
-                else:
-                    print_invalid_answer()
 
-            if answer != 'y':
-                break
-
-    return wrapped
-
+        return wrapped
+    return dec
 
 # ---------------------------------------------------------------
 SPELL_SHORTCUTS = ('q', 'w', 'e', 'r')
@@ -1388,7 +1392,7 @@ class GeneralAbilityAttributes(AttributesBase):
                              modified_dct=self.general_attr_dct,
                              extra_start_msg=extra_msg)
 
-    @repeat_cluster
+    @repeat_cluster(cluster_name='GENERAL ATTRIBUTES')
     def run_gen_attr_creation(self):
         """
         Inserts automatically some attributes and asks the dev for the rest.
@@ -1771,7 +1775,7 @@ class DmgAbilityAttributes(AttributesBase):
         self.insert_extra_dmg()
         self.modify_dmg_names()
 
-
+    @repeat_cluster(cluster_name='DMG ATTRIBUTES')
     def run_dmg_attr_creation(self):
         """
         Runs all relevant methods for each dmg attribute detected.
@@ -2257,6 +2261,7 @@ class BuffAbilityAttributes(AttributesBase):
                                  modified_dct=self.buffs_dct[buff_name],
                                  extra_start_msg=usual_attrs_msg)
 
+    @repeat_cluster(cluster_name='BUFFS')
     def run_buff_attr_creation(self):
 
         # Reset dict content
