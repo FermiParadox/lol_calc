@@ -8,7 +8,6 @@ import pprint as pp
 import copy
 import api_key
 import palette
-import ast
 
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
@@ -317,6 +316,36 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
 
 
 # ---------------------------------------------------------------
+def repeat_cluster(func):
+    """
+    Wrapper used for repeating cluster of suggestions.
+    """
+
+    def wrapped(*args, **kwargs):
+
+        # Suggestion repetition
+        while True:
+            func(*args, **kwargs)
+
+            # Question repetition
+            answer = None
+            while True:
+                answer = input('\nRepeat previous cluster? (press enter to skip)\n')
+                if answer == 'y':
+                    print('\nRepeating cluster.')
+                    break
+                elif answer == '':
+                    break
+                else:
+                    print_invalid_answer()
+
+            if answer != 'y':
+                break
+
+    return wrapped
+
+
+# ---------------------------------------------------------------
 SPELL_SHORTCUTS = ('q', 'w', 'e', 'r')
 ABILITY_SHORTCUTS = ('inn', ) + SPELL_SHORTCUTS
 EXTRA_SPELL_SHORTCUTS = ('q2', 'w2', 'e2', 'r2')
@@ -430,7 +459,7 @@ class RequestDataFromAPI(object):
         abort_msg = '\nData request ABORTED.\n'
 
         dev_start_question = input(start_msg)
-        if dev_start_question.lower() == 'y':
+        if dev_start_question == 'y':
             pass
         else:
             raise RequestAborted(abort_msg)
@@ -1359,6 +1388,7 @@ class GeneralAbilityAttributes(AttributesBase):
                              modified_dct=self.general_attr_dct,
                              extra_start_msg=extra_msg)
 
+    @repeat_cluster
     def run_gen_attr_creation(self):
         """
         Inserts automatically some attributes and asks the dev for the rest.
@@ -1504,10 +1534,12 @@ class DmgAbilityAttributes(AttributesBase):
                 stat_name = self.mod_stat_name_map()[link_name]
                 mod_coeff = mod_dct['coeff']
 
-                return {stat_name: mod_coeff}
+                return {stat_name: mod_coeff[0]}
 
-    def _check_if_dot(self):
+    def _obsolete_check_if_dot(self):
         """
+        OBSOLETE.
+
         Check if given ability contains hints of a dot.
 
         Returns:
@@ -1536,12 +1568,10 @@ class DmgAbilityAttributes(AttributesBase):
         else:
             return False
 
-    def fill_dot(self, dmg_dct):
-
-        dmg_dct['dot'] = self._check_if_dot()
-
-    def _Dot_duration(self):
+    def _obsolete_dot_duration(self):
         """
+        OBSOLETE
+
         Not complete (or needed at all probably).
         """
 
@@ -1650,9 +1680,6 @@ class DmgAbilityAttributes(AttributesBase):
             # INSERTS DMGS
             self.dmgs_dct.update({new_dmg_name: curr_dmg_dct})
 
-            # INSERTS DOT
-            self.fill_dot(self.dmgs_dct[new_dmg_name])
-
     def suggest_dmg_attr_values(self):
 
         for dmg_temp_name in sorted(self.dmgs_dct):
@@ -1715,7 +1742,7 @@ class DmgAbilityAttributes(AttributesBase):
             print('\n' + delimiter(num_of_lines=10))
             extra_dmg = input('\nInsert extra dmg?\n')
 
-            if extra_dmg.lower() == 'y':
+            if extra_dmg == 'y':
                 new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct, attr_type='dmg')
                 self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
                 self._suggest_dmg_values(dmg_name=new_dmg_name)
@@ -1724,8 +1751,7 @@ class DmgAbilityAttributes(AttributesBase):
                                      extra_start_msg='\nManually inserted dmg.')
                 self.modify_dmg_names()
 
-            # "enter", 'n' and 'no'
-            elif extra_dmg.lower() == 'n':
+            elif extra_dmg == 'n':
                 break
 
             else:
@@ -1744,6 +1770,7 @@ class DmgAbilityAttributes(AttributesBase):
         self.suggest_dmg_attr_values()
         self.insert_extra_dmg()
         self.modify_dmg_names()
+
 
     def run_dmg_attr_creation(self):
         """
@@ -1948,7 +1975,7 @@ class BuffAbilityAttributes(AttributesBase):
 
                 while True:
                     stat_mods_answer = input(stat_mod_msg + '\n')
-                    if stat_mods_answer.lower() == 'y':
+                    if stat_mods_answer == 'y':
 
                         # Creates new mod dict for affected stat.
                         self.buffs_dct[buff_name]['affected_stats'][affected_stat_app_form].update({'stat_mods': {}})
@@ -1968,7 +1995,7 @@ class BuffAbilityAttributes(AttributesBase):
                                              modified_dct=modified_dct,
                                              extra_start_msg=extra_msg)
                         break
-                    elif stat_mods_answer.lower() in ('n', 'no'):
+                    elif stat_mods_answer == 'n':
                         self.buffs_dct[buff_name]['affected_stats'][affected_stat_app_form]['stat_mods'] = None
                         break
                     else:
@@ -1990,7 +2017,7 @@ class BuffAbilityAttributes(AttributesBase):
 
             while True:
                 buff_affects_stat = input(msg)
-                if buff_affects_stat.lower() == 'y':
+                if buff_affects_stat == 'y':
 
                     stat_name = self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP[affected_stat]
 
@@ -2010,7 +2037,7 @@ class BuffAbilityAttributes(AttributesBase):
                     self.suggest_stat_mods(buff_name=buff_name, affected_stat=affected_stat)
 
                     break
-                elif buff_affects_stat.lower() == 'n':
+                elif buff_affects_stat == 'n':
                     break
                 else:
                     print_invalid_answer()
@@ -2032,12 +2059,12 @@ class BuffAbilityAttributes(AttributesBase):
         while True:
             changes_stats = input(start_msg + '\n')
 
-            if changes_stats.lower() == 'n':
+            if changes_stats == 'n':
                 print("\nDoesn't modify stats.")
                 self.buffs_dct[buff_name]['affected_stats'] = None
                 break
 
-            elif changes_stats.lower() == 'y':
+            elif changes_stats == 'y':
                 if self._stat_names_in_tooltip():
                     # (clears placeholder)
                     del self.buffs_dct[buff_name]['affected_stats']['placeholder_stat_1']

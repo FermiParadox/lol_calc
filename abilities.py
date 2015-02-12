@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 
-class EnemyTargetsDeadException(BaseException):
+class EnemyTargetsDeadException(Exception):
     """
     To be used (and handled) when no other valid targets are available for an event application.
     """
