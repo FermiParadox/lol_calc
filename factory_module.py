@@ -47,7 +47,7 @@ def print_invalid_answer(extra_msg=''):
     print('\nInvalid answer. ' + extra_msg)
 
 
-def pretty_formatted_str_to_dct(given_dct):
+def dct_to_pretty_formatted_str(given_dct):
     """
     Converts given dct to a pretty formatted string.
     Used for file writing.
@@ -186,7 +186,14 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct):
 
     # Stores the choice and notifies dev.
     choice_msg = '%s: %s\n' % (attr_name, chosen_value)
+
+    try:
+        # (tries to convert value given to float if possible)
+        chosen_value = float(chosen_value)
+    except (ValueError, TypeError):
+        pass
     modified_dct[attr_name] = chosen_value
+
     print(choice_msg)
 
 
@@ -1420,11 +1427,6 @@ class GeneralAbilityAttributes(AttributesBase):
         pp.pprint(self.general_attr_dct)
 
 
-class DmgBonusesFeatures(object):
-    # TODO
-    pass
-
-
 class DmgAbilityAttributes(AttributesBase):
     """
     Each instance of this class is used for creation of all dmgs of a single ability.
@@ -1440,6 +1442,18 @@ class DmgAbilityAttributes(AttributesBase):
                                 champion_name=champion_name)
 
         self.dmgs_dct = {}
+
+    # Category names and required extra variables.
+    AVAILABLE_DMG_CATEGORIES = dict(standard_dmg=None,
+                                    innate_dmg=None,
+                                    chain_decay=dict(
+                                        decay_coef='placeholder'
+                                    ),
+                                    chain_limited_decay=dict(
+                                        decay_coef='placeholder',
+                                        max_decay_percent='placeholder'
+                                    ),
+                                    aa_dmg_value=None)
 
     @staticmethod
     def dmg_attributes():
@@ -1458,13 +1472,12 @@ class DmgAbilityAttributes(AttributesBase):
             max_targets='placeholder',
             )
 
-    @staticmethod
-    def usual_values_dmg_attr():
+    def usual_values_dmg_attr(self):
 
         return dict(
             target_type=('enemy', 'player'),
             # TODO insert more categories in class and then here.
-            dmg_category=('standard_dmg', 'innate_dmg', 'chain_decay', 'chain_limited_decay', 'aa_dmg_value'),
+            dmg_category=sorted(self.AVAILABLE_DMG_CATEGORIES),
             dmg_source=ALL_POSSIBLE_ABILITIES_SHORTCUTS,
             life_conversion_type=('spellvamp', None, 'lifesteal'),
             radius=(None, ),
@@ -1472,8 +1485,6 @@ class DmgAbilityAttributes(AttributesBase):
             max_targets=(1, 2, 3, 4, 5, 'infinite'),
             usual_max_targets=(1, 2, 3, 4, 5),
             )
-
-    AUTOMATICALLY_FILLED_DMG_ATTR = ()
 
     @staticmethod
     def mod_stat_name_map():
@@ -1795,6 +1806,35 @@ class DmgAbilityAttributes(AttributesBase):
             else:
                 print_invalid_answer()
 
+    def insert_dmg_category_related_attrs(self):
+
+        if not self.dmgs_dct:
+            return
+
+        for dmg_name, dmg_dct in self.dmgs_dct.items():
+
+            # Filters out categories that don't require extra arguments,
+            # and checks if given dmg is in those categories.
+            dmg_cat = dmg_dct['dmg_category']
+            if dmg_cat in [key for key, val in self.AVAILABLE_DMG_CATEGORIES.items() if val is not None]:
+
+                for extra_attr_name in self.AVAILABLE_DMG_CATEGORIES[dmg_cat]:
+                    extra_msg = 'Dmg name: %s, Attribute: %s' % (dmg_name, extra_attr_name)
+
+                    while True:
+                        print(delimiter(20))
+                        print(extra_msg)
+
+                        answer = input('\n')
+                        _check_for_loop_exit(key=answer)
+
+                        try:
+                            answer = float(answer)
+                            self.dmgs_dct[dmg_name].update({extra_attr_name: answer})
+                            break
+                        except (ValueError, TypeError):
+                            print_invalid_answer(extra_msg='Float needed.')
+
     @loop_exit_handler
     def _run_dmg_attr_creation_without_result_msg(self):
         """
@@ -1808,6 +1848,7 @@ class DmgAbilityAttributes(AttributesBase):
         self.suggest_dmg_attr_values()
         self.insert_extra_dmg()
         self.modify_dmg_names()
+        self.insert_dmg_category_related_attrs()
 
     @repeat_cluster(cluster_name='DMG ATTRIBUTES')
     def run_dmg_attr_creation(self):
@@ -2665,13 +2706,13 @@ class ModuleCreator(object):
 
         data_storage(targeted_module='champions/jax.py',
                      obj_name='ABILITIES_ATTRIBUTES',
-                     str_to_insert=pretty_formatted_str_to_dct(given_dct=final_dct))
+                     str_to_insert=dct_to_pretty_formatted_str(given_dct=final_dct))
 
         effects_dct = instance.spells_effects
 
         data_storage(targeted_module='champions/jax.py',
                      obj_name='ABILITIES_EFFECTS',
-                     str_to_insert=pretty_formatted_str_to_dct(given_dct=effects_dct),
+                     str_to_insert=dct_to_pretty_formatted_str(given_dct=effects_dct),
                      write_mode='a')
 
 

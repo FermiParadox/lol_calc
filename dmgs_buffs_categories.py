@@ -210,3 +210,15 @@ class DmgCategories(BuffCategories):
             target='enemy',
             dmg_source='AA',
             dot=False,)
+
+    def dmg_value(self, dmg_name, dmg_source_paths):
+        """
+        Calculates dmg value of given dmg name.
+
+        Returns:
+            (float)
+        """
+
+
+
+        return
