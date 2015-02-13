@@ -1,20 +1,5 @@
-def repeat_cluster(func):
-    """
-    Wrapper used for repeating cluster of suggestions.
-    """
+d = {1: 3, 2:5}
 
-    def wrapped(*args, **kwargs):
+l = list(d.items())
 
-        while True:
-            func(*args, **kwargs)
-
-            if input('halo'):
-                break
-
-    return wrapped
-
-@repeat_cluster
-def f():
-    print('hi')
-
-f()
+print(l)

@@ -143,6 +143,7 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct):
     Returns:
         (None)
     """
+
     suggested_val_tpl = suggested_values_dct[attr_name]
 
     # Ensures lists to be zipped have same length.
@@ -189,9 +190,11 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct):
     print(choice_msg)
 
 
-def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='', stop_key=INNER_LOOP_KEY,
-                         error_key=OUTER_LOOP_KEY, repeat_key=REPEAT_CHOICE_KEY):
+def _suggest_attr_values(suggested_values_dct, modified_dct, mute_exit_key_msgs=False, extra_start_msg='',
+                         stop_key=INNER_LOOP_KEY, error_key=OUTER_LOOP_KEY, repeat_key=REPEAT_CHOICE_KEY):
     """
+    CHECK: single suggestion method for more details.
+
     Stores each chosen attribute value or repeats a choice.
 
         stop_key: (str) When given as answer, exits this loop.
@@ -201,9 +204,10 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, extra_start_msg='',
     """
 
     start_msg = '\n' + delimiter(40)
-    start_msg += '\n(type "%s" to exit inner loops)\n' % stop_key
-    start_msg += '\n(type "%s" to exit outer loops)\n' % error_key
-    start_msg += '\n(type "%s" to repeat previous choices)\n' % repeat_key
+    if mute_exit_key_msgs is False:
+        start_msg += '\n(type "%s" to exit inner loops)' % stop_key
+        start_msg += '\n(type "%s" to exit outer loops)' % error_key
+        start_msg += '\n(type "%s" to repeat previous choices)\n' % repeat_key
     start_msg += extra_start_msg
     print(start_msg)
 
@@ -1417,6 +1421,7 @@ class GeneralAbilityAttributes(AttributesBase):
 
 
 class DmgBonusesFeatures(object):
+    # TODO
     pass
 
 
@@ -1526,7 +1531,7 @@ class DmgAbilityAttributes(AttributesBase):
 
     def mod_value_and_stat(self, mod_shortcut):
         """
-        Finds mod's value and the stat linked to the mod.
+        Finds mod value and the stat linked to the mod.
 
         Returns:
             (dct)
@@ -1645,6 +1650,40 @@ class DmgAbilityAttributes(AttributesBase):
             except ValueError:
                 print('Invalid selection. Try again.')
 
+    def _suggest_dmg_mod_attrs(self, tooltip_fragment, curr_dmg_dct):
+        """
+        Asks mod type and mod owner, for each mod,
+        and stores it in given dmg dct.
+
+        Returns:
+            (None)
+        """
+
+        curr_dmg_dct.update(
+            dict(
+                mods=dict(
+                    player={},
+                    enemy={}
+                )))
+
+        # Dmg mods in api 'effects'
+        mod_val_abbrev_lst = re.findall(r'\+\{\{\s(\w\d{1,2})\s\}\}', tooltip_fragment)
+        for mod_abbrev in mod_val_abbrev_lst:
+            # Mod values and stats
+            mod_stat_and_val_dct = self.mod_value_and_stat(mod_shortcut=mod_abbrev)
+
+            # ASKS DEV
+            mod_and_val_as_str = '\nMod: %s, value: %s' % tuple(mod_stat_and_val_dct.items())[0]
+            # (creates appropriate arg form for method below)
+            mod_attr_template = {'mod_stat_owner': ('player', 'enemy')}
+            temp_mod_dct = {}
+            _suggest_attr_values(suggested_values_dct=mod_attr_template, modified_dct=temp_mod_dct,
+                                 mute_exit_key_msgs=True, extra_start_msg=mod_and_val_as_str)
+
+            # Stores mod in dmg dct.
+            owner_type = temp_mod_dct['mod_stat_owner']
+            curr_dmg_dct['mods'][owner_type].update(mod_stat_and_val_dct)
+
     def fill_dmg_type_and_mods_and_dot(self):
         """
         Detects dmg type, its abbreviation,
@@ -1674,12 +1713,7 @@ class DmgAbilityAttributes(AttributesBase):
             curr_dmg_dct['dmg_type'] = dmg_type.lower()
 
             # INSERTS MODS IN DMG
-            curr_dmg_dct.update({'mods': {}})
-            # Dmg mods in api 'effects'
-            mod_val_abbrev_lst = re.findall(r'\+\{\{\s(\w\d{1,2})\s\}\}', tooltip_fragment)
-            for mod_abbrev in mod_val_abbrev_lst:
-                # Mod values and stats
-                curr_dmg_dct['mods'].update(self.mod_value_and_stat(mod_shortcut=mod_abbrev))
+            self._suggest_dmg_mod_attrs(tooltip_fragment=tooltip_fragment, curr_dmg_dct=curr_dmg_dct)
 
             # INSERTS DMGS
             self.dmgs_dct.update({new_dmg_name: curr_dmg_dct})
