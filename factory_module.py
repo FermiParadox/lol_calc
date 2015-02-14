@@ -36,6 +36,23 @@ def fat_delimiter(num_of_lines):
 
 
 # ---------------------------------------------------------------
+def str_to_float(given_str):
+    """
+    Tries to convert a string to float.
+
+    Returns:
+        (str)
+        (float)
+    """
+    try:
+        # (tries to convert value given to float if possible)
+        given_str = float(given_str)
+    except (ValueError, TypeError):
+        pass
+    return given_str
+
+
+# ---------------------------------------------------------------
 def print_invalid_answer(extra_msg=''):
     """
     Prints to notify user of invalid answer given.
@@ -186,12 +203,7 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct):
 
     # Stores the choice and notifies dev.
     choice_msg = '%s: %s\n' % (attr_name, chosen_value)
-
-    try:
-        # (tries to convert value given to float if possible)
-        chosen_value = float(chosen_value)
-    except (ValueError, TypeError):
-        pass
+    chosen_value = str_to_float(given_str=chosen_value)
     modified_dct[attr_name] = chosen_value
 
     print(choice_msg)
@@ -2263,6 +2275,8 @@ class BuffAbilityAttributes(AttributesBase):
 
     def possible_duration_values(self):
         """
+        NOT USED
+
         Checks if given ability has durations,
         and returns a list of most probable values.
 
@@ -2687,6 +2701,7 @@ class ModuleCreator(object):
                 break
             else:
                 external_val_initial_value = input('\nInitial value for %s' % external_val_name)
+                external_val_initial_value = str_to_float(given_str=external_val_initial_value)
 
                 self.external_vars_dct.update({external_val_name: external_val_initial_value})
 
