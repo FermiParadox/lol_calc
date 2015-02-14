@@ -265,7 +265,7 @@ def loop_exit_handler(func):
     return wrapped
 
 
-def _new_automatic_attr_dct_name(targeted_dct, attr_type):
+def _new_automatic_attr_dct_name(targeted_dct, attr_type, ability_name):
     """
     Creates a new name for an attr dct, ensuring no existing names are overwritten.
 
@@ -273,16 +273,18 @@ def _new_automatic_attr_dct_name(targeted_dct, attr_type):
         (str)
     """
 
-    new_attr_name = attr_type + '_1'
+    new_attr_name = '{}_{}'.format(ability_name, attr_type)
 
     if targeted_dct:
 
         for num in range(1, 100, 1):
-            new_attr_name = attr_type + '_' + str(num)
 
             if new_attr_name not in targeted_dct:
                 # If a suitable name has been found, exits method.
                 return new_attr_name
+
+            else:
+                new_attr_name = '{}_{}_{}'.format(ability_name, attr_type, num)
 
     # If there was no existing attr dict, returns preset name value.
     else:
@@ -1722,7 +1724,9 @@ class DmgAbilityAttributes(AttributesBase):
 
             # INSERTS DMG NAME AND ATTRS
             # New temporary dmg name.
-            new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct, attr_type='dmg')
+            new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct,
+                                                        attr_type='dmg',
+                                                        ability_name=self.ability_name)
             self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
 
             curr_dmg_dct = self.dmgs_dct[new_dmg_name]
@@ -1804,7 +1808,9 @@ class DmgAbilityAttributes(AttributesBase):
             extra_dmg = input('\nInsert extra dmg?\n')
 
             if extra_dmg == 'y':
-                new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct, attr_type='dmg')
+                new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct,
+                                                            attr_type='dmg',
+                                                            ability_name=self.ability_name)
                 self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
                 self._suggest_dmg_values(dmg_name=new_dmg_name)
                 _suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attr(),
@@ -1986,7 +1992,9 @@ class BuffAbilityAttributes(AttributesBase):
                 num_iter = range(int(num_of_buffs))
 
                 for _ in num_iter:
-                    new_buff_name = _new_automatic_attr_dct_name(targeted_dct=self.buffs_dct, attr_type='buff')
+                    new_buff_name = _new_automatic_attr_dct_name(targeted_dct=self.buffs_dct,
+                                                                 attr_type='buff',
+                                                                 ability_name=self.ability_name)
                     self.buffs_dct.update({new_buff_name: self.buff_attributes()})
 
                 end_msg = '\n%s buffs selected.' % num_of_buffs
