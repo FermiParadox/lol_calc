@@ -112,7 +112,33 @@ class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
     def q_dmg(self):
         return self.Q_DMG
 
+    Q_EFFECTS = dict(
+            player=dict(
+                actives=dict(
+                    remove_buffs=['w_buff'])),
+
+            enemy=dict(
+                # buffs and effects activated at spell cast
+                actives=dict(
+                    dmg=['q_dmg'])))
+
+    Q_EFFECTS_2 = dict(
+            player=dict(
+                actives=dict(
+                    remove_buffs=['w_buff'])),
+
+            enemy=dict(
+                # buffs and effects activated at spell cast
+                actives=dict(
+                    dmg=['q_dmg','w_buff'])))
+
     def q_effects(self):
+        if 'w_buff' in self.act_buffs['player']:
+            return self.Q_EFFECTS_2
+        else:
+            return self.Q_EFFECTS
+
+    def q_effects1(self):
 
         dct = dict(
             player=dict(
@@ -255,7 +281,8 @@ class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
         stun=None,
         duration=E_STATS['stun']['duration'],
         target='enemy',
-        delay=E_STATS['general']['delay'],)
+        delay=E_STATS['general']['delay'],
+        )
 
     def e_stun_enemy(self):
         return self.E_STUN_ENEMY
@@ -324,7 +351,35 @@ class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
     def r_counter_buff(self):
         return self.R_COUNTER_BUFF
 
+    LESS_2 = dict(
+        on_hit=dict(cause_dmg=[],
+                    apply_buff=['r_counter_buff'],
+                    remove_buff=[]),
+        target='player',
+        duration='permanent',
+        prohibit_cd_start=None,
+        )
+
+    THIRD = dict(
+        on_hit=dict(
+            cause_dmg=['r_dmg'],
+            apply_buff=[],
+            remove_buff=['r_counter_buff']),
+        target='player',
+        duration='permanent',
+        prohibit_cd_start=None,
+        )
+
     def r_dmg_initiator(self):
+        try:
+            if self.act_buffs['player']['r_counter_buff']['current_stacks'] == 2:
+                return self.THIRD
+        except KeyError:
+            pass
+
+        return self.LESS_2
+
+    def r_dmg_initiator1(self):
         """
         Returns dictionary containing Jax's R counter.
         """

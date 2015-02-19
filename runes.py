@@ -127,7 +127,9 @@ class RunesFinal(object):
 
         self.player_lvl = player_lvl
         self.selected_runes = selected_runes        # e.g. {'red': {'ad': 5, 'ad_per_lvl': {'additive: 4},}, }
-        self.runes_buff_store = dict(stats={})     # e.g. {'stats': 'att_speed': {'percent': },}
+        self.runes_buff_store = dict(
+            stats={},
+            duration='permanent')     # e.g. {'stats': 'att_speed': {'percent': },}
 
         self.set_runes_buff_store()
 
@@ -137,8 +139,6 @@ class RunesFinal(object):
 
         Dict structure Color -> stat_name -> {'rune_name': '', 'stat_value': ''}
         """
-
-        self.runes_buff_store['duration'] = 'permanent'
 
         if self.selected_runes:
 

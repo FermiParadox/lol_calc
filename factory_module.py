@@ -1257,6 +1257,8 @@ class GeneralAbilityAttributes(AttributesBase):
         dashed_distance=(None,),
         channel_time=(None,),
         resets_aa=(False, True),
+        toggled=(False, True),
+        not_castable=(False, True),
         )
 
     def resource_cost_type(self):
@@ -1950,7 +1952,7 @@ class BuffAbilityAttributes(AttributesBase):
     USUAL_BUFF_ATTR_VALUES = dict(
         target_type=('player', 'enemy'),
         max_stacks=(1,),
-        duration=(1, 2, 3, 4, 5, 6, 7),
+        duration=(1, 2, 3, 4, 5, 'permanent'),
         prohibit_cd_start=(None, )
     )
 
@@ -2342,6 +2344,19 @@ class BuffAbilityAttributes(AttributesBase):
 
     # TODO: Allow duration link to another buff (that is, buff_3_duration = buff_1_duration
 
+    def _remove_redundant_attrs(self):
+        """
+        Removes redundant attributes that are not needed
+        or harmful if present without appropriate value (e.g. max_stacks=1).
+
+        Returns:
+            (None)
+        """
+        for buff_name in self.buffs_dct:
+            if buff_name['max_stacks'] == 1:
+                del buff_name['max_stacks']
+
+
     @loop_exit_handler
     def _run_buff_attr_creation_without_result_msg(self):
 
@@ -2357,6 +2372,8 @@ class BuffAbilityAttributes(AttributesBase):
             _suggest_attr_values(suggested_values_dct=self.USUAL_BUFF_ATTR_VALUES,
                                  modified_dct=self.buffs_dct[buff_name],
                                  extra_start_msg=usual_attrs_msg)
+
+        self._remove_redundant_attrs()
 
     @repeat_cluster(cluster_name='BUFFS')
     def run_buff_attr_creation(self):
@@ -2767,9 +2784,9 @@ if __name__ == '__main__':
     if testApiStorage is True:
         RequestAllAbilitiesFromAPI().store_all_champions_data()
 
-    testExploration = False
+    testExploration = True
     if testExploration is True:
-        champName = 'soraka'
+        champName = 'annie'
         ExploreApiAbilities().champion_abilities(champion_name=champName, print_mode=True)
         ExploreApiAbilities().sanitized_tooltips(champ=champName, raw_str=None, print_mode=True)
 
