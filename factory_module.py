@@ -148,7 +148,24 @@ def _check_for_repeat_choice_error(key):
         raise RepeatChoiceError
 
 
-def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct):
+def _input_in_len_range(given_str, choices_length):
+    """
+    Checks if given_str is a number from 0 to max allowed.
+
+    Returns:
+        (bool)
+    """
+
+    try:
+        if 0 < int(given_str) <= choices_length:
+            return True
+    except ValueError:
+        pass
+
+    return False
+
+
+def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, restrict_choices):
     """
     Suggests a value and stores the choice.
 
@@ -174,13 +191,20 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct):
 
     # CHOICE PROCESSING
 
-    # (only "enter" as input is not accepted)
+    # Repeats until accepted answer is given.
     while True:
         input_given = input(msg + '\n')
+        # (enter is not accepted)
         if input_given != '':
+            # (if input given is not corresponding to a shortcut num)
+            if (restrict_choices is True) and (_input_in_len_range(given_str=input_given,
+                                                                   choices_length=shortcut_len) is False):
+                print_invalid_answer('Choose from the menu.')
+                continue
+
             break
         else:
-            print('No value given. Try again.')
+            print_invalid_answer('Enter not accepted.')
 
     # (breaks loop prematurely if asked)
     _check_for_loop_exit(key=input_given)
@@ -209,7 +233,8 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct):
     print(choice_msg)
 
 
-def _suggest_attr_values(suggested_values_dct, modified_dct, mute_exit_key_msgs=False, extra_start_msg='',
+def _suggest_attr_values(suggested_values_dct, modified_dct, restrict_choices=False, mute_exit_key_msgs=False,
+                         extra_start_msg='',
                          stop_key=INNER_LOOP_KEY, error_key=OUTER_LOOP_KEY, repeat_key=REPEAT_CHOICE_KEY):
     """
     CHECK: single suggestion method for more details.
@@ -240,7 +265,8 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, mute_exit_key_msgs=
                 # (current)
                 _suggest_single_attr_value(attr_name=curr_attr_name,
                                            suggested_values_dct=suggested_values_dct,
-                                           modified_dct=modified_dct)
+                                           modified_dct=modified_dct,
+                                           restrict_choices=restrict_choices)
                 break
 
             except RepeatChoiceError:
@@ -1486,6 +1512,7 @@ class DmgAbilityAttributes(AttributesBase):
             radius='placeholder',
             dot='placeholder',
             max_targets='placeholder',
+            delay=0,
             )
 
     def usual_values_dmg_attr(self):
@@ -2704,6 +2731,14 @@ class ModuleCreator(object):
     def __init__(self, champion_name):
         self.champion_name = champion_name
         self.external_vars_dct = {}
+
+    CONDITIONAL_TYPES = dict(
+
+    )
+
+    def create_conditionals(self):
+        _suggest_attr_values(suggested_values_dct=1, modified_dct=1, restrict_choices=True)
+
 
     def external_vars(self):
         """
