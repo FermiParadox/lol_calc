@@ -1200,8 +1200,11 @@ class AttributesBase(object):
 
         return all_same
 
-    def return_tpl_or_element(self, lst):
+    def _obsolete_return_tpl_or_element(self, lst):
         """
+        OBSOLETE: Efficiency should be minimal if using this method to create data,
+        since each user would call the same dict in reality.
+
         Returns whole list if its elements are the same,
         otherwise returns the first element.
 
@@ -1233,7 +1236,7 @@ class AttributesBase(object):
 
         mod_val = self.api_spell_dct['effect'][effect_num]
 
-        return self.return_tpl_or_element(lst=mod_val)
+        return mod_val
 
     def _champion_and_ability_msg(self):
 
@@ -1385,7 +1388,7 @@ class GeneralAbilityAttributes(AttributesBase):
 
         # CASTABLE
         else:
-            self.general_attr_dct['base_cd'] = self.return_tpl_or_element(lst=self.api_spell_dct['cooldown'])
+            self.general_attr_dct['base_cd'] = self.api_spell_dct['cooldown']
 
     def fill_cost_attrs(self):
         """
@@ -1422,7 +1425,7 @@ class GeneralAbilityAttributes(AttributesBase):
             self.general_attr_dct['range'] = 0
 
         else:
-            self.general_attr_dct['range'] = self.return_tpl_or_element(lst=range_val)
+            self.general_attr_dct['range'] = range_val
 
     def auto_fill_attributes(self):
         """
@@ -2723,6 +2726,47 @@ class AbilitiesAttributes(object):
         ''
 
 
+class ConditionalsCreation(object):
+
+    def __init__(self):
+        self.conditions = {}
+        self.condition_results = {}
+        self.conditionals_dct = {}
+
+    CONDITIONAL_ATTRS = dict(
+        condition_type=('buff', 'ability', 'stat'),
+    )
+
+    def _new_condition_name(self):
+        """
+        Asks dev for new condition name.
+
+        Returns:
+            (None)
+        """
+
+        while True:
+            new_condition_name = input('\nNew condition name? (enter to skip)')
+            if new_condition_name == '':
+                break
+            elif new_condition_name in self.conditions:
+                print_invalid_answer('Condition name exists.')
+
+            else:
+                break
+
+    def _insert_condition_content(self, con_name):
+        """
+        Suggests content for given condition name.
+
+        Returns:
+            (None)
+        """
+
+        self.conditions.update({con_name: {}})
+
+        _suggest_attr_values(suggested_values_dct=, modified_dct=self.conditions[con_name], restrict_choices=True)
+
 # ===============================================================
 #       MODULE CREATION
 # ===============================================================
@@ -2731,14 +2775,6 @@ class ModuleCreator(object):
     def __init__(self, champion_name):
         self.champion_name = champion_name
         self.external_vars_dct = {}
-
-    CONDITIONAL_TYPES = dict(
-
-    )
-
-    def create_conditionals(self):
-        _suggest_attr_values(suggested_values_dct=1, modified_dct=1, restrict_choices=True)
-
 
     def external_vars(self):
         """
