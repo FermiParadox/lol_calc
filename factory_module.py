@@ -8,6 +8,7 @@ import pprint as pp
 import copy
 import api_key
 import palette
+import collections
 
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
@@ -38,17 +39,28 @@ def fat_delimiter(num_of_lines):
 # ---------------------------------------------------------------
 def str_to_float(given_str):
     """
-    Tries to convert a string to float.
+    Tries to convert a string to int or float,
+    based on what is more suitable.
 
     Returns:
         (str)
+        (int)
         (float)
     """
+
     try:
         # (tries to convert value given to float if possible)
-        given_str = float(given_str)
+        return int(given_str)
     except (ValueError, TypeError):
         pass
+
+    try:
+        # (tries to convert value given to float if possible)
+        return float(given_str)
+    except (ValueError, TypeError):
+        pass
+
+    # (if no conversion was successful..)
     return given_str
 
 
@@ -192,6 +204,7 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, re
     # CHOICE PROCESSING
 
     # Repeats until accepted answer is given.
+    input_given = None
     while True:
         input_given = input(msg + '\n')
         # (enter is not accepted)
@@ -233,9 +246,12 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, re
     print(choice_msg)
 
 
+def _exception_keys():
+    return dict(stop_key=INNER_LOOP_KEY, error_key=OUTER_LOOP_KEY, repeat_key=REPEAT_CHOICE_KEY)
+
+
 def _suggest_attr_values(suggested_values_dct, modified_dct, restrict_choices=False, mute_exit_key_msgs=False,
-                         extra_start_msg='',
-                         stop_key=INNER_LOOP_KEY, error_key=OUTER_LOOP_KEY, repeat_key=REPEAT_CHOICE_KEY):
+                         extra_start_msg='',):
     """
     CHECK: single suggestion method for more details.
 
@@ -249,9 +265,9 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, restrict_choices=Fa
 
     start_msg = '\n' + delimiter(40)
     if mute_exit_key_msgs is False:
-        start_msg += '\n(type "%s" to exit inner loops)' % stop_key
-        start_msg += '\n(type "%s" to exit outer loops)' % error_key
-        start_msg += '\n(type "%s" to repeat previous choices)\n' % repeat_key
+        start_msg += '\n(type "%s" to exit inner loops)' % _exception_keys()['stop_key']
+        start_msg += '\n(type "%s" to exit outer loops)' % _exception_keys()['error_key']
+        start_msg += '\n(type "%s" to repeat previous choices)\n' % _exception_keys()['repeat_key']
     start_msg += extra_start_msg
     print(start_msg)
 
@@ -370,6 +386,7 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
 def repeat_cluster(cluster_name):
     """
     Decorator used for repeating cluster of suggestions.
+    When appropriate exception is raised, re-calls the decorated function.
 
     Args:
         cluster_name: (str)
@@ -405,6 +422,8 @@ SPELL_SHORTCUTS = ('q', 'w', 'e', 'r')
 ABILITY_SHORTCUTS = ('inn', ) + SPELL_SHORTCUTS
 EXTRA_SPELL_SHORTCUTS = ('q2', 'w2', 'e2', 'r2')
 ALL_POSSIBLE_ABILITIES_SHORTCUTS = ABILITY_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
+
+ALLOWED_ABILITY_LVLS = ('1', '2', '3', '4', '5')
 
 
 def spell_num(spell_name):
@@ -2733,20 +2752,44 @@ class ConditionalsCreation(object):
         self.condition_results = {}
         self.conditionals_dct = {}
 
-    CONDITIONAL_ATTRS = dict(
-        condition_type=('buff', 'ability', 'stat'),
-    )
+    CONDITION_TYPES = ('buff', 'ability_lvl', 'stat')
+
+    TARGET_TYPES = ('player', 'enemy')
+
+    OPERATOR_TYPES = ('>', '<', '==', '<=', '>=')
+
+    CONDITION_SETUP_DCT = dict(
+        buff=dict(
+            owner_type=TARGET_TYPES,
+            operator=OPERATOR_TYPES,
+            stacks=[str(i) for i in range(1, 10)],
+        ),
+        stat=dict(
+            owner_type=TARGET_TYPES,
+            operator=OPERATOR_TYPES,
+            value=()
+        ),
+        spell_lvl=dict(
+            spell_name=[i for i in ALL_POSSIBLE_ABILITIES_SHORTCUTS if i != 'inn'],
+            operator=OPERATOR_TYPES,
+            lvl=ALLOWED_ABILITY_LVLS
+        ))
 
     def _new_condition_name(self):
         """
         Asks dev for new condition name.
 
         Returns:
-            (None)
+            (str)
         """
 
+        new_condition_name = None
+
+        print(delimiter(40))
+        print(self.conditions)
+
         while True:
-            new_condition_name = input('\nNew condition name? (enter to skip)')
+            new_condition_name = input('\nNew condition name? (enter to skip)\n')
             if new_condition_name == '':
                 break
             elif new_condition_name in self.conditions:
@@ -2755,9 +2798,12 @@ class ConditionalsCreation(object):
             else:
                 break
 
-    def _insert_condition_content(self, con_name):
+        return new_condition_name
+
+    @repeat_cluster(cluster_name='CONDITION CONTENTS')
+    def _insert_condition_contents(self, con_name):
         """
-        Suggests content for given condition name.
+        Creates condition dict and suggests contents.
 
         Returns:
             (None)
@@ -2765,7 +2811,24 @@ class ConditionalsCreation(object):
 
         self.conditions.update({con_name: {}})
 
-        _suggest_attr_values(suggested_values_dct=, modified_dct=self.conditions[con_name], restrict_choices=True)
+        _suggest_attr_values(suggested_values_dct={'condition_type': self.CONDITION_TYPES},
+                             modified_dct=self.conditions[con_name],
+                             restrict_choices=True)
+
+        chosen_con_type = self.conditions[con_name]['condition_type']
+
+        _suggest_attr_values(suggested_values_dct=self.CONDITION_SETUP_DCT[chosen_con_type],
+                             modified_dct=self.conditions[con_name],
+                             restrict_choices=True)
+
+        print(delimiter(40))
+        print('\nCONDITION: {}'.format(con_name))
+        pp.pprint(self.conditions)
+
+    def create_condition(self):
+        con_name = self._new_condition_name()
+        self._insert_condition_contents(con_name=con_name)
+
 
 # ===============================================================
 #       MODULE CREATION
@@ -2855,7 +2918,7 @@ if __name__ == '__main__':
     if testApiStorage is True:
         RequestAllAbilitiesFromAPI().store_all_champions_data()
 
-    testExploration = True
+    testExploration = False
     if testExploration is True:
         champName = 'annie'
         ExploreApiAbilities().champion_abilities(champion_name=champName, print_mode=True)
@@ -2870,6 +2933,11 @@ if __name__ == '__main__':
     if testChampIDs is True:
         print(ExploreApiAbilities().champion_id('dariu'))
 
-    testModuleInsertion = True
+    testModuleInsertion = False
     if testModuleInsertion is True:
         ModuleCreator(champion_name='jax').insert_attrs_to_module()
+
+    testConditionals = True
+    if testConditionals is True:
+        ConditionalsCreation().create_condition()
+
