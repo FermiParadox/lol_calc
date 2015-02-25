@@ -271,7 +271,7 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, restrict_choices=Fa
     start_msg += extra_start_msg
     print(start_msg)
 
-    num_name_couples = {num: name for num, name in enumerate(suggested_values_dct)}
+    num_name_couples = {num: name for num, name in enumerate(sorted(suggested_values_dct))}
     for attr_num in sorted(num_name_couples):
 
         while True:
@@ -421,6 +421,7 @@ def repeat_cluster(cluster_name):
 SPELL_SHORTCUTS = ('q', 'w', 'e', 'r')
 ABILITY_SHORTCUTS = ('inn', ) + SPELL_SHORTCUTS
 EXTRA_SPELL_SHORTCUTS = ('q2', 'w2', 'e2', 'r2')
+ALL_POSSIBLE_SPELL_SHORTCUTS = SPELL_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
 ALL_POSSIBLE_ABILITIES_SHORTCUTS = ABILITY_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
 
 ALLOWED_ABILITY_LVLS = ('1', '2', '3', '4', '5')
@@ -2752,13 +2753,13 @@ class ConditionalsCreation(object):
         self.condition_results = {}
         self.conditionals_dct = {}
 
-    CONDITION_TYPES = ('buff', 'ability_lvl', 'stat')
+    TRIGGER_TYPES = ('buff', 'ability_lvl', 'stat')
 
     TARGET_TYPES = ('player', 'enemy')
 
     OPERATOR_TYPES = ('>', '<', '==', '<=', '>=')
 
-    CONDITION_SETUP_DCT = dict(
+    TRIGGER_SETUP_DCT = dict(
         buff=dict(
             owner_type=TARGET_TYPES,
             operator=OPERATOR_TYPES,
@@ -2770,9 +2771,12 @@ class ConditionalsCreation(object):
             value=()
         ),
         spell_lvl=dict(
-            spell_name=[i for i in ALL_POSSIBLE_ABILITIES_SHORTCUTS if i != 'inn'],
+            spell_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
             operator=OPERATOR_TYPES,
             lvl=ALLOWED_ABILITY_LVLS
+        ),
+        on_cd=dict(
+            spell_name=ALL_POSSIBLE_SPELL_SHORTCUTS
         ))
 
     def _new_condition_name(self):
@@ -2800,8 +2804,8 @@ class ConditionalsCreation(object):
 
         return new_condition_name
 
-    @repeat_cluster(cluster_name='CONDITION CONTENTS')
-    def _insert_condition_contents(self, con_name):
+    @repeat_cluster(cluster_name='TRIGGER CONTENTS')
+    def _insert_trigger_contents(self, con_name):
         """
         Creates condition dict and suggests contents.
 
@@ -2811,23 +2815,28 @@ class ConditionalsCreation(object):
 
         self.conditions.update({con_name: {}})
 
-        _suggest_attr_values(suggested_values_dct={'condition_type': self.CONDITION_TYPES},
+        _suggest_attr_values(suggested_values_dct={'condition_type': self.TRIGGER_TYPES},
                              modified_dct=self.conditions[con_name],
                              restrict_choices=True)
 
         chosen_con_type = self.conditions[con_name]['condition_type']
 
-        _suggest_attr_values(suggested_values_dct=self.CONDITION_SETUP_DCT[chosen_con_type],
+        _suggest_attr_values(suggested_values_dct=self.TRIGGER_SETUP_DCT[chosen_con_type],
                              modified_dct=self.conditions[con_name],
                              restrict_choices=True)
 
         print(delimiter(40))
-        print('\nCONDITION: {}'.format(con_name))
+        print('\nTRIGGER: {}'.format(con_name))
         pp.pprint(self.conditions)
 
     def create_condition(self):
+
         con_name = self._new_condition_name()
-        self._insert_condition_contents(con_name=con_name)
+
+        # Ends method if no name is provided.
+        if not con_name:
+            return
+        self._insert_trigger_contents(con_name=con_name)
 
 
 # ===============================================================
@@ -2888,6 +2897,8 @@ class ModuleCreator(object):
                      obj_name='ABILITIES_EFFECTS',
                      str_to_insert=dct_to_pretty_formatted_str(given_dct=effects_dct),
                      write_mode='a')
+
+
 
 
 # ===============================================================

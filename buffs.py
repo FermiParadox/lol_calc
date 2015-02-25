@@ -101,7 +101,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
         # STACKS
         # If it can stack...
         if 'max_stacks' in buff_dct:
-            # ...adds current_stacks keyword.
+            # ..adds current_stacks keyword.
             self.active_buffs[tar_name][buff_name].update(dict(current_stacks=initial_stacks_increment))
 
     def add_already_active_buff(self, buff_name, tar_name, stack_increment=1):
@@ -221,10 +221,10 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
             # For Q,W,E and R...
             for ability_name in 'qwer':
 
-                #...if the ability has at least one lvl...
+                # ..if the ability has at least one lvl...
                 if abilities_lvls[ability_name] > 0:
 
-                    #... applies the buffs.
+                    # .. applies the buffs.
                     self.add_single_ability_passive_buff(ability_name=ability_name,
                                                          target_type=target_type,
                                                          effects_dct=abilities_effects_dct,

@@ -1,6 +1,9 @@
-d = {1: 11, 2: 22}
+import re
 
-s = '%s and %s' % tuple(d.items())[0]
+p1 = re.compile(r'1')
 
-print(s)
-print(tuple(d.items()))
+p2 = re.compile(r'2')
+
+p3 = r'%s' % 'cat'
+
+print(re.findall(p3, 'cat dog'))
