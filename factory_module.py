@@ -8,7 +8,6 @@ import pprint as pp
 import copy
 import api_key
 import palette
-import collections
 
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
@@ -2746,7 +2745,7 @@ class AbilitiesAttributes(object):
         ''
 
 
-class ConditionalsCreation(object):
+class ConditionTriggers(object):
 
     def __init__(self):
         self.conditions = {}
@@ -2828,6 +2827,50 @@ class ConditionalsCreation(object):
         print(delimiter(40))
         print('\nTRIGGER: {}'.format(con_name))
         pp.pprint(self.conditions)
+
+
+class ConditionEffects(ConditionTriggers):
+
+    def effect_setup_dct(self):
+
+        dct = dict(
+            buff_attrs=dict(
+                buff_name=self.available_buff_names(),
+                buff_attr_name=self.available_buff_attr_names(),
+                values=(),
+                modification_type=('multiply', 'add', 'replace'),
+                ),
+
+            buff_on_hit=dict(
+                buff_name=self.available_buff_names(),
+                on_hit_effect_type=palette.ChampionsStats.on_hit_effects(),
+                modification_type=('add', 'replace'),
+                ),
+
+            ability_effect=dict(
+                ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
+                owner_type=('enemy', 'player'),
+                active_effect_type=palette.ChampionsStats.spell_effects()['player']['actives'],
+                modification_type=('add', 'replace'),
+            ),
+
+            dmg_attrs=dict(
+                dmg_name=self.available_dmg_names(),
+                attr_name=self.available_dmg_attr_names(),
+                modification_type=('multiply', 'add', 'replace'),
+                values=(),
+            ),
+
+            ability_attrs=dict(
+                ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
+                attr_name=self.available_ability_attr_names(),
+                values=(),
+                modification_type=('multiply', 'add', 'replace'),
+                ),
+            )
+
+        return dct
+
 
     def create_condition(self):
 
@@ -2950,5 +2993,5 @@ if __name__ == '__main__':
 
     testConditionals = True
     if testConditionals is True:
-        ConditionalsCreation().create_condition()
+        ConditionTriggers().create_condition()
 

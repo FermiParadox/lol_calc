@@ -10,8 +10,20 @@ class ChampionBase(object):
         return self.ABILITIES_EFFECTS
 
 
-
 class ChampionsStats(object):
+
+    @staticmethod
+    def on_hit_effects():
+        return dict(
+            apply_dmg=[],
+            add_buff=[],
+            remove_buff=[],
+            change_cd=[],
+        )
+
+
+
+
     @staticmethod
     def inn_effects():
         return dict(
