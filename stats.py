@@ -417,20 +417,24 @@ class StatRequest(StatCalculation):
                                  initial_active_buffs=initial_active_buffs,
                                  initial_current_stats=initial_current_stats)
 
-    DEFENSIVE_SPECIAL_STATS = ('percent_physical_reduction_by_armor',
+    DEFENSIVE_SPECIAL_STATS = {'percent_physical_reduction_by_armor',
                                'percent_magic_reduction_by_mr',
                                'reduced_armor',
                                'reduced_mr',
                                'physical_dmg_taken',
-                               'magic_dmg_taken',)
+                               'magic_dmg_taken',
+                               }
 
     # Contains stats that are not included in base_stats_dct and are calculated separately by their own methods.
-    SPECIAL_STATS_LST = ('base_ad',
-                         'bonus_ad',
-                         'att_speed',
-                         'move_speed',
-                         'crit_chance',
-                         'cdr',) + DEFENSIVE_SPECIAL_STATS
+    SPECIAL_STATS_SET = frozenset({'base_ad',
+                                   'bonus_ad',
+                                   'att_speed',
+                                   'move_speed',
+                                   'crit_chance',
+                                   'cdr',
+                                   } | DEFENSIVE_SPECIAL_STATS)
+
+
 
     def evaluate_stat(self, target_name, stat_name):
         """
@@ -445,7 +449,7 @@ class StatRequest(StatCalculation):
         """
 
         # Special stats have their own methods.
-        if stat_name in self.SPECIAL_STATS_LST:
+        if stat_name in self.SPECIAL_STATS_SET:
             self.stored_stats[target_name][stat_name] = getattr(self, stat_name)(target_name)
 
         # Most stats can be calculated using the 'standard_stat' method.

@@ -21,9 +21,6 @@ class ChampionsStats(object):
             change_cd=[],
         )
 
-
-
-
     @staticmethod
     def inn_effects():
         return dict(

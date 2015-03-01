@@ -2747,10 +2747,10 @@ class AbilitiesAttributes(object):
 
 class ConditionTriggers(object):
 
-    def __init__(self):
+    def __init__(self, abilities_dct, abilities_effects):
+        self.abilities_dct = abilities_dct
+        self.abilities_effects = abilities_effects
         self.conditions = {}
-        self.condition_results = {}
-        self.conditionals_dct = {}
 
     TRIGGER_TYPES = ('buff', 'ability_lvl', 'stat')
 
@@ -2758,25 +2758,38 @@ class ConditionTriggers(object):
 
     OPERATOR_TYPES = ('>', '<', '==', '<=', '>=')
 
-    TRIGGER_SETUP_DCT = dict(
-        buff=dict(
-            owner_type=TARGET_TYPES,
-            operator=OPERATOR_TYPES,
-            stacks=[str(i) for i in range(1, 10)],
-        ),
-        stat=dict(
-            owner_type=TARGET_TYPES,
-            operator=OPERATOR_TYPES,
-            value=()
-        ),
-        spell_lvl=dict(
-            spell_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
-            operator=OPERATOR_TYPES,
-            lvl=ALLOWED_ABILITY_LVLS
-        ),
-        on_cd=dict(
-            spell_name=ALL_POSSIBLE_SPELL_SHORTCUTS
-        ))
+    def available_buff_names(self):
+
+        return self.abilities_dct['buffs']
+
+    def available_buff_attr_names(self):
+        return dict(
+
+        )
+
+    def trigger_setup_dct(self,):
+
+        return dict(
+            buff=dict(
+                buff_name=self.available_buff_names(),
+                owner_type=self.TARGET_TYPES,
+                operator=self.OPERATOR_TYPES,
+                stacks=[str(i) for i in range(1, 10)],
+                ),
+            stat=dict(
+                stat_name=,
+                owner_type=self.TARGET_TYPES,
+                operator=self.OPERATOR_TYPES,
+                value=()
+            ),
+            spell_lvl=dict(
+                spell_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
+                operator=self.OPERATOR_TYPES,
+                lvl=ALLOWED_ABILITY_LVLS
+            ),
+            on_cd=dict(
+                spell_name=ALL_POSSIBLE_SPELL_SHORTCUTS
+            ))
 
     def _new_condition_name(self):
         """
@@ -2806,7 +2819,7 @@ class ConditionTriggers(object):
     @repeat_cluster(cluster_name='TRIGGER CONTENTS')
     def _insert_trigger_contents(self, con_name):
         """
-        Creates condition dict and suggests contents.
+        Creates a single condition dict and suggests contents.
 
         Returns:
             (None)
@@ -2820,7 +2833,7 @@ class ConditionTriggers(object):
 
         chosen_con_type = self.conditions[con_name]['condition_type']
 
-        _suggest_attr_values(suggested_values_dct=self.TRIGGER_SETUP_DCT[chosen_con_type],
+        _suggest_attr_values(suggested_values_dct=self.trigger_setup_dct[chosen_con_type],
                              modified_dct=self.conditions[con_name],
                              restrict_choices=True)
 
@@ -2830,6 +2843,9 @@ class ConditionTriggers(object):
 
 
 class ConditionEffects(ConditionTriggers):
+
+    def __init__(self):
+        ConditionTriggers.__init__(self)
 
     def effect_setup_dct(self):
 
@@ -2870,7 +2886,6 @@ class ConditionEffects(ConditionTriggers):
             )
 
         return dct
-
 
     def create_condition(self):
 

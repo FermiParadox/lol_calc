@@ -249,8 +249,7 @@ class Counters(BuffsGeneral):
 
     AOE_SPELLVAMP_MOD = 30/100
     LOWEST_MEANINGFUL_COMBAT_TIME = 5
-    BASE_STATS_TPL = ()
-    EXTRA_STATS_TPL = ('lifesteal', 'spellvamp', 'ap')
+    EXTRA_STATS_SET = {'lifesteal', 'spellvamp', 'ap'}
 
     def __init__(self,
                  current_time,
@@ -286,11 +285,11 @@ class Counters(BuffsGeneral):
             (list)
         """
 
-        lst = list(self.base_stats_dct['player'])
-        lst += self.SPECIAL_STATS_LST
-        lst += self.EXTRA_STATS_TPL
+        s = set(self.base_stats_dct['player'])
+        s |= self.SPECIAL_STATS_SET
+        s |= self.EXTRA_STATS_SET
 
-        return lst
+        return s
 
     def internally_displayed_enemy_stat_names(self):
         """
