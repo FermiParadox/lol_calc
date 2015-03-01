@@ -1540,7 +1540,7 @@ if __name__ == '__main__':
     if run_time_test:
         # Crude time testing.
         import cProfile
-        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*1000
+        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*100
         cProfile.run(test_text, 'cprof_results', sort='cumtime')
 
         import pstats

@@ -2763,9 +2763,20 @@ class ConditionTriggers(object):
         return self.abilities_dct['buffs']
 
     def available_buff_attr_names(self):
-        return dict(
 
-        )
+        s = {}
+        for buff_name in self.available_buff_names():
+            s |= self.abilities_dct['buffs'][buff_name].keys()
+
+        return s
+
+    def available_ability_attr_names(self):
+
+        s = {}
+        for ability_name in self.abilities_dct['general_attributes']:
+            s |= self.abilities_dct['general_attributes'][ability_name].keys()
+
+        return s
 
     def trigger_setup_dct(self,):
 
@@ -2777,7 +2788,7 @@ class ConditionTriggers(object):
                 stacks=[str(i) for i in range(1, 10)],
                 ),
             stat=dict(
-                stat_name=,
+                stat_name=palette.ALL_POSSIBLE_STAT_NAMES,
                 owner_type=self.TARGET_TYPES,
                 operator=self.OPERATOR_TYPES,
                 value=()
