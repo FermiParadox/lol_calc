@@ -93,10 +93,10 @@ class StatCalculation(StatFilters):
     Contains methods for the calculation of some stats' values.
     """
 
-    ALL_RESOURCE_NAMES = frozenset(('mp', 'energy', 'rage', None, 'flow'))
+    ALL_RESOURCE_NAMES = frozenset({'mp', 'energy', 'rage', None, 'flow'})
 
-    RESOURCE_MAX_STAT_NAMES = frozenset(('max_'+i for i in ALL_RESOURCE_NAMES if i is not None))
-    RESOURCE_CURRENT_STAT_NAMES = frozenset(('current_'+i for i in ALL_RESOURCE_NAMES if i is not None))
+    RESOURCE_MAX_STAT_NAMES = frozenset({'max_'+i for i in ALL_RESOURCE_NAMES if i is not None})
+    RESOURCE_CURRENT_STAT_NAMES = frozenset({'current_'+i for i in ALL_RESOURCE_NAMES if i is not None})
 
     DEFENSIVE_SPECIAL_STATS = frozenset({'percent_physical_reduction_by_armor',
                                          'percent_magic_reduction_by_mr',
@@ -107,15 +107,15 @@ class StatCalculation(StatFilters):
                                          })
 
     # Extracted from rune_stat_names_map with: re.findall(r'\'(\w+)\'', s)
-    RUNE_STAT_NAMES = frozenset(('ap', 'mr', 'mr_per_lvl', 'armor_per_lvl', 'crit', 'ap_per_lvl', 'hp_per_lvl',
+    RUNE_STAT_NAMES = frozenset({'ap', 'mr', 'mr_per_lvl', 'armor_per_lvl', 'crit', 'ap_per_lvl', 'hp_per_lvl',
                                  'mp5', 'hp5_per_lvl', 'xp', 'energy', 'ep5_per_lvl', 'gp5', 'hp', 'att_speed',
                                  'mp5_per_lvl', 'death_time_reduction', 'ep5', 'spellvamp', 'crit_modifier',
                                  'mp_per_lvl', 'flat_armor_penetration', 'mp', 'ad', 'ad_per_lvl', 'hp5',
                                  'lifesteal', 'move_speed', 'armor', 'energy_per_lvl', 'flat_magic_penetration',
-                                 'hp', 'cdr_per_lvl', 'cdr'))
+                                 'hp', 'cdr_per_lvl', 'cdr'})
 
-    ALL_POSSIBLE_STAT_NAMES = frozenset(RUNE_STAT_NAMES | RESOURCE_CURRENT_STAT_NAMES)
-
+    ALL_POSSIBLE_STAT_NAMES = frozenset({RUNE_STAT_NAMES | RESOURCE_CURRENT_STAT_NAMES | RESOURCE_MAX_STAT_NAMES}
+                                        - ALL_RESOURCE_NAMES)
 
     def __init__(self,
                  champion_lvls_dct,
@@ -446,7 +446,7 @@ class StatRequest(StatCalculation):
                                    'move_speed',
                                    'crit_chance',
                                    'cdr',
-                                   } | DEFENSIVE_SPECIAL_STATS)
+                                   } | StatCalculation.DEFENSIVE_SPECIAL_STATS)
 
     def evaluate_stat(self, target_name, stat_name):
         """

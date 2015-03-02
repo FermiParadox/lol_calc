@@ -8,6 +8,7 @@ import pprint as pp
 import copy
 import api_key
 import palette
+import stats
 
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
@@ -176,6 +177,52 @@ def _input_in_len_range(given_str, choices_length):
     return False
 
 
+def _exception_keys():
+    return dict(stop_key=INNER_LOOP_KEY, error_key=OUTER_LOOP_KEY, repeat_key=REPEAT_CHOICE_KEY)
+
+
+def _key_to_exception_map():
+    return {INNER_LOOP_KEY: InnerLoopExit, OUTER_LOOP_KEY: OuterLoopExit, REPEAT_CHOICE_KEY: RepeatChoiceError}
+
+
+def _check_factory_custom_exception(given_str):
+    """
+    Raises exception if given string is an exception triggering key.
+
+    Returns:
+        (None)
+    """
+
+    if given_str in _key_to_exception_map():
+        raise _key_to_exception_map()[given_str]
+
+
+# ---------------------------------------------------------------
+def _y_n_question(question):
+    """
+    Checks user input on given question.
+    Raises factory custom exceptions if needed.
+
+    Returns:
+        (True)
+        (False)
+    """
+
+    while True:
+        answer = input('\n{} (y, n)'.format(question))
+
+        # Check exceptions.
+        _check_factory_custom_exception(given_str=answer)
+
+        if answer == 'y':
+            return True
+        elif answer == 'n':
+            return False
+        else:
+            print_invalid_answer()
+
+
+# ---------------------------------------------------------------
 def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, restrict_choices):
     """
     Suggests a value and stores the choice.
@@ -243,10 +290,6 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, re
     modified_dct[attr_name] = chosen_value
 
     print(choice_msg)
-
-
-def _exception_keys():
-    return dict(stop_key=INNER_LOOP_KEY, error_key=OUTER_LOOP_KEY, repeat_key=REPEAT_CHOICE_KEY)
 
 
 def _suggest_attr_values(suggested_values_dct, modified_dct, restrict_choices=False, mute_exit_key_msgs=False,
@@ -1386,10 +1429,18 @@ class GeneralAbilityAttributes(AttributesBase):
         else:
             return tuple(self.api_spell_dct['cost'])
 
-    def cost_category(self):
+    def _suggest_cost_category(self):
+        """
+        Suggests cost categories to dev.
 
-        return ExploreApiAbilities().champion_abilities(champion_name=self.champion_name,
-                                                        ability_name=self.ability_name)['costType'].lower()
+        Returns:
+            (None)
+        """
+
+        modified_dct = self.general_attr_dct['cost']['standard_cost']
+
+        _suggest_attr_values(suggested_values_dct={'COST CATEGORY': self.COST_CATEGORIES},
+                             modified_dct=modified_dct, restrict_choices=True)
 
     def fill_base_cd_values(self):
         """
@@ -1424,10 +1475,25 @@ class GeneralAbilityAttributes(AttributesBase):
         else:
             # Clears contents of 'cost' keyword,
             # and replaces them.
-            self.general_attr_dct['cost'] = {}
-            self.general_attr_dct['cost'].update({'resource_type': self.resource_cost_type()})
-            self.general_attr_dct['cost'].update({'values': self.resource_cost_values()})
-            self.general_attr_dct['cost'].update({'cost_category': self.cost_category()})
+            self.general_attr_dct['cost'] = {'standard_cost': None, 'stack_cost': None}
+
+            # Standard cost.
+            standard_cost_question = _y_n_question('Contains STANDARD COST?')
+            if standard_cost_question is True:
+
+                self.general_attr_dct['cost']['standard_cost'] = {}
+                self._suggest_cost_category()
+                self.general_attr_dct['cost']['standard_cost'].update({'resource_type': self.resource_cost_type()})
+                self.general_attr_dct['cost']['standard_cost'].update({'values': self.resource_cost_values()})
+
+            # Stacks cost.
+            stack_cost_question = _y_n_question('Contains STACK COST?')
+            if stack_cost_question is True:
+
+                self.general_attr_dct['cost']['stack_cost'] = {}
+                self.general_attr_dct['cost']['stack_cost'].update({'buff_name': 'placeholder'})
+                self.general_attr_dct['cost']['stack_cost'].update({'values': 'placeholder'})
+
 
     def fill_range(self):
         """
@@ -2758,9 +2824,13 @@ class ConditionTriggers(object):
 
     OPERATOR_TYPES = ('>', '<', '==', '<=', '>=')
 
-    def available_buff_names(self):
+    NON_PER_LVL_STAT_NAMES = sorted(i for i in stats.StatCalculation.ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
 
+    def available_buff_names(self):
         return self.abilities_dct['buffs']
+
+    def available_dmg_names(self):
+        return self.abilities_dct['dmgs']
 
     def available_buff_attr_names(self):
 
@@ -2788,7 +2858,7 @@ class ConditionTriggers(object):
                 stacks=[str(i) for i in range(1, 10)],
                 ),
             stat=dict(
-                stat_name=palette.ALL_POSSIBLE_STAT_NAMES,
+                stat_name=self.NON_PER_LVL_STAT_NAMES,
                 owner_type=self.TARGET_TYPES,
                 operator=self.OPERATOR_TYPES,
                 value=()
@@ -3019,5 +3089,5 @@ if __name__ == '__main__':
 
     testConditionals = True
     if testConditionals is True:
-        ConditionTriggers().create_condition()
-
+        a = ConditionTriggers({}, {}).all_available_stat_names()
+        print(a)

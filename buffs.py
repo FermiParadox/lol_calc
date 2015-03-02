@@ -285,11 +285,11 @@ class Counters(BuffsGeneral):
             (list)
         """
 
-        s = set(self.base_stats_dct['player'])
-        s |= self.SPECIAL_STATS_SET
-        s |= self.EXTRA_STATS_SET
+        lst = list(self.base_stats_dct['player'])
+        lst += self.SPECIAL_STATS_SET
+        lst += self.EXTRA_STATS_SET
 
-        return s
+        return lst
 
     def internally_displayed_enemy_stat_names(self):
         """
