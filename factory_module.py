@@ -198,9 +198,9 @@ def _check_factory_custom_exception(given_str):
 
 
 # ---------------------------------------------------------------
-def _y_n_question(question):
+def _y_n_question(question_str):
     """
-    Checks user input on given question.
+    Checks user input on given question_str.
     Raises factory custom exceptions if needed.
 
     Returns:
@@ -209,7 +209,7 @@ def _y_n_question(question):
     """
 
     while True:
-        answer = input('\n{} (y, n)'.format(question))
+        answer = input('\n{} (y, n)'.format(question_str))
 
         # Check exceptions.
         _check_factory_custom_exception(given_str=answer)
@@ -220,6 +220,83 @@ def _y_n_question(question):
             return False
         else:
             print_invalid_answer()
+
+
+def _new_group_name(group_type, existing_names=None):
+    """
+    Asks dev for new non existing name.
+    'Enter' skips creation.
+
+    Args:
+        group_type: (str) Describes group (e.g. buff, dmg, condition effect)
+        existing_names: (None) or (sequence)
+    Returns:
+        (None)
+        (str)
+    """
+
+    new_name = None
+    while True:
+        new_name = input('\nNew {} name? (enter to skip)\n'.format(group_type.upper()))
+
+        if existing_names:
+            if new_name in existing_names:
+                print_invalid_answer('Name exists.')
+                continue
+
+        elif new_name == '':
+            print('\n(Skipping new {} name.)'.format(group_type.upper()))
+        else:
+            break
+
+    return new_name
+
+
+def _tpl_question(question_str, choices_seq, restrict_choices=False):
+    """
+    Presents enumerated choices to dev.
+
+    Returns:
+        (anything) Selected choice
+    """
+
+    sorted_choices = sorted(choices_seq)
+
+    enum_choices = enumerate(sorted_choices, 1)
+
+    print(delimiter(10))
+    msg = '\n' + question_str
+    for num, val in enum_choices:
+        msg += '\n{}: {}'.format(num, val)
+
+    answer = None
+    while True:
+        answer = input(msg)
+
+        _check_factory_custom_exception(given_str=answer)
+
+        # Repeats loop if choices are restricted, until valid int is given.
+        if restrict_choices is True:
+            try:
+                if int(answer) <= len(sorted_choices):
+                    break
+            except (KeyError, ValueError):
+                continue
+
+        else:
+            break
+
+    # Checks if enumerated answer was chosen.
+    try:
+        if int(answer) <= len(sorted_choices):
+            return sorted_choices[int(answer)-1]
+
+    except (KeyError, ValueError):
+        pass
+
+    # If not, returns answer as is.
+    return answer
+
 
 
 # ---------------------------------------------------------------
@@ -1478,7 +1555,7 @@ class GeneralAbilityAttributes(AttributesBase):
             self.general_attr_dct['cost'] = {'standard_cost': None, 'stack_cost': None}
 
             # Standard cost.
-            standard_cost_question = _y_n_question('Contains STANDARD COST?')
+            standard_cost_question = _y_n_question(question_str='Contains STANDARD COST?')
             if standard_cost_question is True:
 
                 self.general_attr_dct['cost']['standard_cost'] = {}
@@ -1487,7 +1564,7 @@ class GeneralAbilityAttributes(AttributesBase):
                 self.general_attr_dct['cost']['standard_cost'].update({'values': self.resource_cost_values()})
 
             # Stacks cost.
-            stack_cost_question = _y_n_question('Contains STACK COST?')
+            stack_cost_question = _y_n_question(question_str='Contains STACK COST?')
             if stack_cost_question is True:
 
                 self.general_attr_dct['cost']['stack_cost'] = {}
@@ -2840,6 +2917,14 @@ class ConditionTriggers(object):
 
         return s
 
+    def available_dmg_attr_names(self):
+
+        s = {}
+        for dmg_name in self.available_dmg_names():
+            s |= self.abilities_dct['dmgs'][dmg_name].keys()
+
+        return s
+
     def available_ability_attr_names(self):
 
         s = {}
@@ -2880,25 +2965,13 @@ class ConditionTriggers(object):
             (str)
         """
 
-        new_condition_name = None
-
         print(delimiter(40))
         print(self.conditions)
 
-        while True:
-            new_condition_name = input('\nNew condition name? (enter to skip)\n')
-            if new_condition_name == '':
-                break
-            elif new_condition_name in self.conditions:
-                print_invalid_answer('Condition name exists.')
-
-            else:
-                break
-
-        return new_condition_name
+        return _new_group_name(group_type='condition', existing_names=self.conditions)
 
     @repeat_cluster(cluster_name='TRIGGER CONTENTS')
-    def _insert_trigger_contents(self, con_name):
+    def _create_trigger_contents(self, con_name):
         """
         Creates a single condition dict and suggests contents.
 
@@ -2914,7 +2987,7 @@ class ConditionTriggers(object):
 
         chosen_con_type = self.conditions[con_name]['condition_type']
 
-        _suggest_attr_values(suggested_values_dct=self.trigger_setup_dct[chosen_con_type],
+        _suggest_attr_values(suggested_values_dct=self.trigger_setup_dct()[chosen_con_type],
                              modified_dct=self.conditions[con_name],
                              restrict_choices=True)
 
@@ -2925,8 +2998,10 @@ class ConditionTriggers(object):
 
 class ConditionEffects(ConditionTriggers):
 
-    def __init__(self):
-        ConditionTriggers.__init__(self)
+    def __init__(self, abilities_dct, abilities_effects):
+        ConditionTriggers.__init__(self,
+                                   abilities_dct=abilities_dct,
+                                   abilities_effects=abilities_effects)
 
     def effect_setup_dct(self):
 
@@ -2934,7 +3009,6 @@ class ConditionEffects(ConditionTriggers):
             buff_attrs=dict(
                 buff_name=self.available_buff_names(),
                 buff_attr_name=self.available_buff_attr_names(),
-                values=(),
                 modification_type=('multiply', 'add', 'replace'),
                 ),
 
@@ -2955,27 +3029,82 @@ class ConditionEffects(ConditionTriggers):
                 dmg_name=self.available_dmg_names(),
                 attr_name=self.available_dmg_attr_names(),
                 modification_type=('multiply', 'add', 'replace'),
-                values=(),
             ),
 
             ability_attrs=dict(
                 ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
                 attr_name=self.available_ability_attr_names(),
-                values=(),
                 modification_type=('multiply', 'add', 'replace'),
                 ),
             )
 
         return dct
 
+    @staticmethod
+    def constant_values_dct():
+        return dict(
+            values=()
+        )
+
+    @staticmethod
+    def formula_contents_dct():
+        return dict(
+            x_formula=(),
+            x_type=('buff', 'stat'),
+            x_owner=('player', 'enemy', None)
+        )
+
+    def _create_values_or_formula_contents(self, con_eff_name):
+        """
+        Asks dev if given condition effect contains constant value(s) or a formula,
+        and suggests corresponding elements.
+        """
+
+        # Constant value or formula
+        choice_dct = {}
+        _suggest_attr_values(suggested_values_dct={'value_type': ('constant_values', 'formula')},
+                             modified_dct=choice_dct, restrict_choices=True,
+                             extra_start_msg='CONDITION EFFECT: {}'.format(con_eff_name))
+
+        if choice_dct['value_type'] == 'constant_values':
+            _suggest_attr_values(suggested_values_dct=self.constant_values_dct(),
+                                 modified_dct=self.conditions[con_name],)
+        else:
+            _suggest_attr_values(suggested_values_dct=self.formula_contents_dct(),
+                                 modified_dct=,)
+
+    def _create_condition_effect_contents(self, con_name):
+        """
+        Suggests condition effect contents for
+        """
+
+        con_eff_name = _new_group_name(group_type='condition effect',
+                                       existing_names=self.conditions[con_name]['effects'])
+
+        # Exits method if no name is provided.
+        if con_eff_name:
+            self.conditions[con_name]['effects'].update({con_eff_name: {}})
+        else:
+            return
+
+        _suggest_attr_values(suggested_values_dct=self.effect_setup_dct(),
+                             modified_dct=self.conditions[con_name]['effects'][con_eff_name])
+
+
+
     def create_condition(self):
 
         con_name = self._new_condition_name()
-
         # Ends method if no name is provided.
         if not con_name:
             return
-        self._insert_trigger_contents(con_name=con_name)
+
+        # Initiates condition contents for given condition name.
+        if 'triggers' not in self.conditions[con_name]:
+            self.conditions[con_name].update({'triggers': {}, 'effects': {}})
+
+        self._create_trigger_contents(con_name=con_name)
+
 
 
 # ===============================================================
