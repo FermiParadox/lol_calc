@@ -42,11 +42,16 @@ def str_to_float(given_str):
     Tries to convert a string to int or float,
     based on what is more suitable.
 
+    Args:
+        given_str: (str)
     Returns:
         (str)
         (int)
         (float)
     """
+
+    if type(given_str) is float:
+        raise TypeError('Expected string (floats will be erroneously converted to ints).')
 
     try:
         # (tries to convert value given to float if possible)
@@ -222,37 +227,7 @@ def _y_n_question(question_str):
             print_invalid_answer()
 
 
-def _new_group_name(group_type, existing_names=None):
-    """
-    Asks dev for new non existing name.
-    'Enter' skips creation.
-
-    Args:
-        group_type: (str) Describes group (e.g. buff, dmg, condition effect)
-        existing_names: (None) or (sequence)
-    Returns:
-        (None)
-        (str)
-    """
-
-    new_name = None
-    while True:
-        new_name = input('\nNew {} name? (enter to skip)\n'.format(group_type.upper()))
-
-        if existing_names:
-            if new_name in existing_names:
-                print_invalid_answer('Name exists.')
-                continue
-
-        elif new_name == '':
-            print('\n(Skipping new {} name.)'.format(group_type.upper()))
-        else:
-            break
-
-    return new_name
-
-
-def _tpl_question(question_str, choices_seq, restrict_choices=False):
+def _ask_tpl_question(question_str, choices_seq, restrict_choices=False):
     """
     Presents enumerated choices to dev.
 
@@ -260,9 +235,12 @@ def _tpl_question(question_str, choices_seq, restrict_choices=False):
         (anything) Selected choice
     """
 
-    sorted_choices = sorted(choices_seq)
+    try:
+        choices = sorted(choices_seq)
+    except TypeError:
+        choices = choices_seq
 
-    enum_choices = enumerate(sorted_choices, 1)
+    enum_choices = enumerate(choices, 1)
 
     print(delimiter(10))
     msg = '\n' + question_str
@@ -271,16 +249,16 @@ def _tpl_question(question_str, choices_seq, restrict_choices=False):
 
     answer = None
     while True:
-        answer = input(msg)
+        answer = input(msg+'\n')
 
         _check_factory_custom_exception(given_str=answer)
 
         # Repeats loop if choices are restricted, until valid int is given.
         if restrict_choices is True:
             try:
-                if int(answer) <= len(sorted_choices):
+                if int(answer) <= len(choices):
                     break
-            except (KeyError, ValueError):
+            except ValueError:
                 continue
 
         else:
@@ -288,15 +266,14 @@ def _tpl_question(question_str, choices_seq, restrict_choices=False):
 
     # Checks if enumerated answer was chosen.
     try:
-        if int(answer) <= len(sorted_choices):
-            return sorted_choices[int(answer)-1]
+        if 0 < int(answer) <= len(choices):
+            return choices[int(answer)-1]
 
-    except (KeyError, ValueError):
+    except ValueError:
         pass
 
     # If not, returns answer as is.
-    return answer
-
+    return str_to_float(answer)
 
 
 # ---------------------------------------------------------------
@@ -426,30 +403,100 @@ def loop_exit_handler(func):
     return wrapped
 
 
-def _new_automatic_attr_dct_name(targeted_dct, attr_type, ability_name):
+def _new_automatic_attr_dct_name(existing_names, first_synthetic, second_synthetic=''):
     """
     Creates a new name for an attr dct, ensuring no existing names are overwritten.
+
+    Returns:
+        (str) e.g.: 'q_dmg', 'q_dmg_1', ..
+    """
+
+    if second_synthetic != '':
+        new_attr_name = '{}_{}_0'.format(first_synthetic, second_synthetic)
+    else:
+        new_attr_name = '{}_0'.format(first_synthetic)
+
+    if existing_names:
+
+        for num in range(1, 100, 1):
+
+            if new_attr_name not in existing_names:
+                # If a suitable name has been found, exits method.
+                return new_attr_name
+
+            else:
+                if second_synthetic != '':
+                    new_attr_name = '{}_{}_{}'.format(first_synthetic, second_synthetic, num)
+                else:
+                    new_attr_name = '{}_{}'.format(first_synthetic, num)
+
+    # If there was no existing attr dict, returns preset name value.
+    else:
+        return new_attr_name
+
+
+def _ask_new_group_name(group_type, existing_names=None, disable_enter=False):
+    """
+    Asks dev for new non existing name.
+    'Enter' skips creation (unless disabled).
+
+    Args:
+        group_type: (str) Describes group (e.g. buff, dmg, condition effect)
+        existing_names: (None) or (sequence)
+    Returns:
+        (None)
+        (str)
+    """
+
+    new_name = None
+    while True:
+        new_name = input('\nNew {} name. (enter to skip)\n'.format(group_type.upper()))
+        _check_factory_custom_exception(given_str=new_name)
+
+        if existing_names:
+            if new_name in existing_names:
+                print_invalid_answer('Name exists.')
+                continue
+
+        elif (disable_enter is True) and (new_name == ''):
+            print_invalid_answer('Enter not acceptable')
+            continue
+
+        elif new_name == '':
+            break
+
+        else:
+            break
+
+    return new_name
+
+
+def _auto_new_name_or_ask_name(existing_names, first_synthetic, second_synthetic='', disable_enter=False):
+    """
+    Creates automatically a new name, that doesn't overwriting existing names.
+    Then asks dev for name change.
 
     Returns:
         (str)
     """
 
-    new_attr_name = '{}_{}'.format(ability_name, attr_type)
+    # Auto name
+    new_automatic_name = _new_automatic_attr_dct_name(existing_names=existing_names, first_synthetic=first_synthetic,
+                                                      second_synthetic=second_synthetic)
 
-    if targeted_dct:
+    # Manual change if requested.
+    group_type_name = first_synthetic
+    if second_synthetic != '':
+        group_type_name += '_' + second_synthetic
 
-        for num in range(1, 100, 1):
-
-            if new_attr_name not in targeted_dct:
-                # If a suitable name has been found, exits method.
-                return new_attr_name
-
-            else:
-                new_attr_name = '{}_{}_{}'.format(ability_name, attr_type, num)
-
-    # If there was no existing attr dict, returns preset name value.
+    new_manual_name = _ask_new_group_name(group_type=group_type_name,
+                                          existing_names=list(existing_names).append(new_automatic_name),
+                                          disable_enter=disable_enter)
+    
+    if new_manual_name:
+        return new_manual_name
     else:
-        return new_attr_name
+        return new_automatic_name
 
 
 # ---------------------------------------------------------------
@@ -1918,9 +1965,8 @@ class DmgAbilityAttributes(AttributesBase):
 
             # INSERTS DMG NAME AND ATTRS
             # New temporary dmg name.
-            new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct,
-                                                        attr_type='dmg',
-                                                        ability_name=self.ability_name)
+            new_dmg_name = _new_automatic_attr_dct_name(existing_names=self.dmgs_dct, second_synthetic='dmg',
+                                                        first_synthetic=self.ability_name)
             self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
 
             curr_dmg_dct = self.dmgs_dct[new_dmg_name]
@@ -2002,9 +2048,8 @@ class DmgAbilityAttributes(AttributesBase):
             extra_dmg = input('\nInsert extra dmg?\n')
 
             if extra_dmg == 'y':
-                new_dmg_name = _new_automatic_attr_dct_name(targeted_dct=self.dmgs_dct,
-                                                            attr_type='dmg',
-                                                            ability_name=self.ability_name)
+                new_dmg_name = _new_automatic_attr_dct_name(existing_names=self.dmgs_dct, second_synthetic='dmg',
+                                                            first_synthetic=self.ability_name)
                 self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
                 self._suggest_dmg_values(dmg_name=new_dmg_name)
                 _suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attr(),
@@ -2186,9 +2231,8 @@ class BuffAbilityAttributes(AttributesBase):
                 num_iter = range(int(num_of_buffs))
 
                 for _ in num_iter:
-                    new_buff_name = _new_automatic_attr_dct_name(targeted_dct=self.buffs_dct,
-                                                                 attr_type='buff',
-                                                                 ability_name=self.ability_name)
+                    new_buff_name = _new_automatic_attr_dct_name(existing_names=self.buffs_dct, second_synthetic='buff',
+                                                                 first_synthetic=self.ability_name)
                     self.buffs_dct.update({new_buff_name: self.buff_attributes()})
 
                 end_msg = '\n%s buffs selected.' % num_of_buffs
@@ -2957,21 +3001,8 @@ class ConditionTriggers(object):
                 spell_name=ALL_POSSIBLE_SPELL_SHORTCUTS
             ))
 
-    def _new_condition_name(self):
-        """
-        Asks dev for new condition name.
-
-        Returns:
-            (str)
-        """
-
-        print(delimiter(40))
-        print(self.conditions)
-
-        return _new_group_name(group_type='condition', existing_names=self.conditions)
-
     @repeat_cluster(cluster_name='TRIGGER CONTENTS')
-    def _create_trigger_contents(self, con_name):
+    def _create_trigger_contents(self, con_name, name_given=''):
         """
         Creates a single condition dict and suggests contents.
 
@@ -2979,17 +3010,27 @@ class ConditionTriggers(object):
             (None)
         """
 
-        self.conditions.update({con_name: {}})
+        # TRIGGER NAME
+        if name_given:
+            trig_name = name_given
+        else:
+            trig_name = _auto_new_name_or_ask_name(first_synthetic='TRIGGER',
+                                                   existing_names=self.conditions[con_name]['triggers'])
 
-        _suggest_attr_values(suggested_values_dct={'condition_type': self.TRIGGER_TYPES},
-                             modified_dct=self.conditions[con_name],
+        self.conditions[con_name]['triggers'].update({trig_name: {}})
+
+        # TRIGGER TYPES
+        _suggest_attr_values(suggested_values_dct={'trigger_type': self.TRIGGER_TYPES},
+                             modified_dct=self.conditions[con_name]['triggers'],
                              restrict_choices=True)
 
-        chosen_con_type = self.conditions[con_name]['condition_type']
+        chosen_con_type = self.conditions[con_name]['trigger_type']
 
+        # TYPE CONTENTS
         _suggest_attr_values(suggested_values_dct=self.trigger_setup_dct()[chosen_con_type],
-                             modified_dct=self.conditions[con_name],
+                             modified_dct=self.conditions[con_name]['triggers'][chosen_con_type],
                              restrict_choices=True)
+
 
         print(delimiter(40))
         print('\nTRIGGER: {}'.format(con_name))
@@ -3068,18 +3109,20 @@ class ConditionEffects(ConditionTriggers):
 
         if choice_dct['value_type'] == 'constant_values':
             _suggest_attr_values(suggested_values_dct=self.constant_values_dct(),
-                                 modified_dct=self.conditions[con_name],)
+                                 #modified_dct=self.conditions[con_name],
+                                 )
         else:
             _suggest_attr_values(suggested_values_dct=self.formula_contents_dct(),
-                                 modified_dct=,)
+                                 #modified_dct=,
+                                 )
 
-    def _create_condition_effect_contents(self, con_name):
+    def _create_effect_contents(self, con_name):
         """
-        Suggests condition effect contents for
+        Suggests condition effect contents.
         """
 
-        con_eff_name = _new_group_name(group_type='condition effect',
-                                       existing_names=self.conditions[con_name]['effects'])
+        con_eff_name = _ask_new_group_name(group_type='condition effect',
+                                           existing_names=self.conditions[con_name]['effects'])
 
         # Exits method if no name is provided.
         if con_eff_name:
@@ -3087,23 +3130,47 @@ class ConditionEffects(ConditionTriggers):
         else:
             return
 
+        # Effect contents
         _suggest_attr_values(suggested_values_dct=self.effect_setup_dct(),
                              modified_dct=self.conditions[con_name]['effects'][con_eff_name])
 
 
+    def _create_single_condition(self):
 
-    def create_condition(self):
+        print(delimiter(40))
+        pp.pprint(self.conditions)
 
-        con_name = self._new_condition_name()
+        con_name = _auto_new_name_or_ask_name(first_synthetic='condition', existing_names=self.conditions)
         # Ends method if no name is provided.
         if not con_name:
             return
+        else:
+            self.conditions.update({con_name: {}})
+
 
         # Initiates condition contents for given condition name.
         if 'triggers' not in self.conditions[con_name]:
             self.conditions[con_name].update({'triggers': {}, 'effects': {}})
 
-        self._create_trigger_contents(con_name=con_name)
+        # Inserts all triggers.
+        while True:
+            print(delimiter(20))
+            print('\nCONDITION: {}, TRIGGERS: {}'.format(con_name, self.conditions[con_name]['triggers']))
+            new_trig_answer = _ask_tpl_question(question_str='NEW TRIGGER', choices_seq=['new', 'existing', None],
+                                                restrict_choices=True)
+
+            if new_trig_answer is None:
+                break
+            elif new_trig_answer == 'new':
+                self._create_trigger_contents(con_name=con_name)
+            elif new_trig_answer == 'existing':
+                print(delimiter(10))
+                pp.pprint(self.conditions[con_name]['triggers'])
+
+
+
+                self._create_trigger_contents(con_name=con_name)
+
 
 
 
@@ -3218,5 +3285,6 @@ if __name__ == '__main__':
 
     testConditionals = True
     if testConditionals is True:
-        a = ConditionTriggers({}, {}).all_available_stat_names()
-        print(a)
+        a = ConditionEffects({}, {})
+        a._create_single_condition()
+        pp.pprint(a.conditions)
