@@ -823,7 +823,8 @@ class RequestAllRunesFromAPI(RequestDataFromAPI):
 
 
 class RequestAllItemsFromAPI(RequestDataFromAPI):
-    ITEMS_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/item?itemListData=all&api_key=" + api_key.KEY
+    ITEMS_PAGE_URL = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/item?itemListData=all&api_key=" +
+                      api_key.KEY)
 
     @RequestDataFromAPI.request_abortion_handler
     def store_all_items_from_api(self):
@@ -1620,7 +1621,6 @@ class GeneralAbilityAttributes(AttributesBase):
                 self.general_attr_dct['cost']['stack_cost'] = {}
                 self.general_attr_dct['cost']['stack_cost'].update({'buff_name': 'placeholder'})
                 self.general_attr_dct['cost']['stack_cost'].update({'values': 'placeholder'})
-
 
     def fill_range(self):
         """
@@ -2595,7 +2595,6 @@ class BuffAbilityAttributes(AttributesBase):
             if buff_name['max_stacks'] == 1:
                 del buff_name['max_stacks']
 
-
     @loop_exit_handler
     def _run_buff_attr_creation_without_result_msg(self):
 
@@ -2932,7 +2931,7 @@ class AbilitiesAttributes(object):
 
     def create_innate_attrs(self):
         # TODO
-        ''
+        pass
 
 
 class ConditionTriggers(object):
@@ -3029,7 +3028,6 @@ class ConditionTriggers(object):
         _suggest_attr_values(suggested_values_dct=self.trigger_setup_dct()[trig_type],
                              modified_dct=self.conditions[con_name]['triggers'][trig_name],
                              restrict_choices=True)
-
 
         print(delimiter(40))
         print('\nTRIGGER: {}'.format(con_name))
@@ -3236,7 +3234,7 @@ class Conditionals(object):
             x_owner=('player', 'enemy', None)
         )
 
-    def _create_new_trigger(self, con_name):
+    def _create_and_insert_new_trigger(self, con_name):
         """
         Creates new trigger, and inserts it in given condition's dict.
 
@@ -3267,21 +3265,21 @@ class Conditionals(object):
         print('\nTRIGGER: {}'.format(con_name))
         pp.pprint(self.conditions)
 
-
     def _add_triggers(self, con_name):
+        """
+        Adds all triggers for given condition name.
 
+        Returns:
+            (None)
+        """
         print(delimiter(20))
         # ADD TRIGGER OR EXIT
-        end_trig_answer = _y_n_question(question_str='\nAdd trigger?')
-        if not end_trig_answer:
-            return
-        else:
-            # NEW TRIGGER OR EXISTING
-            new_or_existing_trig_answer = _ask_tpl_question(question_str='\nNew or existing trigger?',
-                                                            choices_seq=('new', 'existing'), restrict_choices=True)
-
-            if new_or_existing_trig_answer == 'new':
-                self._create_new_trigger(con_name)
+        while True:
+            end_trig_answer = _y_n_question(question_str='\nAdd trigger?')
+            if not end_trig_answer:
+                return
+            else:
+                self._create_and_insert_new_trigger(con_name)
 
 
 
