@@ -9,6 +9,7 @@ import copy
 import api_key
 import palette
 import stats
+import importlib
 
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
@@ -16,6 +17,11 @@ import stats
 
 # ===============================================================
 # ===============================================================
+CHAMPION_MODULES_FOLDER_NAME = 'champions'
+
+
+
+# ---------------------------------------------------------------
 def delimiter(num_of_lines, line_type='-'):
     """
     Creates a newline and then a long line string.
@@ -290,7 +296,7 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, re
         (None)
     """
 
-    suggested_val_tpl = suggested_values_dct[attr_name]
+    suggested_val_tpl = tuple(suggested_values_dct[attr_name])
 
     # Ensures lists to be zipped have same length.
     shortcut_len = len(suggested_val_tpl)
@@ -3119,9 +3125,10 @@ class ConditionEffects(ConditionTriggers):
 
 
 class Conditionals(object):
-    def __init__(self, abilities_dct, abilities_effects):
-        self.abilities_dct = abilities_dct
-        self.abilities_effects = abilities_effects
+    def __init__(self, champion_name):
+        self.champ_module = importlib.import_module(CHAMPION_MODULES_FOLDER_NAME + '.' + champion_name)
+        self.abilities_dct = self.champ_module.ABILITIES_ATTRIBUTES
+        self.abilities_effects = self.champ_module.ABILITIES_EFFECTS
         self.conditions = {}
 
     TRIGGER_TYPES = ('buff', 'ability_lvl', 'stat')
@@ -3281,17 +3288,55 @@ class Conditionals(object):
             else:
                 self._create_and_insert_new_trigger(con_name)
 
+    def _create_and_insert_new_effect(self, con_name):
+        """
+        Creates new effect, and inserts it in given condition's dict.
+
+        Returns:
+            (None)
+        """
+
+        # Creates effect name.
+        eff_name = _auto_new_name_or_ask_name(first_synthetic='effect',
+                                              existing_names=self.conditions[con_name]['effects'],
+                                              disable_enter=True)
+
+        # Inserts effect name.
+        self.conditions[con_name]['effects'].update({eff_name: {}})
+
+        # Inserts effect types.
+        eff_type = _ask_tpl_question(question_str='Effect TYPE?', choices_seq=self.effect_setup_dct(),
+                                     restrict_choices=True)
+
+        self.conditions[con_name]['effects'][eff_name].update({'effect_type': eff_type})
+
+        # Inserts effect contents.
+        _suggest_attr_values(suggested_values_dct=self.effect_setup_dct()[eff_type],
+                             modified_dct=self.conditions[con_name]['effects'][eff_name],
+                             restrict_choices=True)
+
+        print(delimiter(40))
+        print('\nEFFECT: {}'.format(con_name))
+        pp.pprint(self.conditions)
 
 
-    def _create_effects(self, con_name):
+    def _add_effects(self, con_name):
+        """
+        Adds all triggers for given condition name.
+
+        Returns:
+            (None)
+        """
         print(delimiter(20))
-        end_eff_answer = _y_n_question(question_str='\nAdd effect?')
 
-        if not end_eff_answer:
-            return
-        else:
-            # TODO
-            None
+        while True:
+            end_eff_answer = _y_n_question(question_str='\nAdd effect?')
+
+            if not end_eff_answer:
+                return
+            else:
+                # TODO
+                None
 
 
 
@@ -3356,13 +3401,13 @@ class ModuleCreator(object):
 
         final_dct = instance.final_abilities_attrs
 
-        data_storage(targeted_module='champions/jax.py',
+        data_storage(targeted_module='{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name),
                      obj_name='ABILITIES_ATTRIBUTES',
                      str_to_insert=dct_to_pretty_formatted_str(given_dct=final_dct))
 
         effects_dct = instance.spells_effects
 
-        data_storage(targeted_module='champions/jax.py',
+        data_storage(targeted_module='{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name),
                      obj_name='ABILITIES_EFFECTS',
                      str_to_insert=dct_to_pretty_formatted_str(given_dct=effects_dct),
                      write_mode='a')
@@ -3419,7 +3464,7 @@ if __name__ == '__main__':
 
     testConditionals = True
     if testConditionals is True:
-        a = Conditionals({}, {})
-        a.conditions.update({'con1': {'triggers': {},}})
-        a._add_triggers('con1')
+        a = Conditionals('jax')
+        a.conditions.update({'con1': {'triggers': {}, 'effects': {}}})
+        a._create_and_insert_new_effect('con1')
         pp.pprint(a.conditions)
