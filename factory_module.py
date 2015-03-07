@@ -303,7 +303,7 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, re
 
     # INITIAL CHOICE MESSAGE
     msg = delimiter(num_of_lines=20)
-    msg += '\nATTRIBUTE: %s\n' % attr_name
+    msg += '\nATTRIBUTE: %s:\n' % attr_name
     for display_val, suggested_val in enumerate(suggested_val_tpl, 1):
         msg += '\n%s: %s' % (display_val, suggested_val)
 
@@ -441,13 +441,13 @@ def _new_automatic_attr_dct_name(existing_names, first_synthetic, second_synthet
         return new_attr_name
 
 
-def _ask_new_group_name(group_type, existing_names=None, disable_enter=False):
+def _ask_new_group_name(group_type_name, existing_names=None, disable_enter=False):
     """
     Asks dev for new non existing name.
     'Enter' skips creation (unless disabled).
 
     Args:
-        group_type: (str) Describes group (e.g. buff, dmg, condition effect)
+        group_type_name: (str) Describes group (e.g. buff, dmg, condition effect)
         existing_names: (None) or (sequence)
     Returns:
         (None)
@@ -456,7 +456,7 @@ def _ask_new_group_name(group_type, existing_names=None, disable_enter=False):
 
     new_name = None
     while True:
-        question_msg = '\nNew {} name. '.format(group_type.upper())
+        question_msg = '\nNew {} name: '.format(group_type_name.upper())
         if disable_enter is False:
             question_msg += '(enter to skip)'
         new_name = input(question_msg + '\n')
@@ -498,7 +498,7 @@ def _auto_new_name_or_ask_name(existing_names, first_synthetic, second_synthetic
     if second_synthetic != '':
         group_type_name += '_' + second_synthetic
 
-    new_manual_name = _ask_new_group_name(group_type=group_type_name,
+    new_manual_name = _ask_new_group_name(group_type_name=group_type_name,
                                           existing_names=list(existing_names).append(new_automatic_name),
                                           disable_enter=disable_enter)
     
@@ -2940,192 +2940,9 @@ class AbilitiesAttributes(object):
         pass
 
 
-class ConditionTriggers(object):
-
-    def __init__(self, abilities_dct, abilities_effects):
-        self.abilities_dct = abilities_dct
-        self.abilities_effects = abilities_effects
-        self.conditions = {}
-
-    TRIGGER_TYPES = ('buff', 'ability_lvl', 'stat')
-    TARGET_TYPES = ('player', 'enemy')
-    OPERATOR_TYPES = ('>', '<', '==', '<=', '>=')
-    NON_PER_LVL_STAT_NAMES = sorted(i for i in stats.StatCalculation.ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
-
-    def available_buff_names(self):
-        return self.abilities_dct['buffs']
-
-    def available_dmg_names(self):
-        return self.abilities_dct['dmgs']
-
-    def available_buff_attr_names(self):
-
-        s = {}
-        for buff_name in self.available_buff_names():
-            s |= self.abilities_dct['buffs'][buff_name].keys()
-
-        return s
-
-    def available_dmg_attr_names(self):
-
-        s = {}
-        for dmg_name in self.available_dmg_names():
-            s |= self.abilities_dct['dmgs'][dmg_name].keys()
-
-        return s
-
-    def available_ability_attr_names(self):
-
-        s = {}
-        for ability_name in self.abilities_dct['general_attributes']:
-            s |= self.abilities_dct['general_attributes'][ability_name].keys()
-
-        return s
-
-    def trigger_setup_dct(self,):
-
-        return dict(
-            buff=dict(
-                buff_name=self.available_buff_names(),
-                owner_type=self.TARGET_TYPES,
-                operator=self.OPERATOR_TYPES,
-                stacks=[str(i) for i in range(1, 10)],
-                ),
-            stat=dict(
-                stat_name=self.NON_PER_LVL_STAT_NAMES,
-                owner_type=self.TARGET_TYPES,
-                operator=self.OPERATOR_TYPES,
-                value=()
-            ),
-            spell_lvl=dict(
-                spell_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
-                operator=self.OPERATOR_TYPES,
-                lvl=ALLOWED_ABILITY_LVLS
-            ),
-            on_cd=dict(
-                spell_name=ALL_POSSIBLE_SPELL_SHORTCUTS
-            ))
-
-    @repeat_cluster(cluster_name='TRIGGER CONTENTS')
-    def _create_trigger_contents(self, con_name, name_given=''):
-        """
-        Creates a single condition dict and suggests contents.
-
-        Returns:
-            (None)
-        """
-
-        # TRIGGER NAME
-        if name_given:
-            trig_name = name_given
-        else:
-            trig_name = _auto_new_name_or_ask_name(first_synthetic='TRIGGER',
-                                                   existing_names=self.conditions[con_name]['triggers'])
-
-        self.conditions[con_name]['triggers'].update({trig_name: {}})
-
-        # TRIGGER TYPES
-        trig_type = _ask_tpl_question(question_str='Trigger TYPE?', choices_seq=self.TRIGGER_TYPES,
-                                      restrict_choices=True)
-
-        self.conditions[con_name]['triggers'][trig_name].update({'trigger_type': trig_type})
-
-        # TYPE CONTENTS
-        _suggest_attr_values(suggested_values_dct=self.trigger_setup_dct()[trig_type],
-                             modified_dct=self.conditions[con_name]['triggers'][trig_name],
-                             restrict_choices=True)
-
-        print(delimiter(40))
-        print('\nTRIGGER: {}'.format(con_name))
-        pp.pprint(self.conditions)
-
-
-class ConditionEffects(ConditionTriggers):
-
-    def __init__(self, abilities_dct, abilities_effects):
-        ConditionTriggers.__init__(self,
-                                   abilities_dct=abilities_dct,
-                                   abilities_effects=abilities_effects)
-
-    def _create_values_or_formula_contents(self, con_eff_name):
-        """
-        Asks dev if given condition effect contains constant value(s) or a formula,
-        and suggests corresponding elements.
-        """
-
-        # Constant value or formula
-        choice_dct = {}
-        _suggest_attr_values(suggested_values_dct={'value_type': ('constant_values', 'formula')},
-                             modified_dct=choice_dct, restrict_choices=True,
-                             extra_start_msg='CONDITION EFFECT: {}'.format(con_eff_name))
-
-        if choice_dct['value_type'] == 'constant_values':
-            _suggest_attr_values(suggested_values_dct=self.constant_values_dct(),
-                                 #modified_dct=self.conditions[con_name],
-                                 )
-        else:
-            _suggest_attr_values(suggested_values_dct=self.formula_contents_dct(),
-                                 #modified_dct=,
-                                 )
-
-    def _create_effect_contents(self, con_name):
-        """
-        Suggests condition effect contents.
-        """
-
-        con_eff_name = _ask_new_group_name(group_type='condition effect',
-                                           existing_names=self.conditions[con_name]['effects'])
-
-        # Exits method if no name is provided.
-        if con_eff_name:
-            self.conditions[con_name]['effects'].update({con_eff_name: {}})
-        else:
-            return
-
-        # Effect contents
-        _suggest_attr_values(suggested_values_dct=self.effect_setup_dct(),
-                             modified_dct=self.conditions[con_name]['effects'][con_eff_name])
-
-
-    def _create_single_condition(self):
-
-        print(delimiter(40))
-        pp.pprint(self.conditions)
-
-        con_name = _auto_new_name_or_ask_name(first_synthetic='condition', existing_names=self.conditions)
-        # Ends method if no name is provided.
-        if not con_name:
-            return
-        else:
-            self.conditions.update({con_name: {}})
-
-
-        # Initiates condition contents for given condition name.
-        if 'triggers' not in self.conditions[con_name]:
-            self.conditions[con_name].update({'triggers': {}, 'effects': {}})
-
-        # Inserts all triggers.
-        while True:
-            print(delimiter(20))
-            print('\nCONDITION: {}, TRIGGERS: {}'.format(con_name, self.conditions[con_name]['triggers']))
-            new_trig_answer = _ask_tpl_question(question_str='NEW TRIGGER', choices_seq=['new', 'existing', None],
-                                                restrict_choices=True)
-
-            if new_trig_answer is None:
-                break
-            elif new_trig_answer == 'new':
-                self._create_trigger_contents(con_name=con_name)
-            elif new_trig_answer == 'existing':
-                print(delimiter(10))
-                pp.pprint(self.conditions[con_name]['triggers'])
-
-
-
-                self._create_trigger_contents(con_name=con_name)
-
-
 class Conditionals(object):
     def __init__(self, champion_name):
+        self.champion_name = champion_name
         self.champ_module = importlib.import_module(CHAMPION_MODULES_FOLDER_NAME + '.' + champion_name)
         self.abilities_dct = self.champ_module.ABILITIES_ATTRIBUTES
         self.abilities_effects = self.champ_module.ABILITIES_EFFECTS
@@ -3133,6 +2950,7 @@ class Conditionals(object):
 
     TRIGGER_TYPES = ('buff', 'ability_lvl', 'stat')
     TARGET_TYPES = ('player', 'enemy')
+    FORMULA_TYPE = ('constant_value', 'x_function')
     OPERATOR_TYPES = ('>', '<', '==', '<=', '>=')
     NON_PER_LVL_STAT_NAMES = sorted(i for i in stats.StatCalculation.ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
 
@@ -3197,6 +3015,7 @@ class Conditionals(object):
                 buff_name=self.available_buff_names(),
                 buff_attr_name=self.available_buff_attr_names(),
                 modification_type=('multiply', 'add', 'replace'),
+                formula_type=self.FORMULA_TYPE
                 ),
 
             buff_on_hit=dict(
@@ -3216,12 +3035,14 @@ class Conditionals(object):
                 dmg_name=self.available_dmg_names(),
                 attr_name=self.available_dmg_attr_names(),
                 modification_type=('multiply', 'add', 'replace'),
+                formula_type=self.FORMULA_TYPE,
             ),
 
             ability_attrs=dict(
                 ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
                 attr_name=self.available_ability_attr_names(),
                 modification_type=('multiply', 'add', 'replace'),
+                formula_type=self.FORMULA_TYPE,
                 ),
             )
 
@@ -3230,7 +3051,7 @@ class Conditionals(object):
     @staticmethod
     def constant_values_dct():
         return dict(
-            values=()
+            values_tpl=()
         )
 
     @staticmethod
@@ -3241,6 +3062,17 @@ class Conditionals(object):
             x_owner=('player', 'enemy', None)
         )
 
+    def _remove_prev_formula_keys(self, con_name, eff_name):
+        """
+        NOT USED.
+
+        Removes previous formula keys from condition effect.
+        """
+        for k in self.formula_contents_dct():
+            if k in self.conditions[con_name]['effects'][eff_name]:
+                del self.conditions[con_name]['effects'][eff_name][k]
+
+    @repeat_cluster(cluster_name='TRIGGER')
     def _create_and_insert_new_trigger(self, con_name):
         """
         Creates new trigger, and inserts it in given condition's dict.
@@ -3269,9 +3101,10 @@ class Conditionals(object):
                              restrict_choices=True)
 
         print(delimiter(40))
-        print('\nTRIGGER: {}'.format(con_name))
-        pp.pprint(self.conditions)
+        print('\nTRIGGER: {}'.format(trig_name))
+        pp.pprint(self.conditions[con_name]['triggers'][trig_name])
 
+    @repeat_cluster(cluster_name='CONDITION TRIGGERS')
     def _add_triggers(self, con_name):
         """
         Adds all triggers for given condition name.
@@ -3279,14 +3112,21 @@ class Conditionals(object):
         Returns:
             (None)
         """
+
+        self.conditions[con_name].update({'triggers': {}})
+
         print(delimiter(20))
-        # ADD TRIGGER OR EXIT
+        # ADDS TRIGGER OR EXITS
         while True:
             end_trig_answer = _y_n_question(question_str='\nAdd trigger?')
             if not end_trig_answer:
                 return
             else:
                 self._create_and_insert_new_trigger(con_name)
+
+        print(fat_delimiter(40))
+        print('\nCONDITION: {}'.format(con_name))
+        pp.pprint(self.conditions[con_name]['triggers'])
 
     def _create_and_insert_new_effect(self, con_name):
         """
@@ -3315,11 +3155,23 @@ class Conditionals(object):
                              modified_dct=self.conditions[con_name]['effects'][eff_name],
                              restrict_choices=True)
 
+        # Inserts effect formula.
+        if self.conditions[con_name]['effects'][eff_name]['formula_type'] == 'x_formula':
+            suggested_dct = self.formula_contents_dct()
+            formula_msg = ''
+        else:
+            suggested_dct = self.constant_values_dct()
+            formula_msg = ''
+
+        _suggest_attr_values(suggested_values_dct=suggested_dct,
+                             modified_dct=self.conditions[con_name]['effects'][eff_name],
+                             extra_start_msg=formula_msg)
+
         print(delimiter(40))
-        print('\nEFFECT: {}'.format(con_name))
-        pp.pprint(self.conditions)
+        print('\nEFFECT: {}'.format(eff_name))
+        pp.pprint(self.conditions[con_name]['effects'][eff_name])
 
-
+    @repeat_cluster(cluster_name='CONDITION EFFECTS')
     def _add_effects(self, con_name):
         """
         Adds all triggers for given condition name.
@@ -3327,7 +3179,11 @@ class Conditionals(object):
         Returns:
             (None)
         """
-        print(delimiter(20))
+
+        self.conditions[con_name].update({'effects': {}})
+
+        print(fat_delimiter(20))
+        print('\nCONDITION: {}'.format(con_name))
 
         while True:
             end_eff_answer = _y_n_question(question_str='\nAdd effect?')
@@ -3335,22 +3191,40 @@ class Conditionals(object):
             if not end_eff_answer:
                 return
             else:
-                # TODO
-                None
+                self._create_and_insert_new_effect(con_name=con_name)
 
+        print(fat_delimiter(40))
+        print('\nCONDITION: {}'.format(con_name))
+        pp.pprint(self.conditions[con_name]['effects'])
 
+    def _create_single_condition(self, con_name):
 
-    def _create_single_condition(self):
-        None
+        # TRIGGERS
+        self._add_effects(con_name=con_name)
+        # EFFECTS
+        self._add_triggers(con_name=con_name)
 
-
-    def create_all_conditions(self):
-        None
-
-
-    def store_champ_conditions(self):
-        # TODO move in module creator.
-        None
+    def run_conditions_creation(self):
+        print(fat_delimiter(100))
+        print('\nCONDITIONS CREATION:')
+        
+        while True:
+            print(fat_delimiter(40))
+    
+            # CONDITION NAME
+            new_con_name = _auto_new_name_or_ask_name(first_synthetic='condition', existing_names=self.conditions)
+            # Ends method if no name is provided.
+            if not new_con_name:
+                break
+            else:
+                self.conditions.update({new_con_name: {}})
+                
+                self._create_single_condition(con_name=new_con_name)
+        
+        print(fat_delimiter(40))
+        print('\nCONDITIONS')
+        print('\nCHAMPION: {}'.format(self.champion_name))
+        pp.pprint(self.conditions)        
 
 
 # ===============================================================
@@ -3411,8 +3285,16 @@ class ModuleCreator(object):
                      obj_name='ABILITIES_EFFECTS',
                      str_to_insert=dct_to_pretty_formatted_str(given_dct=effects_dct),
                      write_mode='a')
+    
+    def store_champ_conditions(self):
+        instance = Conditionals(champion_name=self.champion_name)
+        instance.run_conditions_creation()
 
+        final_dct = instance.conditions
 
+        data_storage(targeted_module='{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name),
+                     obj_name='CONDITIONALS',
+                     str_to_insert=dct_to_pretty_formatted_str(given_dct=final_dct))
 
 
 # ===============================================================
@@ -3462,9 +3344,3 @@ if __name__ == '__main__':
     if testModuleInsertion is True:
         ModuleCreator(champion_name='jax').insert_attrs_to_module()
 
-    testConditionals = True
-    if testConditionals is True:
-        a = Conditionals('jax')
-        a.conditions.update({'con1': {'triggers': {}, 'effects': {}}})
-        a._create_and_insert_new_effect('con1')
-        pp.pprint(a.conditions)
