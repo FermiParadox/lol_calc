@@ -20,7 +20,6 @@ import importlib
 CHAMPION_MODULES_FOLDER_NAME = 'champions'
 
 
-
 # ---------------------------------------------------------------
 def delimiter(num_of_lines, line_type='-'):
     """
@@ -43,36 +42,36 @@ def fat_delimiter(num_of_lines):
 
 
 # ---------------------------------------------------------------
-def str_to_float(given_str):
+def chosen_val_to_float(given_val):
     """
     Tries to convert a string to int or float,
     based on what is more suitable.
 
     Args:
-        given_str: (str)
+        given_val: (str)
     Returns:
         (str)
         (int)
         (float)
     """
 
-    if type(given_str) is float:
-        raise TypeError('Expected string (floats will be erroneously converted to ints).')
+    if type(given_val) is float:
+        return given_val
 
     try:
         # (tries to convert value given to float if possible)
-        return int(given_str)
+        return int(given_val)
     except (ValueError, TypeError):
         pass
 
     try:
         # (tries to convert value given to float if possible)
-        return float(given_str)
+        return float(given_val)
     except (ValueError, TypeError):
         pass
 
     # (if no conversion was successful..)
-    return given_str
+    return given_val
 
 
 # ---------------------------------------------------------------
@@ -138,6 +137,8 @@ def _return_or_pprint_lst(print_mode, lst):
 
 
 # ---------------------------------------------------------------
+# TODO: Outer and Inner loop exit exceptions and their checker and handler, seem to be the same throughout the code.
+# TODO: They should be used different exits.
 class OuterLoopExit(Exception):
     pass
 
@@ -279,7 +280,7 @@ def _ask_tpl_question(question_str, choices_seq, restrict_choices=False):
         pass
 
     # If not, returns answer as is.
-    return str_to_float(answer)
+    return chosen_val_to_float(answer)
 
 
 # ---------------------------------------------------------------
@@ -346,7 +347,7 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, re
 
     # Stores the choice and notifies dev.
     choice_msg = '%s: %s\n' % (attr_name, chosen_value)
-    chosen_value = str_to_float(given_str=chosen_value)
+    chosen_value = chosen_val_to_float(given_val=chosen_value)
     modified_dct[attr_name] = chosen_value
 
     print(choice_msg)
@@ -1483,7 +1484,6 @@ class GeneralAbilityAttributes(AttributesBase):
         channel_time=(None,),
         resets_aa=(False, True),
         toggled=(False, True),
-        not_castable=(False, True),
         )
 
     def resource_cost_type(self):
@@ -1683,8 +1683,12 @@ class GeneralAbilityAttributes(AttributesBase):
 
         print(msg)
 
-        self.auto_fill_attributes()
-        self.suggest_gen_attr_values()
+        _suggest_attr_values(suggested_values_dct=dict(not_castable=(False, True)),
+                             modified_dct=self.general_attr_dct, restrict_choices=True)
+
+        if self.general_attr_dct['not_castable'] is False:
+            self.auto_fill_attributes()
+            self.suggest_gen_attr_values()
 
         print(msg)
         pp.pprint(self.general_attr_dct)
@@ -2652,6 +2656,7 @@ class AbilitiesAttributes(object):
     def single_spell_attrs():
         return dict(general={}, dmgs={}, buffs={})
 
+    @loop_exit_handler
     def _gen_attr(self, attrs_dct, spell_name):
         """
         Modifies given dict by inserting 'general' attributes.
@@ -2669,6 +2674,7 @@ class AbilitiesAttributes(object):
         print('\nGeneral attributes')
         pp.pprint(attrs_dct['general'])
 
+    @loop_exit_handler
     def _dmg_attrs(self, attrs_dct, spell_name):
         """
         Modifies given dict by inserting 'general' attributes.
@@ -2682,6 +2688,7 @@ class AbilitiesAttributes(object):
 
         attrs_dct['dmgs'] = dmgs_instance.dmgs_dct
 
+    @loop_exit_handler
     def _buff_attrs(self, attrs_dct, spell_name):
         """
         Modifies given dict by inserting 'general' attributes.
@@ -2695,6 +2702,7 @@ class AbilitiesAttributes(object):
 
         attrs_dct['buffs'] = buffs_inst.buffs_dct
 
+    @loop_exit_handler
     def _single_spell_attrs(self, spell_name):
         """
         Creates all attributes of an ability.
@@ -2721,6 +2729,7 @@ class AbilitiesAttributes(object):
 
         return attrs_dct
 
+    @loop_exit_handler
     def _create_single_spell_effects_dct(self, spell_name):
         """
         Creates effects dict of a single spell, for given champion.
@@ -2918,6 +2927,7 @@ class AbilitiesAttributes(object):
                                 self.final_abilities_attrs[attr_type].update({new_name: old_attr_dct})
                                 break
 
+    @repeat_cluster(cluster_name='SPELL ATTRS AND EFFECTS')
     def run_spell_attrs_and_effects_creation(self):
         """
         Creates all attributes for all spells of given champion,
@@ -2937,7 +2947,7 @@ class AbilitiesAttributes(object):
 
     def create_innate_attrs(self):
         # TODO
-        pass
+        None
 
 
 class Conditionals(object):
@@ -3204,6 +3214,7 @@ class Conditionals(object):
         # EFFECTS
         self._add_triggers(con_name=con_name)
 
+    @repeat_cluster(cluster_name='ALL CONDITIONS')
     def run_conditions_creation(self):
         print(fat_delimiter(100))
         print('\nCONDITIONS CREATION:')
@@ -3228,6 +3239,8 @@ class Conditionals(object):
 
 
 # ===============================================================
+
+
 #       MODULE CREATION
 # ===============================================================
 class ModuleCreator(object):
@@ -3257,7 +3270,7 @@ class ModuleCreator(object):
                 break
             else:
                 external_val_initial_value = input('\nInitial value for %s' % external_val_name)
-                external_val_initial_value = str_to_float(given_str=external_val_initial_value)
+                external_val_initial_value = chosen_val_to_float(given_val=external_val_initial_value)
 
                 self.external_vars_dct.update({external_val_name: external_val_initial_value})
 
@@ -3340,7 +3353,7 @@ if __name__ == '__main__':
     if testChampIDs is True:
         print(ExploreApiAbilities().champion_id('dariu'))
 
-    testModuleInsertion = False
+    testModuleInsertion = True
     if testModuleInsertion is True:
         ModuleCreator(champion_name='jax').insert_attrs_to_module()
 

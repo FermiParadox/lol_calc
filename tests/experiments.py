@@ -1,11 +1,15 @@
-with open('my_text_file.txt', 'r') as f:
+class ClassA(object):
 
-    lst_of_nums = f.read().split()
+    def f(self):
+        return 0
 
-    sorted_lst = sorted(lst_of_nums)
+    def g(self):
+        return self.f() + 10
 
-    reversed_lst = sorted(lst_of_nums, reverse=True)
 
-print(lst_of_nums)
-print(sorted_lst)
-print(reversed_lst)
+class ClassB(ClassA):
+
+    def f(self):
+        return 2
+
+print(ClassB().g())

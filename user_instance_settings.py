@@ -7,7 +7,6 @@ class UserSession(object):
                  test_mode=False):
 
         self.test_mode = test_mode
-
         self.instances_results = {}
 
     def combat_instance(self, input_dct):
@@ -36,17 +35,17 @@ class UserSession(object):
                          items_lst=None,
                          selected_runes=None):
 
-                main_loop_class.__init__(self,
-                                         rotation_lst=rotation_lst,
-                                         max_targets_dct=max_targets_dct,
-                                         selected_champions_dct=selected_champions_dct,
-                                         champion_lvls_dct=champion_lvls_dct,
-                                         ability_lvls_dct=ability_lvls_dct,
-                                         max_combat_time=max_combat_time,
-                                         initial_active_buffs=initial_active_buffs,
-                                         initial_current_stats=initial_current_stats,
-                                         items_lst=items_lst,
-                                         selected_runes=selected_runes)
+                super().__init__(self,
+                                 rotation_lst=rotation_lst,
+                                 max_targets_dct=max_targets_dct,
+                                 selected_champions_dct=selected_champions_dct,
+                                 champion_lvls_dct=champion_lvls_dct,
+                                 ability_lvls_dct=ability_lvls_dct,
+                                 max_combat_time=max_combat_time,
+                                 initial_active_buffs=initial_active_buffs,
+                                 initial_current_stats=initial_current_stats,
+                                 items_lst=items_lst,
+                                 selected_runes=selected_runes)
 
                 player_champ_module.TotalChampionAttributes.__init__(self,
                                                                      ability_lvls_dct=ability_lvls_dct,
