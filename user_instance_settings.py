@@ -47,14 +47,14 @@ class UserSession(object):
                                  items_lst=items_lst,
                                  selected_runes=selected_runes)
 
-                player_champ_module.TotalChampionAttributes.__init__(self,
-                                                                     ability_lvls_dct=ability_lvls_dct,
-                                                                     req_stats_func=self.request_stat,
-                                                                     act_buffs=self.active_buffs,
-                                                                     current_stats=self.current_stats,
-                                                                     current_target=self.current_target,
-                                                                     champion_lvls_dct=champion_lvls_dct,
-                                                                     current_target_num=self.current_target_num)
+                player_champ_class.__init__(self,
+                                            ability_lvls_dct=ability_lvls_dct,
+                                            req_stats_func=self.request_stat,
+                                            act_buffs=self.active_buffs,
+                                            current_stats=self.current_stats,
+                                            current_target=self.current_target,
+                                            champion_lvls_dct=champion_lvls_dct,
+                                            current_target_num=self.current_target_num)
 
         return CombinerClass(**input_dct)
 

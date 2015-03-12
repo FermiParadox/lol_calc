@@ -1,15 +1,25 @@
 class ClassA(object):
+    def __init__(self):
+        print('A init')
+
+
+class ClassB(object):
+    def __init__(self):
+        print('B init')
 
     def f(self):
-        return 0
+        a = ClassA
 
-    def g(self):
-        return self.f() + 10
+        class C(a):
+            def __init__(self):
+                # Here i get the weak warning.
+                # ...       |     .......
+                # ...       v     .......
+                a.__init__(self)
+                print('C init')
 
+        return C
 
-class ClassB(ClassA):
-
-    def f(self):
-        return 2
-
-print(ClassB().g())
+a_class = ClassB().f()
+print('hello')
+a_class()

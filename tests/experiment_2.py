@@ -10,12 +10,12 @@ class ClassB(object):
     def f(self):
         a = ClassA
 
-        class C(a):    
+        class C(a):
             def __init__(self):
                 # Here i get the weak warning.
                 # ...       |     .......
                 # ...       v     .......
-                a.__init__(self)
+                super().__init__(self)
                 print('C init')
 
         return C

@@ -74,6 +74,7 @@ class Gunblade(ItemsBase):
 
     def gunblade_unique_passive_buff(self):
         return dict(
+            max_stacks=1,
             stats=dict(
                 spellvamp=dict(
                     additive=self.GUNBLADE_STATS['passive']['spellvamp']),),
@@ -100,6 +101,7 @@ class Gunblade(ItemsBase):
     def gunblade_slow_buff(self):
 
         return dict(
+            max_stacks=1,
             stats=dict(
                 speed_reduction=dict(
                     percent=self.GUNBLADE_STATS['active']['speed_reduction']),

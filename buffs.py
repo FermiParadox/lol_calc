@@ -99,10 +99,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
                 ending_time='permanent'))
 
         # STACKS
-        # If it can stack...
-        if 'max_stacks' in buff_dct:
-            # ..adds current_stacks keyword.
-            self.active_buffs[tar_name][buff_name].update(dict(current_stacks=initial_stacks_increment))
+        self.active_buffs[tar_name][buff_name].update(dict(current_stacks=initial_stacks_increment))
 
     def add_already_active_buff(self, buff_name, tar_name, stack_increment=1):
         """
@@ -125,21 +122,18 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
             tar_buff_dct_in_act_buffs['ending_time'] = self.current_time + buff_dct()['duration']
 
         # STACKS
-        # If the applied buff can stack..
-        if 'current_stacks' in tar_buff_dct_in_act_buffs:
+        # If max_stacks have not been reached..
+        if tar_buff_dct_in_act_buffs['current_stacks'] < buff_dct()['max_stacks']:
 
-            # ..and if max_stacks have not been reached..
-            if tar_buff_dct_in_act_buffs['current_stacks'] < buff_dct()['max_stacks']:
+            # ..adds +1 to the stacks (unless increment is different).
+            tar_buff_dct_in_act_buffs['current_stacks'] += stack_increment
 
-                # ..adds +1 to the stacks (unless increment is different).
-                tar_buff_dct_in_act_buffs['current_stacks'] += stack_increment
+            # Ensures max_stacks aren't exceeded for stack_increments larger than 1.
+            if stack_increment > 1:
 
-                # Ensures max_stacks aren't exceeded for stack_increments larger than 1.
-                if stack_increment > 1:
-
-                    if tar_buff_dct_in_act_buffs['current_stacks'] > buff_dct()['max_stacks']:
-                        # If max_stacks exceeded, set to max_stacks.
-                        tar_buff_dct_in_act_buffs['current_stacks'] = buff_dct()['max_stacks']
+                if tar_buff_dct_in_act_buffs['current_stacks'] > buff_dct()['max_stacks']:
+                    # If max_stacks exceeded, set to max_stacks.
+                    tar_buff_dct_in_act_buffs['current_stacks'] = buff_dct()['max_stacks']
 
     def add_buff(self, buff_name, tar_name, stack_increment=1, initial_stacks_increment=1):
         """
@@ -979,6 +973,7 @@ class DeathAndRegen(DmgApplication):
     @staticmethod
     def dead_buff():
         return dict(
+            max_stacks=1,
             duration='permanent',)
 
     def apply_death(self, tar_name):
@@ -1015,6 +1010,7 @@ class DeathAndRegen(DmgApplication):
     def enemy_hp5_buff():
         # Used only as a marker.
         return dict(
+            max_stacks=1,
             duration='permanent',)
 
     def enemy_hp5_dmg_value(self):
@@ -1035,6 +1031,7 @@ class DeathAndRegen(DmgApplication):
     @staticmethod
     def player_hp5_buff():
         return dict(
+            max_stacks=1,
             duration='permanent',)
 
     def player_hp5_dmg_value(self):
@@ -1046,6 +1043,7 @@ class DeathAndRegen(DmgApplication):
     @staticmethod
     def mp5_buff():
         return dict(
+            max_stacks=1,
             duration='permanent',)
 
     def mp5_dmg(self):

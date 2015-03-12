@@ -27,16 +27,6 @@ class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
 
     INNATE_ATT_SPEED_TPL = (4., 6., 8., 10., 12., 14.)
 
-    INN_STATS = dict(
-        inn_att_speed_buff=dict(
-            max_stacks=6,
-            affected_stat=dict(
-                att_speed=dict(
-                    percent=(4., 6., 8., 10., 12., 14.))),
-            duration=2.5,
-            target='player',
-            prohibit_cd_start=None,))
-
     def innate_att_speed_buff(self):
         return dict(
             max_stacks=6,
@@ -48,6 +38,7 @@ class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
             prohibit_cd_start=None,)
 
     INNATE_INITIATOR_BUFF = dict(
+        max_stacks=1,
         on_hit=dict(cause_dmg=[],
                     apply_buff=['innate_att_speed_buff'],
                     remove_buff=[]),
@@ -113,24 +104,24 @@ class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
         return self.Q_DMG
 
     Q_EFFECTS = dict(
-            player=dict(
-                actives=dict(
-                    remove_buffs=['w_buff'])),
+        player=dict(
+            actives=dict(
+                remove_buffs=['w_buff'])),
 
-            enemy=dict(
-                # buffs and effects activated at spell cast
-                actives=dict(
-                    dmg=['q_dmg'])))
+        enemy=dict(
+            # buffs and effects activated at spell cast
+            actives=dict(
+                dmg=['q_dmg'])))
 
     Q_EFFECTS_2 = dict(
-            player=dict(
-                actives=dict(
-                    remove_buffs=['w_buff'])),
+        player=dict(
+            actives=dict(
+                remove_buffs=['w_buff'])),
 
-            enemy=dict(
-                # buffs and effects activated at spell cast
-                actives=dict(
-                    dmg=['q_dmg','w_buff'])))
+        enemy=dict(
+            # buffs and effects activated at spell cast
+            actives=dict(
+                dmg=['q_dmg','w_buff'])))
 
     def q_effects(self):
         if 'w_buff' in self.act_buffs['player']:
@@ -197,6 +188,7 @@ class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
         return self.W_DMG
 
     W_BUFF = dict(
+        max_stacks=1,
         duration=W_STATS['general']['duration'],
         target='player',
         on_hit=dict(
@@ -278,6 +270,7 @@ class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
                                   ability_lvl=self.ability_lvls_dct['e']))
 
     E_STUN_ENEMY = dict(
+        max_stacks=1,
         stun=None,
         duration=E_STATS['stun']['duration'],
         target='enemy',
@@ -352,6 +345,7 @@ class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
         return self.R_COUNTER_BUFF
 
     LESS_2 = dict(
+        max_stacks=1,
         on_hit=dict(cause_dmg=[],
                     apply_buff=['r_counter_buff'],
                     remove_buff=[]),
@@ -361,6 +355,7 @@ class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
         )
 
     THIRD = dict(
+        max_stacks=1,
         on_hit=dict(
             cause_dmg=['r_dmg'],
             apply_buff=[],
@@ -411,6 +406,7 @@ class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
 
     def r_armor_buff(self):
         dct = dict(
+            max_stacks=1,
             duration=self.R_STATS['armor_buff']['duration'],
             target='player',
             prohibit_cd_start=None,

@@ -500,10 +500,9 @@ class StatRequest(StatCalculation):
                     self.stored_buffs[tar_name][buff_name]['stats_it_mods'].append(stat_name)
                     self.stat_changes[tar_name][stat_name] = True
 
-                # If it can stack marks its current stacks.
-                if 'max_stacks' in buff_dct:
-                    self.stored_buffs[tar_name][buff_name].update(
-                        {'stacks': self.active_buffs[tar_name][buff_name]['current_stacks']})
+                # Marks its current stacks.
+                self.stored_buffs[tar_name][buff_name].update(
+                    {'stacks': self.active_buffs[tar_name][buff_name]['current_stacks']})
 
     def compare_and_update_stored_buffs(self, tar_name, stat_name):
         """
@@ -534,8 +533,7 @@ class StatRequest(StatCalculation):
                     del tar_stored_buffs[buff_name]
 
                 # If its stacks changed..
-                elif 'current_stacks' in tar_act_buffs[buff_name]:
-
+                else:
                     if tar_act_buffs[buff_name]['current_stacks'] != tar_stored_buffs[buff_name]['stacks']:
 
                         # .. marks stats the buff affects as changed.
@@ -562,8 +560,7 @@ class StatRequest(StatCalculation):
 
         value = buff_dct['stats'][stat_name][bonus_type]
         # Stacks.
-        if 'current_stacks' in self.active_buffs[tar_name][buff_name]:
-            value *= self.active_buffs[tar_name][buff_name]['current_stacks']
+        value *= self.active_buffs[tar_name][buff_name]['current_stacks']
 
         # Inserts bonus_name and its value in bonuses_dct.
         self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: value})
