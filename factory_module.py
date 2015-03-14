@@ -57,6 +57,8 @@ def chosen_val_to_float(given_val):
 
     if type(given_val) is float:
         return given_val
+    elif type(given_val) is bool:
+        return given_val
 
     try:
         # (tries to convert value given to float if possible)
@@ -172,6 +174,20 @@ def _check_for_repeat_choice_error(key):
         raise RepeatChoiceError
 
 
+def _check_factory_custom_exception(given_str, exclude_repeat_key=False):
+    """
+    Raises exception if given string is an exception triggering key.
+
+    Returns:
+        (None)
+    """
+
+    _check_for_loop_exit(given_str)
+
+    if exclude_repeat_key is False:
+        _check_for_repeat_choice_error(given_str)
+
+
 def _input_in_len_range(given_str, choices_length):
     """
     Checks if given_str is a number from 0 to max allowed.
@@ -193,22 +209,6 @@ def _exception_keys():
     return dict(stop_key=INNER_LOOP_KEY, error_key=OUTER_LOOP_KEY, repeat_key=REPEAT_CHOICE_KEY)
 
 
-def _key_to_exception_map():
-    return {INNER_LOOP_KEY: InnerLoopExit, OUTER_LOOP_KEY: OuterLoopExit, REPEAT_CHOICE_KEY: RepeatChoiceError}
-
-
-def _check_factory_custom_exception(given_str):
-    """
-    Raises exception if given string is an exception triggering key.
-
-    Returns:
-        (None)
-    """
-
-    if given_str in _key_to_exception_map():
-        raise _key_to_exception_map()[given_str]
-
-
 # ---------------------------------------------------------------
 def _y_n_question(question_str):
     """
@@ -224,7 +224,7 @@ def _y_n_question(question_str):
         answer = input('\n{} (y, n)\n'.format(question_str))
 
         # Check exceptions.
-        _check_factory_custom_exception(given_str=answer)
+        _check_factory_custom_exception(given_str=answer, exclude_repeat_key=True)
 
         if answer == 'y':
             return True
@@ -258,7 +258,7 @@ def _ask_tpl_question(question_str, choices_seq, restrict_choices=False):
     while True:
         answer = input(msg+'\n')
 
-        _check_factory_custom_exception(given_str=answer)
+        _check_factory_custom_exception(given_str=answer, exclude_repeat_key=True)
 
         # Repeats loop if choices are restricted, until valid int is given.
         if restrict_choices is True:
@@ -461,7 +461,7 @@ def _ask_new_group_name(group_type_name, existing_names=None, disable_enter=Fals
         if disable_enter is False:
             question_msg += '(enter to skip)'
         new_name = input(question_msg + '\n')
-        _check_factory_custom_exception(given_str=new_name)
+        _check_factory_custom_exception(given_str=new_name, exclude_repeat_key=True)
 
         if existing_names:
             if new_name in existing_names:
@@ -1683,10 +1683,10 @@ class GeneralAbilityAttributes(AttributesBase):
 
         print(msg)
 
-        _suggest_attr_values(suggested_values_dct=dict(not_castable=(False, True)),
+        _suggest_attr_values(suggested_values_dct=dict(castable=(True, False)),
                              modified_dct=self.general_attr_dct, restrict_choices=True)
 
-        if self.general_attr_dct['not_castable'] is False:
+        if self.general_attr_dct['castable'] is True:
             self.auto_fill_attributes()
             self.suggest_gen_attr_values()
 
@@ -1737,7 +1737,7 @@ class DmgAbilityAttributes(AttributesBase):
             radius='placeholder',
             dot='placeholder',
             max_targets='placeholder',
-            delay=0,
+            delay='placeholder',
             )
 
     def usual_values_dmg_attr(self):
@@ -1752,6 +1752,7 @@ class DmgAbilityAttributes(AttributesBase):
             dot=(False, True),
             max_targets=(1, 2, 3, 4, 5, 'infinite'),
             usual_max_targets=(1, 2, 3, 4, 5),
+            delay=(None,)
             )
 
     @staticmethod
@@ -1952,7 +1953,7 @@ class DmgAbilityAttributes(AttributesBase):
             mod_stat_and_val_dct = self.mod_value_and_stat(mod_shortcut=mod_abbrev)
 
             # ASKS DEV
-            mod_and_val_as_str = '\nMod: %s, value: %s' % tuple(mod_stat_and_val_dct.items())[0]
+            mod_and_val_as_str = '\nDmg mod: %s, value: %s' % tuple(mod_stat_and_val_dct.items())[0]
             # (creates appropriate arg form for method below)
             mod_attr_template = {'mod_stat_owner': ('player', 'enemy')}
             temp_mod_dct = {}
@@ -2593,18 +2594,6 @@ class BuffAbilityAttributes(AttributesBase):
 
     # TODO: Allow duration link to another buff (that is, buff_3_duration = buff_1_duration
 
-    def _remove_redundant_attrs(self):
-        """
-        Removes redundant attributes that are not needed
-        or harmful if present without appropriate value (e.g. max_stacks=1).
-
-        Returns:
-            (None)
-        """
-        for buff_name in self.buffs_dct:
-            if buff_name['max_stacks'] == 1:
-                del buff_name['max_stacks']
-
     @loop_exit_handler
     def _run_buff_attr_creation_without_result_msg(self):
 
@@ -2620,8 +2609,6 @@ class BuffAbilityAttributes(AttributesBase):
             _suggest_attr_values(suggested_values_dct=self.USUAL_BUFF_ATTR_VALUES,
                                  modified_dct=self.buffs_dct[buff_name],
                                  extra_start_msg=usual_attrs_msg)
-
-        self._remove_redundant_attrs()
 
     @repeat_cluster(cluster_name='BUFFS')
     def run_buff_attr_creation(self):
@@ -3082,7 +3069,6 @@ class Conditionals(object):
             if k in self.conditions[con_name]['effects'][eff_name]:
                 del self.conditions[con_name]['effects'][eff_name][k]
 
-    @repeat_cluster(cluster_name='TRIGGER')
     def _create_and_insert_new_trigger(self, con_name):
         """
         Creates new trigger, and inserts it in given condition's dict.

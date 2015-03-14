@@ -448,7 +448,7 @@ class StatRequest(StatCalculation):
                                    'cdr',
                                    } | StatCalculation.DEFENSIVE_SPECIAL_STATS)
 
-    def evaluate_stat(self, target_name, stat_name):
+    def _evaluate_stat(self, target_name, stat_name):
         """
         Calculates a target's final stat value and stores it.
         Then notes that it has not changed since last calculation.
@@ -473,7 +473,7 @@ class StatRequest(StatCalculation):
         # (if not created yet, it creates it)
         self.stat_changes[target_name][stat_name] = False
 
-    def check_and_update_stored_buff(self, tar_name, buff_name):
+    def _check_and_update_stored_buff(self, tar_name, buff_name):
         """
         Adds a buff which affects stats (if not already added).
 
@@ -504,7 +504,7 @@ class StatRequest(StatCalculation):
                 self.stored_buffs[tar_name][buff_name].update(
                     {'stacks': self.active_buffs[tar_name][buff_name]['current_stacks']})
 
-    def compare_and_update_stored_buffs(self, tar_name, stat_name):
+    def _compare_and_update_stored_buffs(self, tar_name, stat_name):
         """
         Marks modified stats when a buff that affects them has been removed
         or its stacks changed, and then updates stored_buffs.
@@ -546,9 +546,9 @@ class StatRequest(StatCalculation):
             if buff not in tar_stored_buffs:
                 if ('stats' in getattr(self, buff)()) and (stat_name in getattr(self, buff)()['stats']):
 
-                    self.check_and_update_stored_buff(tar_name=tar_name, buff_name=buff)
+                    self._check_and_update_stored_buff(tar_name=tar_name, buff_name=buff)
 
-    def insert_bonus_to_tar_bonuses(self, stat_name, bonus_type, buff_dct, tar_name, buff_name):
+    def _insert_bonus_to_tar_bonuses(self, stat_name, bonus_type, buff_dct, tar_name, buff_name):
         """
         Updates a target's bonuses_dct by adding the name and value of a bonus.
 
@@ -565,7 +565,7 @@ class StatRequest(StatCalculation):
         # Inserts bonus_name and its value in bonuses_dct.
         self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: value})
 
-    def buffs_to_bonuses(self, stat_name, tar_name):
+    def _buffs_to_bonuses(self, stat_name, tar_name):
         """
         Stores a stat's bonuses caused by buffs.
 
@@ -580,7 +580,7 @@ class StatRequest(StatCalculation):
         """
 
         for buff_name in self.active_buffs[tar_name]:
-            self.check_and_update_stored_buff(tar_name=tar_name, buff_name=buff_name)
+            self._check_and_update_stored_buff(tar_name=tar_name, buff_name=buff_name)
 
             buff_dct = getattr(self, buff_name)()
             # Checks if the buff has stat bonuses.
@@ -595,7 +595,7 @@ class StatRequest(StatCalculation):
                         for bonus_type in buff_dct['stats'][stat_name]:
                             if bonus_type in tar_bonuses[stat_name]:
 
-                                self.insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
+                                self._insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
                                                                  buff_dct=buff_dct, tar_name=tar_name,
                                                                  buff_name=buff_name)
 
@@ -603,7 +603,7 @@ class StatRequest(StatCalculation):
                                 # Inserts bonus_type in bonuses_dct.
                                 tar_bonuses[stat_name].update({bonus_type: {}})
 
-                                self.insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
+                                self._insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
                                                                  buff_dct=buff_dct, tar_name=tar_name,
                                                                  buff_name=buff_name)
 
@@ -614,11 +614,11 @@ class StatRequest(StatCalculation):
                             # Inserts bonus_type in bonuses_dct.
                             tar_bonuses[stat_name].update({bonus_type: {}})
 
-                            self.insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
+                            self._insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
                                                              buff_dct=buff_dct, tar_name=tar_name,
                                                              buff_name=buff_name)
 
-    def request_stat(self, target_name, stat_name, return_value=True):
+    def request_stat(self, target_name, stat_name, _return_value=True):
         """
         Calculates the final value of a stat, and modifies bonuses_dct and stat_dct.
 
@@ -631,7 +631,7 @@ class StatRequest(StatCalculation):
         Modifies:
 
         Args:
-            return_value: Set to false when function used only for refreshing a stat value.
+            _return_value: Set to false when function used only for refreshing a stat value.
         Returns:
             (float) final value of stat
             (None)
@@ -646,10 +646,10 @@ class StatRequest(StatCalculation):
                 # .. requests its value (that is, refreshes its value or fetches the stored value).
                 # Recursive calls force controllers to refresh if needed.
                 # (controllers' buffs to bonuses are refreshed first)
-                self.request_stat(target_name=target_name, stat_name=controller, return_value=False)
+                self.request_stat(target_name=target_name, stat_name=controller, _return_value=False)
 
         # Check if target's buff affecting given stat have changed.
-        self.compare_and_update_stored_buffs(tar_name=target_name, stat_name=stat_name)
+        self._compare_and_update_stored_buffs(tar_name=target_name, stat_name=stat_name)
 
         # Evaluates the stat if it hasn't been evaluated before or if it has changed.
         if stat_name not in self.stat_changes[target_name] or self.stat_changes[target_name][stat_name] is True:
@@ -657,10 +657,10 @@ class StatRequest(StatCalculation):
             # Since earlier controllers have been refreshed (including their bonuses from buffs),
             # it can safely create buff bonuses for selected stat,
             # and then evaluate the stat.
-            self.buffs_to_bonuses(stat_name=stat_name, tar_name=target_name)
-            self.evaluate_stat(target_name=target_name, stat_name=stat_name)
+            self._buffs_to_bonuses(stat_name=stat_name, tar_name=target_name)
+            self._evaluate_stat(target_name=target_name, stat_name=stat_name)
 
-        if return_value:
+        if _return_value:
             return self.stored_stats[target_name][stat_name]
 
     def set_current_stats(self):

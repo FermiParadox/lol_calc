@@ -1486,7 +1486,7 @@ if __name__ == '__main__':
             msg += self.test_loop(['AA', 'AA', 'AA'])
             msg += self.DELIMITER
 
-            # Time between AAs should become progressively shorted up to 6 AAs because of att_speed increase.
+            # Time between AAs should become progressively shorter up to 6 AAs because of att_speed increase.
             msg += self.test_loop(['AA', 'AA', 'AA', 'AA', 'AA', 'AA'])
             msg += self.DELIMITER
 
