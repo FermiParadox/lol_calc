@@ -174,3 +174,4 @@ ABILITIES_ATTRIBUTES = {
                                  'toggled': False,
                                  'travel_time': 0}}
 }
+

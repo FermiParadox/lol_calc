@@ -108,7 +108,7 @@ def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct):
     body = _dct_body_to_pretty_formatted_str(given_dct=obj_body_as_dct)
     name_and_equal_sign = obj_name + ' = '
 
-    return name_and_equal_sign + body
+    return name_and_equal_sign + body + '\n'
 
 
 def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct):
@@ -120,32 +120,31 @@ def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct)
         (str)
     """
 
-    new_str = ''
     inserted_str = dct_to_pretty_formatted_str(obj_name=object_name, obj_body_as_dct=obj_as_dct)
 
     for num_1, line_1 in enumerate(file_as_lines_lst):
         # Finds object start.
         if re.match(object_name, line_1):
-            line_num_start = num_1
+            old_start = num_1
 
             # Finds object end.
             # (if no empty line is found, last line is marked as end.
-            line_num_end = len(file_as_lines_lst[line_num_start:])
-            for num_2, line_2 in enumerate(file_as_lines_lst[line_num_start:], line_num_start):
+            old_end = len(file_as_lines_lst)
+            for num_2, line_2 in enumerate(file_as_lines_lst[old_start:], old_start):
                 if line_2 == '\n':
-                    line_num_end = num_2 - 1
+                    # (ensures newline remains unaltered)
+                    old_end = num_2
                     break
 
             # Creates new file as string.
-            for i in file_as_lines_lst[:line_num_start]:
+            new_str = ''
+            for i in file_as_lines_lst[:old_start]:
                 new_str += i
             new_str += inserted_str
-            for i in file_as_lines_lst[line_num_end:]:
+            for i in file_as_lines_lst[old_end:]:
                 new_str += i
 
             return new_str
-
-    return new_str
 
 
 # ---------------------------------------------------------------
@@ -3291,19 +3290,25 @@ class ModuleCreator(object):
         self.external_vars_dct = {}
         self.champion_module = '{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name)
 
-    def _insert_object_in_champ_module(self, object_name, new_object):
+    def _insert_object_in_champ_module(self, object_name, new_object_as_dct):
         """
         Checks for given object in champion module. If object present, verifies replacement.
+
+        Returns:
+            (None)
         """
 
-        with open(self.champion_module, 'r') as f:
-            f_contents = f.read()
+        with open(self.champion_module, 'r') as r:
+            r_as_str = r.read()
+            r.seek(0)
+            r_as_lst = r.readlines()
 
-        if object_name in f_contents:
+        if object_name in r_as_str:
             exists = True
         else:
             exists = False
 
+        # If object exists, replaces it.
         if exists:
             question_msg = '\nCHAMPION: {}, OBJECT INSERTED: {}'.format(self.champion_name, object_name)
             question_msg += '\nObject exists. Replace it?'
@@ -3311,9 +3316,19 @@ class ModuleCreator(object):
             replace_answer = _y_n_question(question_str=question_msg)
 
             if replace_answer is True:
-                _file_after_replacing_module_var(file_as_lines_lst=f_contents,
-                                                 object_name=object_name,
-                                                 obj_as_dct=new_object)
+                replacement = _file_after_replacing_module_var(file_as_lines_lst=r_as_lst,
+                                                               object_name=object_name,
+                                                               obj_as_dct=new_object_as_dct)
+
+                with open(self.champion_module, 'w') as w:
+                    w.write(replacement)
+            else:
+                print('\nReplacement canceled.')
+
+        # If object doesn't exist, appends object.
+        else:
+            with open(self.champion_module, 'a') as r:
+                r.write(dct_to_pretty_formatted_str(obj_name=object_name, obj_body_as_dct=new_object_as_dct))
 
     def external_vars(self):
         """
@@ -3354,17 +3369,14 @@ class ModuleCreator(object):
 
         final_dct = instance.final_abilities_attrs
 
-        data_storage(targeted_module=self.champion_module,
-                     obj_name='ABILITIES_ATTRIBUTES',
-                     str_to_insert=_dct_body_to_pretty_formatted_str(given_dct=final_dct))
+        self._insert_object_in_champ_module(object_name='ABILITIES_ATTRIBUTES',
+                                            new_object_as_dct=_dct_body_to_pretty_formatted_str(given_dct=final_dct))
 
         effects_dct = instance.spells_effects
 
-        data_storage(targeted_module=self.champion_module,
-                     obj_name='ABILITIES_EFFECTS',
-                     str_to_insert=_dct_body_to_pretty_formatted_str(given_dct=effects_dct),
-                     write_mode='a')
-    
+        self._insert_object_in_champ_module(object_name='ABILITIES_EFFECTS',
+                                            new_object_as_dct=_dct_body_to_pretty_formatted_str(given_dct=effects_dct))
+
     def store_champ_conditions(self):
         instance = Conditionals(champion_name=self.champion_name)
         instance.run_conditions_creation()
