@@ -88,9 +88,9 @@ def print_invalid_answer(extra_msg=''):
     print('\nInvalid answer. ' + extra_msg)
 
 
-def dct_to_pretty_formatted_str(given_dct):
+def _dct_body_to_pretty_formatted_str(given_dct):
     """
-    Converts given dct to a pretty formatted string.
+    Converts given dct (body) to a pretty formatted string.
     Used for file writing.
 
     Returns:
@@ -98,6 +98,54 @@ def dct_to_pretty_formatted_str(given_dct):
     """
 
     return '{\n' + pp.pformat(given_dct, indent=0)[1:-1] + '\n}'
+
+
+def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct):
+    """
+    Creates pretty formatted full string of a dct to be inserted in a file.
+    """
+
+    body = _dct_body_to_pretty_formatted_str(given_dct=obj_body_as_dct)
+    name_and_equal_sign = obj_name + ' = '
+
+    return name_and_equal_sign + body
+
+
+def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct):
+    """
+    Slices off old object from string, then creates the new string.
+    Used for replacing module dicts.
+
+    Returns:
+        (str)
+    """
+
+    new_str = ''
+    inserted_str = dct_to_pretty_formatted_str(obj_name=object_name, obj_body_as_dct=obj_as_dct)
+
+    for num_1, line_1 in enumerate(file_as_lines_lst):
+        # Finds object start.
+        if re.match(object_name, line_1):
+            line_num_start = num_1
+
+            # Finds object end.
+            # (if no empty line is found, last line is marked as end.
+            line_num_end = len(file_as_lines_lst[line_num_start:])
+            for num_2, line_2 in enumerate(file_as_lines_lst[line_num_start:], line_num_start):
+                if line_2 == '\n':
+                    line_num_end = num_2 - 1
+                    break
+
+            # Creates new file as string.
+            for i in file_as_lines_lst[:line_num_start]:
+                new_str += i
+            new_str += inserted_str
+            for i in file_as_lines_lst[line_num_end:]:
+                new_str += i
+
+            return new_str
+
+    return new_str
 
 
 # ---------------------------------------------------------------
@@ -140,7 +188,7 @@ def _return_or_pprint_lst(print_mode, lst):
 
 # ---------------------------------------------------------------
 # TODO: Outer and Inner loop exit exceptions and their checker and handler, seem to be the same throughout the code.
-# TODO: They should be used different exits.
+# TODO: They should be used as different exits.
 class OuterLoopExit(Exception):
     pass
 
@@ -628,28 +676,35 @@ def data_storage(targeted_module, obj_name, str_to_insert, write_mode='w', force
     completion_msg = '\nData insertion COMPLETE.\n'
     if write_mode == 'w':
         insertion_question = 'Replace data?'
-    else:
+    elif write_mode == 'a':
         insertion_question = 'Append data?'
+    else:
+        raise TypeError('Unexpected file open mode.')
 
     # Checks if module is non empty.
-    with open(targeted_module, 'r') as read_module:
+    with open(targeted_module, 'r') as checked_module:
 
+        # FORCE WRITE
         if force_write is True:
             print('\nForce writing.')
 
-        elif read_module.read() != '':
+        # NON EMPTY FILE
+        elif checked_module.read() != '':
             replace_msg = 'Non empty module detected (%s). \n%s\n' % (targeted_module, insertion_question)
             # Repeats question.
             while True:
                 dev_answer = input(replace_msg)
                 if dev_answer == 'y':
                     print('Replacing existing file content..')
+                    break
+
+                # EXIT METHOD
                 elif dev_answer == 'n':
                     print(abort_msg)
                     return
                 else:
                     print_invalid_answer()
-
+        # EMPTY FILE
         else:
             print('Inserting data..')
 
@@ -3234,6 +3289,31 @@ class ModuleCreator(object):
     def __init__(self, champion_name):
         self.champion_name = champion_name
         self.external_vars_dct = {}
+        self.champion_module = '{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name)
+
+    def _insert_object_in_champ_module(self, object_name, new_object):
+        """
+        Checks for given object in champion module. If object present, verifies replacement.
+        """
+
+        with open(self.champion_module, 'r') as f:
+            f_contents = f.read()
+
+        if object_name in f_contents:
+            exists = True
+        else:
+            exists = False
+
+        if exists:
+            question_msg = '\nCHAMPION: {}, OBJECT INSERTED: {}'.format(self.champion_name, object_name)
+            question_msg += '\nObject exists. Replace it?'
+
+            replace_answer = _y_n_question(question_str=question_msg)
+
+            if replace_answer is True:
+                _file_after_replacing_module_var(file_as_lines_lst=f_contents,
+                                                 object_name=object_name,
+                                                 obj_as_dct=new_object)
 
     def external_vars(self):
         """
@@ -3274,15 +3354,15 @@ class ModuleCreator(object):
 
         final_dct = instance.final_abilities_attrs
 
-        data_storage(targeted_module='{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name),
+        data_storage(targeted_module=self.champion_module,
                      obj_name='ABILITIES_ATTRIBUTES',
-                     str_to_insert=dct_to_pretty_formatted_str(given_dct=final_dct))
+                     str_to_insert=_dct_body_to_pretty_formatted_str(given_dct=final_dct))
 
         effects_dct = instance.spells_effects
 
-        data_storage(targeted_module='{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name),
+        data_storage(targeted_module=self.champion_module,
                      obj_name='ABILITIES_EFFECTS',
-                     str_to_insert=dct_to_pretty_formatted_str(given_dct=effects_dct),
+                     str_to_insert=_dct_body_to_pretty_formatted_str(given_dct=effects_dct),
                      write_mode='a')
     
     def store_champ_conditions(self):
@@ -3291,9 +3371,9 @@ class ModuleCreator(object):
 
         final_dct = instance.conditions
 
-        data_storage(targeted_module='{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name),
+        data_storage(targeted_module=self.champion_module,
                      obj_name='CONDITIONALS',
-                     str_to_insert=dct_to_pretty_formatted_str(given_dct=final_dct))
+                     str_to_insert=_dct_body_to_pretty_formatted_str(given_dct=final_dct))
 
 
 # ===============================================================
