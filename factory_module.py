@@ -18,6 +18,26 @@ import importlib
 # ===============================================================
 # ===============================================================
 CHAMPION_MODULES_FOLDER_NAME = 'champions'
+ABILITIES_EFFECT_DCT_NAME = 'ABILITIES_EFFECTS'
+
+
+def imported_champ_module(champ_name):
+    """
+    Returns champion's module.
+    """
+    return importlib.import_module(CHAMPION_MODULES_FOLDER_NAME + '.' + champ_name)
+
+
+def champ_abilities_attrs_dct(champ_name):
+    """
+    Returns champion's abilities effects dict.
+
+    Returns:
+        (dct)
+    """
+    champ_mod = imported_champ_module(champ_name)
+
+    return getattr(champ_mod, ABILITIES_EFFECT_DCT_NAME)
 
 
 # ---------------------------------------------------------------
@@ -2686,12 +2706,6 @@ class AbilitiesAttributes(object):
         self.initial_abilities_attrs = {shortcut: self.single_spell_attrs() for shortcut in ABILITY_SHORTCUTS}
         self.final_abilities_attrs = {}     # e.g. {'general': {'q':{},}, 'buffs':{}, 'dmgs':{} }
 
-        self.spells_effects = {}
-
-    def _set_spells_effects(self):
-
-        for spell_name in SPELL_SHORTCUTS:
-            self.spells_effects.update({spell_name: palette.ChampionsStats.spell_effects()})
 
     @staticmethod
     def single_spell_attrs():
@@ -2770,6 +2784,122 @@ class AbilitiesAttributes(object):
 
         return attrs_dct
 
+
+    def _create_or_redo_spells_attrs(self):
+        """
+        Creates attributes of every spell.
+        Allows redoing creation for each spell, if needed.
+
+        Returns:
+            (None)
+        """
+
+        for spell_name in SPELL_SHORTCUTS:
+
+            # Creates spell att
+            self.initial_abilities_attrs[spell_name] = self._single_spell_attrs(spell_name=spell_name)
+
+            # Redo spell attributes if needed.
+            while True:
+                redo_all_attr_of_spell = input('\nRedo all attributes of %s?\n' % spell_name.upper())
+
+                if redo_all_attr_of_spell == 'y':
+                    # (not breaking after this allows redoing multiple times)
+                    self.initial_abilities_attrs[spell_name] = self._single_spell_attrs(spell_name=spell_name)
+
+                # (exit keys added for convenience when debugging)
+                elif redo_all_attr_of_spell in ('n', INNER_LOOP_KEY, OUTER_LOOP_KEY):
+                    break
+                else:
+                    print_invalid_answer()
+
+    def _join_spells_buffs_and_dmgs(self):
+        """
+        Creates final attribute dict.
+
+        Renames duplicate buff or dmg names and stores them in two groups,
+        and merges general attributes.
+
+        Returns:
+            (None)
+        """
+
+        print(fat_delimiter(80))
+        print('\nFINAL ATTRIBUTE DICT')
+
+        self.final_abilities_attrs = {'general_attributes': {}, 'dmgs': {}, 'buffs': {}}
+
+        # GENERAL ATTRIBUTES
+        for ability_name in ABILITY_SHORTCUTS:
+            self.final_abilities_attrs['general_attributes'].update(
+                {ability_name: self.initial_abilities_attrs[ability_name]['general']})
+
+        # DMGS AND BUFFS
+        for shortcut in ABILITY_SHORTCUTS:
+            for attr_type in ('dmgs', 'buffs'):
+                for existing_name in self.initial_abilities_attrs[shortcut][attr_type]:
+
+                    # Checks for common elements.
+                    if existing_name not in self.final_abilities_attrs[attr_type]:
+                        # Inserts new name and assigns the corresponding dict content to it.
+                        old_attr_dct = self.initial_abilities_attrs[shortcut][attr_type][existing_name]
+
+                        self.final_abilities_attrs[attr_type].update({existing_name: old_attr_dct})
+
+                    # If duplicate found, asks user until valid answer.
+                    else:
+                        print(delimiter(10))
+                        print('\nDuplicate found in %s %s.' % (attr_type, existing_name))
+                        while True:
+                            new_name = input('\nGive new name for %s:\n' % existing_name)
+
+                            # Invalid answer (enter).
+                            if new_name == '':
+                                print_invalid_answer('No name given.')
+
+                            # Invalid answer (existing name).
+                            elif new_name in self.final_abilities_attrs[attr_type]:
+                                print_invalid_answer('Name already exists.')
+
+                            # Valid answer.
+                            else:
+                                # Inserts new name and assigns the corresponding dict content to it.
+                                old_attr_dct = self.initial_abilities_attrs[shortcut][attr_type][existing_name]
+
+                                self.final_abilities_attrs[attr_type].update({new_name: old_attr_dct})
+                                break
+
+    @repeat_cluster(cluster_name='SPELL ATTRS')
+    def run_spell_attrs_creation(self):
+        """
+        Creates all attributes for all spells of given champion,
+        including spell effects.
+
+        Returns
+            (None)
+        """
+
+        self._create_or_redo_spells_attrs()
+
+        # Creates final attribute dict.
+        self._join_spells_buffs_and_dmgs()
+
+    def create_innate_attrs(self):
+        # TODO
+        None
+
+
+class AbilitiesEffects(object):
+
+    def __init__(self, champion_name):
+        self.champion_name = champion_name
+        self.spells_effects = {}
+
+    def _set_spells_effects(self):
+
+        for spell_name in SPELL_SHORTCUTS:
+            self.spells_effects.update({spell_name: palette.ChampionsStats.spell_effects()})
+
     @loop_exit_handler
     def _create_single_spell_effects_dct(self, spell_name):
         """
@@ -2787,8 +2917,10 @@ class AbilitiesAttributes(object):
 
         univ_msg = '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, spell_name)
 
-        dmgs_names = sorted(self.final_abilities_attrs['dmgs'])
-        buffs_names = sorted(self.final_abilities_attrs['buffs'])
+        abilities_attrs_dct = champ_abilities_attrs_dct(champ_name=self.champion_name)
+
+        dmgs_names = sorted(abilities_attrs_dct['dmgs'])
+        buffs_names = sorted(abilities_attrs_dct['buffs'])
 
         self._set_spells_effects()
 
@@ -2855,38 +2987,13 @@ class AbilitiesAttributes(object):
 
         pp.pprint(self.spells_effects)
 
-    def _create_or_redo_spells_attrs(self):
-        """
-        Creates attributes of every spell.
-        Allows redoing creation for each spell, if needed.
-
-        Returns:
-            (None)
-        """
-
-        for spell_name in SPELL_SHORTCUTS:
-
-            # Creates spell att
-            self.initial_abilities_attrs[spell_name] = self._single_spell_attrs(spell_name=spell_name)
-
-            # Redo spell attributes if needed.
-            while True:
-                redo_all_attr_of_spell = input('\nRedo all attributes of %s?\n' % spell_name.upper())
-
-                if redo_all_attr_of_spell == 'y':
-                    # (not breaking after this allows redoing multiple times)
-                    self.initial_abilities_attrs[spell_name] = self._single_spell_attrs(spell_name=spell_name)
-
-                # (exit keys added for convenience when debugging)
-                elif redo_all_attr_of_spell in ('n', INNER_LOOP_KEY, OUTER_LOOP_KEY):
-                    break
-                else:
-                    print_invalid_answer()
-
-    def _create_or_redo_spells_effects(self):
+    @repeat_cluster(cluster_name='SPELL EFFECTS')
+    def run_spell_effects_creation(self):
         """
         Creates effects of every spell.
         Allows redoing creation for each spell, if needed.
+
+        Note: has to follow all buff and dmg creation so that all names are available.
 
         Returns:
             (None)
@@ -2912,91 +3019,13 @@ class AbilitiesAttributes(object):
                 else:
                     print_invalid_answer()
 
-    def _join_spells_buffs_and_dmgs(self):
-        """
-        Creates final attribute dict.
-
-        Renames duplicate buff or dmg names and stores them in two groups,
-        and merges general attributes.
-
-        Returns:
-            (None)
-        """
-
-        print(fat_delimiter(80))
-        print('\nFINAL ATTRIBUTE DICT')
-
-        self.final_abilities_attrs = {'general_attributes': {}, 'dmgs': {}, 'buffs': {}}
-
-        # GENERAL ATTRIBUTES
-        for ability_name in ABILITY_SHORTCUTS:
-            self.final_abilities_attrs['general_attributes'].update(
-                {ability_name: self.initial_abilities_attrs[ability_name]['general']})
-
-        # DMGS AND BUFFS
-        for shortcut in ABILITY_SHORTCUTS:
-            for attr_type in ('dmgs', 'buffs'):
-                for existing_name in self.initial_abilities_attrs[shortcut][attr_type]:
-
-                    # Checks for common elements.
-                    if existing_name not in self.final_abilities_attrs[attr_type]:
-                        # Inserts new name and assigns the corresponding dict content to it.
-                        old_attr_dct = self.initial_abilities_attrs[shortcut][attr_type][existing_name]
-
-                        self.final_abilities_attrs[attr_type].update({existing_name: old_attr_dct})
-
-                    # If duplicate found, asks user until valid answer.
-                    else:
-                        print(delimiter(10))
-                        print('\nDuplicate found in %s %s.' % (attr_type, existing_name))
-                        while True:
-                            new_name = input('\nGive new name for %s:\n' % existing_name)
-
-                            # Invalid answer (enter).
-                            if new_name == '':
-                                print_invalid_answer('No name given.')
-
-                            # Invalid answer (existing name).
-                            elif new_name in self.final_abilities_attrs[attr_type]:
-                                print_invalid_answer('Name already exists.')
-
-                            # Valid answer.
-                            else:
-                                # Inserts new name and assigns the corresponding dict content to it.
-                                old_attr_dct = self.initial_abilities_attrs[shortcut][attr_type][existing_name]
-
-                                self.final_abilities_attrs[attr_type].update({new_name: old_attr_dct})
-                                break
-
-    @repeat_cluster(cluster_name='SPELL ATTRS AND EFFECTS')
-    def run_spell_attrs_and_effects_creation(self):
-        """
-        Creates all attributes for all spells of given champion,
-        including spell effects.
-
-        Returns
-            (None)
-        """
-
-        self._create_or_redo_spells_attrs()
-
-        # Creates final attribute dict.
-        self._join_spells_buffs_and_dmgs()
-
-        # (has to follow all buff and dmg creation so that all names are available)
-        self._create_or_redo_spells_effects()
-
-    def create_innate_attrs(self):
-        # TODO
-        None
-
 
 class Conditionals(object):
     def __init__(self, champion_name):
         self.champion_name = champion_name
-        self.champ_module = importlib.import_module(CHAMPION_MODULES_FOLDER_NAME + '.' + champion_name)
+        self.champ_module = imported_champ_module(champ_name=champion_name)
         self.abilities_dct = self.champ_module.ABILITIES_ATTRIBUTES
-        self.abilities_effects = self.champ_module.ABILITIES_EFFECTS
+        self.abilities_effects = champ_abilities_attrs_dct(champ_name=champion_name)
         self.conditions = {}
 
     TRIGGER_TYPES = ('buff', 'ability_lvl', 'stat')
@@ -3357,22 +3386,32 @@ class ModuleCreator(object):
 
     def insert_attrs_to_module(self):
         """
-        Inserts abilities' attributes and effects,
-        after pretty formatting them.
+        Inserts abilities' attributes after pretty formatting them.
 
         Returns:
             (None)
         """
 
-        instance = AbilitiesAttributes(champion_name=self.champion_name)
-        instance.run_spell_attrs_and_effects_creation()
+        attrs_inst = AbilitiesAttributes(champion_name=self.champion_name)
+        attrs_inst.run_spell_attrs_creation()
 
-        final_dct = instance.final_abilities_attrs
+        final_dct = attrs_inst.final_abilities_attrs
 
         self._insert_object_in_champ_module(object_name='ABILITIES_ATTRIBUTES',
                                             new_object_as_dct=_dct_body_to_pretty_formatted_str(given_dct=final_dct))
 
-        effects_dct = instance.spells_effects
+    def insert_effects_to_module(self):
+        """
+        Inserts abilities' effects after pretty formatting them.
+
+        Returns:
+            (None)
+        """
+
+        effects_inst = AbilitiesEffects(champion_name=self.champion_name)
+        effects_inst.run_spell_effects_creation()
+
+        effects_dct = effects_inst.spells_effects
 
         self._insert_object_in_champ_module(object_name='ABILITIES_EFFECTS',
                                             new_object_as_dct=_dct_body_to_pretty_formatted_str(given_dct=effects_dct))
@@ -3382,11 +3421,10 @@ class ModuleCreator(object):
         instance.run_conditions_creation()
 
         final_dct = instance.conditions
-
-        data_storage(targeted_module=self.champion_module,
-                     obj_name='CONDITIONALS',
-                     str_to_insert=_dct_body_to_pretty_formatted_str(given_dct=final_dct))
-
+        
+        self._insert_object_in_champ_module(object_name='CONDITIONALS',
+                                            new_object_as_dct=_dct_body_to_pretty_formatted_str(given_dct=final_dct))
+        
 
 # ===============================================================
 # ===============================================================
