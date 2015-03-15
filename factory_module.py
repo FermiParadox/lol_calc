@@ -18,7 +18,10 @@ import importlib
 # ===============================================================
 # ===============================================================
 CHAMPION_MODULES_FOLDER_NAME = 'champions'
+ABILITIES_ATTRS_DCT_NAME = 'ABILITIES_ATTRIBUTES'
 ABILITIES_EFFECT_DCT_NAME = 'ABILITIES_EFFECTS'
+ABILITIES_CONDITIONS_DCT_NAME = 'ABILITIES_CONDITIONS'
+ABILITIES_MODULE_DCT_NAMES = (ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME, ABILITIES_CONDITIONS_DCT_NAME)
 
 
 def imported_champ_module(champ_name):
@@ -35,9 +38,12 @@ def champ_abilities_attrs_dct(champ_name):
     Returns:
         (dct)
     """
+
+    # Delay used to ensure file is "refreshed" after being writen on.
+    time.sleep(1)
     champ_mod = imported_champ_module(champ_name)
 
-    return getattr(champ_mod, ABILITIES_EFFECT_DCT_NAME)
+    return getattr(champ_mod, ABILITIES_ATTRS_DCT_NAME)
 
 
 # ---------------------------------------------------------------
@@ -128,7 +134,7 @@ def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct):
     body = _dct_body_to_pretty_formatted_str(given_dct=obj_body_as_dct)
     name_and_equal_sign = obj_name + ' = '
 
-    return name_and_equal_sign + body + '\n'
+    return name_and_equal_sign + body + '\n\n'
 
 
 def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct):
@@ -206,8 +212,6 @@ def _return_or_pprint_lst(print_mode, lst):
 
 
 # ---------------------------------------------------------------
-# TODO: Outer and Inner loop exit exceptions and their checker and handler, seem to be the same throughout the code.
-# TODO: They should be used as different exits.
 class OuterLoopExit(Exception):
     pass
 
@@ -226,7 +230,7 @@ OUTER_LOOP_KEY = '!!'
 REPEAT_CHOICE_KEY = '^'
 
 
-def _check_for_loop_exit(key):
+def _check_loop_exit(key):
     if key == OUTER_LOOP_KEY:
         print('#### OUTER LOOP EXITED ####')
         raise OuterLoopExit
@@ -249,7 +253,7 @@ def _check_factory_custom_exception(given_str, exclude_repeat_key=False):
         (None)
     """
 
-    _check_for_loop_exit(given_str)
+    _check_loop_exit(given_str)
 
     if exclude_repeat_key is False:
         _check_for_repeat_choice_error(given_str)
@@ -274,6 +278,30 @@ def _input_in_len_range(given_str, choices_length):
 
 def _exception_keys():
     return dict(stop_key=INNER_LOOP_KEY, error_key=OUTER_LOOP_KEY, repeat_key=REPEAT_CHOICE_KEY)
+
+
+def _loop_exit_handler(func, _exception_class=None):
+    """
+    Decorator used for handling Abortion exceptions raised during Requests.
+    """
+
+    def wrapped(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except _exception_class:
+            pass
+
+    return wrapped
+
+
+def inner_loop_exit_handler(func, _exception_class=InnerLoopExit):
+
+    return _loop_exit_handler(func=func, _exception_class=_exception_class)
+
+
+def outer_loop_exit_handler(func, _exception_class=OuterLoopExit):
+
+    return _loop_exit_handler(func=func, _exception_class=_exception_class)
 
 
 # ---------------------------------------------------------------
@@ -384,17 +412,19 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, re
         # (enter is not accepted)
         if input_given != '':
             # (if input given is not corresponding to a shortcut num)
-            if (restrict_choices is True) and (_input_in_len_range(given_str=input_given,
-                                                                   choices_length=shortcut_len) is False):
-                print_invalid_answer('Choose from the menu.')
-                continue
+            if restrict_choices is True:
+                if (_input_in_len_range(given_str=input_given,
+                                        choices_length=shortcut_len) is False) and (input_given not in _exception_keys().values()):
+
+                    print_invalid_answer('Choose from the menu.')
+                    continue
 
             break
         else:
             print_invalid_answer('Enter not accepted.')
 
     # (breaks loop prematurely if asked)
-    _check_for_loop_exit(key=input_given)
+    _check_loop_exit(key=input_given)
     _check_for_repeat_choice_error(key=input_given)
 
     choice_num = None
@@ -459,22 +489,6 @@ def _suggest_attr_values(suggested_values_dct, modified_dct, restrict_choices=Fa
                 # (reduces attr_num, and ensures it doesn't reach negative values)
                 attr_num -= 1
                 attr_num = max(attr_num, 0)
-
-
-def loop_exit_handler(func):
-    """
-    Decorator used for handling Abortion exceptions raised during Requests.
-    """
-
-    def wrapped(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except OuterLoopExit:
-            pass
-        except InnerLoopExit:
-            pass
-
-    return wrapped
 
 
 def _new_automatic_attr_dct_name(existing_names, first_synthetic, second_synthetic=''):
@@ -602,7 +616,7 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
         dev_choice = input('\nSelect all valid names. (press only enter for empty)\n')
 
         # Exits loop if requested.
-        _check_for_loop_exit(dev_choice)
+        _check_loop_exit(dev_choice)
 
         # (only comma, whitespace and digits are valid characters, or empty string)
         if re.search(r'[^\d,\s]', dev_choice) is not None:
@@ -1730,7 +1744,7 @@ class GeneralAbilityAttributes(AttributesBase):
         self.fill_cost_attrs()
         self.fill_base_cd_values()
 
-    @loop_exit_handler
+    @inner_loop_exit_handler
     def suggest_gen_attr_values(self):
 
         extra_msg = '\nGENERAL ATTRIBUTE CREATION\n'
@@ -2171,7 +2185,7 @@ class DmgAbilityAttributes(AttributesBase):
                         print(extra_msg)
 
                         answer = input('\n')
-                        _check_for_loop_exit(key=answer)
+                        _check_loop_exit(key=answer)
 
                         try:
                             answer = float(answer)
@@ -2180,7 +2194,7 @@ class DmgAbilityAttributes(AttributesBase):
                         except (ValueError, TypeError):
                             print_invalid_answer(extra_msg='Float needed.')
 
-    @loop_exit_handler
+    @inner_loop_exit_handler
     def _run_dmg_attr_creation_without_result_msg(self):
         """
         Runs all relevant methods for each dmg attribute detected.
@@ -2313,7 +2327,7 @@ class BuffAbilityAttributes(AttributesBase):
         while True:
             num_of_buffs = input(start_msg + '\n')
 
-            _check_for_loop_exit(key=num_of_buffs)
+            _check_loop_exit(key=num_of_buffs)
 
             try:
                 num_iter = range(int(num_of_buffs))
@@ -2668,7 +2682,7 @@ class BuffAbilityAttributes(AttributesBase):
 
     # TODO: Allow duration link to another buff (that is, buff_3_duration = buff_1_duration
 
-    @loop_exit_handler
+    @inner_loop_exit_handler
     def _run_buff_attr_creation_without_result_msg(self):
 
         self.ask_amount_of_buffs()
@@ -2704,14 +2718,14 @@ class AbilitiesAttributes(object):
     def __init__(self, champion_name):
         self.champion_name = champion_name
         self.initial_abilities_attrs = {shortcut: self.single_spell_attrs() for shortcut in ABILITY_SHORTCUTS}
-        self.final_abilities_attrs = {}     # e.g. {'general': {'q':{},}, 'buffs':{}, 'dmgs':{} }
+        self.final_abilities_attrs = {'general': {}, 'dmgs': {}, 'buffs': {}}     # e.g. {'general': {'q':{},}, 'buffs':{}, 'dmgs':{} }
 
 
     @staticmethod
     def single_spell_attrs():
         return dict(general={}, dmgs={}, buffs={})
 
-    @loop_exit_handler
+    @inner_loop_exit_handler
     def _gen_attr(self, attrs_dct, spell_name):
         """
         Modifies given dict by inserting 'general' attributes.
@@ -2729,7 +2743,7 @@ class AbilitiesAttributes(object):
         print('\nGeneral attributes')
         pp.pprint(attrs_dct['general'])
 
-    @loop_exit_handler
+    @inner_loop_exit_handler
     def _dmg_attrs(self, attrs_dct, spell_name):
         """
         Modifies given dict by inserting 'general' attributes.
@@ -2743,7 +2757,7 @@ class AbilitiesAttributes(object):
 
         attrs_dct['dmgs'] = dmgs_instance.dmgs_dct
 
-    @loop_exit_handler
+    @inner_loop_exit_handler
     def _buff_attrs(self, attrs_dct, spell_name):
         """
         Modifies given dict by inserting 'general' attributes.
@@ -2757,7 +2771,7 @@ class AbilitiesAttributes(object):
 
         attrs_dct['buffs'] = buffs_inst.buffs_dct
 
-    @loop_exit_handler
+    @inner_loop_exit_handler
     def _single_spell_attrs(self, spell_name):
         """
         Creates all attributes of an ability.
@@ -2783,7 +2797,6 @@ class AbilitiesAttributes(object):
         pp.pprint(attrs_dct)
 
         return attrs_dct
-
 
     def _create_or_redo_spells_attrs(self):
         """
@@ -2869,6 +2882,7 @@ class AbilitiesAttributes(object):
                                 self.final_abilities_attrs[attr_type].update({new_name: old_attr_dct})
                                 break
 
+    @outer_loop_exit_handler
     @repeat_cluster(cluster_name='SPELL ATTRS')
     def run_spell_attrs_creation(self):
         """
@@ -2900,7 +2914,7 @@ class AbilitiesEffects(object):
         for spell_name in SPELL_SHORTCUTS:
             self.spells_effects.update({spell_name: palette.ChampionsStats.spell_effects()})
 
-    @loop_exit_handler
+    @inner_loop_exit_handler
     def _create_single_spell_effects_dct(self, spell_name):
         """
         Creates effects dict of a single spell, for given champion.
@@ -2987,6 +3001,7 @@ class AbilitiesEffects(object):
 
         pp.pprint(self.spells_effects)
 
+    @outer_loop_exit_handler
     @repeat_cluster(cluster_name='SPELL EFFECTS')
     def run_spell_effects_creation(self):
         """
@@ -3283,6 +3298,7 @@ class Conditionals(object):
         # EFFECTS
         self._add_triggers(con_name=con_name)
 
+    @outer_loop_exit_handler
     @repeat_cluster(cluster_name='ALL CONDITIONS')
     def run_conditions_creation(self):
         print(fat_delimiter(100))
@@ -3290,13 +3306,13 @@ class Conditionals(object):
         
         while True:
             print(fat_delimiter(40))
-    
-            # CONDITION NAME
-            new_con_name = _auto_new_name_or_ask_name(first_synthetic='condition', existing_names=self.conditions)
+
             # Ends method if no name is provided.
-            if not new_con_name:
+            if not _y_n_question('New condition?'):
                 break
             else:
+                # CONDITION NAME
+                new_con_name = _auto_new_name_or_ask_name(first_synthetic='condition', existing_names=self.conditions)
                 self.conditions.update({new_con_name: {}})
                 
                 self._create_single_condition(con_name=new_con_name)
@@ -3319,7 +3335,49 @@ class ModuleCreator(object):
         self.external_vars_dct = {}
         self.champion_module = '{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name)
 
-    def _insert_object_in_champ_module(self, object_name, new_object_as_dct):
+    def _replace_or_skip_replacement(self, replace_answer, obj_name, new_object_as_dct):
+        """
+        Asks for replacement confirmation, and conducts replacement.
+        """
+        if replace_answer is True:
+
+            with open(self.champion_module, 'r') as r:
+                r_as_lst = r.readlines()
+
+            replacement = _file_after_replacing_module_var(file_as_lines_lst=r_as_lst,
+                                                           object_name=obj_name,
+                                                           obj_as_dct=new_object_as_dct)
+
+            with open(self.champion_module, 'w') as w:
+                w.write(replacement)
+        else:
+            print('\nReplacement canceled.')
+
+    def _append_obj_in_module(self, obj_name, new_object_as_dct):
+        with open(self.champion_module, 'a') as r:
+            r.write(dct_to_pretty_formatted_str(obj_name=obj_name, obj_body_as_dct=new_object_as_dct))
+
+    def _obj_as_dct_func(self, obj_name):
+
+        if obj_name == ABILITIES_ATTRS_DCT_NAME:
+            attrs_inst = AbilitiesAttributes(champion_name=self.champion_name)
+            attrs_inst.run_spell_attrs_creation()
+
+            return attrs_inst.final_abilities_attrs
+
+        elif obj_name == ABILITIES_EFFECT_DCT_NAME:
+            effects_inst = AbilitiesEffects(champion_name=self.champion_name)
+            effects_inst.run_spell_effects_creation()
+
+            return effects_inst.spells_effects
+
+        elif obj_name == ABILITIES_CONDITIONS_DCT_NAME:
+            instance = Conditionals(champion_name=self.champion_name)
+            instance.run_conditions_creation()
+
+            return instance.conditions
+
+    def _insert_object_in_champ_module(self, obj_name):
         """
         Checks for given object in champion module. If object present, verifies replacement.
 
@@ -3327,37 +3385,32 @@ class ModuleCreator(object):
             (None)
         """
 
+        # Checks obj existence in module.
         with open(self.champion_module, 'r') as r:
             r_as_str = r.read()
-            r.seek(0)
-            r_as_lst = r.readlines()
 
-        if object_name in r_as_str:
-            exists = True
+        if obj_name in r_as_str:
+            obj_existence = True
         else:
-            exists = False
+            obj_existence = False
 
         # If object exists, replaces it.
-        if exists:
-            question_msg = '\nCHAMPION: {}, OBJECT INSERTED: {}'.format(self.champion_name, object_name)
+        if obj_existence:
+            question_msg = '\nCHAMPION: {}, OBJECT INSERTED: {}'.format(self.champion_name, obj_name)
             question_msg += '\nObject exists. Replace it?'
 
             replace_answer = _y_n_question(question_str=question_msg)
 
             if replace_answer is True:
-                replacement = _file_after_replacing_module_var(file_as_lines_lst=r_as_lst,
-                                                               object_name=object_name,
-                                                               obj_as_dct=new_object_as_dct)
 
-                with open(self.champion_module, 'w') as w:
-                    w.write(replacement)
+                self._replace_or_skip_replacement(replace_answer=replace_answer, obj_name=obj_name,
+                                                  new_object_as_dct=self._obj_as_dct_func(obj_name))
             else:
                 print('\nReplacement canceled.')
 
         # If object doesn't exist, appends object.
         else:
-            with open(self.champion_module, 'a') as r:
-                r.write(dct_to_pretty_formatted_str(obj_name=object_name, obj_body_as_dct=new_object_as_dct))
+            self._append_obj_in_module(obj_name=obj_name, new_object_as_dct=self._obj_as_dct_func(obj_name))
 
     def external_vars(self):
         """
@@ -3384,47 +3437,14 @@ class ModuleCreator(object):
 
                 self.external_vars_dct.update({external_val_name: external_val_initial_value})
 
-    def insert_attrs_to_module(self):
+    def run_champ_module_creation(self):
         """
-        Inserts abilities' attributes after pretty formatting them.
-
-        Returns:
-            (None)
+        Creates all champion module related data, from dicts to class.
         """
 
-        attrs_inst = AbilitiesAttributes(champion_name=self.champion_name)
-        attrs_inst.run_spell_attrs_creation()
+        for name in ABILITIES_MODULE_DCT_NAMES:
+            self._insert_object_in_champ_module(obj_name=name)
 
-        final_dct = attrs_inst.final_abilities_attrs
-
-        self._insert_object_in_champ_module(object_name='ABILITIES_ATTRIBUTES',
-                                            new_object_as_dct=_dct_body_to_pretty_formatted_str(given_dct=final_dct))
-
-    def insert_effects_to_module(self):
-        """
-        Inserts abilities' effects after pretty formatting them.
-
-        Returns:
-            (None)
-        """
-
-        effects_inst = AbilitiesEffects(champion_name=self.champion_name)
-        effects_inst.run_spell_effects_creation()
-
-        effects_dct = effects_inst.spells_effects
-
-        self._insert_object_in_champ_module(object_name='ABILITIES_EFFECTS',
-                                            new_object_as_dct=_dct_body_to_pretty_formatted_str(given_dct=effects_dct))
-
-    def store_champ_conditions(self):
-        instance = Conditionals(champion_name=self.champion_name)
-        instance.run_conditions_creation()
-
-        final_dct = instance.conditions
-        
-        self._insert_object_in_champ_module(object_name='CONDITIONALS',
-                                            new_object_as_dct=_dct_body_to_pretty_formatted_str(given_dct=final_dct))
-        
 
 # ===============================================================
 # ===============================================================
@@ -3471,5 +3491,4 @@ if __name__ == '__main__':
 
     testModuleInsertion = True
     if testModuleInsertion is True:
-        ModuleCreator(champion_name='jax').insert_attrs_to_module()
-
+        ModuleCreator(champion_name='jax').run_champ_module_creation()
