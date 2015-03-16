@@ -175,3 +175,56 @@ ABILITIES_ATTRIBUTES = {
                                  'travel_time': 0}}
 }
 
+ABILITIES_EFFECTS = {
+    'e': {'enemy': {'actives': {'buffs': [], 'dmg': [], 'remove_buff': []},
+                    'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
+          'player': {'actives': {'buffs': [],
+                                 'cds_modified': {},
+                                 'dmg': [],
+                                 'remove_buff': []},
+                     'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}}},
+    'q': {'enemy': {'actives': {'buffs': [], 'dmg': [], 'remove_buff': []},
+                    'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
+          'player': {'actives': {'buffs': [],
+                                 'cds_modified': {},
+                                 'dmg': [],
+                                 'remove_buff': []},
+                     'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}}},
+    'r': {'enemy': {'actives': {'buffs': [], 'dmg': [], 'remove_buff': []},
+                    'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
+          'player': {'actives': {'buffs': ['r_dmg_red'],
+                                 'cds_modified': {},
+                                 'dmg': [],
+                                 'remove_buff': []},
+                     'passives': {'buffs': ['r_n_hit_initiator'],
+                                  'dmg': [],
+                                  'remove_buff': []}}},
+    'w': {'enemy': {'actives': {'buffs': [], 'dmg': [], 'remove_buff': []},
+                    'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
+          'player': {'actives': {'buffs': [],
+                                 'cds_modified': {},
+                                 'dmg': [],
+                                 'remove_buff': []},
+                     'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}}}
+}
+
+ABILITIES_CONDITIONS = {
+    '1': {'effects': {'^': {'ability_name': 'q',
+                            'attr_name': 'dashed_distance',
+                            'effect_type': 'ability_attrs',
+                            'formula_type': 'constant_value',
+                            'modification_type': 'add',
+                            'values_tpl': 1},
+                      'e1': {'ability_name': 'q',
+                             'attr_name': 'dashed_distance',
+                             'effect_type': 'ability_attrs',
+                             'formula_type': 'x_function',
+                             'modification_type': 'add',
+                             'values_tpl': 4}},
+          'triggers': {'t1': {'buff_name': 'r_dmg_red',
+                              'operator': '>',
+                              'owner_type': 'player',
+                              'stacks': 2,
+                              'trigger_type': 'buff'}}}
+}
+

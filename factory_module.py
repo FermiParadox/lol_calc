@@ -39,8 +39,6 @@ def champ_abilities_attrs_dct(champ_name):
         (dct)
     """
 
-    # Delay used to ensure file is "refreshed" after being writen on.
-    time.sleep(1)
     champ_mod = imported_champ_module(champ_name)
 
     return getattr(champ_mod, ABILITIES_ATTRS_DCT_NAME)
@@ -123,7 +121,7 @@ def _dct_body_to_pretty_formatted_str(given_dct):
         (str)
     """
 
-    return '{\n' + pp.pformat(given_dct, indent=0)[1:-1] + '\n}'
+    return '{\n' + pp.pformat(given_dct, indent=0)[1:-1] + '}'
 
 
 def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct):
@@ -134,7 +132,7 @@ def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct):
     body = _dct_body_to_pretty_formatted_str(given_dct=obj_body_as_dct)
     name_and_equal_sign = obj_name + ' = '
 
-    return name_and_equal_sign + body + '\n\n'
+    return name_and_equal_sign + body + '\n'
 
 
 def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct):
@@ -158,8 +156,8 @@ def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct)
             old_end = len(file_as_lines_lst)
             for num_2, line_2 in enumerate(file_as_lines_lst[old_start:], old_start):
                 if line_2 == '\n':
-                    # (ensures newline remains unaltered)
-                    old_end = num_2
+
+                    old_end = num_2 - 1
                     break
 
             # Creates new file as string.
@@ -167,7 +165,7 @@ def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct)
             for i in file_as_lines_lst[:old_start]:
                 new_str += i
             new_str += inserted_str
-            for i in file_as_lines_lst[old_end:]:
+            for i in file_as_lines_lst[old_end+1:]:
                 new_str += i
 
             return new_str
@@ -3043,7 +3041,6 @@ class Conditionals(object):
         self.abilities_effects = champ_abilities_attrs_dct(champ_name=champion_name)
         self.conditions = {}
 
-    TRIGGER_TYPES = ('buff', 'ability_lvl', 'stat')
     TARGET_TYPES = ('player', 'enemy')
     FORMULA_TYPE = ('constant_value', 'x_function')
     OPERATOR_TYPES = ('>', '<', '==', '<=', '>=')
@@ -3184,7 +3181,7 @@ class Conditionals(object):
         self.conditions[con_name]['triggers'].update({trig_name: {}})
 
         # Inserts trig types.
-        trig_type = _ask_tpl_question(question_str='Trigger TYPE?', choices_seq=self.TRIGGER_TYPES,
+        trig_type = _ask_tpl_question(question_str='Trigger TYPE?', choices_seq=self.trigger_setup_dct(),
                                       restrict_choices=True)
 
         self.conditions[con_name]['triggers'][trig_name].update({'trigger_type': trig_type})
@@ -3444,6 +3441,9 @@ class ModuleCreator(object):
 
         for name in ABILITIES_MODULE_DCT_NAMES:
             self._insert_object_in_champ_module(obj_name=name)
+            # Delay used to ensure file is "refreshed" after being writen on. (might be redundant)
+            time.sleep(0.2)
+
 
 
 # ===============================================================

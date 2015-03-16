@@ -61,6 +61,10 @@ class AttributeBase(object):
             return eval(formula)
 
     def abilities_effects(self):
+        """
+        Checks if ability effects are affected by any conditionals.
+        If not, returns member variable dict. Otherwise returns different version of the dict.
+        """
 
         return self.ABILITIES_EFFECTS
 
