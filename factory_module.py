@@ -44,6 +44,14 @@ def champ_abilities_attrs_dct(champ_name):
     return getattr(champ_mod, ABILITIES_ATTRS_DCT_NAME)
 
 
+def _dmgs_names(champ_name):
+    return sorted(champ_abilities_attrs_dct(champ_name)['dmgs'])
+
+
+def _buffs_names(champ_name):
+    return sorted(champ_abilities_attrs_dct(champ_name)['buffs'])
+
+
 # ---------------------------------------------------------------
 def delimiter(num_of_lines, line_type='-'):
     """
@@ -581,7 +589,7 @@ def _auto_new_name_or_ask_name(existing_names, first_synthetic, second_synthetic
     new_manual_name = _ask_new_group_name(group_type_name=group_type_name,
                                           existing_names=list(existing_names).append(new_automatic_name),
                                           disable_enter=disable_enter)
-    
+
     if new_manual_name:
         return new_manual_name
     else:
@@ -2716,8 +2724,8 @@ class AbilitiesAttributes(object):
     def __init__(self, champion_name):
         self.champion_name = champion_name
         self.initial_abilities_attrs = {shortcut: self.single_spell_attrs() for shortcut in ABILITY_SHORTCUTS}
-        self.final_abilities_attrs = {'general': {}, 'dmgs': {}, 'buffs': {}}     # e.g. {'general': {'q':{},}, 'buffs':{}, 'dmgs':{} }
-
+        # e.g. {'general': {'q':{},}, 'buffs':{}, 'dmgs':{} }
+        self.final_abilities_attrs = {'general': {}, 'dmgs': {}, 'buffs': {}}
 
     @staticmethod
     def single_spell_attrs():
@@ -2929,11 +2937,6 @@ class AbilitiesEffects(object):
 
         univ_msg = '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, spell_name)
 
-        abilities_attrs_dct = champ_abilities_attrs_dct(champ_name=self.champion_name)
-
-        dmgs_names = sorted(abilities_attrs_dct['dmgs'])
-        buffs_names = sorted(abilities_attrs_dct['buffs'])
-
         self._set_spells_effects()
 
         effects_dct = self.spells_effects[spell_name]
@@ -2946,7 +2949,7 @@ class AbilitiesEffects(object):
                 dmg_msg += '%s -- %s -- DMG APPLIED\n' % (tar_type, application_type)
                 dmg_msg = dmg_msg.upper()
 
-                _suggest_lst_of_attr_values(suggested_values_lst=dmgs_names,
+                _suggest_lst_of_attr_values(suggested_values_lst=_dmgs_names(champ_name=self.champion_name),
                                             modified_lst=effects_dct[tar_type][application_type]['dmg'],
                                             extra_start_msg=dmg_msg)
 
@@ -2957,7 +2960,7 @@ class AbilitiesEffects(object):
                 buffs_applied_msg += '%s -- %s -- BUFFS APPLIED' % (tar_type, application_type)
                 buffs_applied_msg = buffs_applied_msg.upper()
 
-                _suggest_lst_of_attr_values(suggested_values_lst=buffs_names,
+                _suggest_lst_of_attr_values(suggested_values_lst=_buffs_names(champ_name=self.champion_name),
                                             modified_lst=effects_dct[tar_type][application_type]['buffs'],
                                             extra_start_msg=buffs_applied_msg)
 
@@ -2968,7 +2971,7 @@ class AbilitiesEffects(object):
                 buff_removal_msg += '%s -- %s -- BUFFS REMOVED' % (tar_type, application_type)
                 buff_removal_msg = buff_removal_msg.upper()
 
-                _suggest_lst_of_attr_values(suggested_values_lst=buffs_names,
+                _suggest_lst_of_attr_values(suggested_values_lst=_buffs_names(champ_name=self.champion_name),
                                             modified_lst=effects_dct[tar_type][application_type]['remove_buff'],
                                             extra_start_msg=buff_removal_msg)
 
@@ -3047,10 +3050,10 @@ class Conditionals(object):
     NON_PER_LVL_STAT_NAMES = sorted(i for i in stats.StatCalculation.ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
 
     def available_buff_names(self):
-        return self.abilities_dct['buffs']
+        return sorted(self.abilities_dct['buffs'])
 
     def available_dmg_names(self):
-        return self.abilities_dct['dmgs']
+        return sorted(self.abilities_dct['dmgs'])
 
     def available_buff_attr_names(self):
 
@@ -3113,14 +3116,16 @@ class Conditionals(object):
             buff_on_hit=dict(
                 buff_name=self.available_buff_names(),
                 on_hit_effect_type=palette.ChampionsStats.on_hit_effects(),
-                modification_type=('add', 'replace'),
+                modification_type=('append', 'replace'),
                 ),
 
             ability_effect=dict(
                 ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
-                owner_type=('enemy', 'player'),
-                active_effect_type=palette.ChampionsStats.spell_effects()['player']['actives'],
-                modification_type=('add', 'replace'),
+                tar_type=('enemy', 'player'),
+                # Contains spell effect categories
+                spell_effect_category=palette.ChampionsStats.spell_effects()['player']['actives'],
+                modification_type=('append', 'replace'),
+
             ),
 
             dmg_attrs=dict(
@@ -3151,7 +3156,7 @@ class Conditionals(object):
         return dict(
             x_formula=(),
             x_type=('buff', 'stat'),
-            x_owner=('player', 'enemy', None)
+            x_owner=('player', 'enemy', None),
         )
 
     def _remove_prev_formula_keys(self, con_name, eff_name):
@@ -3247,16 +3252,29 @@ class Conditionals(object):
                              restrict_choices=True)
 
         # Inserts effect formula.
-        if self.conditions[con_name]['effects'][eff_name]['formula_type'] == 'x_formula':
-            suggested_dct = self.formula_contents_dct()
-            formula_msg = ''
-        else:
-            suggested_dct = self.constant_values_dct()
-            formula_msg = ''
+        # (formula type is used for non buffs/dmgs)
+        if 'formula_type' in self.conditions[con_name]['effects'][eff_name]:
+            if self.conditions[con_name]['effects'][eff_name]['formula_type'] == 'x_formula':
+                suggested_dct = self.formula_contents_dct()
 
-        _suggest_attr_values(suggested_values_dct=suggested_dct,
-                             modified_dct=self.conditions[con_name]['effects'][eff_name],
-                             extra_start_msg=formula_msg)
+            else:
+                suggested_dct = self.constant_values_dct()
+
+            _suggest_attr_values(suggested_values_dct=suggested_dct,
+                                 modified_dct=self.conditions[con_name]['effects'][eff_name],)
+
+        # Buffs/dmgs
+        else:
+            self.conditions[con_name]['effects'][eff_name].update({'names': []})
+            cat = self.conditions[con_name]['effects'][eff_name]['spell_effect_category']
+            if cat in ('buffs', 'remove_buff'):
+                _suggest_lst_of_attr_values(suggested_values_lst=self.available_buff_names(),
+                                            modified_lst=self.conditions[con_name]['effects'][eff_name]['names'])
+
+            else:
+                _suggest_lst_of_attr_values(suggested_values_lst=self.available_dmg_names(),
+                                            modified_lst=self.conditions[con_name]['effects'][eff_name]['names'])
+
 
         print(delimiter(40))
         print('\nEFFECT: {}'.format(eff_name))
@@ -3443,7 +3461,6 @@ class ModuleCreator(object):
             self._insert_object_in_champ_module(obj_name=name)
             # Delay used to ensure file is "refreshed" after being writen on. (might be redundant)
             time.sleep(0.2)
-
 
 
 # ===============================================================

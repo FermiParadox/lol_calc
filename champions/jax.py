@@ -209,22 +209,13 @@ ABILITIES_EFFECTS = {
 }
 
 ABILITIES_CONDITIONS = {
-    '1': {'effects': {'^': {'ability_name': 'q',
-                            'attr_name': 'dashed_distance',
-                            'effect_type': 'ability_attrs',
-                            'formula_type': 'constant_value',
-                            'modification_type': 'add',
-                            'values_tpl': 1},
-                      'e1': {'ability_name': 'q',
-                             'attr_name': 'dashed_distance',
-                             'effect_type': 'ability_attrs',
-                             'formula_type': 'x_function',
-                             'modification_type': 'add',
-                             'values_tpl': 4}},
-          'triggers': {'t1': {'buff_name': 'r_dmg_red',
-                              'operator': '>',
-                              'owner_type': 'player',
-                              'stacks': 2,
-                              'trigger_type': 'buff'}}}
-}
+    'c1': {'effects': {'e1': {'ability_name': 'q',
+                              'active_effect_type': 'dmg',
+                              'effect_type': 'ability_effect',
+                              'modification_type': 'append',
+                              'tar_type': 'enemy'}},
+           'triggers': {'t1': {'buff_name': 'w_buff_0',
+                               'operator': '==',
+                               'owner_type': 'player',
+                               'trigger_type': 'buff'}}}}
 
