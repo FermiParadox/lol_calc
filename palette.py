@@ -6,7 +6,7 @@ class ChampionsStats(object):
             apply_dmg=[],
             add_buff=[],
             remove_buff=[],
-            change_cd=[],
+            cds_modified={},
         )
 
     @staticmethod

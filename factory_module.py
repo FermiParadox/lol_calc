@@ -626,7 +626,7 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
     start_msg += extra_start_msg
     print(start_msg)
 
-    for num, val in enumerate(suggested_values_lst, 1):
+    for num, val in enumerate(sorted(suggested_values_lst), 1):
         print('%s: %s' % (num, val))
 
     # Asks dev.
@@ -3127,7 +3127,7 @@ class Conditionals(object):
 
             buff_on_hit=dict(
                 buff_name=self.available_buff_names(),
-                on_hit_effect_type=palette.ChampionsStats.on_hit_effects(),
+                category=palette.ChampionsStats.on_hit_effects(),
                 modification_type=('append', 'replace'),
                 ),
 
@@ -3135,7 +3135,7 @@ class Conditionals(object):
                 ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
                 tar_type=('enemy', 'player'),
                 # Contains spell effect categories
-                spell_effect_category=palette.ChampionsStats.spell_effects()['player']['actives'],
+                category=palette.ChampionsStats.spell_effects()['player']['actives'],
                 modification_type=('append', 'replace'),
 
             ),
@@ -3275,17 +3275,28 @@ class Conditionals(object):
             _suggest_attr_values(suggested_values_dct=suggested_dct,
                                  modified_dct=self.conditions[con_name]['effects'][eff_name],)
 
-        # Buffs/dmgs
+        # Buffs/dmgs (names)
         else:
-            self.conditions[con_name]['effects'][eff_name].update({'names': []})
-            cat = self.conditions[con_name]['effects'][eff_name]['spell_effect_category']
+            self.conditions[con_name]['effects'][eff_name].update({'names_lst': []})
+            cat = self.conditions[con_name]['effects'][eff_name]['category']
             if cat in ('buffs', 'remove_buff'):
                 _suggest_lst_of_attr_values(suggested_values_lst=self.available_buff_names(),
-                                            modified_lst=self.conditions[con_name]['effects'][eff_name]['names'])
+                                            modified_lst=self.conditions[con_name]['effects'][eff_name]['names_lst'])
+            # ('modifies_cd')
+            elif 'cd' in cat:
+                self.conditions[con_name]['effects'][eff_name].update({'names_dct': {}})
 
+                _suggest_lst_of_attr_values(suggested_values_lst=ALL_POSSIBLE_ABILITIES_SHORTCUTS,
+                                            modified_lst=self.conditions[con_name]['effects'][eff_name]['names_lst'])
+                # ( {'q': (1,2..), }
+                cd_mod_suggested_dct = {i: (1, 2, 3) for i in self.conditions[con_name]['effects'][eff_name]['names_lst']}
+                _suggest_attr_values(suggested_values_dct=cd_mod_suggested_dct,
+                                     modified_dct=self.conditions[con_name]['effects'][eff_name]['names_dct'])
+                # (deletes list since it was used only temporarily to create the cd modification dct)
+                del self.conditions[con_name]['effects'][eff_name]['names_lst']
             else:
                 _suggest_lst_of_attr_values(suggested_values_lst=self.available_dmg_names(),
-                                            modified_lst=self.conditions[con_name]['effects'][eff_name]['names'])
+                                            modified_lst=self.conditions[con_name]['effects'][eff_name]['names_lst'])
 
         print(delimiter(40))
         print('\nEFFECT: {}'.format(eff_name))

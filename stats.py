@@ -596,16 +596,16 @@ class StatRequest(StatCalculation):
                             if bonus_type in tar_bonuses[stat_name]:
 
                                 self._insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
-                                                                 buff_dct=buff_dct, tar_name=tar_name,
-                                                                 buff_name=buff_name)
+                                                                  buff_dct=buff_dct, tar_name=tar_name,
+                                                                  buff_name=buff_name)
 
                             else:
                                 # Inserts bonus_type in bonuses_dct.
                                 tar_bonuses[stat_name].update({bonus_type: {}})
 
                                 self._insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
-                                                                 buff_dct=buff_dct, tar_name=tar_name,
-                                                                 buff_name=buff_name)
+                                                                  buff_dct=buff_dct, tar_name=tar_name,
+                                                                  buff_name=buff_name)
 
                     else:
                         for bonus_type in buff_dct['stats'][stat_name]:
@@ -615,8 +615,8 @@ class StatRequest(StatCalculation):
                             tar_bonuses[stat_name].update({bonus_type: {}})
 
                             self._insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
-                                                             buff_dct=buff_dct, tar_name=tar_name,
-                                                             buff_name=buff_name)
+                                                              buff_dct=buff_dct, tar_name=tar_name,
+                                                              buff_name=buff_name)
 
     def request_stat(self, target_name, stat_name, _return_value=True):
         """
@@ -722,13 +722,13 @@ class DmgReductionStats(StatRequest):
             percent_penetration='percent_armor_penetration',
             flat_reduction='flat_armor_reduction',
             flat_penetration='flat_armor_penetration',
-            ),
+        ),
         mr=dict(
             percent_reduction='percent_mr_reduction',
             percent_penetration='percent_mr_penetration',
             flat_reduction='flat_mr_reduction',
             flat_penetration='flat_mr_penetration',
-            )
+        )
     )
 
     # structure: {tar_name: {stat_1: [controller_stat_1, controller_stat_2,], }, }
