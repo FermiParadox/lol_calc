@@ -1,15 +1,32 @@
-class AttributeBase(object):
+import dmgs_buffs_categories
+
+
+class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
 
     def __init__(self,
                  current_target,
-                 active_buffs,
+                 act_buffs,
                  ability_lvls_dct,
-                 request_stat_func):
+                 req_stats_func,
+                 current_stats,
+                 champion_lvls_dct,
+                 current_target_num,):
 
         self.current_target = current_target
-        self.active_buffs = active_buffs
+        self.act_buffs = act_buffs
         self.ability_lvls_dct = ability_lvls_dct
-        self.request_stat = request_stat_func
+        self.request_stat = req_stats_func
+        self.current_stats = current_stats
+        self.champion_lvls_dct = champion_lvls_dct
+        self.current_target_num = current_target_num
+
+        dmgs_buffs_categories.DmgCategories.__init__(self,
+                                                     req_stats_func=req_stats_func,
+                                                     current_stats=current_stats,
+                                                     current_target=current_target,
+                                                     champion_lvls_dct=champion_lvls_dct,
+                                                     current_target_num=current_target_num,
+                                                     active_buffs=act_buffs)
 
     def _x_value(self, x_name, x_type, x_owner):
         """
@@ -27,8 +44,8 @@ class AttributeBase(object):
         # BUFF STACKS VALUE
         if x_type == 'buff':
             # If buff is active, returns stacks.
-            if x_name in self.active_buffs[owner]:
-                return self.active_buffs[owner][x_name]['current_stacks']
+            if x_name in self.act_buffs[owner]:
+                return self.act_buffs[owner][x_name]['current_stacks']
             # Otherwise returns 0.
             else:
                 return 0
@@ -68,3 +85,9 @@ class AttributeBase(object):
 
         return self.ABILITIES_EFFECTS
 
+
+child_class_as_str = """class ChampionAttributes(attribute_methods.ChampionAttributeBase):
+    def __init__(self, kwargs, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
+        for i in external_vars_dct:
+            setattr(ChampionAttributes, i, external_vars_dct[i])
+        super().__init__(**kwargs)"""

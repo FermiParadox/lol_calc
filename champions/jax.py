@@ -1,3 +1,5 @@
+import attribute_methods
+
 ABILITIES_ATTRIBUTES = {
     'buffs': {'e_dmg_red': {'affected_stats': {'placeholder_stat_1': 'placeholder'},
                             'duration': 2,
@@ -218,4 +220,14 @@ ABILITIES_CONDITIONS = {
                                'operator': '==',
                                'owner_type': 'player',
                                'trigger_type': 'buff'}}}}
+
+CHAMPION_EXTERNAL_VARIABLES = {
+    'hits_dodged_during_e': 5}
+
+
+class ChampionAttributes(attribute_methods.ChampionAttributeBase):
+    def __init__(self, kwargs, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
+        for i in external_vars_dct:
+            setattr(ChampionAttributes, i, external_vars_dct[i])
+        super().__init__(**kwargs)
 

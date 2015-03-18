@@ -13,7 +13,7 @@ class UserSession(object):
 
         player_champ_name = input_dct['selected_champions_dct']['player']
         player_champ_module = __import__(player_champ_name)
-        player_champ_class = getattr(player_champ_module, 'TotalChampionAttributes')
+        player_champ_class = getattr(player_champ_module, 'ChampionAttributes')
 
         # Checks if class is used for testing purposes.
         if self.test_mode:

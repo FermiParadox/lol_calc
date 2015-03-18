@@ -10,20 +10,26 @@ import api_key
 import palette
 import stats
 import importlib
-
+import attribute_methods
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
 
 # ===============================================================
 # ===============================================================
+# Objects in champion module (exact strings are re.matched inside module)
 CHAMPION_MODULES_FOLDER_NAME = 'champions'
 ABILITIES_ATTRS_DCT_NAME = 'ABILITIES_ATTRIBUTES'
 ABILITIES_EFFECT_DCT_NAME = 'ABILITIES_EFFECTS'
 ABILITIES_CONDITIONS_DCT_NAME = 'ABILITIES_CONDITIONS'
-ABILITIES_MODULE_DCT_NAMES = (ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME, ABILITIES_CONDITIONS_DCT_NAME)
+CHAMPION_EXTERNAL_VAR_DCT_NAME = 'CHAMPION_EXTERNAL_VARIABLES'
+CHAMP_CLASS_NAME = 'class ChampionAttributes'
+CHAMP_MODULE_IMPORTS_NAME = 'import attribute_methods'
+CHAMPION_MODULE_OBJECT_NAMES = (CHAMP_MODULE_IMPORTS_NAME, ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME,
+                                ABILITIES_CONDITIONS_DCT_NAME, CHAMPION_EXTERNAL_VAR_DCT_NAME, CHAMP_CLASS_NAME)
 
 
+# ===============================================================
 def imported_champ_module(champ_name):
     """
     Returns champion's module.
@@ -143,7 +149,7 @@ def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct):
     return name_and_equal_sign + body + '\n'
 
 
-def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct):
+def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_or_str):
     """
     Slices off old object from string, then creates the new string.
     Used for replacing module dicts.
@@ -152,7 +158,13 @@ def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct)
         (str)
     """
 
-    inserted_str = dct_to_pretty_formatted_str(obj_name=object_name, obj_body_as_dct=obj_as_dct)
+    if type(obj_as_dct_or_str) is str:
+        # (newline is required here; already exists when obj as dict)
+        inserted_str = obj_as_dct_or_str + '\n'
+    elif type(obj_as_dct_or_str) is dict:
+        inserted_str = dct_to_pretty_formatted_str(obj_name=object_name, obj_body_as_dct=obj_as_dct_or_str)
+    else:
+        raise TypeError('Unexpected argument type.')
 
     for num_1, line_1 in enumerate(file_as_lines_lst):
         # Finds object start.
@@ -3275,7 +3287,6 @@ class Conditionals(object):
                 _suggest_lst_of_attr_values(suggested_values_lst=self.available_dmg_names(),
                                             modified_lst=self.conditions[con_name]['effects'][eff_name]['names'])
 
-
         print(delimiter(40))
         print('\nEFFECT: {}'.format(eff_name))
         pp.pprint(self.conditions[con_name]['effects'][eff_name])
@@ -3339,38 +3350,70 @@ class Conditionals(object):
 
 
 # ===============================================================
-
-
 #       MODULE CREATION
 # ===============================================================
 class ModuleCreator(object):
+
+    CHAMP_CLASS_AS_STR = attribute_methods.child_class_as_str
+    CHAMP_MODULE_IMPORTS_AS_STR = CHAMP_MODULE_IMPORTS_NAME
 
     def __init__(self, champion_name):
         self.champion_name = champion_name
         self.external_vars_dct = {}
         self.champion_module = '{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name)
 
-    def _replace_or_skip_replacement(self, replace_answer, obj_name, new_object_as_dct):
+    def _replace_obj_in_champ_mod(self, obj_name, new_object_as_dct):
         """
-        Asks for replacement confirmation, and conducts replacement.
+        Replaces object in champion module.
         """
-        if replace_answer is True:
 
-            with open(self.champion_module, 'r') as r:
-                r_as_lst = r.readlines()
+        with open(self.champion_module, 'r') as r:
+            r_as_lst = r.readlines()
 
-            replacement = _file_after_replacing_module_var(file_as_lines_lst=r_as_lst,
-                                                           object_name=obj_name,
-                                                           obj_as_dct=new_object_as_dct)
+        replacement = _file_after_replacing_module_var(file_as_lines_lst=r_as_lst, object_name=obj_name,
+                                                       obj_as_dct_or_str=new_object_as_dct)
 
-            with open(self.champion_module, 'w') as w:
-                w.write(replacement)
+        with open(self.champion_module, 'w') as w:
+            w.write(replacement)
+
+    def _append_obj_in_module(self, obj_name, new_object_as_dct_or_str):
+
+        if type(new_object_as_dct_or_str) is dict:
+            obj_as_str = dct_to_pretty_formatted_str(obj_name=obj_name, obj_body_as_dct=new_object_as_dct_or_str)
         else:
-            print('\nReplacement canceled.')
+            obj_as_str = new_object_as_dct_or_str
 
-    def _append_obj_in_module(self, obj_name, new_object_as_dct):
         with open(self.champion_module, 'a') as r:
-            r.write(dct_to_pretty_formatted_str(obj_name=obj_name, obj_body_as_dct=new_object_as_dct))
+            r.write(obj_as_str)
+
+    @staticmethod
+    def _external_vars():
+        """
+        Asks dev for externally set extra variables (set optionally by user, e.g. jax's dodged hits during E).
+
+        Returns:
+            (None)
+        """
+
+        print(fat_delimiter(40))
+
+        dct = {}
+
+        question_msg = '\nNew name for externally set var: (press enter to exit)\n'
+        while True:
+
+            external_val_name = input(question_msg)
+
+            if external_val_name == '':
+                print('\nNo external variable selected.')
+                break
+            else:
+                external_val_initial_value = input('\nDefault value for %s:\n' % external_val_name)
+                external_val_initial_value = chosen_val_to_float(given_val=external_val_initial_value)
+
+                dct.update({external_val_name: external_val_initial_value})
+
+        return dct
 
     def _obj_as_dct_func(self, obj_name):
 
@@ -3392,72 +3435,55 @@ class ModuleCreator(object):
 
             return instance.conditions
 
-    def _insert_object_in_champ_module(self, obj_name):
-        """
-        Checks for given object in champion module. If object present, verifies replacement.
+        elif obj_name == CHAMPION_EXTERNAL_VAR_DCT_NAME:
+            return self._external_vars()
 
-        Returns:
-            (None)
-        """
+        elif obj_name == CHAMP_CLASS_NAME:
+            return self.CHAMP_CLASS_AS_STR
+        
+        elif obj_name == CHAMP_MODULE_IMPORTS_NAME:
+            return self.CHAMP_MODULE_IMPORTS_AS_STR
 
+    def _obj_existence(self, obj_name):
         # Checks obj existence in module.
         with open(self.champion_module, 'r') as r:
             r_as_str = r.read()
 
         if obj_name in r_as_str:
-            obj_existence = True
+            return True
         else:
-            obj_existence = False
+            return False
 
-        # If object exists, replaces it.
-        if obj_existence:
-            question_msg = '\nCHAMPION: {}, OBJECT INSERTED: {}'.format(self.champion_name, obj_name)
-            question_msg += '\nObject exists. Replace it?'
-
-            replace_answer = _y_n_question(question_str=question_msg)
-
-            if replace_answer is True:
-
-                self._replace_or_skip_replacement(replace_answer=replace_answer, obj_name=obj_name,
-                                                  new_object_as_dct=self._obj_as_dct_func(obj_name))
-            else:
-                print('\nReplacement canceled.')
-
-        # If object doesn't exist, appends object.
-        else:
-            self._append_obj_in_module(obj_name=obj_name, new_object_as_dct=self._obj_as_dct_func(obj_name))
-
-    def external_vars(self):
+    def _insert_object_in_champ_module(self, obj_name):
         """
-        Asks dev for externally set extra variables (set optionally by user, e.g. jax's dodged hits during E).
+        Inserts object in champion module after verifying replacement if needed.
+
+        WARNING: When used for class insertion, assumes no empty lines between class start and __init__ end.
 
         Returns:
             (None)
         """
 
-        print(fat_delimiter(40))
+        # If object exists, replaces it.
+        if self._obj_existence(obj_name=obj_name):
+            question_msg = '\nCHAMPION: {}, OBJECT INSERTED: {}'.format(self.champion_name, obj_name)
+            question_msg += '\nObject exists. Replace it?'
 
-        question_msg = '\nExternally set var name? (press enter to skip)'
-
-        while True:
-
-            external_val_name = input(question_msg)
-
-            if external_val_name == '':
-                print('\nNo external variable selected.')
-                break
+            if _y_n_question(question_str=question_msg):
+                self._replace_obj_in_champ_mod(obj_name=obj_name, new_object_as_dct=self._obj_as_dct_func(obj_name))
             else:
-                external_val_initial_value = input('\nInitial value for %s' % external_val_name)
-                external_val_initial_value = chosen_val_to_float(given_val=external_val_initial_value)
+                print('\nReplacement canceled.')
 
-                self.external_vars_dct.update({external_val_name: external_val_initial_value})
+        # If object doesn't exist, appends object.
+        else:
+            self._append_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=self._obj_as_dct_func(obj_name))
 
     def run_champ_module_creation(self):
         """
         Creates all champion module related data, from dicts to class.
         """
 
-        for name in ABILITIES_MODULE_DCT_NAMES:
+        for name in CHAMPION_MODULE_OBJECT_NAMES:
             self._insert_object_in_champ_module(obj_name=name)
             # Delay used to ensure file is "refreshed" after being writen on. (might be redundant)
             time.sleep(0.2)

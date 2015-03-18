@@ -1,7 +1,7 @@
 import dmgs_buffs_categories
 
 
-class TotalChampionAttributes(dmgs_buffs_categories.DmgCategories):
+class ChampionAttributes(dmgs_buffs_categories.DmgCategories):
 
     def __init__(self,
                  ability_lvls_dct,

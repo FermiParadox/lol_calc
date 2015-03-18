@@ -1336,7 +1336,7 @@ if __name__ == '__main__':
 
             player_champ_name = self.selected_champions_dct['player']
             player_champ_module = __import__(player_champ_name)
-            player_champ_tot_attr_class = getattr(player_champ_module, 'TotalChampionAttributes')
+            player_champ_tot_attr_class = getattr(player_champ_module, 'ChampionAttributes')
 
             class CombinerClass(player_champ_tot_attr_class, VisualRepresentation):
 
@@ -1364,14 +1364,14 @@ if __name__ == '__main__':
                                                   items_lst=items_lst,
                                                   selected_runes=selected_runes)
 
-                    player_champ_module.TotalChampionAttributes.__init__(self,
-                                                                         ability_lvls_dct=ability_lvls_dct,
-                                                                         req_stats_func=self.request_stat,
-                                                                         act_buffs=self.active_buffs,
-                                                                         current_stats=self.current_stats,
-                                                                         current_target=self.current_target,
-                                                                         champion_lvls_dct=champion_lvls_dct,
-                                                                         current_target_num=self.current_target_num)
+                    player_champ_module.ChampionAttributes.__init__(self,
+                                                                    ability_lvls_dct=ability_lvls_dct,
+                                                                    req_stats_func=self.request_stat,
+                                                                    act_buffs=self.active_buffs,
+                                                                    current_stats=self.current_stats,
+                                                                    current_target=self.current_target,
+                                                                    champion_lvls_dct=champion_lvls_dct,
+                                                                    current_target_num=self.current_target_num)
 
             return CombinerClass
 

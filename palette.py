@@ -1,15 +1,3 @@
-class ChampionBase(object):
-    """
-    Class attributes should not be called directly from this class.
-    """
-
-    def abilities_attrs(self):
-        return self.ABILITIES_ATTRS
-
-    def abilities_effects(self):
-        return self.ABILITIES_EFFECTS
-
-
 class ChampionsStats(object):
 
     @staticmethod
@@ -149,3 +137,4 @@ class BaseStatsWithMana(object):
             _stat=dict(additive_bonus='_buff'),
             duration=0
         )
+
