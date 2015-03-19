@@ -562,10 +562,9 @@ def _ask_new_group_name(group_type_name, existing_names=None, disable_enter=Fals
         new_name = input(question_msg + '\n')
         _check_factory_custom_exception(given_str=new_name, exclude_repeat_key=True)
 
-        if existing_names:
-            if new_name in existing_names:
-                print_invalid_answer('Name exists.')
-                continue
+        if new_name in existing_names:
+            print_invalid_answer('Name exists.')
+            continue
 
         elif (disable_enter is True) and (new_name == ''):
             print_invalid_answer('(Enter not acceptable.)')
@@ -593,13 +592,13 @@ def _auto_new_name_or_ask_name(existing_names, first_synthetic, second_synthetic
     new_automatic_name = _new_automatic_attr_dct_name(existing_names=existing_names, first_synthetic=first_synthetic,
                                                       second_synthetic=second_synthetic)
 
-    # Manual change if requested.
     group_type_name = first_synthetic
     if second_synthetic != '':
         group_type_name += '_' + second_synthetic
 
+    # Manual change if requested.
     new_manual_name = _ask_new_group_name(group_type_name=group_type_name,
-                                          existing_names=list(existing_names).append(new_automatic_name),
+                                          existing_names=list(existing_names),
                                           disable_enter=disable_enter)
 
     if new_manual_name:
@@ -3247,7 +3246,7 @@ class Conditionals(object):
         # Creates effect name.
         eff_name = _auto_new_name_or_ask_name(first_synthetic='effect',
                                               existing_names=self.conditions[con_name]['effects'],
-                                              disable_enter=True)
+                                              disable_enter=False)
 
         # Inserts effect name.
         self.conditions[con_name]['effects'].update({eff_name: {}})
@@ -3339,7 +3338,7 @@ class Conditionals(object):
     @repeat_cluster(cluster_name='ALL CONDITIONS')
     def run_conditions_creation(self):
         print(fat_delimiter(100))
-        print('\nCONDITIONS CREATION:')
+        print('\nCONDITIONALS CREATION:')
         
         while True:
             print(fat_delimiter(40))
@@ -3349,15 +3348,15 @@ class Conditionals(object):
                 break
             else:
                 # CONDITION NAME
-                new_con_name = _auto_new_name_or_ask_name(first_synthetic='condition', existing_names=self.conditions)
+                new_con_name = _auto_new_name_or_ask_name(first_synthetic='conditional', existing_names=self.conditions)
                 self.conditions.update({new_con_name: {}})
                 
                 self._create_single_condition(con_name=new_con_name)
         
         print(fat_delimiter(40))
-        print('\nCONDITIONS')
+        print('\nCONDITIONALS')
         print('\nCHAMPION: {}'.format(self.champion_name))
-        pp.pprint(self.conditions)        
+        pp.pprint(self.conditions)
 
 
 # ===============================================================

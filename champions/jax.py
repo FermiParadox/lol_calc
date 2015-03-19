@@ -210,15 +210,34 @@ ABILITIES_EFFECTS = {
 }
 
 ABILITIES_CONDITIONS = {
-    'c1': {'effects': {'e1': {'ability_name': 'q',
-                              'active_effect_type': 'dmg',
-                              'effect_type': 'ability_effect',
-                              'modification_type': 'append',
-                              'tar_type': 'enemy'}},
-           'triggers': {'t1': {'buff_name': 'w_buff_0',
-                               'operator': '==',
-                               'owner_type': 'player',
-                               'trigger_type': 'buff'}}}}
+    'q_apply_w_conditional': {'effects': {'apply_w_dmg': {'ability_name': 'q',
+                                                          'category': 'dmg',
+                                                          'effect_type': 'ability_effect',
+                                                          'modification_type': 'append',
+                                                          'names_lst': ['w_dmg_0'],
+                                                          'tar_type': 'enemy'},
+                                          'remove_w_buff': {'ability_name': 'q',
+                                                            'category': 'remove_buff',
+                                                            'effect_type': 'ability_effect',
+                                                            'modification_type': 'append',
+                                                            'names_lst': ['w_buff_0'],
+                                                            'tar_type': 'player'}},
+                              'triggers': {}},
+    'r_nth_hit': {'effects': {'apply_r_dmg': {'buff_name': 'r_n_hit_initiator',
+                                              'category': 'apply_dmg',
+                                              'effect_type': 'buff_on_hit',
+                                              'modification_type': 'append',
+                                              'names_lst': ['r_dmg_0']},
+                              'remove_r_counter_stacks': {'buff_name': 'r_n_hit_initiator',
+                                                          'category': 'remove_buff',
+                                                          'effect_type': 'buff_on_hit',
+                                                          'modification_type': 'append',
+                                                          'names_lst': ['r_hit_counter']}},
+                  'triggers': {'nth_hit_trig': {'buff_name': 'r_hit_counter',
+                                                'operator': '>=',
+                                                'owner_type': 'player',
+                                                'stacks': 2,
+                                                'trigger_type': 'buff'}}}}
 
 CHAMPION_EXTERNAL_VARIABLES = {
     'hits_dodged_during_e': 5}
