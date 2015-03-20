@@ -244,8 +244,13 @@ CHAMPION_EXTERNAL_VARIABLES = {
 
 
 class ChampionAttributes(attribute_methods.ChampionAttributeBase):
+
+    DEFAULT_ACTIONS_PRIORITY = ('AA', 'r', 'e', 'w', 'q')
+    ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES
+    ABILITIES_EFFECTS = ABILITIES_EFFECTS
+    ABILITIES_CONDITIONS = ABILITIES_CONDITIONS
+
     def __init__(self, kwargs, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])
         super().__init__(**kwargs)
-

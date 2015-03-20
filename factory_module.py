@@ -609,7 +609,7 @@ def _auto_new_name_or_ask_name(existing_names, first_synthetic, second_synthetic
 
 # ---------------------------------------------------------------
 def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_msg='', stop_key=INNER_LOOP_KEY,
-                                error_key=OUTER_LOOP_KEY):
+                                error_key=OUTER_LOOP_KEY, sort_suggested_lst=True):
     """
     Suggests values from a list to dev.
 
@@ -625,7 +625,12 @@ def _suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_
     start_msg += extra_start_msg
     print(start_msg)
 
-    for num, val in enumerate(sorted(suggested_values_lst), 1):
+    if sort_suggested_lst is True:
+        suggested_lst = sorted(suggested_values_lst)
+    else:
+        suggested_lst = suggested_values_lst
+
+    for num, val in enumerate(suggested_lst, 1):
         print('%s: %s' % (num, val))
 
     # Asks dev.
@@ -3364,13 +3369,27 @@ class Conditionals(object):
 # ===============================================================
 class ModuleCreator(object):
 
-    CHAMP_CLASS_AS_STR = attribute_methods.child_class_as_str
+    RAW_CHAMP_CLASS_AS_STR = attribute_methods.child_class_as_str
     CHAMP_MODULE_IMPORTS_AS_STR = CHAMP_MODULE_IMPORTS_NAME
 
     def __init__(self, champion_name):
         self.champion_name = champion_name
         self.external_vars_dct = {}
         self.champion_module = '{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name)
+
+    def _champ_class_as_str(self):
+        """
+        Creates action priority tuple and inserts it into the module.
+        """
+
+        priority_lst = []
+        _suggest_lst_of_attr_values(suggested_values_lst=('AA',) + ALL_POSSIBLE_SPELL_SHORTCUTS,
+                                    modified_lst=priority_lst,
+                                    extra_start_msg='ACTION PRIORITY TUPLE',
+                                    sort_suggested_lst=False)
+
+        return self.RAW_CHAMP_CLASS_AS_STR.replace('DEFAULT_ACTIONS_PRIORITY = ()',
+                                                   'DEFAULT_ACTIONS_PRIORITY = {}'.format(tuple(priority_lst)))
 
     def _replace_obj_in_champ_mod(self, obj_name, new_object_as_dct):
         """
@@ -3449,7 +3468,7 @@ class ModuleCreator(object):
             return self._external_vars()
 
         elif obj_name == CHAMP_CLASS_NAME:
-            return self.CHAMP_CLASS_AS_STR
+            return self._champ_class_as_str()
         
         elif obj_name == CHAMP_MODULE_IMPORTS_NAME:
             return self.CHAMP_MODULE_IMPORTS_AS_STR
