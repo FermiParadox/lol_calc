@@ -11,6 +11,7 @@ import palette
 import stats
 import importlib
 import attribute_methods
+import ast
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -80,7 +81,7 @@ def fat_delimiter(num_of_lines):
 
 
 # ---------------------------------------------------------------
-def chosen_val_to_float(given_val):
+def chosen_val_to_literal(given_val):
     """
     Tries to convert a string to int or float,
     based on what is more suitable.
@@ -93,25 +94,11 @@ def chosen_val_to_float(given_val):
         (float)
     """
 
-    if type(given_val) is float:
-        return given_val
-    elif type(given_val) is bool:
-        return given_val
-
     try:
-        # (tries to convert value given to float if possible)
-        return int(given_val)
-    except (ValueError, TypeError):
-        pass
-
-    try:
-        # (tries to convert value given to float if possible)
-        return float(given_val)
-    except (ValueError, TypeError):
-        pass
-
-    # (if no conversion was successful..)
-    return given_val
+        return ast.literal_eval(given_val)
+    except ValueError:
+        # (if conversion was not successful..)
+        return given_val
 
 
 # ---------------------------------------------------------------
@@ -393,7 +380,7 @@ def _ask_tpl_question(question_str, choices_seq, restrict_choices=False):
         pass
 
     # If not, returns answer as is.
-    return chosen_val_to_float(answer)
+    return chosen_val_to_literal(answer)
 
 
 # ---------------------------------------------------------------
@@ -462,7 +449,7 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, re
 
     # Stores the choice and notifies dev.
     choice_msg = '%s: %s\n' % (attr_name, chosen_value)
-    chosen_value = chosen_val_to_float(given_val=chosen_value)
+    chosen_value = chosen_val_to_literal(given_val=chosen_value)
     modified_dct[attr_name] = chosen_value
 
     print(choice_msg)
@@ -3061,6 +3048,7 @@ class Conditionals(object):
         self.conditions = {}
 
     TARGET_TYPES = ('player', 'enemy')
+    # (Used to determine what to insert next.)
     FORMULA_TYPE = ('constant_value', 'x_function')
     OPERATOR_TYPES = ('>', '<', '==', '<=', '>=')
     NON_PER_LVL_STAT_NAMES = sorted(i for i in stats.StatCalculation.ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
@@ -3172,6 +3160,7 @@ class Conditionals(object):
         return dict(
             x_formula=(),
             x_type=('buff', 'stat'),
+            x_name=(),
             x_owner=('player', 'enemy', None),
         )
 
@@ -3438,7 +3427,7 @@ class ModuleCreator(object):
                 break
             else:
                 external_val_initial_value = input('\nDefault value for %s:\n' % external_val_name)
-                external_val_initial_value = chosen_val_to_float(given_val=external_val_initial_value)
+                external_val_initial_value = chosen_val_to_literal(given_val=external_val_initial_value)
 
                 dct.update({external_val_name: external_val_initial_value})
 

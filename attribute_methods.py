@@ -1,5 +1,6 @@
 import dmgs_buffs_categories
 import copy
+import operator
 
 
 class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
@@ -59,7 +60,7 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
         elif x_type == 'ability_lvl':
             return self.ability_lvls_dct[x_name]
 
-    def _formula_to_value(self, formula, x_name, x_type, x_owner, formula_type):
+    def _x_formula_to_value(self, x_formula, x_name, x_type, x_owner):
         """
         Converts condition trigger formula to value.
 
@@ -71,16 +72,13 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
             (None)
         """
 
-        if formula_type == 'constant_value':
-            return eval(formula)
-
-        else:
-            x = self._x_value(x_name, x_type, x_owner)
-            return eval(formula)
+        x = self._x_value(x_name, x_type, x_owner)
+        return eval(x_formula)
 
     def _ability_effect_creator(self, eff_dct, modified_dct, ability_name):
         """
-        Checks condition effects dict for given ability name. If effects modify ability, creates appropriate dict.
+        Checks given effect dict for ability name and correct effect_type.
+        If so, creates appropriate ability effect dict.
 
         Returns:
             (None)
@@ -102,7 +100,7 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
 
             if mod_type == 'append':
                 modified_dct[ability_name][tar_type]['actives'][cat_type] += eff_contents
-            else:
+            elif mod_type == 'replace':
                 modified_dct[ability_name][tar_type]['actives'][cat_type] = eff_contents
 
     def abilities_effects(self, ability_name):
@@ -127,6 +125,64 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
             return new_dct
         else:
             return self.ABILITIES_EFFECTS
+
+    @staticmethod
+    def _modified_attr_value(mod_type, mod_val, old_val):
+        """
+
+
+        Returns:
+            (literal)
+        """
+
+        if mod_type == 'replace':
+            return mod_val
+
+        elif mod_type == 'multiply':
+            func = operator.mul
+        elif mod_type == 'add':
+            func = operator.add
+
+        # Both old val and mod are iterables.
+        try:
+            return [func(i, j) for i, j in zip(old_val, mod_val)]
+
+
+
+
+    def _abilities_attr_creator(self, eff_dct, modified_dct, ability_name):
+        """
+        Checks given effect dict for ability name and correct effect_type.
+        If so, creates appropriate ability attr dict.
+
+        Args:
+            modified_dct: It is the new dict given instead of the static member variable dict.
+        Returns:
+            (None)
+        """
+
+        if eff_dct['effect_type'] == 'ability_attrs':
+
+            # Then checks if a new dct has been created.
+            if not modified_dct:
+                modified_dct = copy.deepcopy(self.ABILITIES_EFFECTS[ability_name])
+
+            # DATA MODIFICATION
+            mod_type = eff_dct['modification_type']
+            attr_name = eff_dct['attr_name']
+            if eff_dct['formula_type'] == 'constant_value':
+                new_val = eff_dct['values_tpl']
+            else:
+                new_val = self._x_formula_to_value(x_formula=eff_dct['x_formula'],
+                                                   x_name=eff_dct['x_name'],
+                                                   x_type=eff_dct['x_type'],
+                                                   x_owner=eff_dct['x_owner'],)
+
+            # TODO make below a separate method used only for this method
+            if mod_type == 'append':
+                modified_dct[ability_name][attr_name] += new_val
+            elif mod_type == 'replace':
+                modified_dct[ability_name][attr_name] = new_val
 
     def abilities_attributes(self, ability_name):
         """
