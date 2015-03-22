@@ -92,15 +92,15 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
 
             # DATA MODIFICATION
             tar_type = eff_dct['tar_type']
-            mod_type = eff_dct['modification_type']
+            mod_operation = eff_dct['mod_operation']
             cat_type = eff_dct['category']
             eff_contents = eff_dct['names_lst']
 
             # (it always modifies actives)
 
-            if mod_type == 'append':
+            if mod_operation == 'append':
                 modified_dct[ability_name][tar_type]['actives'][cat_type] += eff_contents
-            elif mod_type == 'replace':
+            elif mod_operation == 'replace':
                 modified_dct[ability_name][tar_type]['actives'][cat_type] = eff_contents
 
     def abilities_effects(self, ability_name):
@@ -127,28 +127,36 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
             return self.ABILITIES_EFFECTS
 
     @staticmethod
-    def _modified_attr_value(mod_type, mod_val, old_val):
+    def _modified_attr_value(mod_operation, mod_val, old_val):
         """
+        Returns the new value after modification.
 
+        Args:
+            mod_val: The value that is to be replaced, added, multiplied etc.
 
         Returns:
             (literal)
         """
 
-        if mod_type == 'replace':
+        # OPERATOR
+        if mod_operation == 'replace':
             return mod_val
 
-        elif mod_type == 'multiply':
-            func = operator.mul
-        elif mod_type == 'add':
+        elif mod_operation == 'add':
             func = operator.add
+        elif mod_operation == 'multiply':
+            func = operator.mul
 
-        # Both old val and mod are iterables.
-        try:
-            return [func(i, j) for i, j in zip(old_val, mod_val)]
-
-
-
+        # VALUE CREATION
+        # (mod is tuple -> old is tuple)
+        if type(mod_val) is tuple:
+            return [func(i, j) for i, j in zip(mod_val, old_val)]
+        # (old is num->mod is num)
+        elif type(old_val) is not tuple:
+            return func(old_val, mod_val)
+        # (else old is tuple and mod is num)
+        else:
+            return [func(i, mod_val) for i in old_val]
 
     def _abilities_attr_creator(self, eff_dct, modified_dct, ability_name):
         """
@@ -165,24 +173,22 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
 
             # Then checks if a new dct has been created.
             if not modified_dct:
-                modified_dct = copy.deepcopy(self.ABILITIES_EFFECTS[ability_name])
+                modified_dct = copy.deepcopy(self.ABILITIES_ATTRIBUTES['general_attributes'][ability_name])
 
             # DATA MODIFICATION
-            mod_type = eff_dct['modification_type']
+            mod_operation = eff_dct['mod_operation']
             attr_name = eff_dct['attr_name']
             if eff_dct['formula_type'] == 'constant_value':
-                new_val = eff_dct['values_tpl']
+                mod_val = eff_dct['values_tpl']
             else:
-                new_val = self._x_formula_to_value(x_formula=eff_dct['x_formula'],
+                mod_val = self._x_formula_to_value(x_formula=eff_dct['x_formula'],
                                                    x_name=eff_dct['x_name'],
                                                    x_type=eff_dct['x_type'],
                                                    x_owner=eff_dct['x_owner'],)
 
-            # TODO make below a separate method used only for this method
-            if mod_type == 'append':
-                modified_dct[ability_name][attr_name] += new_val
-            elif mod_type == 'replace':
-                modified_dct[ability_name][attr_name] = new_val
+            modified_dct[ability_name][attr_name] = self._modified_attr_value(mod_operation=mod_operation,
+                                                                              mod_val=mod_val,
+                                                                              old_val=modified_dct[ability_name][attr_name])
 
     def abilities_attributes(self, ability_name):
         """
@@ -200,12 +206,13 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
 
                 eff_dct = self.ABILITIES_CONDITIONS[cond]['effects'][eff]
                 if ability_name == eff_dct['ability_name']:
-                    self._ability_effect_creator(eff_dct=eff_dct, modified_dct=new_dct, ability_name=ability_name)
+                    self._abilities_attr_creator(eff_dct=eff_dct,
+                                                 modified_dct=new_dct, ability_name=ability_name)
 
         if new_dct:
             return new_dct
         else:
-            return self.ABILITIES_EFFECTS
+            return self.ABILITIES_ATTRIBUTES['general_attributes']
 
 
 

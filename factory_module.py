@@ -1689,7 +1689,7 @@ class GeneralAbilityAttributes(AttributesBase):
 
         # CASTABLE
         else:
-            self.general_attr_dct['base_cd'] = self.api_spell_dct['cooldown']
+            self.general_attr_dct['base_cd'] = tuple(self.api_spell_dct['cooldown'])
 
     def fill_cost_attrs(self):
         """
@@ -1740,7 +1740,7 @@ class GeneralAbilityAttributes(AttributesBase):
             self.general_attr_dct['range'] = 0
 
         else:
-            self.general_attr_dct['range'] = range_val
+            self.general_attr_dct['range'] = tuple(range_val)
 
     def auto_fill_attributes(self):
         """
@@ -3113,14 +3113,14 @@ class Conditionals(object):
             buff_attrs=dict(
                 buff_name=self.available_buff_names(),
                 buff_attr_name=self.available_buff_attr_names(),
-                modification_type=('multiply', 'add', 'replace'),
+                mod_operation=('multiply', 'add', 'replace'),
                 formula_type=self.FORMULA_TYPE
                 ),
 
             buff_on_hit=dict(
                 buff_name=self.available_buff_names(),
                 category=palette.ChampionsStats.on_hit_effects(),
-                modification_type=('append', 'replace'),
+                mod_operation=('append', 'replace'),
                 ),
 
             ability_effect=dict(
@@ -3128,21 +3128,21 @@ class Conditionals(object):
                 tar_type=('enemy', 'player'),
                 # Contains spell effect categories
                 category=palette.ChampionsStats.spell_effects()['player']['actives'],
-                modification_type=('append', 'replace'),
+                mod_operation=('append', 'replace'),
 
             ),
 
             dmg_attrs=dict(
                 dmg_name=self.available_dmg_names(),
                 attr_name=self.available_dmg_attr_names(),
-                modification_type=('multiply', 'add', 'replace'),
+                mod_operation=('multiply', 'add', 'replace'),
                 formula_type=self.FORMULA_TYPE,
             ),
 
             ability_attrs=dict(
                 ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
                 attr_name=self.available_ability_attr_names(),
-                modification_type=('multiply', 'add', 'replace'),
+                mod_operation=('multiply', 'add', 'replace'),
                 formula_type=self.FORMULA_TYPE,
                 ),
             )
