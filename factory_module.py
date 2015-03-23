@@ -3332,7 +3332,10 @@ class Conditionals(object):
     @repeat_cluster(cluster_name='ALL CONDITIONS')
     def run_conditions_creation(self):
         print(fat_delimiter(100))
-        print('\nCONDITIONALS CREATION:')
+        msg = '\nCONDITIONALS CREATION:'
+        msg += ('\n(triggers in a condition are checked with AND, never with OR. '
+                'When OR needed, a new condition has to be created.)')
+        print(msg)
         
         while True:
             print(fat_delimiter(40))

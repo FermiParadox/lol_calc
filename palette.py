@@ -1,3 +1,6 @@
+class UnexpectedValueError(Exception):
+    pass
+
 class ChampionsStats(object):
 
     @staticmethod

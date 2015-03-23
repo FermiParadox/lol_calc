@@ -254,3 +254,20 @@ class ChampionAttributes(attribute_methods.ChampionAttributeBase):
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])
         super().__init__(**kwargs)
+
+
+if __name__ == '__main__':
+
+    import pprint as pp
+
+    kwargsDct = dict(current_target='enemy_1',
+                     act_buffs={'player': {'w_buff_0': {'current_stacks': 2}}},
+                     ability_lvls_dct=1,
+                     req_stats_func=1,
+                     current_stats=1,
+                     champion_lvls_dct={'player': 1},
+                     current_target_num=1)
+
+    inst = ChampionAttributes(kwargs=kwargsDct)
+
+    pp.pprint(inst.abilities_attributes(ability_name='q'))
