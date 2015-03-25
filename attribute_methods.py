@@ -15,9 +15,17 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
         '>': operator.gt,
         }
 
-    ABILITIES_ATTRIBUTES = {}
-    ABILITIES_EFFECTS = {}
-    ABILITIES_CONDITIONS = {}
+    # Matches object types to object key names in abilities effects dct.
+    EFF_TYPE_TO_OBJ_KEY_NAME_MAP = {
+        'ability_effect': 'ability_name',
+        'ability_attr': 'ability_name',
+
+    }
+
+    # ("abstract" class variables)
+    ABILITIES_ATTRIBUTES = None
+    ABILITIES_EFFECTS = None
+    ABILITIES_CONDITIONS = None
 
     def __init__(self,
                  current_target,
@@ -113,7 +121,7 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
         else:
             return self.current_target
 
-    def _check_trigger_state(self, cond_name):
+    def _check_triggers_state(self, cond_name):
         """
         Checks if all triggers for given condition are present.
 
@@ -190,81 +198,58 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
         # (if no trigger is false, method reaches this)
         return True
 
-    def _ability_effect_creator(self, eff_dct, modified_dct, ability_name):
+    def _ability_effects_creator(self, eff_dct, modified_dct, ability_name):
         """
-        Modifies a dict by checking given effect dict for ability name and correct effect_type.
+        Creates new ability effects dct or updates existing with changes caused by effects.
+
+        Args:
+            modified_dct: It is the new dict given instead of the static class variable dict.
 
         Returns:
             (None)
         """
 
-        if eff_dct['effect_type'] == 'ability_effect':
+        # Then checks if new dict is empty.
+        if not modified_dct:
+            modified_dct = copy.deepcopy(self.ABILITIES_EFFECTS[ability_name])
 
-            # Then checks if a new dct has been created.
-            if not modified_dct:
-                modified_dct = copy.deepcopy(self.ABILITIES_EFFECTS[ability_name])
+        # DATA MODIFICATION
+        tar_type = eff_dct['tar_type']
+        mod_operation = eff_dct['mod_operation']
+        cat_type = eff_dct['lst_category']
+        eff_contents = eff_dct['names_lst']
 
-            # DATA MODIFICATION
-            tar_type = eff_dct['tar_type']
-            mod_operation = eff_dct['mod_operation']
-            cat_type = eff_dct['category']
-            eff_contents = eff_dct['names_lst']
+        # (it always modifies actives)
 
-            # (it always modifies actives)
+        if mod_operation == 'append':
+            modified_dct[ability_name][tar_type]['actives'][cat_type] += eff_contents
+        elif mod_operation == 'replace':
+            modified_dct[ability_name][tar_type]['actives'][cat_type] = eff_contents
 
-            if mod_operation == 'append':
-                modified_dct[ability_name][tar_type]['actives'][cat_type] += eff_contents
-            elif mod_operation == 'replace':
-                modified_dct[ability_name][tar_type]['actives'][cat_type] = eff_contents
-
-    def _ability_attr_or_eff_base(self, ability_name, main_dct, eff_to_dct_creator_function):
+    def _on_hit_effect_buff_creator(self, eff_dct, modified_dct, buff_name):
         """
-        Loops each condition. Then each effect of a condition.
-        If single effect of interest is detected, all triggers for given condition are checked.
-        If trigger state is false, condition stops being checked.
+        Creates new buff dct or updates existing with changes caused by effects.
+
+        Args:
+            modified_dct: It is the new dict given instead of the static class variable dict.
 
         Returns:
-            (dict)
+            (None)
         """
 
-        new_dct = {}
-        # Checks if given ability name has conditions affecting its effects
-        for cond in main_dct:
+        # Checks if modified dct is empty.
+        if not modified_dct:
+            modified_dct = copy.deepcopy(self.ABILITIES_ATTRIBUTES['buffs'][buff_name])
 
-            trig_state = None
-            for eff in main_dct[cond]['effects']:
+        # DATA MODIFICATION
+        mod_operation = eff_dct['mod_operation']
+        eff_contents = eff_dct['names_lst']
+        cat_type = eff_dct['lst_category']
 
-                eff_dct = main_dct[cond]['effects'][eff]
-                # If it does, modifies ability effects.
-                if ability_name == eff_dct['ability_name']:
-
-                    # Trigger check is done once,
-                    # right after a single effect affecting given ability is detected.
-                    if trig_state is None:
-                        trig_state = self._check_trigger_state(cond_name=cond)
-                        # (if triggers are false, ends current condition checks)
-                        if trig_state is False:
-                            break
-
-                    eff_to_dct_creator_function(eff_dct=eff_dct, modified_dct=new_dct, ability_name=ability_name)
-
-        if new_dct:
-            return new_dct
-        else:
-            return main_dct[ability_name]
-
-    def abilities_effects(self, ability_name):
-        """
-        Checks if ability effects are affected by any conditionals.
-        If not, returns member variable dict. Otherwise returns different version of the dict.
-
-        Returns:
-            (dict)
-        """
-
-        return self._ability_attr_or_eff_base(ability_name=ability_name,
-                                              main_dct=self.ABILITIES_EFFECTS,
-                                              eff_to_dct_creator_function=self._ability_effect_creator)
+        if mod_operation == 'append':
+            modified_dct[buff_name]['on_hit'][cat_type] += eff_contents
+        elif mod_operation == 'replace':
+            modified_dct[buff_name]['on_hit'][cat_type] = eff_contents
 
     @staticmethod
     def _modified_attr_value(mod_operation, mod_val, old_val):
@@ -298,20 +283,20 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
         else:
             return [func(i, mod_val) for i in old_val]
 
-    def _abilities_attr_creator(self, eff_dct, modified_dct, ability_name):
+    def _attr_creator(self, eff_dct, modified_dct, obj_name, obj_category):
         """
-        Checks given effect dict for ability name and correct effect_type.
-        If so, creates appropriate ability attr dict.
+        Creates new attrs dct or updates existing with changes caused by effects.
 
         Args:
-            modified_dct: It is the new dict given instead of the static member variable dict.
+            modified_dct: It is the new dict given instead of the static class variable dict.
+            obj_category: 'general_attributes', 'buffs', 'dmgs'
         Returns:
             (None)
         """
 
-        # Then checks if a new dct has been created.
+        # Checks if modified dct is empty.
         if not modified_dct:
-            modified_dct = copy.deepcopy(self.ABILITIES_ATTRIBUTES['general_attributes'][ability_name])
+            modified_dct = copy.deepcopy(self.ABILITIES_ATTRIBUTES[obj_category][obj_name])
 
         # DATA MODIFICATION
         mod_operation = eff_dct['mod_operation']
@@ -324,9 +309,82 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
                                                x_type=eff_dct['x_type'],
                                                x_owner=eff_dct['x_owner'],)
 
-        modified_dct[ability_name][attr_name] = self._modified_attr_value(mod_operation=mod_operation,
-                                                                          mod_val=mod_val,
-                                                                          old_val=modified_dct[ability_name][attr_name])
+        modified_dct[obj_name][attr_name] = self._modified_attr_value(mod_operation=mod_operation,
+                                                                      mod_val=mod_val,
+                                                                      old_val=modified_dct[obj_name][attr_name])
+
+    def _ability_attr_or_eff_base(self, obj_name, searched_effect_type, main_dct):
+        """
+        Loops each condition. Then each effect of a condition.
+        If single effect of interest is detected, all triggers for given condition are checked.
+        If trigger state is false, condition stops being checked.
+
+        Args:
+            obj_name: (str) name of the buff, dmg, or ability
+            obj_name_dct_key: (str) 'ability_name', 'buff_name', 'dmg_name'
+                                    Name of the key pointing to the object name.
+            searched_effect_type: (str) 'ability_attr', 'ability_effect', 'buff' or 'dmg'
+                                        Name of effect type being searched for.
+
+        Returns:
+            (dict)
+        """
+
+        obj_name_dct_key = self.EFF_TYPE_TO_OBJ_KEY_NAME_MAP[searched_effect_type]
+
+        new_dct = {}
+        # Checks if given ability name has conditions affecting its effects
+        # All effects of all conditions on an element are applied one after the other.
+        for cond in main_dct:
+
+            trig_state = None
+            for eff in main_dct[cond]['effects']:
+
+                eff_dct = main_dct[cond]['effects'][eff]
+                if obj_name == eff_dct[obj_name_dct_key]:
+
+                    # Trigger check is done once,
+                    # right after a single effect affecting given object is detected.
+                    if trig_state is None:
+                        trig_state = self._check_triggers_state(cond_name=cond)
+                        # (if triggers are false, ends current condition checks)
+                        if trig_state is False:
+                            break
+
+                    if searched_effect_type == 'ability_effect':
+                        self._ability_effects_creator(eff_dct=eff_dct, modified_dct=new_dct, ability_name=obj_name)
+
+                    elif searched_effect_type == 'ability_attr':
+                        self._attr_creator(eff_dct=eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                           obj_category='general_attributes')
+
+                    elif searched_effect_type == 'buff':
+                        self._attr_creator(eff_dct=eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                           obj_category='buffs')
+                        self._on_hit_effect_buff_creator(eff_dct=eff_dct, modified_dct=new_dct, buff_name=obj_name)
+
+                    elif searched_effect_type == 'dmg':
+                        self._attr_creator(eff_dct=eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                           obj_category='dmgs')
+                    else:
+                        raise palette.UnexpectedValueError
+
+        if new_dct:
+            return new_dct
+        else:
+            return main_dct[obj_name]
+
+    def abilities_effects(self, ability_name):
+        """
+        Checks if ability effects are affected by any conditionals.
+        If not, returns member variable dict. Otherwise returns different version of the dict.
+
+        Returns:
+            (dict)
+        """
+
+        return self._ability_attr_or_eff_base(obj_name=ability_name,
+                                              searched_effect_type='ability_effect', main_dct=self.ABILITIES_EFFECTS)
 
     def abilities_attributes(self, ability_name):
         """
@@ -337,18 +395,43 @@ class ChampionAttributeBase(dmgs_buffs_categories.DmgCategories):
             (dict)
         """
 
-        return self._ability_attr_or_eff_base(ability_name=ability_name,
-                                              main_dct=self.ABILITIES_ATTRIBUTES,
-                                              eff_to_dct_creator_function=self._abilities_attr_creator)
+        return self._ability_attr_or_eff_base(obj_name=ability_name,
+                                              searched_effect_type='ability_attr', main_dct=self.ABILITIES_ATTRIBUTES)
+
+    def request_buff(self, buff_name):
+        """
+        Returns buff dict after checking possible conditionals.
+
+        Buffs can be related to champion, item, mastery, summoner spells, dragon, baron.
+
+        Returns:
+            (dict)
+        """
+
+        return self._ability_attr_or_eff_base(obj_name=buff_name,
+                                              searched_effect_type='buff',
+                                              main_dct=self.ABILITIES_EFFECTS)
+
+    def request_dmg(self, buff_name):
+        """
+        Returns buff dict after checking possible conditionals.
+
+        Buffs can be related to champion, item, mastery, summoner spells, dragon, baron.
+
+        Returns:
+            (dict)
+        """
+
+        return self._ability_attr_or_eff_base(obj_name=buff_name,
+                                              searched_effect_type='dmg',
+                                              main_dct=self.ABILITIES_EFFECTS)
 
 
-
-child_class_as_str = """class ChampionAttributes(attribute_methods.ChampionAttributeBase):
+child_class_as_str = """class ChampionAttributes(object):
     DEFAULT_ACTIONS_PRIORITY = ()
     ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES
     ABILITIES_EFFECTS = ABILITIES_EFFECTS
     ABILITIES_CONDITIONS = ABILITIES_CONDITIONS
-    def __init__(self, kwargs, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
+    def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
         for i in external_vars_dct:
-            setattr(ChampionAttributes, i, external_vars_dct[i])
-        super().__init__(**kwargs)"""
+            setattr(ChampionAttributes, i, external_vars_dct[i])"""

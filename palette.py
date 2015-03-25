@@ -1,5 +1,10 @@
 class UnexpectedValueError(Exception):
+    """
+    NOT TO BE HANDLED!
+    Exception indicating that an unexpected value has been given to a variable.
+    """
     pass
+
 
 class ChampionsStats(object):
 

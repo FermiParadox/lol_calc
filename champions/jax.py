@@ -1,5 +1,3 @@
-import attribute_methods
-
 ABILITIES_ATTRIBUTES = {
     'buffs': {'e_dmg_red': {'affected_stats': {'aoe_dmg_reduction': {'bonus_type': 'percent',
                                                                      'stat_values': 0.25,
@@ -211,25 +209,25 @@ ABILITIES_EFFECTS = {
 
 ABILITIES_CONDITIONS = {
     'q_apply_w_conditional': {'effects': {'apply_w_dmg': {'ability_name': 'q',
-                                                          'category': 'dmg',
+                                                          'lst_category': 'dmg',
                                                           'effect_type': 'ability_effect',
                                                           'mod_operation': 'append',
                                                           'names_lst': ['w_dmg_0'],
                                                           'tar_type': 'enemy'},
                                           'remove_w_buff': {'ability_name': 'q',
-                                                            'category': 'remove_buff',
+                                                            'lst_category': 'remove_buff',
                                                             'effect_type': 'ability_effect',
                                                             'mod_operation': 'append',
                                                             'names_lst': ['w_buff_0'],
                                                             'tar_type': 'player'}},
                               'triggers': {}},
     'r_nth_hit': {'effects': {'apply_r_dmg': {'buff_name': 'r_n_hit_initiator',
-                                              'category': 'apply_dmg',
+                                              'lst_category': 'apply_dmg',
                                               'effect_type': 'buff_on_hit',
                                               'mod_operation': 'append',
                                               'names_lst': ['r_dmg_0']},
                               'remove_r_counter_stacks': {'buff_name': 'r_n_hit_initiator',
-                                                          'category': 'remove_buff',
+                                                          'lst_category': 'remove_buff',
                                                           'effect_type': 'buff_on_hit',
                                                           'mod_operation': 'append',
                                                           'names_lst': ['r_hit_counter']}},
@@ -243,31 +241,14 @@ CHAMPION_EXTERNAL_VARIABLES = {
     'hits_dodged_during_e': 5}
 
 
-class ChampionAttributes(attribute_methods.ChampionAttributeBase):
+class ChampionAttributes(object):
 
     DEFAULT_ACTIONS_PRIORITY = ('AA', 'r', 'e', 'w', 'q')
     ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES
     ABILITIES_EFFECTS = ABILITIES_EFFECTS
     ABILITIES_CONDITIONS = ABILITIES_CONDITIONS
 
-    def __init__(self, kwargs, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
+    def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])
-        super().__init__(**kwargs)
 
-
-if __name__ == '__main__':
-
-    import pprint as pp
-
-    kwargsDct = dict(current_target='enemy_1',
-                     act_buffs={'player': {'w_buff_0': {'current_stacks': 2}}},
-                     ability_lvls_dct=1,
-                     req_stats_func=1,
-                     current_stats=1,
-                     champion_lvls_dct={'player': 1},
-                     current_target_num=1)
-
-    inst = ChampionAttributes(kwargs=kwargsDct)
-
-    pp.pprint(inst.abilities_attributes(ability_name='q'))

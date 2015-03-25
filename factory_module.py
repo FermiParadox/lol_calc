@@ -25,8 +25,9 @@ ABILITIES_EFFECT_DCT_NAME = 'ABILITIES_EFFECTS'
 ABILITIES_CONDITIONS_DCT_NAME = 'ABILITIES_CONDITIONS'
 CHAMPION_EXTERNAL_VAR_DCT_NAME = 'CHAMPION_EXTERNAL_VARIABLES'
 CHAMP_CLASS_NAME = 'class ChampionAttributes'
+# (not used)
 CHAMP_MODULE_IMPORTS_NAME = 'import attribute_methods'
-CHAMPION_MODULE_OBJECT_NAMES = (CHAMP_MODULE_IMPORTS_NAME, ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME,
+CHAMPION_MODULE_OBJECT_NAMES = (ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME,
                                 ABILITIES_CONDITIONS_DCT_NAME, CHAMPION_EXTERNAL_VAR_DCT_NAME, CHAMP_CLASS_NAME)
 
 
@@ -3110,7 +3111,22 @@ class Conditionals(object):
     def effect_setup_dct(self):
 
         dct = dict(
-            buff_attrs=dict(
+            ability_effect=dict(
+                ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
+                tar_type=('enemy', 'player'),
+                # Contains spell effect categories
+                lst_category=palette.ChampionsStats.spell_effects()['player']['actives'],
+                mod_operation=('append', 'replace'),
+            ),
+
+            ability_attr=dict(
+                ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
+                attr_name=self.available_ability_attr_names(),
+                mod_operation=('multiply', 'add', 'replace'),
+                formula_type=self.FORMULA_TYPE,
+                ),
+
+            buff_attr=dict(
                 buff_name=self.available_buff_names(),
                 buff_attr_name=self.available_buff_attr_names(),
                 mod_operation=('multiply', 'add', 'replace'),
@@ -3119,29 +3135,13 @@ class Conditionals(object):
 
             buff_on_hit=dict(
                 buff_name=self.available_buff_names(),
-                category=palette.ChampionsStats.on_hit_effects(),
+                lst_category=palette.ChampionsStats.on_hit_effects(),
                 mod_operation=('append', 'replace'),
                 ),
 
-            ability_effect=dict(
-                ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
-                tar_type=('enemy', 'player'),
-                # Contains spell effect categories
-                category=palette.ChampionsStats.spell_effects()['player']['actives'],
-                mod_operation=('append', 'replace'),
-
-            ),
-
-            dmg_attrs=dict(
+            dmg_attr=dict(
                 dmg_name=self.available_dmg_names(),
                 attr_name=self.available_dmg_attr_names(),
-                mod_operation=('multiply', 'add', 'replace'),
-                formula_type=self.FORMULA_TYPE,
-            ),
-
-            ability_attrs=dict(
-                ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
-                attr_name=self.available_ability_attr_names(),
                 mod_operation=('multiply', 'add', 'replace'),
                 formula_type=self.FORMULA_TYPE,
                 ),
