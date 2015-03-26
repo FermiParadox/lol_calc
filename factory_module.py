@@ -10,7 +10,6 @@ import api_key
 import palette
 import stats
 import importlib
-import attribute_methods
 import ast
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
@@ -29,6 +28,15 @@ CHAMP_CLASS_NAME = 'class ChampionAttributes'
 CHAMP_MODULE_IMPORTS_NAME = 'import attribute_methods'
 CHAMPION_MODULE_OBJECT_NAMES = (ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME,
                                 ABILITIES_CONDITIONS_DCT_NAME, CHAMPION_EXTERNAL_VAR_DCT_NAME, CHAMP_CLASS_NAME)
+
+child_class_as_str = """class ChampionAttributes(object):
+    DEFAULT_ACTIONS_PRIORITY = ()
+    ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES
+    ABILITIES_EFFECTS = ABILITIES_EFFECTS
+    ABILITIES_CONDITIONS = ABILITIES_CONDITIONS
+    def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
+        for i in external_vars_dct:
+            setattr(ChampionAttributes, i, external_vars_dct[i])"""
 
 
 # ===============================================================
@@ -3361,7 +3369,7 @@ class Conditionals(object):
 # ===============================================================
 class ModuleCreator(object):
 
-    RAW_CHAMP_CLASS_AS_STR = attribute_methods.child_class_as_str
+    RAW_CHAMP_CLASS_AS_STR = child_class_as_str
     CHAMP_MODULE_IMPORTS_AS_STR = CHAMP_MODULE_IMPORTS_NAME
 
     def __init__(self, champion_name):

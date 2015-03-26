@@ -2,6 +2,14 @@ import app_champions_base_stats
 import copy
 
 
+class NonExistingNormalStat(Exception):
+    """
+    Used to indicate stat was not found when searched by request stat function
+    in ALL_POSSIBLE_STAT_NAMES and current stats.
+    """
+    pass
+
+
 class StatFilters(object):
 
     """
@@ -255,6 +263,9 @@ class StatCalculation(StatFilters):
         Returns:
             (float) unfiltered stat value after bonuses
         """
+
+        if requested_stat not in self.ALL_POSSIBLE_STAT_NAMES:
+            raise NotImplementedError
 
         value = 0
         base_stats_tar = self.base_stats_dct[tar_name]

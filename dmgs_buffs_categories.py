@@ -211,7 +211,7 @@ class DmgCategories(BuffCategories):
             dmg_source='AA',
             dot=False,)
 
-    def dmg_value(self, dmg_name, dmg_source_paths):
+    def dmg_value(self, dmg_name):
         """
         Calculates dmg value of given dmg name.
 
@@ -219,8 +219,22 @@ class DmgCategories(BuffCategories):
             (float)
         """
 
+        dmg_dct = self.request_dmg(dmg_name=dmg_name)
 
+        # Checks if it's ability lvl dependent.
+        try:
+            # Ability name is found by dmg_source, and then ability lvl in ability_lvls_dct.
+            val = dmg_dct['dmg_values'][self.ability_lvls_dct[dmg_dct['dmg_source']]]
+        except KeyError:
+            val = dmg_dct['dmg_values']
 
-        return
+        # MODS
+        for mod_name in dmg_dct['mods']['player']:
+            val += dmg_dct['mods']['player'][mod_name] * self.request_stat(target_name='player',
+                                                                           stat_name=mod_name)
 
+        for mod_name in dmg_dct['mods']['enemy']:
+            val += dmg_dct['mods'][self.current_target][mod_name] * self.request_stat(target_name=self.current_target,
+                                                                                      stat_name=mod_name)
 
+        return val
