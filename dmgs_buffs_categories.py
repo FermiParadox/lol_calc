@@ -1,16 +1,23 @@
+import palette
+
+
 class GeneralCategories(object):
 
     def __init__(self,
                  req_stats_func,
+                 req_dmg_dct_func,
                  current_stats,
                  current_target,
                  champion_lvls_dct,
                  current_target_num,
-                 active_buffs):
+                 active_buffs,
+                 ability_lvls_dct):
 
+        self.ability_lvls_dct = ability_lvls_dct
         self.champion_lvls_dct = champion_lvls_dct
         self.player_lvl = self.champion_lvls_dct['player']
         self.req_stats_func = req_stats_func
+        self.req_dmg_dct_func = req_dmg_dct_func
         self.current_stats = current_stats
         self.current_target = current_target
         self.current_target_num = current_target_num
@@ -22,29 +29,6 @@ class GeneralCategories(object):
         """
         lvl_partition_size = 18 // len(list_of_values)
         return list_of_values[(self.player_lvl - 1) // lvl_partition_size]
-
-    def on_nth_hit(self, trig_buff_name, trig_stacks, trig_owner_type, pre_trig_lst, post_trig_lst):
-        """
-        Checks active buffs for trigger buff stacks, and returns corresponding list of effects.
-
-        Returns:
-            (list)
-        """
-
-        if trig_owner_type == 'player':
-            tar = 'player'
-
-        else:
-            tar = self.current_target
-
-        tar_act_buffs = self.active_buffs[tar]
-        if trig_buff_name in tar_act_buffs:
-            # (effect must trigger one stack earlier)
-            if tar_act_buffs[trig_buff_name]['current_stacks'] >= trig_stacks-1:
-                return post_trig_lst
-
-        # If buff not active or
-        return pre_trig_lst
 
 
 class BuffCategories(GeneralCategories):
@@ -67,106 +51,29 @@ class BuffCategories(GeneralCategories):
 
 class DmgCategories(BuffCategories):
 
-    def standard_dmg(self, ability_dct, ability_lvl=1):
+    """
+    SUGGESTION: Memoization
+
+    An aoe dmg that is applied simultaneously to multiple targets (e.g. brand W, NOT brand R) leaving no time in-between
+    for dmg-triggers or stats to change, would have the same starting raw-dmg values.
+
+    Also, in case time between Caitlyn's Q dmgs is not taken into account (which currently isn't),
+    memoization would have an even bigger effect.
+
+    --------------------------------------------------------------------------------------------------------------------
+    Obsolete concepts:
+
+    -splash: It can be represented as chain_decay with 2 tar stabilization
+    -non_critable_dmg: This is equal to 'total_ad'.
+    -limited_chain_decay: Incorporated into chain_decay.
+    """
+
+    def aa_dmg_value(self):
         """
-        (int, dict, dict) -> float
+        Returns the AVERAGE value of AA dmg, after applying crit change and crit mod.
 
-        Returns dmg of single event direct-dmg.
-        (e.g. Ashe W)
-
-        Args:
-            -ability_lvl: Int ranging from 1 to 5.
-        """
-
-        # If base dmg scales with ability lvl..
-        if 'base_dmg_tpl' in ability_dct:
-            total_dmg = ability_dct['base_dmg_tpl'][ability_lvl-1]
-
-        # Otherwise 'fixed_base_dmg' is inside instead of 'base_dmg_tpl'.
-        else:
-            total_dmg = ability_dct['fixed_base_dmg']
-
-        # Adds bonus dmg to base dmg.
-        for stat in ability_dct['scaling_stats']:
-
-            if stat == 'target_max_hp':
-                total_dmg += self.req_stats_func(target_name=self.current_target,
-                                                 stat_name='hp') * ability_dct['scaling_stats'][stat]
-
-            elif stat == 'target_current_hp':
-                total_dmg += (self.current_stats[self.current_target]['current_hp'] *
-                              ability_dct['scaling_stats'][stat])
-
-            elif stat == 'target_missing_hp':
-                total_dmg += (
-                    (self.req_stats_func(target_name=self.current_target,
-                                         stat_name='hp') - self.current_stats[self.current_target]['current_hp'])
-                    * ability_dct['scaling_stats'][stat])
-
-            elif stat == 'player_max_hp':
-                total_dmg += self.req_stats_func(target_name='player',
-                                                 stat_name='hp') * ability_dct['scaling_stats'][stat]
-
-            else:
-                total_dmg += self.req_stats_func(target_name='player',
-                                                 stat_name=stat) * ability_dct['scaling_stats'][stat]
-
-        return total_dmg
-
-    def innate_dmg(self, ability_dct):
-        """
-        (int, dict, dict) -> float
-
-        Returns dmg of innate that changes every few lvls.
-        (e.g. Darius innate)
-        """
-        total_dmg = self.innate_value(ability_dct['base_dmg_tpl'])
-
-        for stat in ability_dct['scaling_stats']:
-            total_dmg += self.req_stats_func(target_name='player',
-                                             stat_name=stat) * ability_dct['scaling_stats'][stat]
-
-        return total_dmg
-
-    def chain_decay(self, ability_dct, ability_lvl, current_target_num=None):
-        """
-        (int, dict, dict, float, int) -> float
-
-        Returns dmg on the n-th target of an ability that hits consecutive targets,
-        decaying linearly on each hit without limit.
-        (e.g. Caitlyn Q on 2nd target)
-
-        Argument is used later on in another method.
-        """
-        # Checks if an argument is given to the method (modification used by method later on).
-        if current_target_num:
-            curr_num = current_target_num
-        else:
-            curr_num = self.current_target_num
-
-        return self.standard_dmg(ability_dct, ability_lvl) * (1-ability_dct['decay_coefficient']*(curr_num-1))
-
-    def chain_limited_decay(self, ability_dct, ability_lvl):
-        """
-        (int, dict, dict, float, int) -> float
-
-        Returns dmg on the n-th target of an ability that hits consecutive targets, decaying on each hit.
-        The dmg decays down to a threshold after which it remains stable.
-        (e.g. Caitlyn Q on 5th target)
-        """
-        if self.current_target_num > ability_dct['targets_hit_threshold']:
-            return self.chain_decay(ability_dct=ability_dct,
-                                    ability_lvl=ability_lvl,
-                                    current_target_num=ability_dct['targets_hit_threshold'])
-        else:
-            return self.chain_decay(ability_dct, ability_lvl)
-
-    def aa_dmg_value(self, critable_bonus=None, aa_reduction_mod=None):
-        """
-        Returns average AA dmg after applying crit_chance.
-
-        -Extra bonuses that can crit are applied as well.
-        -Modifiers can be applied as well (e.g. Runaan's Hurricane, Miss Fortune's Q etc).
+        Returns:
+            (float)
         """
 
         crit_chance = self.req_stats_func(target_name='player',
@@ -175,28 +82,67 @@ class DmgCategories(BuffCategories):
         crit_mod_val = self.req_stats_func(target_name='player',
                                            stat_name='crit_modifier')
 
-        if critable_bonus:
-            value = (crit_chance*crit_mod_val + 1 - crit_chance) * (critable_bonus +
-                                                                    self.req_stats_func(target_name='player',
-                                                                                        stat_name='ad'))
+        average_crit_dmg_multiplier = (crit_chance*crit_mod_val + 1 - crit_chance)
 
-        else:
-            value = (crit_chance*crit_mod_val + 1 - crit_chance) * self.req_stats_func(target_name='player',
-                                                                                       stat_name='ad')
+        return average_crit_dmg_multiplier * self.req_stats_func(target_name='player',
+                                                                 stat_name='ad')
 
-        if aa_reduction_mod:
-            return value * aa_reduction_mod
-        else:
-            return value
-
-    def splash_dmg(self, ability_dct, ability_lvl):
+    def standard_dmg_value(self, dmg_dct):
         """
-        Used for spells that do full dmg on first target and smaller steady amount on any other targets.
+        Calculates raw dmg value of given dmg name, by applying all stat-caused mods to base value.
+
+        Returns:
+            (float)
         """
-        if self.current_target_num == 1:
-            return self.standard_dmg(ability_dct=ability_dct, ability_lvl=ability_lvl)
+
+        # Checks if it dependents on ability-lvl.
+        try:
+            # Ability name is found by dmg_source, and then ability lvl in ability_lvls_dct.
+            val = dmg_dct['dmg_values'][self.ability_lvls_dct[dmg_dct['dmg_source']]]
+        except KeyError:
+            val = dmg_dct['dmg_values']
+
+        # MODS
+        for mod_name in dmg_dct['mods']['player']:
+            val += dmg_dct['mods']['player'][mod_name] * self.req_stats_func(target_name='player',
+                                                                             stat_name=mod_name)
+
+        for mod_name in dmg_dct['mods']['enemy']:
+            val += dmg_dct['mods'][self.current_target][mod_name] * self.req_stats_func(target_name=self.current_target,
+                                                                                        stat_name=mod_name)
+
+        return val
+
+    def dmg_value(self, dmg_name):
+        """
+        Calculates raw dmg value of given dmg name.
+
+        Takes into account all related stat-caused mods and dmg_category.
+
+        Returns:
+            (float)
+        """
+
+        dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
+        cat = dmg_dct['dmg_category']
+
+        val = self.standard_dmg_value(dmg_dct=dmg_dct)
+
+        if cat == 'standard_dmg':
+            return val
+
+        elif cat == 'chain_decay':
+            coef = dmg_dct['decay_coef']
+            stabilized_tar_num = dmg_dct['stabilized_tar_num']
+
+            if self.current_target <= stabilized_tar_num:
+                return val * (1 - coef(self.current_target - 1))
+
+        elif cat == 'aa_dmg':
+            return self.aa_dmg_value()
+
         else:
-            return self.chain_decay(ability_dct=ability_dct, ability_lvl=ability_lvl)
+            raise palette.UnexpectedValueError
 
     @staticmethod
     def aa_dmg():
@@ -209,32 +155,6 @@ class DmgCategories(BuffCategories):
             dmg_type='AA',
             target='enemy',
             dmg_source='AA',
+            max_targets=1,
             dot=False,)
 
-    def dmg_value(self, dmg_name):
-        """
-        Calculates dmg value of given dmg name.
-
-        Returns:
-            (float)
-        """
-
-        dmg_dct = self.request_dmg(dmg_name=dmg_name)
-
-        # Checks if it's ability lvl dependent.
-        try:
-            # Ability name is found by dmg_source, and then ability lvl in ability_lvls_dct.
-            val = dmg_dct['dmg_values'][self.ability_lvls_dct[dmg_dct['dmg_source']]]
-        except KeyError:
-            val = dmg_dct['dmg_values']
-
-        # MODS
-        for mod_name in dmg_dct['mods']['player']:
-            val += dmg_dct['mods']['player'][mod_name] * self.request_stat(target_name='player',
-                                                                           stat_name=mod_name)
-
-        for mod_name in dmg_dct['mods']['enemy']:
-            val += dmg_dct['mods'][self.current_target][mod_name] * self.request_stat(target_name=self.current_target,
-                                                                                      stat_name=mod_name)
-
-        return val

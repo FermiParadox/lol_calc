@@ -1817,16 +1817,13 @@ class DmgAbilityAttributes(AttributesBase):
         self.dmgs_dct = {}
 
     # Category names and required extra variables.
-    AVAILABLE_DMG_CATEGORIES = dict(standard_dmg=None,
-                                    innate_dmg=None,
-                                    chain_decay=dict(
-                                        decay_coef='placeholder'
-                                    ),
-                                    chain_limited_decay=dict(
-                                        decay_coef='placeholder',
-                                        max_decay_percent='placeholder'
-                                    ),
-                                    aa_dmg_value=None)
+    AVAILABLE_DMG_CATEGORIES = dict(
+        standard_dmg=None,
+        chain_decay=dict(
+            decay_coef='placeholder',
+            min_percent_dmg='placeholder',
+        ),
+        aa_dmg=None)
 
     @staticmethod
     def dmg_attributes():
@@ -2105,6 +2102,24 @@ class DmgAbilityAttributes(AttributesBase):
             # INSERTS DMGS
             self.dmgs_dct.update({new_dmg_name: curr_dmg_dct})
 
+    @staticmethod
+    def _stabilized_tar_num(dmg_dct):
+        """
+        Calculates number of targets hit until a chain decaying dmg stabilizes.
+
+        Then deletes not needed value from dmg dct.
+
+        Returns:
+            (float)
+        """
+        min_dmg_percentage = dmg_dct['min_percent_dmg']
+        decay_constant = dmg_dct['decay_coef']
+
+        del dmg_dct['min_percent_dmg']
+
+        # Formula is: min = 1 - c(n-1)
+        return (1-min_dmg_percentage)/decay_constant + 1
+
     def suggest_dmg_attr_values(self):
 
         for dmg_temp_name in sorted(self.dmgs_dct):
@@ -2115,6 +2130,13 @@ class DmgAbilityAttributes(AttributesBase):
 
             _suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attr(),
                                  modified_dct=self.dmgs_dct[dmg_temp_name])
+
+            # Decay stabilization tar num.
+            if self.dmgs_dct[dmg_temp_name]['dmg_category'] == 'chain_decay':
+                stabilized_num = self._stabilized_tar_num(dmg_dct=self.dmgs_dct[dmg_temp_name])
+
+                self.dmgs_dct[dmg_temp_name].update(dict(
+                    stabilized_tar_num=stabilized_num))
 
     def modify_dmg_names(self):
         """
