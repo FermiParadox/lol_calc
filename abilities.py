@@ -288,6 +288,9 @@ class AttributeBase(EventsGeneral):
         self.current_target_num = None
         self.action_on_cd_func = action_on_cd_func
 
+        # ("abstract")
+        self.champion_abilities_names = None
+
         EventsGeneral.__init__(self,
                                champion_lvls_dct=champion_lvls_dct,
                                selected_champions_dct=selected_champions_dct,
@@ -1147,7 +1150,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.switch_to_first_alive_enemy()
         self.add_events('aa_dmg', current_time)
 
-    def apply_ability_actives_on_tar(self, tar_type, effects_dct, action_name):
+    def apply_ability_actives_on_tar(self, tar_type, eff_dct):
         """
         Applies an action's effect on target, if action has actives.
 
@@ -1160,23 +1163,23 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         """
 
         # Checks if the ability has any active effects.
-        if 'actives' in effects_dct[action_name][tar_type]:
+        if 'actives' in eff_dct[tar_type]:
             # BUFFS
-            if 'buffs' in effects_dct[action_name][tar_type]['actives']:
-                for buff_name in effects_dct[action_name][tar_type]['actives']['buffs']:
+            if 'buffs' in eff_dct[tar_type]['actives']:
+                for buff_name in eff_dct[tar_type]['actives']['buffs']:
                     self.add_buff(buff_name=buff_name, tar_name=self.current_target)
 
             # DMG
-            if 'dmg' in effects_dct[action_name][tar_type]['actives']:
-                for dmg_name in effects_dct[action_name][tar_type]['actives']['dmg']:
+            if 'dmg' in eff_dct[tar_type]['actives']:
+                for dmg_name in eff_dct[tar_type]['actives']['dmg']:
                     self.add_events(effect_name=dmg_name, start_time=self.current_time)
 
             # BUFF REMOVAL
-            if 'remove_buff' in effects_dct[action_name][tar_type]['actives']:
-                for buff_name_to_remove in effects_dct[action_name][tar_type]['actives']['remove_buff']:
+            if 'remove_buff' in eff_dct[tar_type]['actives']:
+                for buff_name_to_remove in eff_dct[tar_type]['actives']['remove_buff']:
                     del self.active_buffs[tar_type][buff_name_to_remove]
 
-    def apply_ability_effects(self, action_name, effects_dct):
+    def apply_ability_effects(self, eff_dct):
         """
         Applies an action's effects.
 
@@ -1192,18 +1195,17 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        if 'player' in effects_dct[action_name]:
+        if 'player' in eff_dct:
+
             self.current_target = 'player'
+            self.apply_ability_actives_on_tar(tar_type='player', eff_dct=eff_dct)
 
-            self.apply_ability_actives_on_tar(tar_type='player', effects_dct=effects_dct, action_name=action_name)
-
-        if 'enemy' in effects_dct[action_name]:
+        if 'enemy' in eff_dct:
 
             self.switch_to_first_alive_enemy()
+            self.apply_ability_actives_on_tar(tar_type='enemy', eff_dct=eff_dct)
 
-            self.apply_ability_actives_on_tar(tar_type='enemy', effects_dct=effects_dct, action_name=action_name)
-
-    def apply_action_effects(self, action_name, abilities_effects, items_effects):
+    def apply_action_effects(self, action_name):
         """
         Applies an action's effects (buffs, dmg, buff removal).
 
@@ -1221,13 +1223,12 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         # ABILITY
         elif action_name in 'qwer':
-            self.apply_ability_effects(action_name=action_name,
-                                       effects_dct=abilities_effects)
+            self.apply_ability_effects(eff_dct=self.abilities_effects(ability_name=action_name))
 
         # ITEM ACTIVE - SUMMONER SPELL
         else:
-            self.apply_ability_effects(action_name=action_name,
-                                       effects_dct=items_effects)
+            # TODO: convert item effects to function like ability effects
+            self.apply_ability_effects(eff_dct=self.items_effects[action_name])
 
     def apply_pre_action_events(self):
         """
@@ -1349,9 +1350,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                         break
 
                 # After previous events are applied, applies action effects.
-                self.apply_action_effects(action_name=self.actions_dct[max(self.actions_dct)]['action_name'],
-                                          abilities_effects=self.abilities_effects(),
-                                          items_effects=self.items_effects)
+                self.apply_action_effects(action_name=self.actions_dct[max(self.actions_dct)]['action_name'])
 
             # If the cost is too high, action is skipped.
             else:
@@ -1422,7 +1421,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.add_regenerations()
 
         # Adds passive buffs from abilities.
-        self.add_passive_buffs(self.abilities_effects(), self.ability_lvls_dct)
+        self.add_passive_buffs(abilities_effects_dct_func=self.abilities_effects, abilities_lvls=self.ability_lvls_dct)
 
         # Stores precombat stats.
         self.note_pre_combat_stats_in_results()

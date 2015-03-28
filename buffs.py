@@ -201,7 +201,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
                     for buff_name in effects_dct[ability_name][target_type]['passives']['buffs']:
                         self.add_buff(buff_name, tar_name)
 
-    def add_passive_buffs(self, abilities_effects_dct, abilities_lvls):
+    def add_passive_buffs(self, abilities_effects_dct_func, abilities_lvls):
         """
         Adds passive buffs from champion abilities (that apply on ability lvling) on all targets.
 
@@ -224,13 +224,13 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
                     # .. applies the buffs.
                     self.add_single_ability_passive_buff(ability_name=ability_name,
                                                          target_type=target_type,
-                                                         effects_dct=abilities_effects_dct,
+                                                         effects_dct=abilities_effects_dct_func,
                                                          tar_name=tar_name)
 
             # Innate passive buffs.
             self.add_single_ability_passive_buff(ability_name='inn',
                                                  target_type=target_type,
-                                                 effects_dct=abilities_effects_dct,
+                                                 effects_dct=abilities_effects_dct_func,
                                                  tar_name=tar_name)
 
             # Item passive buffs.
