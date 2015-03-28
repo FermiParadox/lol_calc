@@ -441,8 +441,11 @@ class StatRequest(StatCalculation):
     def __init__(self,
                  champion_lvls_dct,
                  selected_champions_dct,
+                 req_buff_dct_func,
                  initial_active_buffs=None,
                  initial_current_stats=None):
+
+        self.req_buff_dct_func = req_buff_dct_func
 
         StatCalculation.__init__(self,
                                  champion_lvls_dct=champion_lvls_dct,
@@ -499,7 +502,7 @@ class StatRequest(StatCalculation):
             self.stored_buffs[tar_name][buff_name]
 
         except KeyError:
-            buff_dct = getattr(self, buff_name)()
+            buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
             # Checks if buff modifies stats.
             if 'stats' in buff_dct:
@@ -555,7 +558,8 @@ class StatRequest(StatCalculation):
         # Checks if there is a new active buff (that modifies stats).
         for buff in tar_act_buffs:
             if buff not in tar_stored_buffs:
-                if ('stats' in getattr(self, buff)()) and (stat_name in getattr(self, buff)()['stats']):
+                buff_dct = self.req_buff_dct_func(buff_name=buff)
+                if ('stats' in buff_dct) and (stat_name in buff_dct['stats']):
 
                     self._check_and_update_stored_buff(tar_name=tar_name, buff_name=buff)
 
@@ -593,7 +597,7 @@ class StatRequest(StatCalculation):
         for buff_name in self.active_buffs[tar_name]:
             self._check_and_update_stored_buff(tar_name=tar_name, buff_name=buff_name)
 
-            buff_dct = getattr(self, buff_name)()
+            buff_dct = self.req_buff_dct_func(buff_name=buff_name)
             # Checks if the buff has stat bonuses.
             if 'stats' in buff_dct:
 

@@ -25,26 +25,30 @@ class EventsGeneral(buffs.DeathAndRegen):
                  selected_champions_dct,
                  max_targets_dct,
                  max_combat_time,
-                 initial_active_buffs=None,
-                 initial_current_stats=None,
-                 items_lst=None):
+                 initial_active_buffs,
+                 initial_current_stats,
+                 req_buff_dct_func,
+                 items_lst,
+                 req_dmg_dct_func,
+                 ability_lvls_dct,):
 
         # (User defined dict containing number of targets affected by abilities.)
         self.max_targets_dct = max_targets_dct
         self.event_times = {}
-        self.current_time = 0
         self.current_target = None
         # (Used to note that a periodic event might have been added between current events and last action.)
         self.intermediate_events_changed = None
 
         buffs.DeathAndRegen.__init__(self,
-                                     current_time=self.current_time,
                                      selected_champions_dct=selected_champions_dct,
                                      champion_lvls_dct=champion_lvls_dct,
                                      max_combat_time=max_combat_time,
-                                     initial_active_buffs=initial_active_buffs,
                                      initial_current_stats=initial_current_stats,
-                                     items_lst=items_lst)
+                                     initial_active_buffs=initial_active_buffs,
+                                     items_lst=items_lst,
+                                     req_dmg_dct_func=req_dmg_dct_func,
+                                     ability_lvls_dct=ability_lvls_dct,
+                                     req_buff_dct_func=req_buff_dct_func)
 
         self.resource_used = app_champions_base_stats.CHAMPION_BASE_STATS[selected_champions_dct['player']][
             'resource_used']
@@ -230,7 +234,7 @@ class EventsGeneral(buffs.DeathAndRegen):
             (None)
         """
 
-        dmg_dct = getattr(self, dmg_name)()
+        dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
 
         # Checks if event is periodic.
         if dmg_dct['dot'] is True:
@@ -291,7 +295,10 @@ class AttributeBase(EventsGeneral):
                                max_combat_time=max_combat_time,
                                initial_active_buffs=initial_active_buffs,
                                initial_current_stats=initial_current_stats,
-                               items_lst=items_lst)
+                               items_lst=items_lst,
+                               ability_lvls_dct=ability_lvls_dct,
+                               req_dmg_dct_func=self.request_dmg,
+                               req_buff_dct_func=self.request_buff)
 
     def _x_value(self, x_name, x_type, x_owner):
         """
@@ -1034,7 +1041,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # If it's a new dot..
         if new_periodic_event:
             # If the buff is a dot, applies event as well.
-            if 'period' in getattr(self, buff_name)():
+            if 'period' in self.req_buff_dct_func(buff_name=buff_name):
 
                 first_tick = self.first_dot_tick(current_time=self.current_time, ability_name=buff_name)
 
@@ -1054,7 +1061,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        buff_dct = getattr(self, buff_name)()
+        buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
         # Checks if buff delays the start of an action's cd.
         if buff_dct['prohibit_cd_start']:
@@ -1095,7 +1102,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         # (can't iter over active_buffs itself since it gets modified)
         for buff_name in frozenset(self.active_buffs['player']):
-            buff_dct = getattr(self, buff_name)()
+            buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
             if 'on_hit' in buff_dct:
 

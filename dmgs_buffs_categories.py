@@ -63,7 +63,7 @@ class DmgCategories(BuffCategories):
     --------------------------------------------------------------------------------------------------------------------
     Obsolete concepts:
 
-    -splash: It can be represented as chain_decay with 2 tar stabilization
+    -splash: It can be represented as chain_decay with 2 tar stabilization.
     -non_critable_dmg: This is equal to 'total_ad'.
     -limited_chain_decay: Incorporated into chain_decay.
     """
@@ -113,7 +113,7 @@ class DmgCategories(BuffCategories):
 
         return val
 
-    def dmg_value(self, dmg_name):
+    def request_dmg_value(self, dmg_name):
         """
         Calculates raw dmg value of given dmg name.
 

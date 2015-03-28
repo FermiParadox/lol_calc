@@ -1,23 +1,25 @@
 import stats
 import targeting
 import items
+import dmgs_buffs_categories
 
 
 class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems):
 
     def __init__(self,
-                 current_time,
                  selected_champions_dct,
                  champion_lvls_dct,
+                 req_buff_dct_func,
                  initial_current_stats=None,
                  initial_active_buffs=None,
                  items_lst=None):
 
-        self.current_time = current_time
+        self.current_time = 0
 
         stats.DmgReductionStats.__init__(self,
                                          champion_lvls_dct=champion_lvls_dct,
                                          selected_champions_dct=selected_champions_dct,
+                                         req_buff_dct_func=req_buff_dct_func,
                                          initial_active_buffs=initial_active_buffs,
                                          initial_current_stats=initial_current_stats)
 
@@ -62,7 +64,8 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
                 # Applies dependency to all targets.
                 for tar_name in self.all_target_names:
                     self.apply_stat_dependency_to_tar(tar=tar_name,
-                                                      dependent_stat_dct=self.DMG_REDUCTION_STAT_DEPENDENCIES[target_name])
+                                                      dependent_stat_dct=self.DMG_REDUCTION_STAT_DEPENDENCIES[
+                                                          target_name])
 
             else:
                 self.apply_stat_dependency_to_tar(tar=target_name,
@@ -78,7 +81,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
             (None)
         """
 
-        buff_dct = getattr(self, buff_name)()
+        buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
         # Inserts the new buff.
         self.active_buffs[tar_name].update(
@@ -112,7 +115,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
             (None)
         """
 
-        buff_dct = getattr(self, buff_name)
+        buff_dct = self.req_buff_dct_func(buff_name=buff_name)
         tar_buff_dct_in_act_buffs = self.active_buffs[tar_name][buff_name]
 
         # DURATION
@@ -246,21 +249,21 @@ class Counters(BuffsGeneral):
     EXTRA_STATS_SET = {'lifesteal', 'spellvamp', 'ap'}
 
     def __init__(self,
-                 current_time,
                  selected_champions_dct,
                  champion_lvls_dct,
+                 req_buff_dct_func,
                  max_combat_time=20,
                  initial_current_stats=None,
                  initial_active_buffs=None,
                  items_lst=None):
 
         BuffsGeneral.__init__(self,
-                              current_time=current_time,
                               selected_champions_dct=selected_champions_dct,
                               champion_lvls_dct=champion_lvls_dct,
                               initial_current_stats=initial_current_stats,
                               initial_active_buffs=initial_active_buffs,
-                              items_lst=items_lst)
+                              items_lst=items_lst,
+                              req_buff_dct_func=req_buff_dct_func)
 
         self.max_combat_time = max_combat_time
 
@@ -571,7 +574,8 @@ class Counters(BuffsGeneral):
         for tar_name in self.enemy_target_names:
             tot_value = 0
 
-            for dmg_type, type_dmg_name in zip(('physical', 'magic', 'true'), ('total_physical', 'total_magic', 'total_true')):
+            for dmg_type, type_dmg_name in zip(('physical', 'magic', 'true'),
+                                               ('total_physical', 'total_magic', 'total_true')):
                 type_dmg_value = 0
                 for event_time in self.combat_history[tar_name][dmg_type]:
                     type_dmg_value += self.combat_history[tar_name][dmg_type][event_time]
@@ -694,7 +698,38 @@ class Counters(BuffsGeneral):
         self.note_dps_in_results()
 
 
-class DmgApplication(Counters):
+class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
+
+    def __init__(self,
+                 selected_champions_dct,
+                 champion_lvls_dct,
+                 max_combat_time,
+                 initial_current_stats,
+                 initial_active_buffs,
+                 items_lst,
+                 req_dmg_dct_func,
+                 req_buff_dct_func,
+                 ability_lvls_dct,
+                 ):
+
+        Counters.__init__(self,
+                          selected_champions_dct=selected_champions_dct,
+                          champion_lvls_dct=champion_lvls_dct,
+                          max_combat_time=max_combat_time,
+                          initial_current_stats=initial_current_stats,
+                          initial_active_buffs=initial_active_buffs,
+                          items_lst=items_lst,
+                          req_buff_dct_func=req_buff_dct_func)
+
+        dmgs_buffs_categories.DmgCategories.__init__(self,
+                                                     req_stats_func=self.request_stat,
+                                                     req_dmg_dct_func=req_dmg_dct_func,
+                                                     current_stats=self.current_stats,
+                                                     current_target=self.current_target,
+                                                     champion_lvls_dct=champion_lvls_dct,
+                                                     current_target_num=self.current_target_num,
+                                                     active_buffs=self.active_buffs,
+                                                     ability_lvls_dct=ability_lvls_dct)
 
     def apply_spellvamp_or_lifesteal(self, dmg_name, dmg_value, dmg_type):
         """
@@ -726,7 +761,7 @@ class DmgApplication(Counters):
             # If it's not an AA checks if either lifesteal or spellvamp is applicable.
             if dmg_type != 'AA':
 
-                dmg_dct = getattr(self, dmg_name)()
+                dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
                 life_conversion_type = dmg_dct['life_conversion_type']
                 # If it can cause spellvamp..
                 if life_conversion_type == 'spellvamp':
@@ -800,8 +835,8 @@ class DmgApplication(Counters):
             (None)
         """
 
-        dmg_value = getattr(self, dmg_name + '_value')()
-        resource_type = getattr(self, dmg_name)()['resource_type']
+        dmg_value = self.request_dmg_value(dmg_name=dmg_name)
+        resource_type = self.req_dmg_dct_func(dmg_name=dmg_name)['resource_type']
 
         if dmg_value >= 0:
             self.current_stats['player'][self.player_current_resource_name] -= dmg_value
@@ -880,10 +915,10 @@ class DmgApplication(Counters):
             (None)
         """
 
-        dmg_dct = getattr(self, dmg_name)()
+        dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
         dmg_type = dmg_dct['dmg_type']
 
-        final_dmg_value = self.mitigated_dmg(dmg_value=getattr(self, dmg_name + '_value')(),
+        final_dmg_value = self.mitigated_dmg(dmg_value=self.request_dmg_value(dmg_name=dmg_name),
                                              dmg_type=dmg_type,
                                              target=target_name)
 
@@ -918,11 +953,13 @@ class DmgApplication(Counters):
             (None)
         """
 
+        dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
+
         # Checks if the effect is affecting a resource or hp.
-        if 'resource_type' in getattr(self, dmg_name)():
+        if 'resource_type' in dmg_dct:
             self.apply_resource_dmg_or_heal(dmg_name=dmg_name)
 
-        elif 'dmg_type' in getattr(self, dmg_name)():
+        elif 'dmg_type' in dmg_dct:
             self.apply_hp_dmg_or_heal(dmg_name=dmg_name,
                                       target_name=target_name)
 
