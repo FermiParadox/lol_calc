@@ -11,6 +11,7 @@ import palette
 import stats
 import importlib
 import ast
+import collections
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -1433,16 +1434,34 @@ class ExploreApiItems(ExploreBase):
         # Checks if print mode is selected.
         return _return_or_pprint_lst(print_mode=print_mode, lst=descriptions_lst)
 
-    def sanitized_descriptions(self, item=None, raw_str=None, print_mode=False):
+    def descriptions(self, item=None, raw_str=None, print_mode=False):
         """
         Returns "descriptions" for given item (or for all items),
         or prints it.
 
-        Check parent method for more details.
+        Note: Check parent method for more details.
         """
 
-        return self._item_elements(element_name='sanitizedDescription', item=item,
+        return self._item_elements(element_name='description', item=item,
                                    raw_str=raw_str, print_mode=print_mode)
+
+    def stat_names_counter(self, print_mode=False):
+        """
+        Searches all item "descriptions" and recovers all item names.
+
+        Returns:
+            (counter)
+        """
+
+        counter = collections.Counter()
+
+        for i in self.descriptions():
+            match = re.findall(r'\+?\d+\s([a-z\s]+)', i.lower())
+
+            if match:
+                counter += collections.Counter(match)
+
+        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=counter)
 
     def item_tags(self, only_freq=False, print_mode=False):
         """
@@ -3366,7 +3385,7 @@ class Conditionals(object):
         msg += ('\n(triggers in a condition are checked with AND, never with OR. '
                 'When OR needed, a new condition has to be created.)')
         print(msg)
-        
+
         while True:
             print(fat_delimiter(40))
 
@@ -3377,14 +3396,52 @@ class Conditionals(object):
                 # CONDITION NAME
                 new_con_name = _auto_new_name_or_ask_name(first_synthetic='conditional', existing_names=self.conditions)
                 self.conditions.update({new_con_name: {}})
-                
+
                 self._create_single_condition(con_name=new_con_name)
-        
+
         print(fat_delimiter(40))
         print('\nCONDITIONALS')
         print('\nCHAMPION: {}'.format(self.champion_name))
         pp.pprint(self.conditions)
 
+
+class ItemCreation(object):
+
+    ITEM_STAT_NAMES_MAP = {
+        'Ability Power': 'ap',
+        'Armor': 'armor',
+        'Attack Dmg': 'ad',
+        'Attack Speed': 'att_speed',
+        'Base Health Regen': 'hp5',
+        'Base Mana Regen': 'mp5',
+        'Critical Strike Chance': 'crit_chance',
+        'Cooldown Reduction': 'cdr',
+        'Health': 'hp',
+        'Life Steal': 'lifesteal',
+        'Magic Penetration': 'flat_magic_penetration',
+        'Magic Resist': 'mr',
+        'Mana': 'mp',
+        'Movement Speed': 'move_speed',
+        'Spell Vamp': 'spellvamp',
+    }
+
+    def __init__(self):
+        self.validate_stats_names()
+
+    def validate_stats_names(self):
+        """
+        Ensures all item names in this class are exactly the same as the main program stats class
+
+        Raises:
+            UnexpectedValueError
+        Returns:
+            (None)
+        """
+
+        diff = set(self.ITEM_STAT_NAMES_MAP.values()) - (stats.ALL_POSSIBLE_STAT_NAMES | stats.ALL_RESOURCE_NAMES)
+
+        if diff:
+            raise palette.UnexpectedValueError(diff)
 
 # ===============================================================
 #       MODULE CREATION
@@ -3491,7 +3548,7 @@ class ModuleCreator(object):
 
         elif obj_name == CHAMP_CLASS_NAME:
             return self._champ_class_as_str()
-        
+
         elif obj_name == CHAMP_MODULE_IMPORTS_NAME:
             return self.CHAMP_MODULE_IMPORTS_AS_STR
 
@@ -3583,6 +3640,14 @@ if __name__ == '__main__':
     if testChampIDs is True:
         print(ExploreApiAbilities().champion_id('dariu'))
 
-    testModuleInsertion = True
+    testModuleInsertion = False
     if testModuleInsertion is True:
         ModuleCreator(champion_name='jax').run_champ_module_creation()
+
+    testItemNames = False
+    if testItemNames is True:
+        c = ExploreApiItems().stat_names_counter(print_mode=True)
+
+    testValidStatNames = True
+    if testValidStatNames is True:
+        inst = ItemCreation()

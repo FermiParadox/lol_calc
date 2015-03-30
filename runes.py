@@ -6,7 +6,7 @@ API_TO_APP_STAT_NAME_MAP = dict(
     FlatSpellBlockMod=dict(additive='mr'),
     rFlatSpellBlockModPerLevel=dict(additive='mr_per_lvl'),
     rFlatArmorModPerLevel=dict(additive='armor_per_lvl'),
-    FlatCritChanceMod=dict(additive='crit'),
+    FlatCritChanceMod=dict(additive='crit_chance'),
     rFlatMagicDamageModPerLevel=dict(additive='ap_per_lvl'),
     rFlatHPModPerLevel=dict(additive='hp_per_lvl'),
     FlatMPRegenMod=dict(additive='mp5'),
