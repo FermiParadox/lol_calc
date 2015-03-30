@@ -12,6 +12,7 @@ import stats
 import importlib
 import ast
 import collections
+import api_items_database
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -25,13 +26,13 @@ ABILITIES_EFFECT_DCT_NAME = 'ABILITIES_EFFECTS'
 ABILITIES_CONDITIONS_DCT_NAME = 'ABILITIES_CONDITIONS'
 CHAMPION_EXTERNAL_VAR_DCT_NAME = 'CHAMPION_EXTERNAL_VARIABLES'
 CHAMP_CLASS_NAME = 'class ChampionAttributes'
-# (not used)
-CHAMP_MODULE_IMPORTS_NAME = 'import attribute_methods'
+DEFAULT_ACTIONS_PRIORITY_NAME = 'DEFAULT_ACTIONS_PRIORITY'
 CHAMPION_MODULE_OBJECT_NAMES = (ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME,
-                                ABILITIES_CONDITIONS_DCT_NAME, CHAMPION_EXTERNAL_VAR_DCT_NAME, CHAMP_CLASS_NAME)
+                                ABILITIES_CONDITIONS_DCT_NAME, CHAMPION_EXTERNAL_VAR_DCT_NAME, CHAMP_CLASS_NAME,
+                                DEFAULT_ACTIONS_PRIORITY_NAME)
 
 child_class_as_str = """class ChampionAttributes(object):
-    DEFAULT_ACTIONS_PRIORITY = ()
+    DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
     ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES
     ABILITIES_EFFECTS = ABILITIES_EFFECTS
     ABILITIES_CONDITIONS = ABILITIES_CONDITIONS
@@ -771,7 +772,7 @@ def data_storage(targeted_module, obj_name, str_to_insert, write_mode='w', force
 
 
 # ===============================================================
-# API REQUESTS
+#       API REQUESTS
 # ===============================================================
 class RequestAborted(Exception):
     pass
@@ -1313,8 +1314,7 @@ class ExploreApiAbilities(ExploreBase):
 
 class ExploreApiItems(ExploreBase):
     def __init__(self):
-        self.data_module = __import__('api_items_database')
-        self.item_related_api_data = self.data_module.ALL_ITEMS
+        self.item_related_api_data = api_items_database.ALL_ITEMS
         self.all_items_by_id = self.item_related_api_data['data']
         self.used_items = self._used_items()
 
@@ -1418,7 +1418,8 @@ class ExploreApiItems(ExploreBase):
             item_lst = self.used_items
         else:
             # (need a list so it inserts selection into a list)
-            item_lst = [item, ]
+            matched_name = self._full_or_partial_match(searched_name=item, iterable=self.used_items)
+            item_lst = [matched_name, ]
 
         descriptions_lst = []
 
@@ -3409,6 +3410,7 @@ class ItemCreation(object):
 
     ITEM_STAT_NAMES_MAP = {
         'Ability Power': 'ap',
+        'Ability Power per level': 'ap_per_lvl',
         'Armor': 'armor',
         'Attack Dmg': 'ad',
         'Attack Speed': 'att_speed',
@@ -3426,11 +3428,11 @@ class ItemCreation(object):
     }
 
     def __init__(self):
-        self.validate_stats_names()
+        self._validate_stats_names()
 
-    def validate_stats_names(self):
+    def _validate_stats_names(self):
         """
-        Ensures all item names in this class are exactly the same as the main program stats class
+        Ensures all stat names in this class are exactly the same as the main program's stat names.
 
         Raises:
             UnexpectedValueError
@@ -3443,22 +3445,81 @@ class ItemCreation(object):
         if diff:
             raise palette.UnexpectedValueError(diff)
 
+    @staticmethod
+    def _stats_partition_in_description(item_description):
+        """
+        Cuts off and returns stats string in an item description by the xml tags (<stats> </stats>).
+
+        Returns:
+            (str)
+        """
+
+        try:
+            return re.search(r'<stats>(.+)</stats>', item_description).group()
+
+        except AttributeError:
+            return ''
+
+    def _stats_values_dct(self, item_name):
+        """
+        Returns a dict with stat names as values and stat value as key.
+
+        Returns:
+            (dict)
+        """
+
+        dct = {}
+
+        description_str = ExploreApiItems().descriptions(item=item_name)[0].lower()
+        stats_part_str = self._stats_partition_in_description(item_description=description_str)
+
+        partitions_lst = re.split(r'<br>', stats_part_str)
+
+        for str_part in partitions_lst:
+
+            # STAT NAME
+            # (reverse used to ensure 'ap per lvl' is matched before 'ap' if possible,
+            # otherwise it will mismatch 'ap')
+            for i in reversed(list(self.ITEM_STAT_NAMES_MAP)):
+                if i.lower() in str_part:
+                    stat_name = self.ITEM_STAT_NAMES_MAP[i]
+
+                    # STAT VALUE
+                    # Searches for int or float.
+                    stat_val_str = re.search(r'(\d+\.?\d*%?)\s', str_part).group()
+
+                    # Converts percent to float.
+                    if '%' in stat_val_str:
+                        stat_val_str = stat_val_str.replace('%', '')
+                        stat_val = ast.literal_eval(stat_val_str) / 100.
+
+                    else:
+                        stat_val = ast.literal_eval(stat_val_str)
+
+                    dct.update({stat_name: stat_val})
+
+        return dct
+
+
+
+
+
+
+
 # ===============================================================
 #       MODULE CREATION
 # ===============================================================
 class ModuleCreator(object):
-
-    RAW_CHAMP_CLASS_AS_STR = child_class_as_str
-    CHAMP_MODULE_IMPORTS_AS_STR = CHAMP_MODULE_IMPORTS_NAME
 
     def __init__(self, champion_name):
         self.champion_name = champion_name
         self.external_vars_dct = {}
         self.champion_module = '{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name)
 
-    def _champ_class_as_str(self):
+    @staticmethod
+    def _priority_tpl_as_str():
         """
-        Creates action priority tuple and inserts it into the module.
+        Creates action priority tuple.
         """
 
         priority_lst = []
@@ -3467,8 +3528,9 @@ class ModuleCreator(object):
                                     extra_start_msg='ACTION PRIORITY TUPLE',
                                     sort_suggested_lst=False)
 
-        return self.RAW_CHAMP_CLASS_AS_STR.replace('DEFAULT_ACTIONS_PRIORITY = ()',
-                                                   'DEFAULT_ACTIONS_PRIORITY = {}'.format(tuple(priority_lst)))
+        priority_tpl = tuple(priority_lst)
+
+        return str(priority_tpl)
 
     def _replace_obj_in_champ_mod(self, obj_name, new_object_as_dct):
         """
@@ -3547,10 +3609,13 @@ class ModuleCreator(object):
             return self._external_vars()
 
         elif obj_name == CHAMP_CLASS_NAME:
-            return self._champ_class_as_str()
+            return child_class_as_str
 
-        elif obj_name == CHAMP_MODULE_IMPORTS_NAME:
-            return self.CHAMP_MODULE_IMPORTS_AS_STR
+        elif obj_name == DEFAULT_ACTIONS_PRIORITY_NAME:
+            return self._priority_tpl_as_str()
+
+        else:
+            palette.UnexpectedValueError(obj_name)
 
     def _obj_existence(self, obj_name):
         # Checks obj existence in module.
@@ -3646,8 +3711,12 @@ if __name__ == '__main__':
 
     testItemNames = False
     if testItemNames is True:
-        c = ExploreApiItems().stat_names_counter(print_mode=True)
+        c = ExploreApiItems().all_items_by_id
 
-    testValidStatNames = True
+    testValidStatNames = False
     if testValidStatNames is True:
         inst = ItemCreation()
+
+    testStatNamesValues = True
+    if testStatNamesValues is True:
+        print(ItemCreation()._stats_values_dct('sapphire'))

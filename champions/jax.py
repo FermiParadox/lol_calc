@@ -240,13 +240,15 @@ ABILITIES_CONDITIONS = {
 CHAMPION_EXTERNAL_VARIABLES = {
     'hits_dodged_during_e': 5}
 
+DEFAULT_ACTIONS_PRIORITY = ('AA', 'r', 'e', 'w', 'q')
+
 
 class ChampionAttributes(object):
 
-    DEFAULT_ACTIONS_PRIORITY = ('AA', 'r', 'e', 'w', 'q')
     ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES
     ABILITIES_EFFECTS = ABILITIES_EFFECTS
     ABILITIES_CONDITIONS = ABILITIES_CONDITIONS
+    DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
 
     def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
         for i in external_vars_dct:
