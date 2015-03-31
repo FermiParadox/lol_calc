@@ -21,6 +21,7 @@ import api_items_database
 # ===============================================================
 # Objects in champion module (exact strings are re.matched inside module)
 CHAMPION_MODULES_FOLDER_NAME = 'champions'
+ITEM_MODULES_FOLDER_NAME = 'items'
 ABILITIES_ATTRS_DCT_NAME = 'ABILITIES_ATTRIBUTES'
 ABILITIES_EFFECT_DCT_NAME = 'ABILITIES_EFFECTS'
 ABILITIES_CONDITIONS_DCT_NAME = 'ABILITIES_CONDITIONS'
@@ -1315,8 +1316,8 @@ class ExploreApiAbilities(ExploreBase):
 class ExploreApiItems(ExploreBase):
     def __init__(self):
         self.item_related_api_data = api_items_database.ALL_ITEMS
-        self.all_items_by_id = self.item_related_api_data['data']
-        self.used_items = self._used_items()
+        self._all_items_by_id = self.item_related_api_data['data']
+        self.used_items_by_name = self._used_items()
 
     MANDATORY_MAP_ID = 1
     DISALLOWED_ITEM_TAGS = ('trinket', 'consumable', )
@@ -1339,33 +1340,33 @@ class ExploreApiItems(ExploreBase):
 
         dct = {}
 
-        for item_id in self.all_items_by_id:
+        for item_id in self._all_items_by_id:
 
             # MAP
             allowed_on_map = True
             # (if there is no map exclusion, then it is usable on required map)
             try:
-                if self.all_items_by_id[item_id]['maps']['1'] is False:
+                if self._all_items_by_id[item_id]['maps']['1'] is False:
                     allowed_on_map = False
             except KeyError:
                 pass
 
             # PURCHASABLE
             purchasable = True
-            if 'inStore' in self.all_items_by_id[item_id]:
-                if self.all_items_by_id[item_id]['inStore'] is False:
+            if 'inStore' in self._all_items_by_id[item_id]:
+                if self._all_items_by_id[item_id]['inStore'] is False:
                     purchasable = False
 
             # NON DISALLOWED TAG
             allowed_tags = True
-            if 'tags' in self.all_items_by_id[item_id]:
-                for tag in self.all_items_by_id[item_id]['tags']:
+            if 'tags' in self._all_items_by_id[item_id]:
+                for tag in self._all_items_by_id[item_id]['tags']:
                     if tag.lower() in self.DISALLOWED_ITEM_TAGS:
                         allowed_tags = False
 
             # Checks if all conditions are met.
             if allowed_on_map and allowed_tags and purchasable:
-                item_name = self.all_items_by_id[item_id]['name'].lower()
+                item_name = self._all_items_by_id[item_id]['name'].lower()
 
                 # (order below matters for correct naming)
                 item_name = item_name.replace('(ranged only)', '')
@@ -1377,7 +1378,7 @@ class ExploreApiItems(ExploreBase):
                 item_name = item_name.replace('-', '_')
                 item_name = item_name.replace(':', '_')
 
-                dct.update({item_name: self.all_items_by_id[item_id]})
+                dct.update({item_name: self._all_items_by_id[item_id]})
 
         return dct
 
@@ -1392,9 +1393,9 @@ class ExploreApiItems(ExploreBase):
             (dct)
         """
 
-        matched_name = self._full_or_partial_match(searched_name=given_name, iterable=self.used_items)
+        matched_name = self._full_or_partial_match(searched_name=given_name, iterable=self.used_items_by_name)
 
-        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=self.used_items[matched_name])
+        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=self.used_items_by_name[matched_name])
 
     def _item_elements(self, element_name, item=None, raw_str=None, print_mode=False):
         """
@@ -1415,10 +1416,10 @@ class ExploreApiItems(ExploreBase):
 
         # All items, or selected item.
         if item is None:
-            item_lst = self.used_items
+            item_lst = self.used_items_by_name
         else:
             # (need a list so it inserts selection into a list)
-            matched_name = self._full_or_partial_match(searched_name=item, iterable=self.used_items)
+            matched_name = self._full_or_partial_match(searched_name=item, iterable=self.used_items_by_name)
             item_lst = [matched_name, ]
 
         descriptions_lst = []
@@ -1426,7 +1427,7 @@ class ExploreApiItems(ExploreBase):
         for item_name in item_lst:
 
             try:
-                self._append_all_or_matching_str(examined_str=self.used_items[item_name][element_name],
+                self._append_all_or_matching_str(examined_str=self.used_items_by_name[item_name][element_name],
                                                  modified_lst=descriptions_lst,
                                                  raw_str=raw_str)
             except KeyError:
@@ -1470,10 +1471,10 @@ class ExploreApiItems(ExploreBase):
         """
         item_occurrence_dct = {}
 
-        for item_name in self.used_items:
+        for item_name in self.used_items_by_name:
 
             try:
-                tags_lst = self.used_items[item_name]['tags']
+                tags_lst = self.used_items_by_name[item_name]['tags']
 
                 for tag_str in tags_lst:
                     self._store_and_note_frequency(string=tag_str, modified_dct=item_occurrence_dct,
@@ -3412,7 +3413,7 @@ class ItemCreation(object):
         'Ability Power': 'ap',
         'Ability Power per level': 'ap_per_lvl',
         'Armor': 'armor',
-        'Attack Dmg': 'ad',
+        'Attack Damage': 'ad',
         'Attack Speed': 'att_speed',
         'Base Health Regen': 'hp5',
         'Base Mana Regen': 'mp5',
@@ -3478,7 +3479,7 @@ class ItemCreation(object):
         for str_part in partitions_lst:
 
             # STAT NAME
-            # (reverse used to ensure 'ap per lvl' is matched before 'ap' if possible,
+            # (reverse used to ensure 'ap per lvl' is matched before 'ap',
             # otherwise it will mismatch 'ap')
             for i in reversed(list(self.ITEM_STAT_NAMES_MAP)):
                 if i.lower() in str_part:
@@ -3509,12 +3510,97 @@ class ItemCreation(object):
 # ===============================================================
 #       MODULE CREATION
 # ===============================================================
-class ModuleCreator(object):
+class ModuleCreatorBase(object):
+
+    @staticmethod
+    def _append_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module):
+        """
+        Appends full object inside targeted_module.
+
+        :param obj_name: (str) 'ABILITIES_EFFECTS', 'TRINITY_FORCE', etc.
+        :param new_object_as_dct_or_str: (str) or (dict) object body
+        :param targeted_module: (str)
+        :return: (None)
+        """
+
+        if type(new_object_as_dct_or_str) is dict:
+            obj_as_str = dct_to_pretty_formatted_str(obj_name=obj_name, obj_body_as_dct=new_object_as_dct_or_str)
+        else:
+            obj_as_str = new_object_as_dct_or_str
+
+        with open(targeted_module, 'a') as r:
+            r.write(obj_as_str)
+
+    @staticmethod
+    def _replace_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module):
+        """
+        Replaces full object in module.
+
+        :param obj_name: (str)
+        :param new_object_as_dct_or_str: (dct) or (str) object body
+        :return: (None)
+        """
+
+        with open(targeted_module, 'r') as r:
+            r_as_lst = r.readlines()
+
+        replacement = _file_after_replacing_module_var(file_as_lines_lst=r_as_lst, object_name=obj_name,
+                                                       obj_as_dct_or_str=new_object_as_dct_or_str)
+
+        with open(targeted_module, 'w') as w:
+            w.write(replacement)
+
+    @staticmethod
+    def _obj_existence(obj_name, targeted_module):
+        """
+        Checks start of each line in a module for obj existence, ignoring starting preceding whitespaces.
+
+        :param obj_name: (str)
+        :param targeted_module: (str)
+        :return:
+        """
+
+        with open(targeted_module, 'r') as r:
+            r_as_lst = r.readlines()
+
+        for line in r_as_lst:
+            if re.match(r'\s*{}'.format(obj_name), line):
+                return True
+        # If no match has been found, returns False.
+        else:
+            return False
+
+    def _insert_object_in_champ_module(self, obj_name, new_object_as_dct_or_str, replace_question_msg, targeted_module):
+        """
+        Inserts object in module after verifying replacement if needed.
+
+        WARNING: When used for class insertion, assumes no empty lines between class start and __init__ end.
+
+        Returns:
+            (None)
+        """
+
+        # If object exists, replaces it.
+        if self._obj_existence(obj_name=obj_name, targeted_module=targeted_module):
+            
+            if _y_n_question(question_str=replace_question_msg):
+                self._replace_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=new_object_as_dct_or_str,
+                                            targeted_module=targeted_module)
+            else:
+                print('\nReplacement canceled.')
+
+        # If object doesn't exist, appends object.
+        else:
+            self._append_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=new_object_as_dct_or_str,
+                                       targeted_module=targeted_module)
+            
+
+class ChampionModuleCreator(ModuleCreatorBase):
 
     def __init__(self, champion_name):
         self.champion_name = champion_name
         self.external_vars_dct = {}
-        self.champion_module = '{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name)
+        self.champion_module_path_str = '{}/{}.py'.format(CHAMPION_MODULES_FOLDER_NAME, self.champion_name)
 
     @staticmethod
     def _priority_tpl_as_str():
@@ -3531,30 +3617,6 @@ class ModuleCreator(object):
         priority_tpl = tuple(priority_lst)
 
         return str(priority_tpl)
-
-    def _replace_obj_in_champ_mod(self, obj_name, new_object_as_dct):
-        """
-        Replaces object in champion module.
-        """
-
-        with open(self.champion_module, 'r') as r:
-            r_as_lst = r.readlines()
-
-        replacement = _file_after_replacing_module_var(file_as_lines_lst=r_as_lst, object_name=obj_name,
-                                                       obj_as_dct_or_str=new_object_as_dct)
-
-        with open(self.champion_module, 'w') as w:
-            w.write(replacement)
-
-    def _append_obj_in_module(self, obj_name, new_object_as_dct_or_str):
-
-        if type(new_object_as_dct_or_str) is dict:
-            obj_as_str = dct_to_pretty_formatted_str(obj_name=obj_name, obj_body_as_dct=new_object_as_dct_or_str)
-        else:
-            obj_as_str = new_object_as_dct_or_str
-
-        with open(self.champion_module, 'a') as r:
-            r.write(obj_as_str)
 
     @staticmethod
     def _external_vars():
@@ -3585,8 +3647,13 @@ class ModuleCreator(object):
 
         return dct
 
-    def _obj_as_dct_func(self, obj_name):
+    def _champ_obj_as_dct_or_str(self, obj_name):
+        """
+        Returns appropriate object body as dict or string, for given champion object name.
 
+        Returns:
+            (dict) or (str)
+        """
         if obj_name == ABILITIES_ATTRS_DCT_NAME:
             attrs_inst = AbilitiesAttributes(champion_name=self.champion_name)
             attrs_inst.run_spell_attrs_creation()
@@ -3617,49 +3684,31 @@ class ModuleCreator(object):
         else:
             palette.UnexpectedValueError(obj_name)
 
-    def _obj_existence(self, obj_name):
-        # Checks obj existence in module.
-        with open(self.champion_module, 'r') as r:
-            r_as_str = r.read()
-
-        if obj_name in r_as_str:
-            return True
-        else:
-            return False
-
-    def _insert_object_in_champ_module(self, obj_name):
+    def run_champ_module_creation(self):
         """
-        Inserts object in champion module after verifying replacement if needed.
-
-        WARNING: When used for class insertion, assumes no empty lines between class start and __init__ end.
+        Creates all champion module related data (module dicts, class, etc)
 
         Returns:
             (None)
         """
 
-        # If object exists, replaces it.
-        if self._obj_existence(obj_name=obj_name):
-            question_msg = '\nCHAMPION: {}, OBJECT INSERTED: {}'.format(self.champion_name, obj_name)
-            question_msg += '\nObject exists. Replace it?'
-
-            if _y_n_question(question_str=question_msg):
-                self._replace_obj_in_champ_mod(obj_name=obj_name, new_object_as_dct=self._obj_as_dct_func(obj_name))
-            else:
-                print('\nReplacement canceled.')
-
-        # If object doesn't exist, appends object.
-        else:
-            self._append_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=self._obj_as_dct_func(obj_name))
-
-    def run_champ_module_creation(self):
-        """
-        Creates all champion module related data, from dicts to class.
-        """
-
-        for name in CHAMPION_MODULE_OBJECT_NAMES:
-            self._insert_object_in_champ_module(obj_name=name)
+        for obj_name in CHAMPION_MODULE_OBJECT_NAMES:
+            replace_question_msg = '\nCHAMPION: {}, OBJECT NAME: {}'.format(self.champion_name, obj_name)
+            replace_question_msg += '\nObject exists. Replace it?'
+            
+            self._insert_object_in_champ_module(obj_name=obj_name, 
+                                                new_object_as_dct_or_str=self._champ_obj_as_dct_or_str(obj_name),
+                                                replace_question_msg=replace_question_msg,
+                                                targeted_module=self.champion_module_path_str)
             # Delay used to ensure file is "refreshed" after being writen on. (might be redundant)
             time.sleep(0.2)
+
+
+class ItemModuleCreator(ModuleCreatorBase):
+
+    def __init__(self):
+        self.items_module_path_str = '{}/items_non_unique_data.py'.format(ITEM_MODULES_FOLDER_NAME)
+
 
 
 # ===============================================================
@@ -3707,11 +3756,11 @@ if __name__ == '__main__':
 
     testModuleInsertion = False
     if testModuleInsertion is True:
-        ModuleCreator(champion_name='jax').run_champ_module_creation()
+        ChampionModuleCreator(champion_name='jax').run_champ_module_creation()
 
     testItemNames = False
     if testItemNames is True:
-        c = ExploreApiItems().all_items_by_id
+        c = ExploreApiItems()._all_items_by_id
 
     testValidStatNames = False
     if testValidStatNames is True:
@@ -3719,4 +3768,5 @@ if __name__ == '__main__':
 
     testStatNamesValues = True
     if testStatNamesValues is True:
-        print(ItemCreation()._stats_values_dct('sapphire'))
+        for i in ExploreApiItems().used_items_by_name:
+            print(i, ItemCreation()._stats_values_dct(i))
