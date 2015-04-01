@@ -125,34 +125,47 @@ def print_invalid_answer(extra_msg=''):
     print('\nInvalid answer. ' + extra_msg)
 
 
-def _dct_body_to_pretty_formatted_str(given_dct, indent, width):
+def _dct_body_to_pretty_formatted_str(given_dct, extra_whitespaces, width):
     """
     Converts given dct (body) to a pretty formatted string.
     Used for file writing.
+
+    Args:
+        extra_whitespaces: (int) extra leading whitespaces
+        width: 1 or (false value) used for depth 1 dicts
 
     Returns:
         (str)
     """
 
+    whitespaces_str = ' ' * (4+extra_whitespaces)
+
     if width:
-        return '{\n' + pp.pformat(given_dct, indent=indent, width=width)[1:]
+        string = pp.pformat(given_dct, indent=0, width=width)[1:]
     # (else width gets default value)
     else:
-        return '{\n' + pp.pformat(given_dct, indent=indent)[1:]
+        string = pp.pformat(given_dct, indent=0,)[1:]
+
+    new_str = ''
+    for line in string.split('\n'):
+        new_str += whitespaces_str+line + '\n'
+
+    return '{\n' + new_str
 
 
-def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct, indent, width):
+def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct, extra_whitespaces, width):
     """
     Creates pretty formatted full string of a dct to be inserted in a file.
     """
 
-    body = _dct_body_to_pretty_formatted_str(given_dct=obj_body_as_dct, indent=indent, width=width)
+    body = _dct_body_to_pretty_formatted_str(given_dct=obj_body_as_dct, extra_whitespaces=extra_whitespaces,
+                                             width=width)
     name_and_equal_sign = obj_name + ' = '
 
     return name_and_equal_sign + body + '\n\n'
 
 
-def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_or_str, indent, width):
+def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_or_str, extra_whitespaces, width):
     """
     Slices off old object from string, then creates the new string.
     Used for replacing module dicts.
@@ -166,7 +179,7 @@ def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_
         inserted_str = obj_as_dct_or_str + '\n'
     elif type(obj_as_dct_or_str) is dict:
         inserted_str = dct_to_pretty_formatted_str(obj_name=object_name, obj_body_as_dct=obj_as_dct_or_str,
-                                                   indent=indent, width=width)
+                                                   extra_whitespaces=extra_whitespaces, width=width)
     else:
         raise TypeError('Unexpected argument type.')
 
@@ -3513,7 +3526,7 @@ class ItemCreation(AttributesBase):
 class ModuleCreatorBase(object):
 
     @staticmethod
-    def _append_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module, indent, width):
+    def _append_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module, extra_whitespaces, width):
         """
         Appends full object inside targeted_module.
 
@@ -3525,7 +3538,7 @@ class ModuleCreatorBase(object):
 
         if type(new_object_as_dct_or_str) is dict:
             obj_as_str = dct_to_pretty_formatted_str(obj_name=obj_name, obj_body_as_dct=new_object_as_dct_or_str,
-                                                     indent=indent, width=width)
+                                                     extra_whitespaces=extra_whitespaces, width=width)
         else:
             obj_as_str = new_object_as_dct_or_str
 
@@ -3533,7 +3546,7 @@ class ModuleCreatorBase(object):
             r.write(obj_as_str)
 
     @staticmethod
-    def _replace_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module, indent, width):
+    def _replace_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module, extra_whitespaces, width):
         """
         Replaces full object in module.
 
@@ -3547,7 +3560,7 @@ class ModuleCreatorBase(object):
 
         replacement = _file_after_replacing_module_var(file_as_lines_lst=r_as_lst, object_name=obj_name,
                                                        obj_as_dct_or_str=new_object_as_dct_or_str,
-                                                       indent=indent, width=width)
+                                                       extra_whitespaces=extra_whitespaces, width=width)
 
         with open(targeted_module, 'w') as w:
             w.write(replacement)
@@ -3573,7 +3586,7 @@ class ModuleCreatorBase(object):
             return False
 
     def _insert_object_in_module(self, obj_name, new_object_as_dct_or_str, replacement_question_msg, targeted_module,
-                                 indent, width):
+                                 extra_whitespaces, width):
         """
         Inserts object in module after verifying replacement if needed.
         If object doesnt exist, it is appended.
@@ -3590,14 +3603,16 @@ class ModuleCreatorBase(object):
             replacement_question_msg += '\nObject exists. Replace it?'
             if _y_n_question(question_str=replacement_question_msg):
                 self._replace_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=new_object_as_dct_or_str,
-                                            targeted_module=targeted_module, indent=indent, width=width)
+                                            targeted_module=targeted_module, extra_whitespaces=extra_whitespaces,
+                                            width=width)
             else:
                 print('\nReplacement canceled.')
 
         # If object doesn't exist, appends object.
         else:
             self._append_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=new_object_as_dct_or_str,
-                                       targeted_module=targeted_module, indent=indent, width=width)
+                                       targeted_module=targeted_module, extra_whitespaces=extra_whitespaces,
+                                       width=width)
             
 
 class ChampionModuleCreator(ModuleCreatorBase):
@@ -3704,7 +3719,7 @@ class ChampionModuleCreator(ModuleCreatorBase):
                                           new_object_as_dct_or_str=self._champ_obj_as_dct_or_str(obj_name),
                                           replacement_question_msg=replacement_question_msg,
                                           targeted_module=self.champion_module_path_str,
-                                          indent=0, width=None)
+                                          extra_whitespaces=0, width=None)
             # Delay used to ensure file is "refreshed" after being writen on. (might be redundant)
             time.sleep(0.2)
 
@@ -3725,7 +3740,7 @@ class ItemModuleCreator(ModuleCreatorBase):
         print('\nITEM NON UNIQUE DATA INSERTION')
         print('\nInserting all data...')
 
-        for item_name in self.used_items:
+        for item_name in sorted(self.used_items):
             replacement_question_msg = delimiter(20)
             replacement_question_msg += '\nITEM: {}'.format(item_name)
 
@@ -3734,7 +3749,7 @@ class ItemModuleCreator(ModuleCreatorBase):
                                               item_name=item_name).non_unique_stats_values_dct(),
                                           replacement_question_msg=replacement_question_msg,
                                           targeted_module=self.items_non_unique_data_path_str,
-                                          indent=0, width=1)
+                                          extra_whitespaces=0, width=1)
         else:
             print('\nItems inserted.')
         
