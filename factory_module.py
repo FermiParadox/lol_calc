@@ -3428,8 +3428,12 @@ class ItemCreation(object):
         'Spell Vamp': 'spellvamp',
     }
 
-    def __init__(self):
+    def __init__(self, item_name):
         self._validate_stats_names()
+        self.item_name = item_name
+        self.item_simple_stats_dct = {}     # (stats between <stats> and </stats>)
+        self.item_buffs = {}
+        self.item_effects = {}
 
     def _validate_stats_names(self):
         """
@@ -3461,7 +3465,7 @@ class ItemCreation(object):
         except AttributeError:
             return ''
 
-    def _stats_values_dct(self, item_name):
+    def _stats_values_dct(self):
         """
         Returns a dict with stat names as values and stat value as key.
 
@@ -3471,7 +3475,7 @@ class ItemCreation(object):
 
         dct = {}
 
-        description_str = ExploreApiItems().descriptions(item=item_name)[0].lower()
+        description_str = ExploreApiItems().descriptions(item=self.item_name)[0].lower()
         stats_part_str = self._stats_partition_in_description(item_description=description_str)
 
         partitions_lst = re.split(r'<br>', stats_part_str)
@@ -3501,7 +3505,11 @@ class ItemCreation(object):
 
         return dct
 
+    def _create_item_buffs(self):
+        pass
 
+    def _create_item_effects(self):
+        pass
 
 
 
