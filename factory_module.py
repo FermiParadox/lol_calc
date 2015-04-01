@@ -21,7 +21,7 @@ import api_items_database
 # ===============================================================
 # Objects in champion module (exact strings are re.matched inside module)
 CHAMPION_MODULES_FOLDER_NAME = 'champions'
-ITEM_MODULES_FOLDER_NAME = 'items'
+ITEM_MODULES_FOLDER_NAME = 'items_data'
 ABILITIES_ATTRS_DCT_NAME = 'ABILITIES_ATTRIBUTES'
 ABILITIES_EFFECT_DCT_NAME = 'ABILITIES_EFFECTS'
 ABILITIES_CONDITIONS_DCT_NAME = 'ABILITIES_CONDITIONS'
@@ -125,7 +125,7 @@ def print_invalid_answer(extra_msg=''):
     print('\nInvalid answer. ' + extra_msg)
 
 
-def _dct_body_to_pretty_formatted_str(given_dct):
+def _dct_body_to_pretty_formatted_str(given_dct, indent, width):
     """
     Converts given dct (body) to a pretty formatted string.
     Used for file writing.
@@ -134,21 +134,25 @@ def _dct_body_to_pretty_formatted_str(given_dct):
         (str)
     """
 
-    return '{\n' + pp.pformat(given_dct, indent=0)[1:-1] + '}'
+    if width:
+        return '{\n' + pp.pformat(given_dct, indent=indent, width=width)[1:]
+    # (else width gets default value)
+    else:
+        return '{\n' + pp.pformat(given_dct, indent=indent)[1:]
 
 
-def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct):
+def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct, indent, width):
     """
     Creates pretty formatted full string of a dct to be inserted in a file.
     """
 
-    body = _dct_body_to_pretty_formatted_str(given_dct=obj_body_as_dct)
+    body = _dct_body_to_pretty_formatted_str(given_dct=obj_body_as_dct, indent=indent, width=width)
     name_and_equal_sign = obj_name + ' = '
 
-    return name_and_equal_sign + body + '\n'
+    return name_and_equal_sign + body + '\n\n'
 
 
-def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_or_str):
+def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_or_str, indent, width):
     """
     Slices off old object from string, then creates the new string.
     Used for replacing module dicts.
@@ -161,7 +165,8 @@ def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_
         # (newline is required here; already exists when obj as dict)
         inserted_str = obj_as_dct_or_str + '\n'
     elif type(obj_as_dct_or_str) is dict:
-        inserted_str = dct_to_pretty_formatted_str(obj_name=object_name, obj_body_as_dct=obj_as_dct_or_str)
+        inserted_str = dct_to_pretty_formatted_str(obj_name=object_name, obj_body_as_dct=obj_as_dct_or_str,
+                                                   indent=indent, width=width)
     else:
         raise TypeError('Unexpected argument type.')
 
@@ -430,8 +435,8 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, re
         if input_given != '':
             # (if input given is not corresponding to a shortcut num)
             if restrict_choices is True:
-                if (_input_in_len_range(given_str=input_given,
-                                        choices_length=shortcut_len) is False) and (input_given not in _exception_keys().values()):
+                if (_input_in_len_range(given_str=input_given, choices_length=shortcut_len) is False) \
+                        and (input_given not in _exception_keys().values()):
 
                     print_invalid_answer('Choose from the menu.')
                     continue
@@ -926,7 +931,8 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
 
 
 class RequestAllRunesFromAPI(RequestDataFromAPI):
-    RUNES_PAGE_URL = "https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key=" + api_key.KEY
+    RUNES_PAGE_URL = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key="
+                      + api_key.KEY)
 
     @RequestDataFromAPI.request_abortion_handler
     def store_all_runes_from_api(self):
@@ -1490,6 +1496,138 @@ class ExploreApiItems(ExploreBase):
 #       ATTRIBUTE CREATION
 # ===============================================================
 class AttributesBase(object):
+
+    @staticmethod
+    def buff_attributes():
+        return dict(
+            target_type='placeholder',
+            duration='placeholder',
+            max_stacks='placeholder',
+            affected_stats=dict(
+                placeholder_stat_1='placeholder'
+            ),
+            on_hit=dict(
+                apply_buff=['placeholder', ],
+                add_dmg=['placeholder', ],
+                reduce_cd={},
+                remove_buff=['placeholder', ]
+            ),
+            prohibit_cd_start='placeholder',
+            )
+
+    USUAL_BUFF_ATTR_VALUES = dict(
+        target_type=('player', 'enemy'),
+        max_stacks=(1,),
+        duration=(1, 2, 3, 4, 5, 'permanent'),
+        prohibit_cd_start=(None, )
+    )
+
+    @staticmethod
+    def affected_stat_attributes():
+        return dict(
+            bonus_type='placeholder',
+            stat_values='placeholder',
+            stat_mods={})
+
+    @staticmethod
+    def stat_mod_attributes():
+        return dict(
+            placeholder_stat_1='placeholder')
+
+    STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP = {'attack damage': 'ad',
+                                         'ability power': 'ap',
+                                         'attack speed': 'att_speed',
+                                         'movement speed': 'move_speed',
+                                         'armor': 'armor',
+                                         'magic resist': 'mr',
+                                         'critical strike chance': 'crit_chance',
+                                         'armor penetration': 'armor_penetration'}
+
+    NTH_TUPLE = ('second', 'third', 'forth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth')
+
+    def _ask_amount_of_buffs(self, modified_dct, obj_name):
+        """
+        Asks dev for amount of buffs for given ability or item, and creates necessary dicts based on answer.
+
+        Args:
+            obj_name: (str) ability or item name
+
+        Returns:
+            (None)
+        """
+
+        start_msg = '\n'
+        start_msg += delimiter(num_of_lines=10)
+        start_msg += '\nHow many buffs in %s?' % obj_name.upper()
+
+        # Repeat until valid answer is given.
+        while True:
+            num_of_buffs = input(start_msg + '\n')
+
+            _check_loop_exit(key=num_of_buffs)
+
+            try:
+                num_iter = range(int(num_of_buffs))
+
+                for _ in num_iter:
+                    new_buff_name = _new_automatic_attr_dct_name(existing_names=modified_dct, second_synthetic='buff',
+                                                                 first_synthetic=obj_name)
+                    modified_dct.update({new_buff_name: self.buff_attributes()})
+
+                end_msg = '\n%s buffs selected.' % num_of_buffs
+                print(end_msg)
+                break
+
+            except ValueError:
+                print_invalid_answer()
+                pass
+
+    @staticmethod
+    def _change_buff_names(modified_dct):
+        """
+        Asks if buff name change is needed,
+        and if so goes through every buff name.
+
+        Returns:
+            (None)
+        """
+
+        # Does nothing if no buffs exist.
+        if modified_dct:
+
+            msg = delimiter(40)
+            msg += '\nChange buff names?\n'
+
+            while True:
+                change_buffs_answer = input(msg)
+
+                if change_buffs_answer == 'y':
+                    for previous_buff_name in sorted(modified_dct):
+                        new_name_msg = delimiter(10)
+                        new_name_msg += '\nInsert new name for: %s. (press enter to skip)\n' % previous_buff_name
+
+                        new_name = input(new_name_msg)
+
+                        if new_name == '':
+                            print('\nNot changed.')
+                        # If new name is selected, creates new buff with previous value,
+                        # .. then removes previous buff.
+                        else:
+                            modified_dct.update({new_name: modified_dct[previous_buff_name]})
+                            del modified_dct[previous_buff_name]
+                    break
+                elif change_buffs_answer == 'n':
+                    break
+                else:
+                    print_invalid_answer()
+
+    def _ask_amount_of_buffs_and_change_names(self, modified_dct, obj_name):
+        self._ask_amount_of_buffs(modified_dct=modified_dct, obj_name=obj_name)
+        self._change_buff_names(modified_dct=modified_dct)
+
+
+class AbilitiesAttributesBase(AttributesBase):
+
     def __init__(self, ability_name, champion_name):
         self.champion_name = champion_name
         self.ability_name = ability_name
@@ -1505,43 +1643,9 @@ class AttributesBase(object):
         except KeyError:
             self.ability_vars_dct = []
 
-    @staticmethod
-    def check_all_same(lst):
-        """
-        Iterates through a list and checks if all its elements are the same.
+    def _champion_and_ability_msg(self):
 
-        Returns:
-            (bool)
-        """
-
-        all_same = True
-
-        for item_num in range(len(lst) - 1):
-
-            if lst[item_num] != lst[item_num + 1]:
-                all_same = False
-                break
-
-        return all_same
-
-    def _obsolete_return_tpl_or_element(self, lst):
-        """
-        OBSOLETE: Efficiency should be minimal if using this method to create data,
-        since each user would call the same dict in reality.
-
-        Returns whole list if its elements are the same,
-        otherwise returns the first element.
-
-        Args:
-            tags: (str)
-        Returns:
-            (lst)
-            (float) or (int) or (str)
-        """
-        if self.check_all_same(lst=lst):
-            return lst[0]
-        else:
-            return lst
+        return '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, self.ability_name.upper())
 
     def effect_values_by_abbr(self, abbr):
         """
@@ -1562,17 +1666,14 @@ class AttributesBase(object):
 
         return mod_val
 
-    def _champion_and_ability_msg(self):
 
-        return '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, self.ability_name.upper())
-
-
-class GeneralAbilityAttributes(AttributesBase):
+# ---------------------------------------------------------------
+class GeneralAbilityAttributes(AbilitiesAttributesBase):
 
     def __init__(self, ability_name, champion_name):
-        AttributesBase.__init__(self,
-                                ability_name=ability_name,
-                                champion_name=champion_name)
+        AbilitiesAttributesBase.__init__(self,
+                                         ability_name=ability_name,
+                                         champion_name=champion_name)
 
         self.general_attr_dct = self.general_attributes()
 
@@ -1821,7 +1922,7 @@ class GeneralAbilityAttributes(AttributesBase):
         pp.pprint(self.general_attr_dct)
 
 
-class DmgAbilityAttributes(AttributesBase):
+class DmgAbilityAttributes(AbilitiesAttributesBase):
     """
     Each instance of this class is used for creation of all dmgs of a single ability.
 
@@ -1831,9 +1932,9 @@ class DmgAbilityAttributes(AttributesBase):
     """
 
     def __init__(self, ability_name, champion_name):
-        AttributesBase.__init__(self,
-                                ability_name=ability_name,
-                                champion_name=champion_name)
+        AbilitiesAttributesBase.__init__(self,
+                                         ability_name=ability_name,
+                                         champion_name=champion_name)
 
         self.dmgs_dct = {}
 
@@ -2294,7 +2395,7 @@ class DmgAbilityAttributes(AttributesBase):
         pp.pprint(self.dmgs_dct)
 
 
-class BuffAbilityAttributes(AttributesBase):
+class BuffAbilityAttributes(AbilitiesAttributesBase):
     """
     Each instance of this class is used for a single ability.
 
@@ -2302,59 +2403,11 @@ class BuffAbilityAttributes(AttributesBase):
     """
 
     def __init__(self, ability_name, champion_name):
-        AttributesBase.__init__(self,
-                                ability_name=ability_name,
-                                champion_name=champion_name)
+        AbilitiesAttributesBase.__init__(self,
+                                         ability_name=ability_name,
+                                         champion_name=champion_name)
 
         self.buffs_dct = {}
-
-    @staticmethod
-    def buff_attributes():
-        return dict(
-            target_type='placeholder',
-            duration='placeholder',
-            max_stacks='placeholder',
-            affected_stats=dict(
-                placeholder_stat_1='placeholder'
-            ),
-            on_hit=dict(
-                apply_buff=['placeholder', ],
-                add_dmg=['placeholder', ],
-                reduce_cd={},
-                remove_buff=['placeholder', ]
-            ),
-            prohibit_cd_start='placeholder',
-            )
-
-    @staticmethod
-    def affected_stat_attributes():
-        return dict(
-            bonus_type='placeholder',
-            stat_values='placeholder',
-            stat_mods={})
-
-    @staticmethod
-    def stat_mod_attributes():
-        return dict(
-            placeholder_stat_1='placeholder')
-
-    STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP = {'attack damage': 'ad',
-                                         'ability power': 'ap',
-                                         'attack speed': 'att_speed',
-                                         'movement speed': 'move_speed',
-                                         'armor': 'armor',
-                                         'magic resist': 'mr',
-                                         'critical strike chance': 'crit_chance',
-                                         'armor penetration': 'armor_penetration'}
-
-    NTH_TUPLE = ('second', 'third', 'forth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth')
-
-    USUAL_BUFF_ATTR_VALUES = dict(
-        target_type=('player', 'enemy'),
-        max_stacks=(1,),
-        duration=(1, 2, 3, 4, 5, 'permanent'),
-        prohibit_cd_start=(None, )
-    )
 
     def _stat_names_in_tooltip(self):
         """
@@ -2371,78 +2424,6 @@ class BuffAbilityAttributes(AttributesBase):
                 stats_lst.append(stat_name)
 
         return stats_lst
-
-    def ask_amount_of_buffs(self):
-        """
-        Asks dev for amount of buffs for given ability.
-
-        Returns:
-            (None)
-        """
-
-        start_msg = '\n'
-        start_msg += delimiter(num_of_lines=10)
-        start_msg += '\nHow many buffs in ability %s?' % self.ability_name
-
-        # Repeat until valid answer is given.
-        while True:
-            num_of_buffs = input(start_msg + '\n')
-
-            _check_loop_exit(key=num_of_buffs)
-
-            try:
-                num_iter = range(int(num_of_buffs))
-
-                for _ in num_iter:
-                    new_buff_name = _new_automatic_attr_dct_name(existing_names=self.buffs_dct, second_synthetic='buff',
-                                                                 first_synthetic=self.ability_name)
-                    self.buffs_dct.update({new_buff_name: self.buff_attributes()})
-
-                end_msg = '\n%s buffs selected.' % num_of_buffs
-                print(end_msg)
-                break
-
-            except ValueError:
-                print_invalid_answer()
-                pass
-
-    def change_buff_names(self):
-        """
-        Asks if buff name change is needed,
-        and if so goes through every buff name.
-
-        Returns:
-            (None)
-        """
-
-        # Does nothing if no buffs exist.
-        if self.buffs_dct:
-
-            msg = delimiter(40)
-            msg += '\nChange buff names?\n'
-
-            while True:
-                change_buffs_answer = input(msg)
-
-                if change_buffs_answer == 'y':
-                    for previous_buff_name in sorted(self.buffs_dct):
-                        new_name_msg = delimiter(10)
-                        new_name_msg += '\nInsert new name for: %s. (press enter to skip)\n' % previous_buff_name
-
-                        new_name = input(new_name_msg)
-
-                        if new_name == '':
-                            print('\nNot changed.')
-                        # If new name is selected, creates new buff with previous value,
-                        # .. then removes previous buff.
-                        else:
-                            self.buffs_dct.update({new_name: self.buffs_dct[previous_buff_name]})
-                            del self.buffs_dct[previous_buff_name]
-                    break
-                elif change_buffs_answer == 'n':
-                    break
-                else:
-                    print_invalid_answer()
 
     def suggest_stat_mods(self, buff_name, affected_stat):
         """
@@ -2746,8 +2727,7 @@ class BuffAbilityAttributes(AttributesBase):
     @inner_loop_exit_handler
     def _run_buff_attr_creation_without_result_msg(self):
 
-        self.ask_amount_of_buffs()
-        self.change_buff_names()
+        self._ask_amount_of_buffs_and_change_names(modified_dct=self.buffs_dct, obj_name=self.ability_name)
         print(delimiter(40))
 
         for buff_name in sorted(self.buffs_dct):
@@ -2776,6 +2756,11 @@ class BuffAbilityAttributes(AttributesBase):
 
 
 class AbilitiesAttributes(object):
+
+    """
+    'ABILITIES_ATTRIBUTES' is the name of the dict containing all ability related general attributes, buffs and dmgs.
+    """
+
     def __init__(self, champion_name):
         self.champion_name = champion_name
         self.initial_abilities_attrs = {shortcut: self.single_spell_attrs() for shortcut in ABILITY_SHORTCUTS}
@@ -2961,7 +2946,7 @@ class AbilitiesAttributes(object):
 
     def create_innate_attrs(self):
         # TODO
-        None
+        pass
 
 
 class AbilitiesEffects(object):
@@ -3333,7 +3318,9 @@ class Conditionals(object):
                 _suggest_lst_of_attr_values(suggested_values_lst=ALL_POSSIBLE_ABILITIES_SHORTCUTS,
                                             modified_lst=self.conditions[con_name]['effects'][eff_name]['names_lst'])
                 # ( {'q': (1,2..), }
-                cd_mod_suggested_dct = {i: (1, 2, 3) for i in self.conditions[con_name]['effects'][eff_name]['names_lst']}
+                cd_mod_suggested_dct = {i: (1, 2, 3) for i in
+                                        self.conditions[con_name]['effects'][eff_name]['names_lst']}
+
                 _suggest_attr_values(suggested_values_dct=cd_mod_suggested_dct,
                                      modified_dct=self.conditions[con_name]['effects'][eff_name]['names_dct'])
                 # (deletes list since it was used only temporarily to create the cd modification dct)
@@ -3407,7 +3394,12 @@ class Conditionals(object):
         pp.pprint(self.conditions)
 
 
-class ItemCreation(object):
+# ---------------------------------------------------------------
+class ItemCreation(AttributesBase):
+
+    """
+    Responsible for creating a SINGLE item's attributes: unique and stacking item stats, item buffs, item effects.
+    """
 
     ITEM_STAT_NAMES_MAP = {
         'Ability Power': 'ap',
@@ -3450,6 +3442,9 @@ class ItemCreation(object):
         if diff:
             raise palette.UnexpectedValueError(diff)
 
+    def _pprint_item_description(self):
+        pp.pprint(ExploreApiItems().descriptions(item=self.item_name, print_mode=True))
+
     @staticmethod
     def _stats_partition_in_description(item_description):
         """
@@ -3465,7 +3460,7 @@ class ItemCreation(object):
         except AttributeError:
             return ''
 
-    def _stats_values_dct(self):
+    def non_unique_stats_values_dct(self):
         """
         Returns a dict with stat names as values and stat value as key.
 
@@ -3485,9 +3480,9 @@ class ItemCreation(object):
             # STAT NAME
             # (reverse used to ensure 'ap per lvl' is matched before 'ap',
             # otherwise it will mismatch 'ap')
-            for i in reversed(list(self.ITEM_STAT_NAMES_MAP)):
-                if i.lower() in str_part:
-                    stat_name = self.ITEM_STAT_NAMES_MAP[i]
+            for k in reversed(list(self.ITEM_STAT_NAMES_MAP)):
+                if k.lower() in str_part:
+                    stat_name = self.ITEM_STAT_NAMES_MAP[k]
 
                     # STAT VALUE
                     # Searches for int or float.
@@ -3512,16 +3507,13 @@ class ItemCreation(object):
         pass
 
 
-
-
-
 # ===============================================================
 #       MODULE CREATION
 # ===============================================================
 class ModuleCreatorBase(object):
 
     @staticmethod
-    def _append_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module):
+    def _append_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module, indent, width):
         """
         Appends full object inside targeted_module.
 
@@ -3532,7 +3524,8 @@ class ModuleCreatorBase(object):
         """
 
         if type(new_object_as_dct_or_str) is dict:
-            obj_as_str = dct_to_pretty_formatted_str(obj_name=obj_name, obj_body_as_dct=new_object_as_dct_or_str)
+            obj_as_str = dct_to_pretty_formatted_str(obj_name=obj_name, obj_body_as_dct=new_object_as_dct_or_str,
+                                                     indent=indent, width=width)
         else:
             obj_as_str = new_object_as_dct_or_str
 
@@ -3540,7 +3533,7 @@ class ModuleCreatorBase(object):
             r.write(obj_as_str)
 
     @staticmethod
-    def _replace_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module):
+    def _replace_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module, indent, width):
         """
         Replaces full object in module.
 
@@ -3553,7 +3546,8 @@ class ModuleCreatorBase(object):
             r_as_lst = r.readlines()
 
         replacement = _file_after_replacing_module_var(file_as_lines_lst=r_as_lst, object_name=obj_name,
-                                                       obj_as_dct_or_str=new_object_as_dct_or_str)
+                                                       obj_as_dct_or_str=new_object_as_dct_or_str,
+                                                       indent=indent, width=width)
 
         with open(targeted_module, 'w') as w:
             w.write(replacement)
@@ -3578,9 +3572,11 @@ class ModuleCreatorBase(object):
         else:
             return False
 
-    def _insert_object_in_champ_module(self, obj_name, new_object_as_dct_or_str, replace_question_msg, targeted_module):
+    def _insert_object_in_module(self, obj_name, new_object_as_dct_or_str, replacement_question_msg, targeted_module,
+                                 indent, width):
         """
         Inserts object in module after verifying replacement if needed.
+        If object doesnt exist, it is appended.
 
         WARNING: When used for class insertion, assumes no empty lines between class start and __init__ end.
 
@@ -3590,17 +3586,18 @@ class ModuleCreatorBase(object):
 
         # If object exists, replaces it.
         if self._obj_existence(obj_name=obj_name, targeted_module=targeted_module):
-            
-            if _y_n_question(question_str=replace_question_msg):
+
+            replacement_question_msg += '\nObject exists. Replace it?'
+            if _y_n_question(question_str=replacement_question_msg):
                 self._replace_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=new_object_as_dct_or_str,
-                                            targeted_module=targeted_module)
+                                            targeted_module=targeted_module, indent=indent, width=width)
             else:
                 print('\nReplacement canceled.')
 
         # If object doesn't exist, appends object.
         else:
             self._append_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=new_object_as_dct_or_str,
-                                       targeted_module=targeted_module)
+                                       targeted_module=targeted_module, indent=indent, width=width)
             
 
 class ChampionModuleCreator(ModuleCreatorBase):
@@ -3701,13 +3698,13 @@ class ChampionModuleCreator(ModuleCreatorBase):
         """
 
         for obj_name in CHAMPION_MODULE_OBJECT_NAMES:
-            replace_question_msg = '\nCHAMPION: {}, OBJECT NAME: {}'.format(self.champion_name, obj_name)
-            replace_question_msg += '\nObject exists. Replace it?'
+            replacement_question_msg = '\nCHAMPION: {}, OBJECT NAME: {}'.format(self.champion_name, obj_name)
             
-            self._insert_object_in_champ_module(obj_name=obj_name, 
-                                                new_object_as_dct_or_str=self._champ_obj_as_dct_or_str(obj_name),
-                                                replace_question_msg=replace_question_msg,
-                                                targeted_module=self.champion_module_path_str)
+            self._insert_object_in_module(obj_name=obj_name,
+                                          new_object_as_dct_or_str=self._champ_obj_as_dct_or_str(obj_name),
+                                          replacement_question_msg=replacement_question_msg,
+                                          targeted_module=self.champion_module_path_str,
+                                          indent=0, width=None)
             # Delay used to ensure file is "refreshed" after being writen on. (might be redundant)
             time.sleep(0.2)
 
@@ -3715,9 +3712,32 @@ class ChampionModuleCreator(ModuleCreatorBase):
 class ItemModuleCreator(ModuleCreatorBase):
 
     def __init__(self):
-        self.items_module_path_str = '{}/items_non_unique_data.py'.format(ITEM_MODULES_FOLDER_NAME)
+        self.items_non_unique_data_path_str = '{}/items_non_unique_data.py'.format(ITEM_MODULES_FOLDER_NAME)
+        self.used_items = ExploreApiItems().used_items_by_name
 
+    def insert_item_non_unique_data(self):
+        """
+        Stores item stats that can stack normally.
 
+        :returns: (None)
+        """
+        print(fat_delimiter(80))
+        print('\nITEM NON UNIQUE DATA INSERTION')
+        print('\nInserting all data...')
+
+        for item_name in self.used_items:
+            replacement_question_msg = delimiter(20)
+            replacement_question_msg += '\nITEM: {}'.format(item_name)
+
+            self._insert_object_in_module(obj_name=item_name.upper().replace('.', '').replace('__', '_'),
+                                          new_object_as_dct_or_str=ItemCreation(
+                                              item_name=item_name).non_unique_stats_values_dct(),
+                                          replacement_question_msg=replacement_question_msg,
+                                          targeted_module=self.items_non_unique_data_path_str,
+                                          indent=0, width=1)
+        else:
+            print('\nItems inserted.')
+        
 
 # ===============================================================
 # ===============================================================
@@ -3770,11 +3790,11 @@ if __name__ == '__main__':
     if testItemNames is True:
         c = ExploreApiItems()._all_items_by_id
 
-    testValidStatNames = False
-    if testValidStatNames is True:
-        inst = ItemCreation()
-
-    testStatNamesValues = True
+    testStatNamesValues = False
     if testStatNamesValues is True:
-        for i in ExploreApiItems().used_items_by_name:
-            print(i, ItemCreation()._stats_values_dct(i))
+        for itemName in ExploreApiItems().used_items_by_name:
+            print(itemName, ItemCreation(itemName).non_unique_stats_values_dct())
+
+    testInsertNonUniqueItemStats = True
+    if testInsertNonUniqueItemStats is True:
+        ItemModuleCreator().insert_item_non_unique_data()
