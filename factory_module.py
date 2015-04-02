@@ -1044,7 +1044,7 @@ class ExploreBase(object):
     @staticmethod
     def _append_all_or_matching_str(examined_str, modified_lst, raw_str=None):
         """
-        Modifies a list by inserting a string that match given pattern.
+        Modifies a list by inserting a string only if it matches given pattern.
         If no required pattern is given, simply appends string to list.
 
         Args:
@@ -1401,6 +1401,15 @@ class ExploreApiItems(ExploreBase):
 
         return dct
 
+    def total_used_items(self):
+        """
+        Number of items used.
+
+        Returns:
+            (int)
+        """
+        return len(self.used_items_by_name)
+
     def item_dct(self, given_name, print_mode=False):
         """
         Checks for an exact match of given name,
@@ -1422,7 +1431,6 @@ class ExploreApiItems(ExploreBase):
         or prints it.
 
         If raw_str is provided, searches for its pattern.
-
         WARNING: VERBOSE flag chosen.
 
         Args:
@@ -1503,6 +1511,30 @@ class ExploreApiItems(ExploreBase):
                 print("\n'%s' has no element '%s'" % (item_name, 'tags'))
 
         return _return_or_pprint_complex_obj(print_mode=print_mode, dct=item_occurrence_dct)
+
+    def _item_uniques_passive_and_active_names(self, item_name):
+        """
+        Searches the item description and finds possible unique names.
+
+        Empty string is caused by uniques having no name in the API (or ingame).
+
+        :param item_name: (str)
+        :returns: (list)
+        """
+
+        item_description = self.descriptions(item=item_name)[0]
+
+        matches_lst = re.findall(r'unique passive(?: - )?(.*?):</unique>', item_description, re.I)
+        return matches_lst
+
+    def all_items_uniques_and_passives_names(self, print_mode=False):
+
+        counter = collections.Counter()
+
+        for item_name in self.used_items_by_name:
+            counter += collections.Counter(self._item_uniques_passive_and_active_names(item_name=item_name))
+
+        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=counter)
 
 
 # ===============================================================
@@ -1637,6 +1669,82 @@ class AttributesBase(object):
     def _ask_amount_of_buffs_and_change_names(self, modified_dct, obj_name):
         self._ask_amount_of_buffs(modified_dct=modified_dct, obj_name=obj_name)
         self._change_buff_names(modified_dct=modified_dct)
+
+
+class DmgsBase(object):
+
+    # Category names and required extra variables.
+    AVAILABLE_DMG_CATEGORIES = dict(
+        standard_dmg=None,
+        chain_decay=dict(
+            decay_coef='placeholder',
+            min_percent_dmg='placeholder',
+        ),
+        aa_dmg=None)
+
+    @staticmethod
+    def dmg_attributes():
+        return dict(
+            target_type='placeholder',
+            dmg_category='placeholder',
+            dmg_type='placeholder',
+            dmg_values='placeholder',
+            dmg_source='placeholder',
+            # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
+            mods='placeholder',
+            # (None or lifesteal or spellvamp)
+            life_conversion_type='placeholder',
+            radius='placeholder',
+            dot='placeholder',
+            max_targets='placeholder',
+            delay='placeholder',
+            )
+
+    def usual_values_dmg_attr(self):
+
+        return dict(
+            target_type=('enemy', 'player'),
+            # TODO insert more categories in class and then here.
+            dmg_category=sorted(self.AVAILABLE_DMG_CATEGORIES),
+            dmg_source=ALL_POSSIBLE_ABILITIES_SHORTCUTS,
+            life_conversion_type=('spellvamp', None, 'lifesteal'),
+            radius=(None, ),
+            dot=(False, True),
+            max_targets=(1, 2, 3, 4, 5, 'infinite'),
+            usual_max_targets=(1, 2, 3, 4, 5),
+            delay=(None,)
+            )
+
+    @staticmethod
+    def mod_stat_name_map():
+        return dict(attackdamage='ad',
+                    bonusattackdamage='bonus_ad',
+                    spelldamage='ap',
+                    armor='armor',
+                    bonusarmor='bonus_armor',
+                    bonushealth='bonus_hp',
+                    bonusspellblock='bonus_ap',
+                    health='hp',
+                    mana='mp', )
+
+    @staticmethod
+    def single_dmg_dct_template_in_factory():
+        return dict(
+            dmg_type='placeholder',
+            abbr_in_effects='placeholder',
+            mod_1='placeholder',
+            )
+
+    @staticmethod
+    def single_mod_dct_template_in_factory():
+        return dict(
+            abbr_in_effects='placeholder',
+            )
+
+
+
+
+
 
 
 class AbilitiesAttributesBase(AttributesBase):
@@ -1935,7 +2043,7 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
         pp.pprint(self.general_attr_dct)
 
 
-class DmgAbilityAttributes(AbilitiesAttributesBase):
+class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
     """
     Each instance of this class is used for creation of all dmgs of a single ability.
 
@@ -1950,75 +2058,6 @@ class DmgAbilityAttributes(AbilitiesAttributesBase):
                                          champion_name=champion_name)
 
         self.dmgs_dct = {}
-
-    # Category names and required extra variables.
-    AVAILABLE_DMG_CATEGORIES = dict(
-        standard_dmg=None,
-        chain_decay=dict(
-            decay_coef='placeholder',
-            min_percent_dmg='placeholder',
-        ),
-        aa_dmg=None)
-
-    @staticmethod
-    def dmg_attributes():
-        return dict(
-            target_type='placeholder',
-            dmg_category='placeholder',
-            dmg_type='placeholder',
-            dmg_values='placeholder',
-            dmg_source='placeholder',
-            # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
-            mods='placeholder',
-            # (None or lifesteal or spellvamp)
-            life_conversion_type='placeholder',
-            radius='placeholder',
-            dot='placeholder',
-            max_targets='placeholder',
-            delay='placeholder',
-            )
-
-    def usual_values_dmg_attr(self):
-
-        return dict(
-            target_type=('enemy', 'player'),
-            # TODO insert more categories in class and then here.
-            dmg_category=sorted(self.AVAILABLE_DMG_CATEGORIES),
-            dmg_source=ALL_POSSIBLE_ABILITIES_SHORTCUTS,
-            life_conversion_type=('spellvamp', None, 'lifesteal'),
-            radius=(None, ),
-            dot=(False, True),
-            max_targets=(1, 2, 3, 4, 5, 'infinite'),
-            usual_max_targets=(1, 2, 3, 4, 5),
-            delay=(None,)
-            )
-
-    @staticmethod
-    def mod_stat_name_map():
-        return dict(attackdamage='ad',
-                    bonusattackdamage='bonus_ad',
-                    spelldamage='ap',
-                    armor='armor',
-                    bonusarmor='bonus_armor',
-                    bonushealth='bonus_hp',
-                    bonusspellblock='bonus_ap',
-                    health='hp',
-                    mana='mp', )
-
-    @staticmethod
-    def single_dmg_dct_template_in_factory():
-        return dict(
-            dmg_type='placeholder',
-            abbr_in_effects='placeholder',
-            mod_1='placeholder',
-
-            )
-
-    @staticmethod
-    def single_mod_dct_template_in_factory():
-        return dict(
-            abbr_in_effects='placeholder',
-            )
 
     def raw_dmg_strings(self):
         """
@@ -3408,7 +3447,7 @@ class Conditionals(object):
 
 
 # ---------------------------------------------------------------
-class ItemCreation(AttributesBase):
+class ItemAttrCreation(AttributesBase):
 
     """
     Responsible for creating a SINGLE item's attributes: unique and stacking item stats, item buffs, item effects.
@@ -3440,6 +3479,9 @@ class ItemCreation(AttributesBase):
         self.item_buffs = {}
         self.item_effects = {}
 
+    def _item_description_str(self):
+        return ExploreApiItems().descriptions(item=self.item_name)[0].lower()
+
     def _validate_stats_names(self):
         """
         Ensures all stat names in this class are exactly the same as the main program's stat names.
@@ -3459,7 +3501,7 @@ class ItemCreation(AttributesBase):
         pp.pprint(ExploreApiItems().descriptions(item=self.item_name, print_mode=True))
 
     @staticmethod
-    def _stats_partition_in_description(item_description):
+    def _content_between_tags_in_description(item_description, tag_str):
         """
         Cuts off and returns stats string in an item description by the xml tags (<stats> </stats>).
 
@@ -3468,7 +3510,7 @@ class ItemCreation(AttributesBase):
         """
 
         try:
-            return re.search(r'<stats>(.+)</stats>', item_description).group()
+            return re.search(r'<{tag_str}>(.+)</{tag_str}>'.format(tag_str=tag_str), item_description).group()
 
         except AttributeError:
             return ''
@@ -3483,8 +3525,8 @@ class ItemCreation(AttributesBase):
 
         dct = {}
 
-        description_str = ExploreApiItems().descriptions(item=self.item_name)[0].lower()
-        stats_part_str = self._stats_partition_in_description(item_description=description_str)
+        stats_part_str = self._content_between_tags_in_description(item_description=self._item_description_str(),
+                                                                   tag_str='stats')
 
         partitions_lst = re.split(r'<br>', stats_part_str)
 
@@ -3513,11 +3555,25 @@ class ItemCreation(AttributesBase):
 
         return dct
 
-    def _create_item_buffs(self):
-        pass
-
     def _create_item_effects(self):
         pass
+
+
+class ItemDmgsCreation(ItemAttrCreation, DmgsBase):
+    pass
+
+
+class ItemBuffsCreation():
+
+    pass
+
+class ItemEffectsCreation():
+    pass
+
+
+class ItemConditionalsCreation():
+    pass
+
 
 
 # ===============================================================
@@ -3740,18 +3796,24 @@ class ItemModuleCreator(ModuleCreatorBase):
         print('\nITEM NON UNIQUE DATA INSERTION')
         print('\nInserting all data...')
 
+        all_items_dct = {}
         for item_name in sorted(self.used_items):
-            replacement_question_msg = delimiter(20)
-            replacement_question_msg += '\nITEM: {}'.format(item_name)
+            refined_item_name = item_name.upper().replace('.', '').replace('__', '_')
 
-            self._insert_object_in_module(obj_name=item_name.upper().replace('.', '').replace('__', '_'),
-                                          new_object_as_dct_or_str=ItemCreation(
-                                              item_name=item_name).non_unique_stats_values_dct(),
-                                          replacement_question_msg=replacement_question_msg,
-                                          targeted_module=self.items_non_unique_data_path_str,
-                                          extra_whitespaces=0, width=1)
-        else:
-            print('\nItems inserted.')
+            item_dct = ItemAttrCreation(item_name=item_name).non_unique_stats_values_dct()
+
+            all_items_dct.update({refined_item_name: item_dct})
+
+        replacement_question_msg = delimiter(20)
+        replacement_question_msg += '\nModule contains data.'
+
+        self._insert_object_in_module(obj_name='ITEMS_NON_UNIQUE_STATS_DCT',
+                                      new_object_as_dct_or_str=all_items_dct,
+                                      replacement_question_msg=replacement_question_msg,
+                                      targeted_module=self.items_non_unique_data_path_str,
+                                      extra_whitespaces=0, width=1)
+
+        print('\nItems inserted.')
         
 
 # ===============================================================
@@ -3808,8 +3870,8 @@ if __name__ == '__main__':
     testStatNamesValues = False
     if testStatNamesValues is True:
         for itemName in ExploreApiItems().used_items_by_name:
-            print(itemName, ItemCreation(itemName).non_unique_stats_values_dct())
+            print(itemName, ItemAttrCreation(itemName).non_unique_stats_values_dct())
 
-    testInsertNonUniqueItemStats = True
-    if testInsertNonUniqueItemStats is True:
-        ItemModuleCreator().insert_item_non_unique_data()
+    testitems = True
+    if testitems is True:
+        a = ExploreApiItems().all_items_uniques_and_passives_names(True)

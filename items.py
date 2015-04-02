@@ -1,6 +1,7 @@
 import dmgs_buffs_categories
 import palette
 import copy
+import items_data.items_non_unique_data
 
 
 class ItemsBase(dmgs_buffs_categories.DmgCategories):
