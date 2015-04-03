@@ -125,7 +125,7 @@ def print_invalid_answer(extra_msg=''):
     print('\nInvalid answer. ' + extra_msg)
 
 
-def _dct_body_to_pretty_formatted_str(given_dct, extra_whitespaces, width):
+def _dct_body_to_pretty_formatted_str(given_dct, width):
     """
     Converts given dct (body) to a pretty formatted string.
     Used for file writing.
@@ -138,34 +138,35 @@ def _dct_body_to_pretty_formatted_str(given_dct, extra_whitespaces, width):
         (str)
     """
 
-    whitespaces_str = ' ' * (4+extra_whitespaces)
-
     if width:
-        string = pp.pformat(given_dct, indent=0, width=width)[1:]
+        string = pp.pformat(given_dct, width=width)[1:]
     # (else width gets default value)
     else:
-        string = pp.pformat(given_dct, indent=0,)[1:]
+        string = pp.pformat(given_dct)[1:]
 
     new_str = ''
-    for line in string.split('\n'):
-        new_str += whitespaces_str+line + '\n'
+    for num, line in enumerate(string.split('\n')):
+        if num == 0:
+            # (pprint module always inserts one less whitespace for first line)
+            new_str += ' '*5 + line + '\n'
+        else:
+            new_str += ' '*4 + line + '\n'
 
     return '{\n' + new_str
 
 
-def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct, extra_whitespaces, width):
+def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct, width):
     """
     Creates pretty formatted full string of a dct to be inserted in a file.
     """
 
-    body = _dct_body_to_pretty_formatted_str(given_dct=obj_body_as_dct, extra_whitespaces=extra_whitespaces,
-                                             width=width)
+    body = _dct_body_to_pretty_formatted_str(given_dct=obj_body_as_dct, width=width)
     name_and_equal_sign = obj_name + ' = '
 
     return name_and_equal_sign + body + '\n\n'
 
 
-def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_or_str, extra_whitespaces, width):
+def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_or_str, width):
     """
     Slices off old object from string, then creates the new string.
     Used for replacing module dicts.
@@ -178,8 +179,7 @@ def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_
         # (newline is required here; already exists when obj as dict)
         inserted_str = obj_as_dct_or_str + '\n'
     elif type(obj_as_dct_or_str) is dict:
-        inserted_str = dct_to_pretty_formatted_str(obj_name=object_name, obj_body_as_dct=obj_as_dct_or_str,
-                                                   extra_whitespaces=extra_whitespaces, width=width)
+        inserted_str = dct_to_pretty_formatted_str(obj_name=object_name, obj_body_as_dct=obj_as_dct_or_str, width=width)
     else:
         raise TypeError('Unexpected argument type.')
 
@@ -1333,6 +1333,7 @@ class ExploreApiAbilities(ExploreBase):
 
 
 class ExploreApiItems(ExploreBase):
+
     def __init__(self):
         self.item_related_api_data = api_items_database.ALL_ITEMS
         self._all_items_by_id = self.item_related_api_data['data']
@@ -1451,7 +1452,7 @@ class ExploreApiItems(ExploreBase):
 
         descriptions_lst = []
 
-        for item_name in item_lst:
+        for item_name in sorted(item_lst):
 
             try:
                 self._append_all_or_matching_str(examined_str=self.used_items_by_name[item_name][element_name],
@@ -1463,16 +1464,56 @@ class ExploreApiItems(ExploreBase):
         # Checks if print mode is selected.
         return _return_or_pprint_lst(print_mode=print_mode, lst=descriptions_lst)
 
-    def descriptions(self, item=None, raw_str=None, print_mode=False):
+    def unfiltered_descriptions(self, item=None, raw_str=None, print_mode=False):
         """
-        Returns "descriptions" for given item (or for all items),
-        or prints it.
+        Filters and then returns or prints "description" for given item (or for all items).
 
         Note: Check parent method for more details.
         """
 
         return self._item_elements(element_name='description', item=item,
                                    raw_str=raw_str, print_mode=print_mode)
+
+    def item_description_xml_tag_names(self):
+        """
+        Finds existing xml tag names in item description.
+
+        :return: (set)
+        """
+        names = set()
+
+        for item_name in self.used_items_by_name:
+            item_description = self.unfiltered_descriptions(item=item_name)[0].lower()
+            matches_lst = re.findall(r'<[a-z]+>', item_description)
+
+            names |= set(matches_lst)
+
+        return names
+
+    def descriptions(self, item=None, raw_str=None, print_mode=False):
+        """
+        Filters and then returns or prints "description" for given item (or for all items).
+
+        Note: Check parent method for more details.
+        """
+
+        raw_lst = self.unfiltered_descriptions(item=item, raw_str=raw_str, print_mode=False)
+
+        lst_with_filtered_strings = []
+        for unfiltered_str in raw_lst:
+            # FILTERS OUT:
+            # <i> content </i>
+            filtered_str = re.sub(r'<i>.+?</i>', '', unfiltered_str)
+            # empty tags
+            for xml_tag in self.item_description_xml_tag_names():
+                filtered_str = re.sub(r'<{xml_tag}></{xml_tag}>'.format(xml_tag=xml_tag), '', filtered_str)
+
+            # <font color=.... > .. </font>
+            filtered_str = re.sub(r'<font.+?</font>', '', filtered_str)
+
+            lst_with_filtered_strings.append(filtered_str)
+
+        return _return_or_pprint_lst(lst=lst_with_filtered_strings, print_mode=print_mode)
 
     def stat_names_counter(self, print_mode=False):
         """
@@ -1512,7 +1553,7 @@ class ExploreApiItems(ExploreBase):
 
         return _return_or_pprint_complex_obj(print_mode=print_mode, dct=item_occurrence_dct)
 
-    def _item_uniques_passive_and_active_names(self, item_name):
+    def item_uniques_passives_names(self, item_name):
         """
         Searches the item description and finds possible unique names.
 
@@ -1527,12 +1568,12 @@ class ExploreApiItems(ExploreBase):
         matches_lst = re.findall(r'unique passive(?: - )?(.*?):</unique>', item_description, re.I)
         return matches_lst
 
-    def all_items_uniques_and_passives_names(self, print_mode=False):
+    def all_items_uniques_passives_names(self, print_mode=False):
 
         counter = collections.Counter()
 
         for item_name in self.used_items_by_name:
-            counter += collections.Counter(self._item_uniques_passive_and_active_names(item_name=item_name))
+            counter += collections.Counter(self.item_uniques_passives_names(item_name=item_name))
 
         return _return_or_pprint_complex_obj(print_mode=print_mode, dct=counter)
 
@@ -1540,7 +1581,7 @@ class ExploreApiItems(ExploreBase):
 # ===============================================================
 #       ATTRIBUTE CREATION
 # ===============================================================
-class AttributesBase(object):
+class BuffsBase(object):
 
     @staticmethod
     def buff_attributes():
@@ -1671,6 +1712,43 @@ class AttributesBase(object):
         self._change_buff_names(modified_dct=modified_dct)
 
 
+class GenAttrsBase(object):
+    COST_CATEGORIES = ('normal', 'per_hit', 'per_second', 'per_hit_or_single_tar_spell')
+
+    USUAL_VALUES_GEN_ATTR = dict(
+        cast_time=(0.25, 0.5, 0),
+        travel_time=(0, 0.25, 0.5),
+        move_while_casting=(False, True),
+        dashed_distance=(None,),
+        channel_time=(None,),
+        resets_aa=(False, True),
+        toggled=(False, True),
+        )
+
+    @staticmethod
+    def general_attributes():
+        return dict(
+            cast_time='placeholder',
+            range='placeholder',
+            travel_time='placeholder',
+            base_cd='placeholder',
+            cost=[
+                # Main type auto inserted. Secondary manually.
+                dict(
+                    resource_type='placeholder',
+                    values='values_tpl_placeholder',
+                    cost_category='placeholder'
+                ), ],
+            move_while_casting='placeholder',
+            dashed_distance='placeholder',
+            channel_time='placeholder',
+            resets_aa='placeholder',
+            reduce_ability_cd=dict(
+                name_placeholder='duration_placeholder'
+            )
+        )
+
+
 class DmgsBase(object):
 
     # Category names and required extra variables.
@@ -1742,12 +1820,7 @@ class DmgsBase(object):
             )
 
 
-
-
-
-
-
-class AbilitiesAttributesBase(AttributesBase):
+class AbilitiesAttributesBase(GenAttrsBase):
 
     def __init__(self, ability_name, champion_name):
         self.champion_name = champion_name
@@ -1789,6 +1862,8 @@ class AbilitiesAttributesBase(AttributesBase):
 
 
 # ---------------------------------------------------------------
+# ABILITIES
+
 class GeneralAbilityAttributes(AbilitiesAttributesBase):
 
     def __init__(self, ability_name, champion_name):
@@ -1797,43 +1872,6 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
                                          champion_name=champion_name)
 
         self.general_attr_dct = self.general_attributes()
-
-    @staticmethod
-    def general_attributes():
-        return dict(
-            cast_time='placeholder',
-            range='placeholder',
-            travel_time='placeholder',
-            dmg_effect_names=['placeholder', ],
-            buff_effect_names=['placeholder', ],
-            base_cd='placeholder',
-            cost=[
-                # Main type auto inserted. Secondary manually.
-                dict(
-                    resource_type='placeholder',
-                    values='values_tpl_placeholder',
-                    cost_category='placeholder'
-                ), ],
-            move_while_casting='placeholder',
-            dashed_distance='placeholder',
-            channel_time='placeholder',
-            resets_aa='placeholder',
-            reduce_ability_cd=dict(
-                name_placeholder='duration_placeholder'
-            )
-        )
-
-    COST_CATEGORIES = ('normal', 'per_hit', 'per_second')
-
-    USUAL_VALUES_GEN_ATTR = dict(
-        cast_time=(0.25, 0.5, 0),
-        travel_time=(0, 0.25, 0.5),
-        move_while_casting=(False, True),
-        dashed_distance=(None,),
-        channel_time=(None,),
-        resets_aa=(False, True),
-        toggled=(False, True),
-        )
 
     def resource_cost_type(self):
         """
@@ -2024,8 +2062,8 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
             (None)
         """
 
-        # Reset dict content
-        self.general_attr_dct = {}
+        # Reset dict content in
+        self.general_attr_dct = self.general_attributes()
 
         msg = fat_delimiter(40)
         msg += "\nABILITY'S GENERAL ATTRIBUTES:" + self._champion_and_ability_msg() + '\n'
@@ -2447,7 +2485,7 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
         pp.pprint(self.dmgs_dct)
 
 
-class BuffAbilityAttributes(AbilitiesAttributesBase):
+class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
     """
     Each instance of this class is used for a single ability.
 
@@ -3447,7 +3485,9 @@ class Conditionals(object):
 
 
 # ---------------------------------------------------------------
-class ItemAttrCreation(AttributesBase):
+# ITEMS
+
+class ItemAttrCreation(DmgsBase):
 
     """
     Responsible for creating a SINGLE item's attributes: unique and stacking item stats, item buffs, item effects.
@@ -3496,9 +3536,6 @@ class ItemAttrCreation(AttributesBase):
 
         if diff:
             raise palette.UnexpectedValueError(diff)
-
-    def _pprint_item_description(self):
-        pp.pprint(ExploreApiItems().descriptions(item=self.item_name, print_mode=True))
 
     @staticmethod
     def _content_between_tags_in_description(item_description, tag_str):
@@ -3558,23 +3595,15 @@ class ItemAttrCreation(AttributesBase):
     def _create_item_effects(self):
         pass
 
+    def _create_item_dmg(self):
 
-class ItemDmgsCreation(ItemAttrCreation, DmgsBase):
-    pass
+        # Prints item description.
+        print(fat_delimiter(40))
+        print('\nITEM: {}'.format(self.item_name))
+        print(self._item_description_str())
 
-
-class ItemBuffsCreation():
-
-    pass
-
-class ItemEffectsCreation():
-    pass
-
-
-class ItemConditionalsCreation():
-    pass
-
-
+        # Asks
+        None
 
 # ===============================================================
 #       MODULE CREATION
@@ -3582,7 +3611,7 @@ class ItemConditionalsCreation():
 class ModuleCreatorBase(object):
 
     @staticmethod
-    def _append_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module, extra_whitespaces, width):
+    def _append_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module, width):
         """
         Appends full object inside targeted_module.
 
@@ -3594,7 +3623,7 @@ class ModuleCreatorBase(object):
 
         if type(new_object_as_dct_or_str) is dict:
             obj_as_str = dct_to_pretty_formatted_str(obj_name=obj_name, obj_body_as_dct=new_object_as_dct_or_str,
-                                                     extra_whitespaces=extra_whitespaces, width=width)
+                                                     width=width)
         else:
             obj_as_str = new_object_as_dct_or_str
 
@@ -3602,7 +3631,7 @@ class ModuleCreatorBase(object):
             r.write(obj_as_str)
 
     @staticmethod
-    def _replace_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module, extra_whitespaces, width):
+    def _replace_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module, width):
         """
         Replaces full object in module.
 
@@ -3615,8 +3644,7 @@ class ModuleCreatorBase(object):
             r_as_lst = r.readlines()
 
         replacement = _file_after_replacing_module_var(file_as_lines_lst=r_as_lst, object_name=obj_name,
-                                                       obj_as_dct_or_str=new_object_as_dct_or_str,
-                                                       extra_whitespaces=extra_whitespaces, width=width)
+                                                       obj_as_dct_or_str=new_object_as_dct_or_str, width=width)
 
         with open(targeted_module, 'w') as w:
             w.write(replacement)
@@ -3642,7 +3670,7 @@ class ModuleCreatorBase(object):
             return False
 
     def _insert_object_in_module(self, obj_name, new_object_as_dct_or_str, replacement_question_msg, targeted_module,
-                                 extra_whitespaces, width):
+                                 width):
         """
         Inserts object in module after verifying replacement if needed.
         If object doesnt exist, it is appended.
@@ -3659,16 +3687,14 @@ class ModuleCreatorBase(object):
             replacement_question_msg += '\nObject exists. Replace it?'
             if _y_n_question(question_str=replacement_question_msg):
                 self._replace_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=new_object_as_dct_or_str,
-                                            targeted_module=targeted_module, extra_whitespaces=extra_whitespaces,
-                                            width=width)
+                                            targeted_module=targeted_module, width=width)
             else:
                 print('\nReplacement canceled.')
 
         # If object doesn't exist, appends object.
         else:
             self._append_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=new_object_as_dct_or_str,
-                                       targeted_module=targeted_module, extra_whitespaces=extra_whitespaces,
-                                       width=width)
+                                       targeted_module=targeted_module, width=width)
             
 
 class ChampionModuleCreator(ModuleCreatorBase):
@@ -3774,8 +3800,7 @@ class ChampionModuleCreator(ModuleCreatorBase):
             self._insert_object_in_module(obj_name=obj_name,
                                           new_object_as_dct_or_str=self._champ_obj_as_dct_or_str(obj_name),
                                           replacement_question_msg=replacement_question_msg,
-                                          targeted_module=self.champion_module_path_str,
-                                          extra_whitespaces=0, width=None)
+                                          targeted_module=self.champion_module_path_str, width=None)
             # Delay used to ensure file is "refreshed" after being writen on. (might be redundant)
             time.sleep(0.2)
 
@@ -3810,8 +3835,7 @@ class ItemModuleCreator(ModuleCreatorBase):
         self._insert_object_in_module(obj_name='ITEMS_NON_UNIQUE_STATS_DCT',
                                       new_object_as_dct_or_str=all_items_dct,
                                       replacement_question_msg=replacement_question_msg,
-                                      targeted_module=self.items_non_unique_data_path_str,
-                                      extra_whitespaces=0, width=1)
+                                      targeted_module=self.items_non_unique_data_path_str, width=1)
 
         print('\nItems inserted.')
         
@@ -3874,4 +3898,4 @@ if __name__ == '__main__':
 
     testitems = True
     if testitems is True:
-        a = ExploreApiItems().all_items_uniques_and_passives_names(True)
+        a = ExploreApiItems().descriptions(raw_str=r'deal', print_mode=True)
