@@ -148,7 +148,7 @@ def _dct_body_to_pretty_formatted_str(given_dct, width):
     for num, line in enumerate(string.split('\n')):
         if num == 0:
             # (pprint module always inserts one less whitespace for first line)
-            # (indend=1 is default, giving everything one extra whitespace)
+            # (indent=1 is default, giving everything one extra whitespace)
             new_str += ' '*4 + line + '\n'
         else:
             new_str += ' '*3 + line + '\n'
@@ -1727,7 +1727,7 @@ class GenAttrsBase(object):
         channel_time=(None,),
         resets_aa=(False, True),
         toggled=(False, True),
-        ignore_other_casts=(False, True),
+        independent_cast=(False, True)
         )
 
     @staticmethod
@@ -1749,7 +1749,7 @@ class GenAttrsBase(object):
             dashed_distance='placeholder',
             channel_time='placeholder',
             resets_aa='placeholder',
-            reduce_ability_cd=dict(
+            reduces_ability_cd=dict(
                 name_placeholder='duration_placeholder'
             )
         )
@@ -2059,6 +2059,26 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
                              modified_dct=self.general_attr_dct,
                              extra_start_msg=extra_msg)
 
+    def _suggest_cd_reductions(self):
+        """
+        Suggests ability names and the value their cd is reduced by on this ability's cast.
+
+        :return: (None)
+        """
+        reduced_ability_names = []
+        _suggest_lst_of_attr_values(modified_lst=reduced_ability_names,
+                                    suggested_values_lst=ALL_POSSIBLE_SPELL_SHORTCUTS,
+                                    extra_start_msg='\nOn cast modifies abilities:',
+                                    sort_suggested_lst=False)
+
+        # (removes placeholders to prepare for data insertion)
+        self.general_attr_dct['reduces_ability_cd'] = {}
+        # For each reduced ability, creates dict key and suggests values.
+        for ability_name in reduced_ability_names:
+
+            _suggest_attr_values(suggested_values_dct={ability_name: (1, )},
+                                 modified_dct=self.general_attr_dct['reduces_ability_cd'])
+
     @repeat_cluster(cluster_name='GENERAL ATTRIBUTES')
     def run_gen_attr_creation(self):
         """
@@ -2082,6 +2102,7 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
         if self.general_attr_dct['castable'] is True:
             self.auto_fill_attributes()
             self.suggest_gen_attr_values()
+            self._suggest_cd_reductions()
 
         print(msg)
         pp.pprint(self.general_attr_dct)
@@ -3528,7 +3549,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
     def general_attributes():
 
         # Not needed list.
-        lst = ['dashed_distance', 'cost', 'resets_aa', 'channel_time', 'dashed_distance', 'reduce_ability_cd', ]
+        lst = ['dashed_distance', 'cost', 'resets_aa', 'channel_time', 'dashed_distance', 'reduces_ability_cd', ]
 
         # Removes not needed.
         dct = {k: v for k, v in super().general_attributes() if k not in lst}
@@ -3609,6 +3630,17 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
 
     def create_gen_attrs(self):
         self.item_gen_attrs = self.general_attributes()
+
+        # Castable
+        _suggest_attr_values(suggested_values_dct=dict(castable=(True, False)),
+                             modified_dct=self.item_gen_attrs, restrict_choices=True)
+
+        # (if castable continues inserting the rest of the
+        if self.general_attr_dct['castable'] is True:
+            pass
+
+
+
 
     def _create_item_dmg(self):
 
@@ -3895,7 +3927,7 @@ if __name__ == '__main__':
     if testChampIDs is True:
         print(ExploreApiAbilities().champion_id('dariu'))
 
-    testModuleInsertion = False
+    testModuleInsertion = True
     if testModuleInsertion is True:
         ChampionModuleCreator(champion_name='jax').run_champ_module_creation()
 
@@ -3903,7 +3935,7 @@ if __name__ == '__main__':
     if testItemNames is True:
         c = ExploreApiItems()._all_items_by_id
 
-    testStatNamesValues = True
+    testStatNamesValues = False
     if testStatNamesValues is True:
         ItemModuleCreator().insert_item_non_unique_data()
 
