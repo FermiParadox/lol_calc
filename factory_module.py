@@ -148,9 +148,10 @@ def _dct_body_to_pretty_formatted_str(given_dct, width):
     for num, line in enumerate(string.split('\n')):
         if num == 0:
             # (pprint module always inserts one less whitespace for first line)
-            new_str += ' '*5 + line + '\n'
-        else:
+            # (indend=1 is default, giving everything one extra whitespace)
             new_str += ' '*4 + line + '\n'
+        else:
+            new_str += ' '*3 + line + '\n'
 
     return '{\n' + new_str
 
@@ -1397,6 +1398,9 @@ class ExploreApiItems(ExploreBase):
                 item_name = item_name.replace("'", '')
                 item_name = item_name.replace('-', '_')
                 item_name = item_name.replace(':', '_')
+                item_name = item_name.replace('__', '_')
+                item_name = item_name.replace('.', '')
+                item_name = item_name.lower()
 
                 dct.update({item_name: self._all_items_by_id[item_id]})
 
@@ -1723,6 +1727,7 @@ class GenAttrsBase(object):
         channel_time=(None,),
         resets_aa=(False, True),
         toggled=(False, True),
+        ignore_other_casts=(False, True),
         )
 
     @staticmethod
@@ -1739,6 +1744,7 @@ class GenAttrsBase(object):
                     values='values_tpl_placeholder',
                     cost_category='placeholder'
                 ), ],
+            independent_cast='placeholder',
             move_while_casting='placeholder',
             dashed_distance='placeholder',
             channel_time='placeholder',
@@ -3487,7 +3493,7 @@ class Conditionals(object):
 # ---------------------------------------------------------------
 # ITEMS
 
-class ItemAttrCreation(DmgsBase):
+class ItemAttrCreation(GenAttrsBase, DmgsBase):
 
     """
     Responsible for creating a SINGLE item's attributes: unique and stacking item stats, item buffs, item effects.
@@ -3516,8 +3522,17 @@ class ItemAttrCreation(DmgsBase):
         self._validate_stats_names()
         self.item_name = item_name
         self.item_simple_stats_dct = {}     # (stats between <stats> and </stats>)
-        self.item_buffs = {}
-        self.item_effects = {}
+        self.item_gen_attrs = {}
+
+    @staticmethod
+    def general_attributes():
+
+        # Not needed list.
+        lst = ['dashed_distance', 'cost', 'resets_aa', 'channel_time', 'dashed_distance', 'reduce_ability_cd', ]
+
+        # Removes not needed.
+        dct = {k: v for k, v in super().general_attributes() if k not in lst}
+        return dct
 
     def _item_description_str(self):
         return ExploreApiItems().descriptions(item=self.item_name)[0].lower()
@@ -3592,8 +3607,8 @@ class ItemAttrCreation(DmgsBase):
 
         return dct
 
-    def _create_item_effects(self):
-        pass
+    def create_gen_attrs(self):
+        self.item_gen_attrs = self.general_attributes()
 
     def _create_item_dmg(self):
 
@@ -3823,11 +3838,10 @@ class ItemModuleCreator(ModuleCreatorBase):
 
         all_items_dct = {}
         for item_name in sorted(self.used_items):
-            refined_item_name = item_name.upper().replace('.', '').replace('__', '_')
 
             item_dct = ItemAttrCreation(item_name=item_name).non_unique_stats_values_dct()
 
-            all_items_dct.update({refined_item_name: item_dct})
+            all_items_dct.update({item_name: item_dct})
 
         replacement_question_msg = delimiter(20)
         replacement_question_msg += '\nModule contains data.'
@@ -3837,8 +3851,6 @@ class ItemModuleCreator(ModuleCreatorBase):
                                       replacement_question_msg=replacement_question_msg,
                                       targeted_module=self.items_non_unique_data_path_str, width=1)
 
-        print('\nItems inserted.')
-        
 
 # ===============================================================
 # ===============================================================
@@ -3891,11 +3903,10 @@ if __name__ == '__main__':
     if testItemNames is True:
         c = ExploreApiItems()._all_items_by_id
 
-    testStatNamesValues = False
+    testStatNamesValues = True
     if testStatNamesValues is True:
-        for itemName in ExploreApiItems().used_items_by_name:
-            print(itemName, ItemAttrCreation(itemName).non_unique_stats_values_dct())
+        ItemModuleCreator().insert_item_non_unique_data()
 
-    testitems = True
+    testitems = False
     if testitems is True:
         a = ExploreApiItems().descriptions(raw_str=r'deal', print_mode=True)
