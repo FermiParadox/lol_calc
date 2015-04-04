@@ -2088,8 +2088,8 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
             (None)
         """
 
-        # Reset dict content in
-        self.general_attr_dct = self.general_attributes()
+        # Reset dict contents
+        self.general_attr_dct = {}
 
         msg = fat_delimiter(40)
         msg += "\nABILITY'S GENERAL ATTRIBUTES:" + self._champion_and_ability_msg() + '\n'
@@ -2100,6 +2100,8 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
                              modified_dct=self.general_attr_dct, restrict_choices=True)
 
         if self.general_attr_dct['castable'] is True:
+            self.general_attr_dct.update({k: v for k, v in self.general_attributes().items()})
+
             self.auto_fill_attributes()
             self.suggest_gen_attr_values()
             self._suggest_cd_reductions()
@@ -3552,7 +3554,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
         lst = ['dashed_distance', 'cost', 'resets_aa', 'channel_time', 'dashed_distance', 'reduces_ability_cd', ]
 
         # Removes not needed.
-        dct = {k: v for k, v in super().general_attributes() if k not in lst}
+        dct = {k: v for k, v in GenAttrsBase.general_attributes().items() if k not in lst}
         return dct
 
     def _item_description_str(self):
@@ -3628,19 +3630,21 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
 
         return dct
 
+    @repeat_cluster(cluster_name='ITEM GEN ATTRS')
     def create_gen_attrs(self):
-        self.item_gen_attrs = self.general_attributes()
+        self.item_gen_attrs = {}
 
         # Castable
         _suggest_attr_values(suggested_values_dct=dict(castable=(True, False)),
                              modified_dct=self.item_gen_attrs, restrict_choices=True)
 
-        # (if castable continues inserting the rest of the
-        if self.general_attr_dct['castable'] is True:
-            pass
+        # (if castable continues inserting the rest of the keys)
+        if self.item_gen_attrs['castable'] is True:
+            self.item_gen_attrs.update({k: v for k, v in self.general_attributes().items()})
 
+            _suggest_attr_values(suggested_values_dct=self.USUAL_VALUES_GEN_ATTR, modified_dct=self.item_gen_attrs)
 
-
+        pp.pprint(self.item_gen_attrs)
 
     def _create_item_dmg(self):
 
@@ -3651,6 +3655,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
 
         # Asks
         None
+
 
 # ===============================================================
 #       MODULE CREATION
@@ -3927,7 +3932,7 @@ if __name__ == '__main__':
     if testChampIDs is True:
         print(ExploreApiAbilities().champion_id('dariu'))
 
-    testModuleInsertion = True
+    testModuleInsertion = False
     if testModuleInsertion is True:
         ChampionModuleCreator(champion_name='jax').run_champ_module_creation()
 
@@ -3939,6 +3944,7 @@ if __name__ == '__main__':
     if testStatNamesValues is True:
         ItemModuleCreator().insert_item_non_unique_data()
 
-    testitems = False
-    if testitems is True:
-        a = ExploreApiItems().descriptions(raw_str=r'deal', print_mode=True)
+    testItems = True
+    if testItems is True:
+        inst = ItemAttrCreation(item_name='trinity')
+        inst.create_gen_attrs()
