@@ -460,7 +460,7 @@ def restricted_input(question_msg, input_type, characteristic=None, disallow_ent
         try:
             answer_as_literal = ast.literal_eval(answer)
         except (ValueError, SyntaxError):
-            print_invalid_answer('Literal required.')
+            print_invalid_answer('{} required.'.format(input_type.capitalize()))
             continue
 
         # TYPE CHECK
@@ -503,6 +503,7 @@ def restricted_input(question_msg, input_type, characteristic=None, disallow_ent
 
             else:
                 raise palette.UnexpectedValueError
+
 
 # ---------------------------------------------------------------
 def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, restrict_choices):
@@ -1874,11 +1875,10 @@ class DmgsBase(object):
             delay='placeholder',
             )
 
-    def usual_values_dmg_attr(self):
+    def usual_values_dmg_attrs(self):
 
         return dict(
             target_type=('enemy', 'player'),
-            # TODO insert more categories in class and then here.
             dmg_category=sorted(self.AVAILABLE_DMG_CATEGORIES),
             dmg_source=ALL_POSSIBLE_ABILITIES_SHORTCUTS,
             life_conversion_type=('spellvamp', None, 'lifesteal'),
@@ -2459,7 +2459,7 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
 
             print(msg)
 
-            _suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attr(),
+            _suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attrs(),
                                  modified_dct=self.dmgs_dct[dmg_temp_name])
 
             # Decay stabilization tar num.
@@ -2525,7 +2525,7 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
                                                             first_synthetic=self.ability_name)
                 self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
                 self._suggest_dmg_values(dmg_name=new_dmg_name)
-                _suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attr(),
+                _suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attrs(),
                                      modified_dct=self.dmgs_dct[new_dmg_name],
                                      extra_start_msg='\nManually inserted dmg.')
                 self.modify_dmg_names()
@@ -3636,6 +3636,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
         self.item_name = item_name
         self.item_simple_stats_dct = {}     # (stats between <stats> and </stats>)
         self.item_gen_attrs = {}
+        self.item_dmgs = None
 
     @staticmethod
     def general_attributes():
@@ -3645,6 +3646,25 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
 
         # Removes not needed.
         dct = {k: v for k, v in GenAttrsBase.general_attributes().items() if k not in lst}
+        return dct
+
+    def item_dmg_attrs(self):
+        dct = {k: v for k, v in self.dmg_attributes().items() if k != 'dmg_source'}
+        dct.update({'dmg_source': self.item_name})
+
+        return dct
+
+    def usual_item_values_dmg_attrs(self):
+        """
+        Creates usual values for item dmg attributes.
+
+        :return: (dict)
+        """
+
+        dct = {k: v for k, v in self.usual_values_dmg_attrs().items() if k != 'dmg_source'}
+
+        dct.update({'dmg_type': ('magic', 'physical', 'true', 'AA')})
+
         return dct
 
     def _item_description_str(self):
@@ -3737,7 +3757,35 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
 
         pp.pprint(self.item_gen_attrs)
 
-    def create_item_dmg(self):
+    @inner_loop_exit_handler
+    def _create_item_single_dmg(self):
+        # Dmg name
+        new_dmg_name = _auto_new_name_or_ask_name(existing_names=self.item_dmgs, first_synthetic='dmg')
+
+        # (msg)
+        print(delimiter(20))
+        print('\nDMG NAME: {}'.format(new_dmg_name))
+
+        # (creates new_dmg_name dct)
+        self.item_dmgs.update({new_dmg_name: self.item_dmg_attrs()})
+        # Dmg value
+        dmg_val = restricted_input(question_msg='Dmg value?', input_type='num', characteristic='non_negative',
+                                   disallow_enter=True)
+
+        self.item_dmgs[new_dmg_name]['dmg_values'] = dmg_val
+        # Rest of dmg attributes
+        _suggest_attr_values(suggested_values_dct=self.usual_item_values_dmg_attrs(),
+                             modified_dct=self.item_dmgs[new_dmg_name],)
+
+        # Inserts dmg mods.
+        _suggest_attr_values()
+
+
+        print(delimiter(40))
+        pp.pprint(self.item_dmgs[new_dmg_name])
+
+    @repeat_cluster(cluster_name='ITEM DMGS')
+    def create_item_dmgs(self):
 
         # Prints item description.
         print(fat_delimiter(40))
@@ -3745,11 +3793,13 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
         pp.pprint(self._item_description_str())
 
         # Number of dmgs
+        num_of_dmgs = restricted_input(question_msg='Number of dmgs?', input_type='int', characteristic='non_negative',
+                                       disallow_enter=True)
 
-
-
-
-
+        # Resets item_dmgs dct.
+        self.item_dmgs = {}
+        for _ in range(num_of_dmgs):
+            self._create_item_single_dmg()
 
 # ===============================================================
 #       MODULE CREATION
@@ -4038,11 +4088,11 @@ if __name__ == '__main__':
     if testStatNamesValues is True:
         ItemModuleCreator().insert_item_non_unique_data()
 
-    testItems = False
+    testItems = True
     if testItems is True:
         inst = ItemAttrCreation(item_name='gun')
-        inst.create_item_dmg()
+        inst.create_item_dmgs()
 
-    testRestrictedInput = True
+    testRestrictedInput = False
     if testRestrictedInput is True:
         restricted_input(question_msg='Give num!', input_type='str', characteristic='non_negative',)
