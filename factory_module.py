@@ -131,9 +131,7 @@ def _dct_body_to_pretty_formatted_str(given_dct, width):
     Used for file writing.
 
     Args:
-        extra_whitespaces: (int) extra leading whitespaces
         width: 1 or (false value) used for depth 1 dicts
-
     Returns:
         (str)
     """
@@ -414,6 +412,98 @@ def _ask_tpl_question(question_str, choices_seq, restrict_choices=False):
     return chosen_val_to_literal(answer)
 
 
+def restricted_input(question_msg, input_type, characteristic=None, disallow_enter=False):
+    """
+    Repeats question until valid type answer is given.
+
+    WARNING: Plain "enter" precedes any type requirements.
+
+    :param question_msg: (str)
+    :param input_type: (str) 'str', 'bool', 'int', 'float', tuple, list,
+    :param characteristic: (str) 'non_negative', 'non_zero', 'non_positive'
+    :param disallow_enter: (bool) Allows or disallows giving an empty string as input for question.
+    :returns: (literal)
+    """
+
+    type_name_to_func_map = {'str': str,
+                             'num': 'num',
+                             'int': int,
+                             'bool': bool,
+                             'tuple': tuple,
+                             'list': list,
+                             'dict': dict}
+
+    # Raises error if unexpected type name is requested.
+    if input_type not in type_name_to_func_map:
+        raise palette.UnexpectedValueError
+
+    while 1:
+        answer = input('\n' + question_msg)
+
+        # ENTER
+        if answer == '':
+            if disallow_enter is True:
+                print_invalid_answer('Plain "enter" not accepted.')
+                continue
+            else:
+                return ''
+
+        # Expected type (string)
+        if input_type == 'str':
+            if re.match(r'^\w+$', answer):
+                return answer
+            else:
+                print_invalid_answer('String required.')
+                continue
+
+        # NON ENTER
+        try:
+            answer_as_literal = ast.literal_eval(answer)
+        except (ValueError, SyntaxError):
+            print_invalid_answer('Literal required.')
+            continue
+
+        # TYPE CHECK
+        # Expected type (non string)
+        if type(answer_as_literal) is type_name_to_func_map[input_type]:
+            # (allows next checks)
+            pass
+        elif input_type == 'num' and (type(answer_as_literal) is int):
+            # (input '2' would be "int" after 'literal_eval', so it has to be specially included in floats)
+            pass
+
+        # Wrong types
+        else:
+            print_invalid_answer('Wrong type; expected {}.'.format(input_type))
+            continue
+
+        # EXTRA CHARACTERISTICS CHECK
+        if characteristic is not None:
+
+            if characteristic == 'non_zero':
+                if answer_as_literal == 0:
+                    print_invalid_answer('Zero not allowed.')
+                    continue
+                else:
+                    return answer_as_literal
+
+            elif characteristic == 'non_negative':
+                if answer_as_literal < 0:
+                    print_invalid_answer('Non negative answers not allowed.')
+                    continue
+                else:
+                    return answer_as_literal
+
+            elif characteristic == 'non_positive':
+                if answer_as_literal > 0:
+                    print_invalid_answer('Non positive answers not allowed.')
+                    continue
+                else:
+                    return answer_as_literal
+
+            else:
+                raise palette.UnexpectedValueError
+
 # ---------------------------------------------------------------
 def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, restrict_choices):
     """
@@ -559,7 +649,7 @@ def _new_automatic_attr_dct_name(existing_names, first_synthetic, second_synthet
         return new_attr_name
 
 
-def _ask_new_group_name(group_type_name, existing_names=None, disable_enter=False):
+def _ask_new_group_name(group_type_name, existing_names=None, disallow_enter=False):
     """
     Asks dev for new non existing name.
     'Enter' skips creation (unless disabled).
@@ -575,7 +665,7 @@ def _ask_new_group_name(group_type_name, existing_names=None, disable_enter=Fals
     new_name = None
     while True:
         question_msg = '\nNew {} name: '.format(group_type_name.upper())
-        if disable_enter is False:
+        if disallow_enter is False:
             question_msg += '(enter to skip)'
         new_name = input(question_msg + '\n')
         _check_factory_custom_exception(given_str=new_name, exclude_repeat_key=True)
@@ -584,7 +674,7 @@ def _ask_new_group_name(group_type_name, existing_names=None, disable_enter=Fals
             print_invalid_answer('Name exists.')
             continue
 
-        elif (disable_enter is True) and (new_name == ''):
+        elif (disallow_enter is True) and (new_name == ''):
             print_invalid_answer('(Enter not acceptable.)')
             continue
 
@@ -597,7 +687,7 @@ def _ask_new_group_name(group_type_name, existing_names=None, disable_enter=Fals
     return new_name
 
 
-def _auto_new_name_or_ask_name(existing_names, first_synthetic, second_synthetic='', disable_enter=False):
+def _auto_new_name_or_ask_name(existing_names, first_synthetic, second_synthetic='', disallow_enter=False):
     """
     Creates automatically a new name, that doesn't overwriting existing names.
     Then asks dev for name change.
@@ -617,7 +707,7 @@ def _auto_new_name_or_ask_name(existing_names, first_synthetic, second_synthetic
     # Manual change if requested.
     new_manual_name = _ask_new_group_name(group_type_name=group_type_name,
                                           existing_names=list(existing_names),
-                                          disable_enter=disable_enter)
+                                          disallow_enter=disallow_enter)
 
     if new_manual_name:
         return new_manual_name
@@ -3340,7 +3430,7 @@ class Conditionals(object):
         # Creates trig name.
         trig_name = _auto_new_name_or_ask_name(first_synthetic='trigger',
                                                existing_names=self.conditions[con_name]['triggers'],
-                                               disable_enter=True)
+                                               disallow_enter=True)
 
         # Inserts trig name.
         self.conditions[con_name]['triggers'].update({trig_name: {}})
@@ -3395,7 +3485,7 @@ class Conditionals(object):
         # Creates effect name.
         eff_name = _auto_new_name_or_ask_name(first_synthetic='effect',
                                               existing_names=self.conditions[con_name]['effects'],
-                                              disable_enter=False)
+                                              disallow_enter=False)
 
         # Inserts effect name.
         self.conditions[con_name]['effects'].update({eff_name: {}})
@@ -3558,7 +3648,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
         return dct
 
     def _item_description_str(self):
-        return ExploreApiItems().descriptions(item=self.item_name)[0].lower()
+        return ExploreApiItems().descriptions(item=self.item_name)[0]
 
     def _validate_stats_names(self):
         """
@@ -3600,8 +3690,9 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
 
         dct = {}
 
-        stats_part_str = self._content_between_tags_in_description(item_description=self._item_description_str(),
-                                                                   tag_str='stats')
+        stats_part_str = self._content_between_tags_in_description(
+            item_description=self._item_description_str().lower(),
+            tag_str='stats')
 
         partitions_lst = re.split(r'<br>', stats_part_str)
 
@@ -3646,15 +3737,18 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
 
         pp.pprint(self.item_gen_attrs)
 
-    def _create_item_dmg(self):
+    def create_item_dmg(self):
 
         # Prints item description.
         print(fat_delimiter(40))
-        print('\nITEM: {}'.format(self.item_name))
-        print(self._item_description_str())
+        print('\nITEM: {}\n'.format(self.item_name))
+        pp.pprint(self._item_description_str())
 
-        # Asks
-        None
+        # Number of dmgs
+
+
+
+
 
 
 # ===============================================================
@@ -3944,7 +4038,11 @@ if __name__ == '__main__':
     if testStatNamesValues is True:
         ItemModuleCreator().insert_item_non_unique_data()
 
-    testItems = True
+    testItems = False
     if testItems is True:
-        inst = ItemAttrCreation(item_name='trinity')
-        inst.create_gen_attrs()
+        inst = ItemAttrCreation(item_name='gun')
+        inst.create_item_dmg()
+
+    testRestrictedInput = True
+    if testRestrictedInput is True:
+        restricted_input(question_msg='Give num!', input_type='str', characteristic='non_negative',)

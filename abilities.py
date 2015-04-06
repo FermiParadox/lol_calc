@@ -372,7 +372,7 @@ class AttributeBase(EventsGeneral):
 
     def _check_triggers_state(self, cond_name):
         """
-        Checks if all triggers for given condition are present.
+        Checks if ALL triggers for given condition are present.
 
         Returns:
             (bool)
@@ -593,8 +593,8 @@ class AttributeBase(EventsGeneral):
                 eff_dct = main_dct[cond]['effects'][eff]
                 if obj_name == eff_dct[obj_name_dct_key]:
 
-                    # Trigger check is done once,
-                    # right after a single effect affecting given object is detected.
+                    # Trigger check is done ONCE on ALL triggers
+                    # (right after a single effect affecting given object is detected).
                     if trig_state is None:
                         trig_state = self._check_triggers_state(cond_name=cond)
                         # (if triggers are false, ends current condition checks)
