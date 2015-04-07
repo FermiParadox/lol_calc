@@ -339,7 +339,7 @@ def outer_loop_exit_handler(func, _exception_class=OuterLoopExit):
 
 
 # ---------------------------------------------------------------
-def _y_n_question(question_str):
+def _y_n_question(question_str, disallow_enter=True):
     """
     Checks user input on given question_str.
     Raises factory custom exceptions if needed.
@@ -349,8 +349,13 @@ def _y_n_question(question_str):
         (False)
     """
 
+    msg = '\n{} (y, n)'.format(question_str)
+
+    if disallow_enter is False:
+        msg += '(press enter to skip)'
+
     while True:
-        answer = input('\n{} (y, n)\n'.format(question_str))
+        answer = input(msg+'\n')
 
         # Check exceptions.
         _check_factory_custom_exception(given_str=answer, exclude_repeat_key=True)
@@ -358,6 +363,8 @@ def _y_n_question(question_str):
         if answer == 'y':
             return True
         elif answer == 'n':
+            return False
+        elif (disallow_enter is False) and (answer == ''):
             return False
         else:
             print_invalid_answer()
@@ -438,12 +445,12 @@ def restricted_input(question_msg, input_type, characteristic=None, disallow_ent
         raise palette.UnexpectedValueError
 
     while 1:
-        answer = input('\n' + question_msg)
+        answer = input('\n' + question_msg + '\n')
 
         # ENTER
         if answer == '':
             if disallow_enter is True:
-                print_invalid_answer('Plain "enter" not accepted.')
+                print_invalid_answer('\nPlain "enter" not accepted.')
                 continue
             else:
                 return ''
@@ -453,14 +460,14 @@ def restricted_input(question_msg, input_type, characteristic=None, disallow_ent
             if re.match(r'^\w+$', answer):
                 return answer
             else:
-                print_invalid_answer('String required.')
+                print_invalid_answer('\nString required.')
                 continue
 
         # NON ENTER
         try:
             answer_as_literal = ast.literal_eval(answer)
         except (ValueError, SyntaxError):
-            print_invalid_answer('{} required.'.format(input_type.capitalize()))
+            print_invalid_answer('\n{} required.'.format(input_type.capitalize()))
             continue
 
         # TYPE CHECK
@@ -468,13 +475,13 @@ def restricted_input(question_msg, input_type, characteristic=None, disallow_ent
         if type(answer_as_literal) is type_name_to_func_map[input_type]:
             # (allows next checks)
             pass
-        elif input_type == 'num' and (type(answer_as_literal) is int):
+        elif input_type == 'num' and (type(answer_as_literal) is int) or (type(answer_as_literal) is float):
             # (input '2' would be "int" after 'literal_eval', so it has to be specially included in floats)
             pass
 
         # Wrong types
         else:
-            print_invalid_answer('Wrong type; expected {}.'.format(input_type))
+            print_invalid_answer('\nWrong type; expected {}.'.format(input_type))
             continue
 
         # EXTRA CHARACTERISTICS CHECK
@@ -482,21 +489,21 @@ def restricted_input(question_msg, input_type, characteristic=None, disallow_ent
 
             if characteristic == 'non_zero':
                 if answer_as_literal == 0:
-                    print_invalid_answer('Zero not allowed.')
+                    print_invalid_answer('\nZero not allowed.')
                     continue
                 else:
                     return answer_as_literal
 
             elif characteristic == 'non_negative':
                 if answer_as_literal < 0:
-                    print_invalid_answer('Non negative answers not allowed.')
+                    print_invalid_answer('\nNon negative answers not allowed.')
                     continue
                 else:
                     return answer_as_literal
 
             elif characteristic == 'non_positive':
                 if answer_as_literal > 0:
-                    print_invalid_answer('Non positive answers not allowed.')
+                    print_invalid_answer('\nNon positive answers not allowed.')
                     continue
                 else:
                     return answer_as_literal
@@ -3793,23 +3800,48 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
 
         self.item_dmgs[dmg_name]['mods'] = self.dmg_mod_contents()
 
-        # Number of mods.
-        num_of_dmg_mods = restricted_input(question_msg='Number of dmg mods?\n',
-                                           input_type='int',
-                                           characteristic='non_negative')
+        # MODS
+        pp.pprint(self._item_description_str())
 
-        # Mod creation.
-        for _ in range(num_of_dmg_mods):
+        # Ask dmg has mods.
+        if _y_n_question(question_str='New dmg mod?') is True:
+
+            # MOD STAT OWNERS.
             for tar_type in self.dmg_mod_contents():
-                dmg_mod_stats_lst = []
-                None
-                suggest_lst_of_attr_values(suggested_values_lst=None, modified_lst=dmg_mod_stats_lst)
+                if _y_n_question(question_str='Mod stat owner {}?'.format(tar_type.upper())) is True:
+                    self.item_dmgs[dmg_name]['mods'].update({tar_type: {}})
 
+                    # MOD STATS (names and values)
+                    pp.pprint(self._item_description_str())
+                    while 1:
+                        # Stat name
+                        stat_name_msg = 'ITEM: {}, MOD STAT OWNER: {}.'.format(self.item_name, tar_type)
+                        stat_name_msg += '\nMod stat name?(empty string to exit)'
+                        stat_name = _ask_tpl_question(question_str=stat_name_msg,
+                                                      # (enter added as a choice by '')
+                                                      choices_seq=self.stats_in_items() + [''],
+                                                      restrict_choices=True)
+                        # (enter exits loop)
+                        if stat_name == '':
+                            break
+
+                        # Stat value
+                        stat_val_msg = 'ITEM: {}, MOD STAT OWNER: {}, STAT NAME: {}'.format(self.item_name, tar_type,
+                                                                                            stat_name)
+                        stat_val_msg += '\nStat value?'
+                        stat_val = restricted_input(question_msg=stat_val_msg,
+                                                    input_type='num', characteristic='non_zero',
+                                                    disallow_enter=True)
+
+                        self.item_dmgs[dmg_name]['mods'][tar_type].update({stat_name: stat_val})
+
+        pp.pprint(self.item_dmgs[dmg_name]['mods'])
 
     @inner_loop_exit_handler
     def _create_item_single_dmg(self):
         # Dmg name
-        new_dmg_name = _auto_new_name_or_ask_name(existing_names=self.item_dmgs, first_synthetic='dmg')
+        new_dmg_name = _auto_new_name_or_ask_name(existing_names=self.item_dmgs,
+                                                  first_synthetic='{}_dmg'.format(self.item_name))
 
         # (msg)
         print(delimiter(20))
@@ -3818,7 +3850,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
         # (creates new_dmg_name dct)
         self.item_dmgs.update({new_dmg_name: self.item_dmg_attrs()})
         # Dmg value
-        dmg_val = restricted_input(question_msg='Dmg value?', input_type='num', characteristic='non_negative',
+        dmg_val = restricted_input(question_msg='Dmg value?\n', input_type='num', characteristic='non_negative',
                                    disallow_enter=True)
 
         self.item_dmgs[new_dmg_name]['dmg_values'] = dmg_val
@@ -3827,8 +3859,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
                             modified_dct=self.item_dmgs[new_dmg_name],)
 
         # Inserts dmg mods.
-
-
+        self._create_dmg_mods(dmg_name=new_dmg_name)
 
         print(delimiter(40))
         pp.pprint(self.item_dmgs[new_dmg_name])
@@ -3842,7 +3873,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
         pp.pprint(self._item_description_str())
 
         # Number of dmgs
-        num_of_dmgs = restricted_input(question_msg='Number of dmgs?', input_type='int', characteristic='non_negative',
+        num_of_dmgs = restricted_input(question_msg='Number of dmgs?\n', input_type='int', characteristic='non_negative',
                                        disallow_enter=True)
 
         # Resets item_dmgs dct.
