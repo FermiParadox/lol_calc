@@ -23,14 +23,29 @@ RUNE_STAT_NAMES = frozenset({'ap', 'mr', 'mr_per_lvl', 'armor_per_lvl', 'crit_ch
                              'lifesteal', 'move_speed', 'armor', 'energy_per_lvl', 'flat_magic_penetration',
                              'hp', 'cdr_per_lvl', 'cdr'})
 
-ALL_POSSIBLE_STAT_NAMES = frozenset((RUNE_STAT_NAMES | RESOURCE_CURRENT_STAT_NAMES | RESOURCE_MAX_STAT_NAMES)
+ALL_STANDARD_STAT_NAMES = frozenset((RUNE_STAT_NAMES | RESOURCE_CURRENT_STAT_NAMES | RESOURCE_MAX_STAT_NAMES)
                                     - ALL_RESOURCE_NAMES)
+
+# Contains stats that are not included in base_stats_dct and are calculated separately by their own methods.
+SPECIAL_STATS_SET = frozenset({'base_ad',
+                               'bonus_ad',
+                               'att_speed',
+                               'move_speed',
+                               'crit_chance',
+                               'cdr',
+                               # TODO: create their methods
+                               'bonus_armor',
+                               'bonus_mr',
+                               'bonus_hp',
+                               } | DEFENSIVE_SPECIAL_STATS)
+
+ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | (ALL_RESOURCE_NAMES - {None})
 
 
 class NonExistingNormalStat(Exception):
     """
     Used to indicate stat was not found when searched by request stat function
-    in ALL_POSSIBLE_STAT_NAMES and current stats.
+    in ALL_STANDARD_STAT_NAMES and current stats.
     """
     pass
 
@@ -135,7 +150,7 @@ class StatCalculation(StatFilters):
 
     RUNE_STAT_NAMES = RUNE_STAT_NAMES
 
-    ALL_POSSIBLE_STAT_NAMES = ALL_POSSIBLE_STAT_NAMES
+    ALL_STANDARD_STAT_NAMES = ALL_STANDARD_STAT_NAMES
 
     def __init__(self,
                  champion_lvls_dct,
@@ -465,14 +480,7 @@ class StatRequest(StatCalculation):
                                  initial_active_buffs=initial_active_buffs,
                                  initial_current_stats=initial_current_stats)
 
-    # Contains stats that are not included in base_stats_dct and are calculated separately by their own methods.
-    SPECIAL_STATS_SET = frozenset({'base_ad',
-                                   'bonus_ad',
-                                   'att_speed',
-                                   'move_speed',
-                                   'crit_chance',
-                                   'cdr',
-                                   } | StatCalculation.DEFENSIVE_SPECIAL_STATS)
+    SPECIAL_STATS_SET = SPECIAL_STATS_SET
 
     def _evaluate_stat(self, target_name, stat_name):
         """

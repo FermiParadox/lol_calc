@@ -370,12 +370,12 @@ def _y_n_question(question_str, disallow_enter=True):
             print_invalid_answer()
 
 
-def _ask_tpl_question(question_str, choices_seq, restrict_choices=False):
+def enumerated_question(question_str, choices_seq, restrict_choices=False):
     """
-    Presents enumerated choices to dev.
+    Asks dev to choose one of the enumerated choices.
 
     Returns:
-        (anything) Selected choice
+        (anything) Selected choice can be any element of given sequence.
     """
 
     try:
@@ -1914,13 +1914,11 @@ class DmgsBase(object):
                    armor='armor',
                    bonusarmor='bonus_armor',
                    bonushealth='bonus_hp',
-                   bonusspellblock='bonus_ap',
+                   bonusspellblock='bonus_mr',
                    health='hp',
                    mana='mp', )
 
-        if set(dct.values()) <= stats.ALL_POSSIBLE_STAT_NAMES:
-            pass
-        else:
+        if set(dct.values()) - stats.ALL_POSSIBLE_STAT_NAMES:
             raise palette.UnexpectedValueError('Some APP stat names suggested here are not registered.')
 
         return dct
@@ -2759,9 +2757,9 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
                 else:
                     print_invalid_answer()
 
-    def suggest_possible_stat_attributes(self, buff_name):
+    def suggest_buff_affected_stats_attributes(self, buff_name):
         """
-        Suggests possible values for stats,
+        Suggests possible values for stats that the buff modifies,
         mods of the stats (if they are scaling),
         and mod values.
 
@@ -2967,7 +2965,7 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
         print(delimiter(40))
 
         for buff_name in sorted(self.buffs_dct):
-            self.suggest_possible_stat_attributes(buff_name=buff_name)
+            self.suggest_buff_affected_stats_attributes(buff_name=buff_name)
 
             usual_attrs_msg = 'USUAL BUFF ATTRIBUTES\n'
             usual_attrs_msg += '\nBUFF: %s' % buff_name
@@ -3324,7 +3322,7 @@ class Conditionals(object):
     # (Used to determine what to insert next.)
     FORMULA_TYPE = ('constant_value', 'x_function')
     OPERATOR_TYPES = ('>', '<', '==', '<=', '>=')
-    NON_PER_LVL_STAT_NAMES = sorted(i for i in stats.StatCalculation.ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
+    NON_PER_LVL_STAT_NAMES = sorted(i for i in stats.ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
 
     def available_buff_names(self):
         return sorted(self.abilities_dct['buffs'])
@@ -3463,8 +3461,8 @@ class Conditionals(object):
         self.conditions[con_name]['triggers'].update({trig_name: {}})
 
         # Inserts trig types.
-        trig_type = _ask_tpl_question(question_str='Trigger TYPE?', choices_seq=self.trigger_setup_dct(),
-                                      restrict_choices=True)
+        trig_type = enumerated_question(question_str='Trigger TYPE?', choices_seq=self.trigger_setup_dct(),
+                                        restrict_choices=True)
 
         self.conditions[con_name]['triggers'][trig_name].update({'trigger_type': trig_type})
 
@@ -3518,8 +3516,8 @@ class Conditionals(object):
         self.conditions[con_name]['effects'].update({eff_name: {}})
 
         # Inserts effect types.
-        eff_type = _ask_tpl_question(question_str='Effect TYPE?', choices_seq=self.effect_setup_dct(),
-                                     restrict_choices=True)
+        eff_type = enumerated_question(question_str='Effect TYPE?', choices_seq=self.effect_setup_dct(),
+                                       restrict_choices=True)
 
         self.conditions[con_name]['effects'][eff_name].update({'effect_type': eff_type})
 
@@ -3633,7 +3631,7 @@ class Conditionals(object):
 # ---------------------------------------------------------------
 # ITEMS
 
-class ItemAttrCreation(GenAttrsBase, DmgsBase):
+class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase):
 
     """
     Responsible for creating a SINGLE item's attributes: unique and stacking item stats, item buffs, item effects.
@@ -3658,7 +3656,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
         'Spell Vamp': 'spellvamp',
         }
 
-    def stats_in_items(self):
+    def items_stat_names(self):
         """
         Returns a list of names of item stats.
 
@@ -3675,6 +3673,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
         self.item_simple_stats_dct = {}     # (stats between <stats> and </stats>)
         self.item_gen_attrs = {}
         self.item_dmgs = None
+        self.item_buffs = None
 
     @staticmethod
     def general_attributes():
@@ -3705,8 +3704,22 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
 
         return dct
 
+    def item_buff_attributes(self):
+        return {k: v for k, v in self.buff_attributes().items() if k != 'prohibit_cd_start'}
+
+    def usual_item_buff_attrs_values(self):
+        return {k: v for k, v in self.USUAL_BUFF_ATTR_VALUES.items() if k != 'prohibit_cd_start'}
+
+    def item_buff_affected_stat_attributes(self):
+        return self.affected_stat_attributes()
+
+    # ----------------------------------------------------------------
     def _item_description_str(self):
         return ExploreApiItems().descriptions(item=self.item_name)[0]
+
+    def pprinted_item_description(self):
+        print('\nITEM: {}\n'.format(self.item_name))
+        pp.pprint(self._item_description_str())
 
     def _validate_stats_names(self):
         """
@@ -3718,7 +3731,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
             (None)
         """
 
-        diff = set(self.ITEM_STAT_NAMES_MAP.values()) - (stats.ALL_POSSIBLE_STAT_NAMES | stats.ALL_RESOURCE_NAMES)
+        diff = set(self.ITEM_STAT_NAMES_MAP.values()) - stats.ALL_POSSIBLE_STAT_NAMES
 
         if diff:
             raise palette.UnexpectedValueError(diff)
@@ -3801,7 +3814,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
         self.item_dmgs[dmg_name]['mods'] = self.dmg_mod_contents()
 
         # MODS
-        pp.pprint(self._item_description_str())
+        self.pprinted_item_description()
 
         # Ask dmg has mods.
         if _y_n_question(question_str='New dmg mod?') is True:
@@ -3812,15 +3825,15 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
                     self.item_dmgs[dmg_name]['mods'].update({tar_type: {}})
 
                     # MOD STATS (names and values)
-                    pp.pprint(self._item_description_str())
+                    self.pprinted_item_description()
                     while 1:
                         # Stat name
                         stat_name_msg = 'ITEM: {}, MOD STAT OWNER: {}.'.format(self.item_name, tar_type)
                         stat_name_msg += '\nMod stat name?(empty string to exit)'
-                        stat_name = _ask_tpl_question(question_str=stat_name_msg,
-                                                      # (enter added as a choice by '')
-                                                      choices_seq=self.stats_in_items() + [''],
-                                                      restrict_choices=True)
+                        stat_name = enumerated_question(question_str=stat_name_msg,
+                                                        # (enter added as a choice by '')
+                                                        choices_seq=self.items_stat_names() + [''],
+                                                        restrict_choices=True)
                         # (enter exits loop)
                         if stat_name == '':
                             break
@@ -3869,8 +3882,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
 
         # Prints item description.
         print(fat_delimiter(40))
-        print('\nITEM: {}\n'.format(self.item_name))
-        pp.pprint(self._item_description_str())
+        self.pprinted_item_description()
 
         # Number of dmgs
         num_of_dmgs = restricted_input(question_msg='Number of dmgs?\n', input_type='int', characteristic='non_negative',
@@ -3883,6 +3895,68 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase):
 
         # Prints all dmgs
         pp.pprint(self.item_dmgs)
+
+    def _suggest_buff_affected_stats(self, buff_name):
+        """
+        Modifies item buffs dict for given buff,
+        by inserting buff affected stats suggested by dev.
+
+        :param buff_name: (str)
+        :return: (None)
+        """
+
+        pp.pprint(delimiter(40))
+        self.pprinted_item_description()
+        # Asks if buff affects stats.
+        if _y_n_question(question_str='Buff {} affects stats?'.format(buff_name.upper())) is True:
+
+            # Resets affected_stats dict.
+            self.item_buffs[buff_name]['affected_stats'] = {}
+
+            while 1:
+                # Stat name
+                stat_name_msg = 'ITEM: {}, BUFF: {}.'.format(self.item_name, buff_name)
+                stat_name_msg += '\nStat name?(empty string to exit)'
+                stat_name = enumerated_question(question_str=stat_name_msg,
+                                                # (enter added as a choice by '')
+                                                choices_seq=self.items_stat_names() + [''],
+                                                restrict_choices=True)
+
+                if stat_name == '':
+                    break
+
+                # Stat value
+                stat_val_msg = 'ITEM: {}, BUFF: {}, STAT NAME: {}'.format(self.item_name, buff_name, stat_name)
+                stat_val_msg += '\nStat value?'
+                stat_val = restricted_input(question_msg=stat_val_msg,
+                                            input_type='num', characteristic='non_zero',
+                                            disallow_enter=True)
+
+                self.item_buffs[buff_name]['affected_stats'].update({stat_name: stat_val})
+
+        pp.pprint(self.item_buffs[buff_name]['affected_stats'])
+
+    @repeat_cluster(cluster_name='ITEM BUFFS')
+    def create_item_buffs(self):
+
+        print(fat_delimiter(80))
+        self.pprinted_item_description()
+
+        self.item_buffs = {}
+        self._ask_amount_of_buffs_and_change_names(modified_dct=self.item_buffs, obj_name=self.item_name)
+
+        for buff_name in self.item_buffs:
+            self.item_buffs.update({buff_name: self.item_buff_attributes()})
+
+            buff_msg = '\nITEM: {}, BUFF: {}'.format(self.item_name, buff_name)
+            # Stats affected by buff.
+            self._suggest_buff_affected_stats(buff_name=buff_name)
+            # Rest of buff attrs.
+            suggest_attr_values(suggested_values_dct=self.usual_item_buff_attrs_values(),
+                                modified_dct=self.item_buffs[buff_name], extra_start_msg=buff_msg)
+
+        pp.pprint(self.item_buffs)
+
 
 
 # ===============================================================
@@ -4175,7 +4249,7 @@ if __name__ == '__main__':
     testItems = True
     if testItems is True:
         inst = ItemAttrCreation(item_name='gun')
-        inst.create_item_dmgs()
+        inst.create_item_buffs()
 
     testRestrictedInput = False
     if testRestrictedInput is True:
