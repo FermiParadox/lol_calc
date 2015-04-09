@@ -4,7 +4,6 @@ import copy
 
 ALL_RESOURCE_NAMES = frozenset({'mp', 'energy', 'rage', None, 'flow'})
 
-RESOURCE_MAX_STAT_NAMES = frozenset({'max_'+i for i in ALL_RESOURCE_NAMES if i is not None})
 RESOURCE_CURRENT_STAT_NAMES = frozenset({'current_'+i for i in ALL_RESOURCE_NAMES if i is not None})
 
 DEFENSIVE_SPECIAL_STATS = frozenset({'percent_physical_reduction_by_armor',
@@ -23,8 +22,7 @@ RUNE_STAT_NAMES = frozenset({'ap', 'mr', 'mr_per_lvl', 'armor_per_lvl', 'crit_ch
                              'lifesteal', 'move_speed', 'armor', 'energy_per_lvl', 'flat_magic_penetration',
                              'hp', 'cdr_per_lvl', 'cdr'})
 
-ALL_STANDARD_STAT_NAMES = frozenset((RUNE_STAT_NAMES | RESOURCE_CURRENT_STAT_NAMES | RESOURCE_MAX_STAT_NAMES)
-                                    - ALL_RESOURCE_NAMES)
+ALL_STANDARD_STAT_NAMES = frozenset((RUNE_STAT_NAMES | RESOURCE_CURRENT_STAT_NAMES) - ALL_RESOURCE_NAMES)
 
 # Contains stats that are not included in base_stats_dct and are calculated separately by their own methods.
 SPECIAL_STATS_SET = frozenset({'base_ad',
@@ -33,6 +31,7 @@ SPECIAL_STATS_SET = frozenset({'base_ad',
                                'move_speed',
                                'crit_chance',
                                'cdr',
+                               'move_speed_reduction',
                                # TODO: create their methods
                                'bonus_armor',
                                'bonus_mr',
@@ -143,7 +142,6 @@ class StatCalculation(StatFilters):
 
     ALL_RESOURCE_NAMES = ALL_RESOURCE_NAMES
 
-    RESOURCE_MAX_STAT_NAMES = RESOURCE_MAX_STAT_NAMES
     RESOURCE_CURRENT_STAT_NAMES = RESOURCE_CURRENT_STAT_NAMES
 
     DEFENSIVE_SPECIAL_STATS = DEFENSIVE_SPECIAL_STATS

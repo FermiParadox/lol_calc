@@ -3078,6 +3078,7 @@ class AbilitiesAttributes(object):
 
         return attrs_dct
 
+    @outer_loop_exit_handler
     def _create_or_redo_spells_attrs(self):
         """
         Creates attributes of every spell.
@@ -3162,7 +3163,6 @@ class AbilitiesAttributes(object):
                                 self.final_abilities_attrs[attr_type].update({new_name: old_attr_dct})
                                 break
 
-    @outer_loop_exit_handler
     @repeat_cluster(cluster_name='SPELL ATTRS')
     def run_spell_attrs_creation(self):
         """
@@ -3664,7 +3664,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase):
 
         :returns: (list)
         """
-        lst = list(self.ITEM_STAT_NAMES_MAP.values())+['tar_current_hp', 'tar_max_hp']
+        lst = list(self.ITEM_STAT_NAMES_MAP.values())+['tar_current_hp', 'tar_max_hp', 'move_speed_reduction']
         return lst
 
     def __init__(self, item_name):
@@ -4234,7 +4234,7 @@ if __name__ == '__main__':
     if testChampIDs is True:
         print(ExploreApiAbilities().champion_id('dariu'))
 
-    testModuleInsertion = False
+    testModuleInsertion = True
     if testModuleInsertion is True:
         ChampionModuleCreator(champion_name='jax').run_champ_module_creation()
 
