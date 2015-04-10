@@ -13,6 +13,7 @@ import importlib
 import ast
 import collections
 import api_items_database
+import items.items_data
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -21,7 +22,9 @@ import api_items_database
 # ===============================================================
 # Objects in champion module (exact strings are re.matched inside module)
 CHAMPION_MODULES_FOLDER_NAME = 'champions'
-ITEM_MODULES_FOLDER_NAME = 'items_data'
+ITEM_MODULES_FOLDER_NAME = 'items'
+ITEMS_DCTS_MODULE_NAME = items.items_data.__name__
+ITEMS_ATTRS_DCT_NAME = 'ITEMS_ATTRIBUTES'
 ABILITIES_ATTRS_DCT_NAME = 'ABILITIES_ATTRIBUTES'
 ABILITIES_EFFECT_DCT_NAME = 'ABILITIES_EFFECTS'
 ABILITIES_CONDITIONS_DCT_NAME = 'ABILITIES_CONDITIONS'
@@ -45,9 +48,13 @@ child_class_as_str = """class ChampionAttributes(object):
 # ===============================================================
 def imported_champ_module(champ_name):
     """
-    Returns champion's module.
+    Returns champion's module, ensuring it is reloaded.
     """
-    return importlib.import_module(CHAMPION_MODULES_FOLDER_NAME + '.' + champ_name)
+
+    module = importlib.import_module(CHAMPION_MODULES_FOLDER_NAME + '.' + champ_name)
+    importlib.reload(module)
+
+    return module
 
 
 def champ_abilities_attrs_dct(champ_name):
@@ -59,16 +66,53 @@ def champ_abilities_attrs_dct(champ_name):
     """
 
     champ_mod = imported_champ_module(champ_name)
-
     return getattr(champ_mod, ABILITIES_ATTRS_DCT_NAME)
 
 
-def _dmgs_names(champ_name):
-    return sorted(champ_abilities_attrs_dct(champ_name)['dmgs'])
+def items_attrs_dct():
+    return getattr(items.items_data, ITEMS_ATTRS_DCT_NAME)
 
 
-def _buffs_names(champ_name):
-    return sorted(champ_abilities_attrs_dct(champ_name)['buffs'])
+def _dmgs_or_buffs_names(owner_name, owner_type, name_type):
+    """
+    Returns list of dmg names for champion or item selected.
+
+    :param owner_name: (str) champion name or item name
+    :param owner_type: (str) 'champion' or 'item'
+    :param name_type: (str) 'dmgs' or 'buffs'
+    :returns: (list)
+    """
+
+    if owner_type == 'champion':
+        return sorted(champ_abilities_attrs_dct(champ_name=owner_name)[name_type])
+
+    elif owner_type == 'item':
+        return sorted(items_attrs_dct()[name_type])
+
+    else:
+        raise palette.UnexpectedValueError
+
+
+def dmgs_names(owner_name, owner_type):
+    """
+    Returns a list of all dmg names in champion or item attributes dict.
+
+    :param owner_name: (str) champion name or item name
+    :param owner_type: (str) 'champion' or 'item'
+    :returns: (list)
+    """
+    return _dmgs_or_buffs_names(owner_name, owner_type, name_type='dmgs')
+
+
+def buffs_names(owner_name, owner_type):
+    """
+    Returns a list of all buffs names in champion or item attributes dict.
+
+    :param owner_name: (str) champion name or item name
+    :param owner_type: (str) 'champion' or 'item'
+    :returns: (list)
+    """
+    return _dmgs_or_buffs_names(owner_name, owner_type, name_type='buffs')
 
 
 # ---------------------------------------------------------------
@@ -3183,37 +3227,25 @@ class AbilitiesAttributes(object):
         pass
 
 
-class AbilitiesEffects(object):
-
-    def __init__(self, champion_name):
-        self.champion_name = champion_name
-        self.spells_effects = {}
-
-    def _set_spells_effects(self):
-
-        for spell_name in SPELL_SHORTCUTS:
-            self.spells_effects.update({spell_name: palette.ChampionsStats.spell_effects()})
+class EffectsBase(object):
 
     @inner_loop_exit_handler
-    def _create_single_spell_effects_dct(self, spell_name):
+    def _create_single_obj_effects_dct(self, owner_name, owner_type, obj_effects_dct, univ_msg):
         """
-        Creates effects dict of a single spell, for given champion.
+        Creates effects dict of a single spell or item.
 
         Dev is asked about possible dmg and buff names,
         and cd modifiers.
 
-        Returns:
-            (None)
+        :param owner_name: (str) champion name
+        :param owner_type: (str) 'champion' or 'item'
+        :param obj_effects_dct: (dict) e.g. ABILITY_EFFECTS = {'q': {...}, .. }
+        :param univ_msg: (str)
+        :return: (None)
         """
 
         print(fat_delimiter(100))
         print('\nEFFECTS DICT')
-
-        univ_msg = '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, spell_name)
-
-        self._set_spells_effects()
-
-        effects_dct = self.spells_effects[spell_name]
 
         for tar_type in ('enemy', 'player'):
             for application_type in ('passives', 'actives'):
@@ -3223,33 +3255,36 @@ class AbilitiesEffects(object):
                 dmg_msg += '%s -- %s -- DMG APPLIED\n' % (tar_type, application_type)
                 dmg_msg = dmg_msg.upper()
 
-                suggest_lst_of_attr_values(suggested_values_lst=_dmgs_names(champ_name=self.champion_name),
-                                           modified_lst=effects_dct[tar_type][application_type]['dmg'],
+                suggest_lst_of_attr_values(suggested_values_lst=dmgs_names(owner_name=owner_name,
+                                                                           owner_type=owner_type),
+                                           modified_lst=obj_effects_dct[tar_type][application_type]['dmg'],
                                            extra_start_msg=dmg_msg)
 
-                pp.pprint(effects_dct[tar_type][application_type]['dmg'])
+                pp.pprint(obj_effects_dct[tar_type][application_type]['dmg'])
 
                 # BUFFS APPLICATION
                 buffs_applied_msg = '%s\n' % univ_msg
                 buffs_applied_msg += '%s -- %s -- BUFFS APPLIED' % (tar_type, application_type)
                 buffs_applied_msg = buffs_applied_msg.upper()
 
-                suggest_lst_of_attr_values(suggested_values_lst=_buffs_names(champ_name=self.champion_name),
-                                           modified_lst=effects_dct[tar_type][application_type]['buffs'],
+                suggest_lst_of_attr_values(suggested_values_lst=buffs_names(owner_name=owner_name,
+                                                                            owner_type=owner_type),
+                                           modified_lst=obj_effects_dct[tar_type][application_type]['buffs'],
                                            extra_start_msg=buffs_applied_msg)
 
-                pp.pprint(effects_dct[tar_type][application_type]['buffs'])
+                pp.pprint(obj_effects_dct[tar_type][application_type]['buffs'])
 
                 # BUFF REMOVAL
                 buff_removal_msg = '%s\n' % univ_msg
                 buff_removal_msg += '%s -- %s -- BUFFS REMOVED' % (tar_type, application_type)
                 buff_removal_msg = buff_removal_msg.upper()
 
-                suggest_lst_of_attr_values(suggested_values_lst=_buffs_names(champ_name=self.champion_name),
-                                           modified_lst=effects_dct[tar_type][application_type]['remove_buff'],
+                suggest_lst_of_attr_values(suggested_values_lst=buffs_names(owner_name=owner_name,
+                                                                            owner_type=owner_type),
+                                           modified_lst=obj_effects_dct[tar_type][application_type]['remove_buff'],
                                            extra_start_msg=buff_removal_msg)
 
-                pp.pprint(effects_dct[tar_type][application_type]['remove_buff'])
+                pp.pprint(obj_effects_dct[tar_type][application_type]['remove_buff'])
 
         # CD MODIFICATION
         lst_of_modified = []
@@ -3272,9 +3307,26 @@ class AbilitiesEffects(object):
                 except ValueError:
                     print('\nValue has to be num. Try again.')
 
-            effects_dct['player']['actives']['cds_modified'].update({cd_modified_name: mod_value})
+            obj_effects_dct['player']['actives']['cds_modified'].update({cd_modified_name: mod_value})
 
-        pp.pprint(self.spells_effects)
+        pp.pprint(obj_effects_dct)
+
+
+class AbilitiesEffects(EffectsBase):
+
+    def __init__(self, champion_name):
+        self.champion_name = champion_name
+        self.spells_effects = {}
+
+    @staticmethod
+    def spells_effects_dct():
+
+        dct = {}
+
+        for spell_name in SPELL_SHORTCUTS:
+            dct.update({spell_name: palette.ChampionsStats.spell_effects()})
+
+        return dct
 
     @outer_loop_exit_handler
     @repeat_cluster(cluster_name='SPELL EFFECTS')
@@ -3292,7 +3344,7 @@ class AbilitiesEffects(object):
         for spell_name in SPELL_SHORTCUTS:
 
             # Creates a spell's effects.
-            self._create_single_spell_effects_dct(spell_name=spell_name)
+            self._create_single_obj_effects_dct(spell_name=spell_name)
 
             # Redo
             while True:
@@ -3302,7 +3354,7 @@ class AbilitiesEffects(object):
                 # (exit keys added for convenience when debugging)
                 if redo_all_eff_of_spell in ('y', INNER_LOOP_KEY, OUTER_LOOP_KEY):
                     # (not breaking after this allows redoing multiple times)
-                    self._create_single_spell_effects_dct(spell_name=spell_name)
+                    self._create_single_obj_effects_dct(spell_name=spell_name)
 
                 elif redo_all_eff_of_spell == 'n':
                     break
@@ -3313,8 +3365,7 @@ class AbilitiesEffects(object):
 class Conditionals(object):
     def __init__(self, champion_name):
         self.champion_name = champion_name
-        self.champ_module = imported_champ_module(champ_name=champion_name)
-        self.abilities_dct = self.champ_module.ABILITIES_ATTRIBUTES
+        self.abilities_dct = imported_champ_module(champ_name=champion_name).ABILITIES_ATTRIBUTES
         self.abilities_effects = champ_abilities_attrs_dct(champ_name=champion_name)
         self.conditions = {}
 
@@ -3956,6 +4007,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase):
                                 modified_dct=self.item_buffs[buff_name], extra_start_msg=buff_msg)
 
         pp.pprint(self.item_buffs)
+
 
 
 

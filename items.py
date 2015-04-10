@@ -1,7 +1,6 @@
 import dmgs_buffs_categories
 import palette
 import copy
-import items_data.items_non_unique_data
 
 
 class ItemsBase(dmgs_buffs_categories.DmgCategories):
@@ -17,12 +16,12 @@ class ItemsBase(dmgs_buffs_categories.DmgCategories):
         self.active_buffs = act_buffs
 
         dmgs_buffs_categories.DmgCategories.__init__(self,
-                                                  req_stats_func=req_stats_func,
-                                                  current_stats=current_stats,
-                                                  current_target=current_target,
-                                                  champion_lvls_dct=champion_lvls_dct,
-                                                  current_target_num=current_target_num,
-                                                  active_buffs=act_buffs)
+                                                     req_stats_func=req_stats_func,
+                                                     current_stats=current_stats,
+                                                     current_target=current_target,
+                                                     champion_lvls_dct=champion_lvls_dct,
+                                                     current_target_num=current_target_num,
+                                                     active_buffs=act_buffs)
 
 
 class Gunblade(ItemsBase):
@@ -36,7 +35,7 @@ class Gunblade(ItemsBase):
             ap=65,
             lifesteal=12/100,
             spellvamp=20/100,
-            ),
+        ),
 
         unique_passive=dict(
             spellvamp=20/100,),
@@ -54,7 +53,7 @@ class Gunblade(ItemsBase):
             speed_reduction=40/100,
 
 
-            ))
+        ))
 
     def gunblade_stats_buff(self):
 
@@ -66,7 +65,7 @@ class Gunblade(ItemsBase):
                     additive=self.GUNBLADE_STATS['passive']['ap']),
                 lifesteal=dict(
                     additive=self.GUNBLADE_STATS['passive']['lifesteal']),
-                ),
+            ),
 
             # (up to 6 gunblades can provide this bonus)
             max_stacks=6,
@@ -93,7 +92,7 @@ class Gunblade(ItemsBase):
             max_targets=1,
             dot=False,
             life_conversion_type='spellvamp',
-            )
+        )
 
     def gunblade_dmg_value(self):
 
@@ -106,7 +105,7 @@ class Gunblade(ItemsBase):
             stats=dict(
                 speed_reduction=dict(
                     percent=self.GUNBLADE_STATS['active']['speed_reduction']),
-                ),
+            ),
 
             duration=self.GUNBLADE_STATS['active']['duration'],
             target='enemy')
