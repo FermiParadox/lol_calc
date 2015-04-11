@@ -134,9 +134,9 @@ class Fetch(object):
         else:
             return items_data_module.ITEMS_EFFECTS[obj_name]
 
-    def has_actives(self, spell_or_item_name, champ_or_item, champ_name=None):
+    def castable(self, spell_or_item_name, champ_or_item, champ_name=None):
         """
-        Checks if given champion ability or  is castable.
+        Checks if given champion ability or item is castable.
 
         :param spell_or_item_name: (str) champion or item name
         :param champ_or_item: (str)
@@ -3274,7 +3274,7 @@ class AbilitiesAttributes(object):
 class EffectsBase(object):
 
     # TODO @inner_loop_exit_handler
-    def _create_single_obj_effects_dct(self, obj_name, champ_or_item, univ_msg, modified_eff_dct, has_actives):
+    def _create_single_obj_effects_dct(self, obj_name, champ_or_item, univ_msg, modified_eff_dct, champ_name=None):
         """
         Creates effects dict of a single spell or item.
 
@@ -3287,6 +3287,10 @@ class EffectsBase(object):
         :param has_actives: (bool) False for passive spells or items without (useful) actives.
         :return: (None)
         """
+
+        has_actives = Fetch().castable(champ_or_item=champ_or_item,
+                                       spell_or_item_name=obj_name,
+                                       champ_name=champ_name)
 
         print(fat_delimiter(100))
         print('\nEFFECTS DICT')
@@ -3383,11 +3387,11 @@ class AbilitiesEffects(EffectsBase):
         # Creates a spell's effects.
         self._create_single_obj_effects_dct(obj_name=spell_name, champ_or_item='champion', univ_msg=msg,
                                             modified_eff_dct=self.spells_effects[spell_name],
-                                            has_actives=Fetch().has_actives())
+                                            champ_name=self.champion_name)
 
     @outer_loop_exit_handler
     @repeat_cluster(cluster_name='SPELL EFFECTS')
-    def run_spell_effects_creation(self):
+    def run_spells_effects_creation(self):
         """
         Creates effects of every spell.
         Allows redoing creation for each spell, if needed.
@@ -3725,7 +3729,7 @@ class Conditionals(object):
 # ---------------------------------------------------------------
 # ITEMS
 
-class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase):
+class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
 
     """
     Responsible for creating a SINGLE item's attributes: unique and stacking item stats, item buffs, item effects.
@@ -3768,6 +3772,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase):
         self.item_gen_attrs = {}
         self.item_dmgs = None
         self.item_buffs = None
+        self.item_effects = None
 
     @staticmethod
     def general_attributes():
@@ -4051,7 +4056,17 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase):
 
         pp.pprint(self.item_buffs)
 
+    @repeat_cluster
+    def create_item_effects(self):
 
+        self.item_effects = {}
+        msg = 'ITEM: {}'.format(self.item_name)
+
+        self._create_single_obj_effects_dct(obj_name=self.item_name,
+                                            champ_or_item='item',
+                                            univ_msg=msg,
+                                            modified_eff_dct=self.item_effects,
+                                            champ_name=None)
 
 
 # ===============================================================
@@ -4213,7 +4228,7 @@ class ChampionModuleCreator(ModuleCreatorBase):
 
         elif obj_name == ABILITIES_EFFECT_DCT_NAME:
             effects_inst = AbilitiesEffects(champion_name=self.champion_name)
-            effects_inst.run_spell_effects_creation()
+            effects_inst.run_spells_effects_creation()
 
             return effects_inst.spells_effects
 
@@ -4352,5 +4367,10 @@ if __name__ == '__main__':
 
     testFetch = False
     if testFetch is True:
-        r = Fetch().has_actives(spell_or_item_name='q', champ_or_item='champion', champ_name='jax')
+        r = Fetch().castable(spell_or_item_name='q', champ_or_item='champion', champ_name='jax')
         print(r)
+
+    testItemEffCreation = True
+    if testItemEffCreation:
+        inst = ItemAttrCreation(item_name='gunblade')
+        inst.create
