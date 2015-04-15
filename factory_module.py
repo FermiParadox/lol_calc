@@ -1778,6 +1778,24 @@ class ExploreApiItems(ExploreBase):
 
         return _return_or_pprint_complex_obj(print_mode=print_mode, dct=counter)
 
+    def _item_cost_base(self, item_name, cost_name):
+
+        costs_dct = self.item_dct(given_name=item_name)['gold']
+
+        try:
+            return costs_dct[cost_name]
+        except KeyError:
+            return None
+
+    def item_total_price(self, item_name):
+        return self._item_cost_base(item_name=item_name, cost_name='total')
+
+    def item_recipe_price(self, item_name):
+        return self._item_cost_base(item_name=item_name, cost_name='base')
+
+    def item_sell_price(self, item_name):
+        return self._item_cost_base(item_name=item_name, cost_name='sell')
+
 
 # ===============================================================
 #       ATTRIBUTE CREATION
@@ -4101,11 +4119,10 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
     def item_builds_into(self):
         """
 
-        :return: (tuple)
+        :return: (set)
         """
 
-        # (in can only contain unique items, so it doesn't need duplicate removal)
-        return self._item_tree_piece_base_function(key_name='into')
+        return set(self._item_tree_piece_base_function(key_name='into'))
 
     def item_builds_from(self):
         """
@@ -4171,10 +4188,30 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         """
         return self._item_roots_leafs_base(from_or_into='into')
 
+    def item_secondary_data_dct(self):
+        """
+        Creates and returns a dict containing secondary item data.
 
-    def create_items_tree(self):
-        pass
+        "Secondary" refers to non-stats, item id, build tree, gold, recipe cost, etc.
 
+        :returns: (dict)
+        """
+
+        explore_inst = self.explore_items_module_inst
+
+        dct = {}
+
+        dct.update({'id': int(self.item_id)})
+        dct.update({'build_from': self.item_builds_from()})
+        dct.update({'builds_into': self.item_builds_into()})
+        dct.update({'roots': self.item_roots()})
+        dct.update({'leafs': self.item_leafs()})
+
+        dct.update({'total_price': explore_inst.item_total_price(item_name=self.item_name)})
+        dct.update({'recipe_price': explore_inst.item_recipe_price(item_name=self.item_name)})
+        dct.update({'sell_price': explore_inst.item_recipe_price(item_name=self.item_name)})
+
+        return dct
 
 # ===============================================================
 #       MODULE CREATION
@@ -4493,5 +4530,5 @@ if __name__ == '__main__':
 
     testItemEffCreation = True
     if testItemEffCreation:
-        inst = ItemAttrCreation(item_name='long')
-        print(inst.item_leafs())
+        inst = ItemAttrCreation(item_name='tri')
+        pp.pprint(inst.item_secondary_data_dct())
