@@ -153,11 +153,6 @@ class Fetch(object):
             return self.items_attrs_dct()[item_name]['general_attributes']
 
 
-
-
-
-
-
 # ---------------------------------------------------------------
 def delimiter(num_of_lines, line_type='-'):
     """
@@ -1524,13 +1519,15 @@ class ExploreApiItems(ExploreBase):
 
     def __init__(self):
         self.item_related_api_data = api_items_database.ALL_ITEMS
-        self._all_items_by_id = self.item_related_api_data['data']
-        self.used_items_by_name = self._used_items()
+        # All items, INCLUDING items not used in summoners rift (they are excluded below, so might raise bugs if used)
+        self.all_items_dct_by_id = self.item_related_api_data['data']
+        # (there is a method below more suitable for returning item dict, that does not require exact name match)
+        self.used_items_by_name_dct = self._used_items_dct_by_name()
 
     MANDATORY_MAP_ID = 1
     DISALLOWED_ITEM_TAGS = ('trinket', 'consumable', )
 
-    def _used_items(self):
+    def _used_items_dct_by_name(self):
         """
         Creates a dict containing only items that will be used.
 
@@ -1548,33 +1545,34 @@ class ExploreApiItems(ExploreBase):
 
         dct = {}
 
-        for item_id in self._all_items_by_id:
+        for item_id in self.all_items_dct_by_id:
 
             # MAP
             allowed_on_map = True
             # (if there is no map exclusion, then it is usable on required map)
             try:
-                if self._all_items_by_id[item_id]['maps']['1'] is False:
+                if self.all_items_dct_by_id[item_id]['maps']['1'] is False:
                     allowed_on_map = False
             except KeyError:
                 pass
 
             # PURCHASABLE
             purchasable = True
-            if 'inStore' in self._all_items_by_id[item_id]:
-                if self._all_items_by_id[item_id]['inStore'] is False:
+            if 'inStore' in self.all_items_dct_by_id[item_id]:
+                if self.all_items_dct_by_id[item_id]['inStore'] is False:
                     purchasable = False
+            # TODO: update with victor's item, since it's filtered out because of not being purchasable at tier 1.
 
             # NON DISALLOWED TAG
             allowed_tags = True
-            if 'tags' in self._all_items_by_id[item_id]:
-                for tag in self._all_items_by_id[item_id]['tags']:
+            if 'tags' in self.all_items_dct_by_id[item_id]:
+                for tag in self.all_items_dct_by_id[item_id]['tags']:
                     if tag.lower() in self.DISALLOWED_ITEM_TAGS:
                         allowed_tags = False
 
             # Checks if all conditions are met.
             if allowed_on_map and allowed_tags and purchasable:
-                item_name = self._all_items_by_id[item_id]['name'].lower()
+                item_name = self.all_items_dct_by_id[item_id]['name'].lower()
 
                 # (order below matters for correct naming)
                 item_name = item_name.replace('(ranged only)', '')
@@ -1589,9 +1587,21 @@ class ExploreApiItems(ExploreBase):
                 item_name = item_name.replace('.', '')
                 item_name = item_name.lower()
 
-                dct.update({item_name: self._all_items_by_id[item_id]})
+                dct.update({item_name: self.all_items_dct_by_id[item_id]})
 
         return dct
+
+    def item_name_from_id(self, id_num):
+        """
+        Searches through items, and retrieves name corresponding to given id.
+
+        :param id_num: (int) id number of item
+        :return: (str) or (None) if item does not belong to the used items.
+        """
+
+        for item_name in self.used_items_by_name_dct:
+            if self.used_items_by_name_dct[item_name]['id'] == id_num:
+                return item_name
 
     def total_used_items(self):
         """
@@ -1600,7 +1610,7 @@ class ExploreApiItems(ExploreBase):
         Returns:
             (int)
         """
-        return len(self.used_items_by_name)
+        return len(self.used_items_by_name_dct)
 
     def item_dct(self, given_name, print_mode=False):
         """
@@ -1613,9 +1623,9 @@ class ExploreApiItems(ExploreBase):
             (dct)
         """
 
-        matched_name = self._full_or_partial_match(searched_name=given_name, iterable=self.used_items_by_name)
+        matched_name = self._full_or_partial_match(searched_name=given_name, iterable=self.used_items_by_name_dct)
 
-        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=self.used_items_by_name[matched_name])
+        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=self.used_items_by_name_dct[matched_name])
 
     def _item_elements(self, element_name, item=None, raw_str=None, print_mode=False):
         """
@@ -1635,10 +1645,10 @@ class ExploreApiItems(ExploreBase):
 
         # All items, or selected item.
         if item is None:
-            item_lst = self.used_items_by_name
+            item_lst = self.used_items_by_name_dct
         else:
             # (need a list so it inserts selection into a list)
-            matched_name = self._full_or_partial_match(searched_name=item, iterable=self.used_items_by_name)
+            matched_name = self._full_or_partial_match(searched_name=item, iterable=self.used_items_by_name_dct)
             item_lst = [matched_name, ]
 
         descriptions_lst = []
@@ -1646,7 +1656,7 @@ class ExploreApiItems(ExploreBase):
         for item_name in sorted(item_lst):
 
             try:
-                self._append_all_or_matching_str(examined_str=self.used_items_by_name[item_name][element_name],
+                self._append_all_or_matching_str(examined_str=self.used_items_by_name_dct[item_name][element_name],
                                                  modified_lst=descriptions_lst,
                                                  raw_str=raw_str)
             except KeyError:
@@ -1673,7 +1683,7 @@ class ExploreApiItems(ExploreBase):
         """
         names = set()
 
-        for item_name in self.used_items_by_name:
+        for item_name in self.used_items_by_name_dct:
             item_description = self.unfiltered_descriptions(item=item_name)[0].lower()
             matches_lst = re.findall(r'<[a-z]+>', item_description)
 
@@ -1730,10 +1740,10 @@ class ExploreApiItems(ExploreBase):
         """
         item_occurrence_dct = {}
 
-        for item_name in self.used_items_by_name:
+        for item_name in self.used_items_by_name_dct:
 
             try:
-                tags_lst = self.used_items_by_name[item_name]['tags']
+                tags_lst = self.used_items_by_name_dct[item_name]['tags']
 
                 for tag_str in tags_lst:
                     self._store_and_note_frequency(string=tag_str, modified_dct=item_occurrence_dct,
@@ -1763,7 +1773,7 @@ class ExploreApiItems(ExploreBase):
 
         counter = collections.Counter()
 
-        for item_name in self.used_items_by_name:
+        for item_name in self.used_items_by_name_dct:
             counter += collections.Counter(self.item_uniques_passives_names(item_name=item_name))
 
         return _return_or_pprint_complex_obj(print_mode=print_mode, dct=counter)
@@ -3273,7 +3283,7 @@ class AbilitiesAttributes(object):
 
 class EffectsBase(object):
 
-    # TODO @inner_loop_exit_handler
+    @inner_loop_exit_handler
     def _create_single_obj_effects_dct(self, obj_name, champ_or_item, univ_msg, modified_eff_dct, champ_name=None):
         """
         Creates effects dict of a single spell or item.
@@ -3284,7 +3294,7 @@ class EffectsBase(object):
         :param obj_name: (str) spell or item name
         :param champ_or_item: (str) 'champion' or 'item'
         :param univ_msg: (str)
-        :param has_actives: (bool) False for passive spells or items without (useful) actives.
+        :param modified_eff_dct: (dict) Exact dict that gets all effects for given object.
         :return: (None)
         """
 
@@ -3768,11 +3778,16 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
     def __init__(self, item_name):
         self._validate_stats_names()
         self.item_name = item_name
+        self.explore_items_module_inst = ExploreApiItems()
+        self.item_id = self.explore_items_module_inst.item_dct(item_name)['id']
         self.item_simple_stats_dct = {}     # (stats between <stats> and </stats>)
         self.item_gen_attrs = {}
         self.item_dmgs = None
         self.item_buffs = None
         self.item_effects = None
+        self.item_tree = None
+        self.item_api_data_dct = self.explore_items_module_inst.item_dct(given_name=item_name)
+        self._item_description_str = self.explore_items_module_inst.descriptions(item=self.item_name)[0]
 
     @staticmethod
     def general_attributes():
@@ -3812,13 +3827,10 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
     def item_buff_affected_stat_attributes(self):
         return self.affected_stat_attributes()
 
-    # ----------------------------------------------------------------
-    def _item_description_str(self):
-        return ExploreApiItems().descriptions(item=self.item_name)[0]
-
+    # ------------------------------------------------------------
     def pprinted_item_description(self):
         print('\nITEM: {}\n'.format(self.item_name))
-        pp.pprint(self._item_description_str())
+        pp.pprint(self._item_description_str)
 
     def _validate_stats_names(self):
         """
@@ -3861,7 +3873,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         dct = {}
 
         stats_part_str = self._content_between_tags_in_description(
-            item_description=self._item_description_str().lower(),
+            item_description=self._item_description_str.lower(),
             tag_str='stats')
 
         partitions_lst = re.split(r'<br>', stats_part_str)
@@ -4068,6 +4080,101 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
                                             modified_eff_dct=self.item_effects,
                                             champ_name=None)
 
+    # -----------------------------------------------------------
+    def _item_tree_piece_base_function(self, key_name):
+        """
+        :param key_name: (str) 'into', 'from'
+        :return: (tuple)
+        """
+
+        lst = []
+
+        if key_name in self.item_api_data_dct:
+            for id_num_as_str in self.item_api_data_dct[key_name]:
+                # Appends all names corresponding to the id_nums.
+                item_name = self.explore_items_module_inst.item_name_from_id(id_num=int(id_num_as_str))
+                if item_name:
+                    lst.append(item_name)
+
+        return tuple(lst)
+
+    def item_builds_into(self):
+        """
+
+        :return: (tuple)
+        """
+
+        # (in can only contain unique items, so it doesn't need duplicate removal)
+        return self._item_tree_piece_base_function(key_name='into')
+
+    def item_builds_from(self):
+        """
+
+        :return: (dict)
+        """
+
+        built_from_tpl = self._item_tree_piece_base_function(key_name='from')
+
+        return dict(collections.Counter(built_from_tpl))
+
+    def _item_roots_leafs_base(self, from_or_into, _given_id_num_as_str=None, _set_of_ids=None):
+        """
+        Base method for finding all items that this item is build from or into.
+
+        :param from_or_into: (str) 'from' or 'into'. Key in the item dict of examined list
+        :param _given_id_num_as_str: (str) Initially automatically set to self.item_id,
+            then set through recursion to leaf or root item ids.
+        :param _set_of_ids: (set) Used in recursion to pass previous items found.
+        :return: (list)
+        """
+
+        # (has to be none unless called through recursion)
+        if _given_id_num_as_str is None:
+            _given_id_num_as_str = str(self.item_id)
+
+        if _set_of_ids is None:
+            set_of_ids = set()
+        else:
+            set_of_ids = _set_of_ids
+
+        # (Item with current id_num, not self.item_name)
+        examined_item_dct = self.explore_items_module_inst.all_items_dct_by_id[_given_id_num_as_str]
+        try:
+            added_lst = examined_item_dct[from_or_into]
+        except KeyError:
+            added_lst = []
+
+        for id_num_as_str in added_lst:
+            set_of_ids.update({id_num_as_str})
+            self._item_roots_leafs_base(from_or_into=from_or_into, _given_id_num_as_str=id_num_as_str,
+                                        _set_of_ids=set_of_ids)
+
+        final_lst_with_item_names = {
+            self.explore_items_module_inst.item_name_from_id(id_num=int(i)) for i in set_of_ids}
+
+        return final_lst_with_item_names
+
+    def item_roots(self):
+        """
+        Finds all items that this item is build from.
+
+        :return: (list)
+        """
+        return self._item_roots_leafs_base(from_or_into='from')
+
+    def item_leafs(self):
+        """
+        Finds all items that are built from this item.
+
+
+        :return: (tuple)
+        """
+        return self._item_roots_leafs_base(from_or_into='into')
+
+
+    def create_items_tree(self):
+        pass
+
 
 # ===============================================================
 #       MODULE CREATION
@@ -4269,13 +4376,13 @@ class ChampionModuleCreator(ModuleCreatorBase):
             time.sleep(0.2)
 
 
-class ItemModuleCreator(ModuleCreatorBase):
+class ItemsModuleCreator(ModuleCreatorBase):
 
     def __init__(self):
-        self.items_non_unique_data_path_str = '{}/items_non_unique_data.py'.format(ITEM_MODULES_FOLDER_NAME)
-        self.used_items = ExploreApiItems().used_items_by_name
+        self.items_data_path_str = '{}/items_data.py'.format(ITEM_MODULES_FOLDER_NAME)
+        self.used_items = ExploreApiItems().used_items_by_name_dct
 
-    def insert_item_non_unique_data(self):
+    def insert_items_non_unique_data(self):
         """
         Stores item stats that can stack normally.
 
@@ -4298,7 +4405,21 @@ class ItemModuleCreator(ModuleCreatorBase):
         self._insert_object_in_module(obj_name='ITEMS_NON_UNIQUE_STATS_DCT',
                                       new_object_as_dct_or_str=all_items_dct,
                                       replacement_question_msg=replacement_question_msg,
-                                      targeted_module=self.items_non_unique_data_path_str, width=1)
+                                      targeted_module=self.items_data_path_str, width=1)
+
+    def insert_or_update_items_dmgs(self):
+        None
+
+    def insert_or_update_items_buffs(self):
+
+        None
+
+    def insert_or_update_items_effects(self):
+        None
+
+    def insert_or_update_items_conditions(self):
+        None
+
 
 
 # ===============================================================
@@ -4350,11 +4471,11 @@ if __name__ == '__main__':
 
     testItemNames = False
     if testItemNames is True:
-        c = ExploreApiItems()._all_items_by_id
+        c = ExploreApiItems().all_items_dct_by_id
 
     testStatNamesValues = False
     if testStatNamesValues is True:
-        ItemModuleCreator().insert_item_non_unique_data()
+        ItemsModuleCreator().insert_items_non_unique_data()
 
     testItems = False
     if testItems is True:
@@ -4372,5 +4493,5 @@ if __name__ == '__main__':
 
     testItemEffCreation = True
     if testItemEffCreation:
-        inst = ItemAttrCreation(item_name='gunblade')
-        inst.create
+        inst = ItemAttrCreation(item_name='long')
+        print(inst.item_leafs())
