@@ -13,7 +13,6 @@ import importlib
 import ast
 import collections
 import api_items_database
-import items.items_data as items_data_module
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -22,9 +21,11 @@ import items.items_data as items_data_module
 # ===============================================================
 # Objects in champion module (exact strings are re.matched inside module)
 CHAMPION_MODULES_FOLDER_NAME = 'champions'
-ITEM_MODULES_FOLDER_NAME = 'items'
-ITEMS_DCTS_MODULE_NAME = items_data_module.__name__
+ITEMS_MODULES_FOLDER_NAME = 'items'
+ITEMS_DATA_MODULE_NAME = 'items_data'
+ITEMS_DATA_MODULE_PATH = '.'.join((ITEMS_MODULES_FOLDER_NAME, ITEMS_DATA_MODULE_NAME))
 ITEMS_ATTRS_DCT_NAME = 'ITEMS_ATTRIBUTES'
+ITEMS_EFFECTS_DCT_NAME = 'ITEM_EFFECTS'
 ABILITIES_ATTRS_DCT_NAME = 'ABILITIES_ATTRIBUTES'
 ABILITIES_EFFECT_DCT_NAME = 'ABILITIES_EFFECTS'
 ABILITIES_CONDITIONS_DCT_NAME = 'ABILITIES_CONDITIONS'
@@ -52,15 +53,32 @@ class Fetch(object):
     """
 
     @staticmethod
-    def imported_champ_module(champ_name):
+    def _imported_module(path_str):
         """
-        Returns champion's module, ensuring it is reloaded.
+        Returns module, ensuring it is reloaded.
+        :return: (module)
         """
 
-        module = importlib.import_module(CHAMPION_MODULES_FOLDER_NAME + '.' + champ_name)
+        module = importlib.import_module(path_str)
         importlib.reload(module)
 
         return module
+
+    def imported_champ_module(self, champ_name):
+        """
+        Returns champion module, ensuring it is reloaded.
+        :return: (module)
+        """
+
+        return self._imported_module(path_str=CHAMPION_MODULES_FOLDER_NAME + '.' + champ_name)
+
+    def imported_items_module(self):
+        """
+        Returns items' data module, ensuring it is reloaded.
+        :return: (module)
+        """
+
+        return self._imported_module(path_str=ITEMS_DATA_MODULE_PATH)
 
     def champ_abilities_attrs_dct(self, champ_name):
         """
@@ -73,9 +91,8 @@ class Fetch(object):
         champ_mod = self.imported_champ_module(champ_name)
         return getattr(champ_mod, ABILITIES_ATTRS_DCT_NAME)
 
-    @staticmethod
-    def items_attrs_dct():
-        return getattr(items_data_module, ITEMS_ATTRS_DCT_NAME)
+    def items_attrs_dct(self):
+        return getattr(self.imported_items_module(), ITEMS_ATTRS_DCT_NAME)
 
     def _dmgs_or_buffs_names(self, obj_name, champ_or_item, attr_type):
         """
@@ -132,7 +149,7 @@ class Fetch(object):
             mod = self.imported_champ_module(champ_name=obj_name)
             return getattr(mod, ABILITIES_EFFECT_DCT_NAME)
         else:
-            return items_data_module.ITEMS_EFFECTS[obj_name]
+            return self.imported_items_module().ITEMS_EFFECTS[obj_name]
 
     def castable(self, spell_or_item_name, champ_or_item, champ_name=None):
         """
@@ -244,7 +261,7 @@ def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct, width):
     body = _dct_body_to_pretty_formatted_str(given_dct=obj_body_as_dct, width=width)
     name_and_equal_sign = obj_name + ' = '
 
-    return name_and_equal_sign + body + '\n\n'
+    return name_and_equal_sign + body + '\n'
 
 
 def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_or_str, width):
@@ -3301,8 +3318,9 @@ class AbilitiesAttributes(object):
 
 class EffectsBase(object):
 
+    @staticmethod
     @inner_loop_exit_handler
-    def _create_single_obj_effects_dct(self, obj_name, champ_or_item, univ_msg, modified_eff_dct, champ_name=None):
+    def _create_single_obj_effects_dct(obj_name, champ_or_item, univ_msg, modified_eff_dct, champ_name=None):
         """
         Creates effects dict of a single spell or item.
 
@@ -3800,6 +3818,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         self.item_id = self.explore_items_module_inst.item_dct(item_name)['id']
         self.item_simple_stats_dct = {}     # (stats between <stats> and </stats>)
         self.item_gen_attrs = {}
+        self.non_unique_item_stats = None
         self.item_dmgs = None
         self.item_buffs = None
         self.item_effects = None
@@ -3880,12 +3899,12 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         except AttributeError:
             return ''
 
-    def non_unique_stats_values_dct(self):
+    def create_non_unique_stats_values(self):
         """
-        Returns a dict with stat names as values and stat value as key.
+        Creates a dict with stat names as values and stat value as key.
 
         Returns:
-            (dict)
+            (None)
         """
 
         dct = {}
@@ -3919,10 +3938,10 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
 
                     dct.update({stat_name: stat_val})
 
-        return dct
+        self.non_unique_item_stats = dct
 
     @repeat_cluster(cluster_name='ITEM GEN ATTRS')
-    def create_gen_attrs(self):
+    def create_item_gen_attrs(self):
         self.item_gen_attrs = {}
 
         # Castable
@@ -4099,6 +4118,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
                                             champ_name=None)
 
     # -----------------------------------------------------------
+    # Tree
     def _item_tree_piece_base_function(self, key_name):
         """
         :param key_name: (str) 'into', 'from'
@@ -4188,6 +4208,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         """
         return self._item_roots_leafs_base(from_or_into='into')
 
+    # -----------------------------------------------------------
+    # Secondary data dict
     def item_secondary_data_dct(self):
         """
         Creates and returns a dict containing secondary item data.
@@ -4209,9 +4231,10 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
 
         dct.update({'total_price': explore_inst.item_total_price(item_name=self.item_name)})
         dct.update({'recipe_price': explore_inst.item_recipe_price(item_name=self.item_name)})
-        dct.update({'sell_price': explore_inst.item_recipe_price(item_name=self.item_name)})
+        dct.update({'sell_price': explore_inst.item_sell_price(item_name=self.item_name)})
 
         return dct
+
 
 # ===============================================================
 #       MODULE CREATION
@@ -4239,7 +4262,7 @@ class ModuleCreatorBase(object):
             r.write(obj_as_str)
 
     @staticmethod
-    def _replace_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module, width):
+    def _replace_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module_path_str, width):
         """
         Replaces full object in module.
 
@@ -4248,26 +4271,26 @@ class ModuleCreatorBase(object):
         :return: (None)
         """
 
-        with open(targeted_module, 'r') as r:
-            r_as_lst = r.readlines()
+        with open(targeted_module_path_str, 'r') as read_file:
+            read_file_as_lst = read_file.readlines()
 
-        replacement = _file_after_replacing_module_var(file_as_lines_lst=r_as_lst, object_name=obj_name,
+        replacement = _file_after_replacing_module_var(file_as_lines_lst=read_file_as_lst, object_name=obj_name,
                                                        obj_as_dct_or_str=new_object_as_dct_or_str, width=width)
 
-        with open(targeted_module, 'w') as w:
+        with open(targeted_module_path_str, 'w') as w:
             w.write(replacement)
 
     @staticmethod
-    def _obj_existence(obj_name, targeted_module):
+    def _obj_existence(obj_name, targeted_module_path_str):
         """
         Checks start of each line in a module for obj existence, ignoring starting preceding whitespaces.
 
         :param obj_name: (str)
-        :param targeted_module: (str)
+        :param targeted_module_path_str: (str)
         :return:
         """
 
-        with open(targeted_module, 'r') as r:
+        with open(targeted_module_path_str, 'r') as r:
             r_as_lst = r.readlines()
 
         for line in r_as_lst:
@@ -4277,8 +4300,8 @@ class ModuleCreatorBase(object):
         else:
             return False
 
-    def _insert_object_in_module(self, obj_name, new_object_as_dct_or_str, replacement_question_msg, targeted_module,
-                                 width):
+    def _insert_object_in_module(self, obj_name, new_object_as_dct_or_str, replacement_question_msg,
+                                 targeted_module_path_str, width=None, verify_replacement=True):
         """
         Inserts object in module after verifying replacement if needed.
         If object doesnt exist, it is appended.
@@ -4290,19 +4313,20 @@ class ModuleCreatorBase(object):
         """
 
         # If object exists, replaces it.
-        if self._obj_existence(obj_name=obj_name, targeted_module=targeted_module):
+        if self._obj_existence(obj_name=obj_name, targeted_module_path_str=targeted_module_path_str):
 
             replacement_question_msg += '\nObject exists. Replace it?'
-            if _y_n_question(question_str=replacement_question_msg):
+            # (if verify_replacement is False short-circuits)
+            if (not verify_replacement) or _y_n_question(question_str=replacement_question_msg):
                 self._replace_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=new_object_as_dct_or_str,
-                                            targeted_module=targeted_module, width=width)
+                                            targeted_module_path_str=targeted_module_path_str, width=width)
             else:
                 print('\nReplacement canceled.')
 
         # If object doesn't exist, appends object.
         else:
             self._append_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=new_object_as_dct_or_str,
-                                       targeted_module=targeted_module, width=width)
+                                       targeted_module=targeted_module_path_str, width=width)
 
 
 class ChampionModuleCreator(ModuleCreatorBase):
@@ -4408,7 +4432,7 @@ class ChampionModuleCreator(ModuleCreatorBase):
             self._insert_object_in_module(obj_name=obj_name,
                                           new_object_as_dct_or_str=self._champ_obj_as_dct_or_str(obj_name),
                                           replacement_question_msg=replacement_question_msg,
-                                          targeted_module=self.champion_module_path_str, width=None)
+                                          targeted_module_path_str=self.champion_module_path_str, width=None)
             # Delay used to ensure file is "refreshed" after being writen on. (might be redundant)
             time.sleep(0.2)
 
@@ -4416,46 +4440,99 @@ class ChampionModuleCreator(ModuleCreatorBase):
 class ItemsModuleCreator(ModuleCreatorBase):
 
     def __init__(self):
-        self.items_data_path_str = '{}/items_data.py'.format(ITEM_MODULES_FOLDER_NAME)
+        self.items_data_path_str = '{}/items_data.py'.format(ITEMS_MODULES_FOLDER_NAME)
         self.used_items = ExploreApiItems().used_items_by_name_dct
+        # (the same instance of item creation is needed, so it's stored in a var)
+        self.temporary_items_module = None
 
-    def insert_items_non_unique_data(self):
+    def created_item_attrs(self, item_name):
         """
-        Stores item stats that can stack normally.
+        Returns a dict containing item attributes.
 
-        :returns: (None)
+        :param item_name: (str)
+        :return: (dict)
         """
-        print(fat_delimiter(80))
-        print('\nITEM NON UNIQUE DATA INSERTION')
-        print('\nInserting all data...')
+        self.temporary_items_module = ItemAttrCreation(item_name=item_name)
+        self.temporary_items_module.create_non_unique_stats_values()
+        self.temporary_items_module.create_item_gen_attrs()
+        self.temporary_items_module.create_item_dmgs()
+        self.temporary_items_module.create_item_buffs()
 
-        all_items_dct = {}
-        for item_name in sorted(self.used_items):
+        dct = {}
 
-            item_dct = ItemAttrCreation(item_name=item_name).non_unique_stats_values_dct()
+        dct.update({'general_attributes': self.temporary_items_module.item_gen_attrs})
+        dct.update({'dmgs': self.temporary_items_module.item_dmgs})
+        dct.update({'buffs': self.temporary_items_module.item_buffs})
+        dct.update({'non_unique_stats': self.temporary_items_module.non_unique_item_stats})
 
-            all_items_dct.update({item_name: item_dct})
+        return dct
 
-        replacement_question_msg = delimiter(20)
-        replacement_question_msg += '\nModule contains data.'
+    def created_current_item_effects(self):
+        """
+        Creates and returns effects of current item creation instance.
+        If no instance has been created (e.g. only effects are being set without earlier data creation)
+        uses existing data in items module.
 
-        self._insert_object_in_module(obj_name='ITEMS_NON_UNIQUE_STATS_DCT',
-                                      new_object_as_dct_or_str=all_items_dct,
-                                      replacement_question_msg=replacement_question_msg,
-                                      targeted_module=self.items_data_path_str, width=1)
+        :return: (dict)
+        """
 
-    def insert_or_update_items_dmgs(self):
-        None
+        if self.temporary_items_module:
+            module = self.temporary_items_module
+        else:
+            module = Fetch().imported_items_module()
 
-    def insert_or_update_items_buffs(self):
+        module.create_item_effects()
 
-        None
+        return module.item_effects
 
-    def insert_or_update_items_effects(self):
-        None
+    def insert_item_created_attrs_or_effects(self, item_name, effects_or_attrs, auto_replace=False):
+        """
+        Inserts all data of given item in items' data module.
 
-    def insert_or_update_items_conditions(self):
-        None
+        Imports or reloads the data module, and checks if item's data is inside items' attributes (or effects) dict.
+
+        :param item_name: (str)
+        :param effects_or_attrs: (str) 'effects' or 'attrs'
+        :param auto_replace: (bool) When False, asks user for replacement confirmation (if item already existing).
+        :return: (None)
+        """
+
+        if effects_or_attrs == 'attrs':
+            obj_name = ITEMS_ATTRS_DCT_NAME
+            func = self.created_item_attrs
+            kwargs = dict(item_name=item_name)
+        else:
+            obj_name = ITEMS_EFFECTS_DCT_NAME
+            func = self.insert_item_created_attrs_or_effects
+            kwargs = dict()
+
+        items_module = Fetch().imported_items_module()
+        modified_dct = getattr(items_module, obj_name)
+
+        # Checks if inside dict.
+        if item_name in modified_dct:
+            # (if auto replace true, skips question)
+            if auto_replace or _y_n_question('Item {} exists. Replace?'.format(item_name)):
+
+                # Creates and inserts item dict into items dict.
+                temp_dct = func(**kwargs)
+                modified_dct[item_name] = temp_dct
+
+            else:
+                print('\nAborting insertion.')
+                return
+
+        else:
+            # Creates and inserts item dict into items dict.
+            temp_dct = self.created_item_attrs(item_name=item_name)
+            modified_dct[item_name] = temp_dct
+
+        self._insert_object_in_module(obj_name=obj_name, new_object_as_dct_or_str=modified_dct,
+                                      replacement_question_msg='', width=1,
+                                      targeted_module_path_str='/'.join((ITEMS_MODULES_FOLDER_NAME,
+                                                                         ITEMS_DATA_MODULE_NAME)) + '.py',
+                                      verify_replacement=False)
+
 
 
 
@@ -4510,15 +4587,6 @@ if __name__ == '__main__':
     if testItemNames is True:
         c = ExploreApiItems().all_items_dct_by_id
 
-    testStatNamesValues = False
-    if testStatNamesValues is True:
-        ItemsModuleCreator().insert_items_non_unique_data()
-
-    testItems = False
-    if testItems is True:
-        inst = ItemAttrCreation(item_name='gun')
-        inst.create_item_buffs()
-
     testRestrictedInput = False
     if testRestrictedInput is True:
         restricted_input(question_msg='Give num!', input_type='str', characteristic='non_negative',)
@@ -4528,7 +4596,17 @@ if __name__ == '__main__':
         r = Fetch().castable(spell_or_item_name='q', champ_or_item='champion', champ_name='jax')
         print(r)
 
-    testItemEffCreation = True
+    testItems = False
+    if testItems is True:
+        inst = ItemAttrCreation(item_name='gun')
+        inst.create_item_buffs()
+
+    testItemEffCreation = False
     if testItemEffCreation:
-        inst = ItemAttrCreation(item_name='tri')
+        inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
+
+    testItemAttrInsertion = True
+    if testItemAttrInsertion is True:
+        inst = ItemsModuleCreator()
+        inst.insert_item_created_attrs_or_effects(item_name='dorans_blade', effects_or_attrs='attrs')
