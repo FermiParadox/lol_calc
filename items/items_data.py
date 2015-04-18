@@ -7,6 +7,19 @@ ITEMS_ATTRIBUTES = {
                                           'lifesteal': 0.03}}}
 
 
-ITEMS_EFFECTS = {}
+ITEMS_EFFECTS = {
+    'dorans_blade': {'enemy': {'actives': {'buffs': [],
+                                           'dmg': [],
+                                           'remove_buff': []},
+                               'passives': {'buffs': [],
+                                            'dmg': [],
+                                            'remove_buff': []}},
+                     'player': {'actives': {'buffs': [],
+                                            'dmg': [],
+                                            'remove_buff': []},
+                                'passives': {'buffs': [],
+                                             'dmg': [],
+                                             'remove_buff': []}}}}
+
 
 ITEMS_CONDITIONS = {}

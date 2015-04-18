@@ -25,7 +25,7 @@ ITEMS_MODULES_FOLDER_NAME = 'items'
 ITEMS_DATA_MODULE_NAME = 'items_data'
 ITEMS_DATA_MODULE_PATH = '.'.join((ITEMS_MODULES_FOLDER_NAME, ITEMS_DATA_MODULE_NAME))
 ITEMS_ATTRS_DCT_NAME = 'ITEMS_ATTRIBUTES'
-ITEMS_EFFECTS_DCT_NAME = 'ITEM_EFFECTS'
+ITEMS_EFFECTS_DCT_NAME = 'ITEMS_EFFECTS'
 ABILITIES_ATTRS_DCT_NAME = 'ABILITIES_ATTRIBUTES'
 ABILITIES_EFFECT_DCT_NAME = 'ABILITIES_EFFECTS'
 ABILITIES_CONDITIONS_DCT_NAME = 'ABILITIES_CONDITIONS'
@@ -111,7 +111,7 @@ class Fetch(object):
             return sorted(self.champ_abilities_attrs_dct(champ_name=obj_name)[attr_type])
 
         elif champ_or_item == 'item':
-            return sorted(self.items_attrs_dct()[attr_type])
+            return sorted(self.items_attrs_dct()[obj_name][attr_type])
 
         else:
             raise palette.UnexpectedValueError
@@ -4105,10 +4105,10 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
 
         pp.pprint(self.item_buffs)
 
-    @repeat_cluster
+    @repeat_cluster(cluster_name='ITEM EFFECTS')
     def create_item_effects(self):
 
-        self.item_effects = {}
+        self.item_effects = palette.ChampionsStats().item_effects()
         msg = 'ITEM: {}'.format(self.item_name)
 
         self._create_single_obj_effects_dct(obj_name=self.item_name,
@@ -4443,7 +4443,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
         self.items_data_path_str = '{}/items_data.py'.format(ITEMS_MODULES_FOLDER_NAME)
         self.used_items = ExploreApiItems().used_items_by_name_dct
         # (the same instance of item creation is needed, so it's stored in a var)
-        self.temporary_items_module = None
+        self.temporary_item_attr_creation_instance = None
 
     def created_item_attrs(self, item_name):
         """
@@ -4452,22 +4452,22 @@ class ItemsModuleCreator(ModuleCreatorBase):
         :param item_name: (str)
         :return: (dict)
         """
-        self.temporary_items_module = ItemAttrCreation(item_name=item_name)
-        self.temporary_items_module.create_non_unique_stats_values()
-        self.temporary_items_module.create_item_gen_attrs()
-        self.temporary_items_module.create_item_dmgs()
-        self.temporary_items_module.create_item_buffs()
+        self.temporary_item_attr_creation_instance = ItemAttrCreation(item_name=item_name)
+        self.temporary_item_attr_creation_instance.create_non_unique_stats_values()
+        self.temporary_item_attr_creation_instance.create_item_gen_attrs()
+        self.temporary_item_attr_creation_instance.create_item_dmgs()
+        self.temporary_item_attr_creation_instance.create_item_buffs()
 
         dct = {}
 
-        dct.update({'general_attributes': self.temporary_items_module.item_gen_attrs})
-        dct.update({'dmgs': self.temporary_items_module.item_dmgs})
-        dct.update({'buffs': self.temporary_items_module.item_buffs})
-        dct.update({'non_unique_stats': self.temporary_items_module.non_unique_item_stats})
+        dct.update({'general_attributes': self.temporary_item_attr_creation_instance.item_gen_attrs})
+        dct.update({'dmgs': self.temporary_item_attr_creation_instance.item_dmgs})
+        dct.update({'buffs': self.temporary_item_attr_creation_instance.item_buffs})
+        dct.update({'non_unique_stats': self.temporary_item_attr_creation_instance.non_unique_item_stats})
 
         return dct
 
-    def created_current_item_effects(self):
+    def created_current_item_effects(self, item_name):
         """
         Creates and returns effects of current item creation instance.
         If no instance has been created (e.g. only effects are being set without earlier data creation)
@@ -4476,14 +4476,26 @@ class ItemsModuleCreator(ModuleCreatorBase):
         :return: (dict)
         """
 
-        if self.temporary_items_module:
-            module = self.temporary_items_module
+        if self.temporary_item_attr_creation_instance:
+            instance = self.temporary_item_attr_creation_instance
+            instance.create_item_effects()
+
+            return instance.item_effects
+
         else:
+            # Gets stored data.
             module = Fetch().imported_items_module()
+            item_attrs_dct = getattr(module, ITEMS_ATTRS_DCT_NAME)
+            # Creates instance and inserts data.
+            instance = ItemAttrCreation(item_name=item_name)
+            instance.item_buffs = item_attrs_dct[item_name]['buffs']
+            instance.item_gen_attrs = item_attrs_dct[item_name]['general_attributes']
+            instance.non_unique_item_stats = item_attrs_dct[item_name]['non_unique_stats']
+            instance.item_dmgs = item_attrs_dct[item_name]['dmgs']
+            # Uses instance to create effects.
+            instance.create_item_effects()
 
-        module.create_item_effects()
-
-        return module.item_effects
+            return instance.item_effects
 
     def insert_item_created_attrs_or_effects(self, item_name, effects_or_attrs, auto_replace=False):
         """
@@ -4500,11 +4512,9 @@ class ItemsModuleCreator(ModuleCreatorBase):
         if effects_or_attrs == 'attrs':
             obj_name = ITEMS_ATTRS_DCT_NAME
             func = self.created_item_attrs
-            kwargs = dict(item_name=item_name)
         else:
             obj_name = ITEMS_EFFECTS_DCT_NAME
-            func = self.insert_item_created_attrs_or_effects
-            kwargs = dict()
+            func = self.created_current_item_effects
 
         items_module = Fetch().imported_items_module()
         modified_dct = getattr(items_module, obj_name)
@@ -4512,10 +4522,10 @@ class ItemsModuleCreator(ModuleCreatorBase):
         # Checks if inside dict.
         if item_name in modified_dct:
             # (if auto replace true, skips question)
-            if auto_replace or _y_n_question('Item {} exists. Replace?'.format(item_name)):
+            if auto_replace or _y_n_question('{} {} exists. Replace?'.format(item_name.capitalize(), obj_name.upper())):
 
                 # Creates and inserts item dict into items dict.
-                temp_dct = func(**kwargs)
+                temp_dct = func(item_name=item_name)
                 modified_dct[item_name] = temp_dct
 
             else:
@@ -4524,7 +4534,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
 
         else:
             # Creates and inserts item dict into items dict.
-            temp_dct = self.created_item_attrs(item_name=item_name)
+            temp_dct = func(item_name=item_name)
             modified_dct[item_name] = temp_dct
 
         self._insert_object_in_module(obj_name=obj_name, new_object_as_dct_or_str=modified_dct,
@@ -4609,4 +4619,4 @@ if __name__ == '__main__':
     testItemAttrInsertion = True
     if testItemAttrInsertion is True:
         inst = ItemsModuleCreator()
-        inst.insert_item_created_attrs_or_effects(item_name='dorans_blade', effects_or_attrs='attrs')
+        inst.insert_item_created_attrs_or_effects(item_name='dorans_blade', effects_or_attrs='effects')

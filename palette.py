@@ -62,29 +62,11 @@ class ChampionsStats(object):
                              cds_modified={}))
         )
 
-    @staticmethod
-    def item_effects():
-        return dict(
-            enemy=dict(
+    def item_effects(self):
+        dct = self.spell_effects()
+        del dct['player']['actives']['cds_modified']
 
-                # Buffs and effects activated at purchase.
-                passives=dict(buffs=[],
-                              dmg=[]),
-
-                # Buffs and effects activated on cast.
-                actives=dict(buffs=[],
-                             dmg=[])),
-
-            player=dict(
-
-                # Buffs and effects activated at purchase.
-                passives=dict(buffs=[],
-                              dmg=[]),
-
-                # Buffs and effects activated on cast.
-                actives=dict(buffs=[],
-                             dmg=[]))
-        )
+        return dct
 
     def champion_abilities(self):
         return dict(
