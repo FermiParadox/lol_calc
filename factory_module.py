@@ -13,6 +13,7 @@ import importlib
 import ast
 import collections
 import api_items_database
+import abc
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -82,7 +83,7 @@ class Fetch(object):
 
     def champ_abilities_attrs_dct(self, champ_name):
         """
-        Returns champion's abilities effects dict.
+        Returns champion's abilities' attributes dict.
 
         Returns:
             (dct)
@@ -91,8 +92,22 @@ class Fetch(object):
         champ_mod = self.imported_champ_module(champ_name)
         return getattr(champ_mod, ABILITIES_ATTRS_DCT_NAME)
 
+    def champ_effects_dct(self, champ_name):
+        """
+        Returns champion's abilities' effects dict.
+
+        Returns:
+            (dct)
+        """
+
+        champ_mod = self.imported_champ_module(champ_name)
+        return getattr(champ_mod, ABILITIES_EFFECT_DCT_NAME)
+
     def items_attrs_dct(self):
         return getattr(self.imported_items_module(), ITEMS_ATTRS_DCT_NAME)
+
+    def items_effects_dct(self):
+        return getattr(self.imported_items_module(), ITEMS_EFFECTS_DCT_NAME)
 
     def _dmgs_or_buffs_names(self, obj_name, champ_or_item, attr_type):
         """
@@ -2871,18 +2886,24 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
 
                     msg = 'AFFECTED STAT: %s' % stat_name
 
-                    self.buffs_dct[buff_name]['affected_stats'].update({stat_name: self.affected_stat_attributes()})
+                    self.buffs_dct[buff_name]['affected_stats'].update({stat_name: {}})
 
-                    # (dict form effects for parameter below)
-                    eff_values_dct = {'stat_values': self.ability_effect_lst,
-                                      'bonus_type': ('additive', 'multiplicative')}
+                    chosen_types_lst = []
+                    suggest_lst_of_attr_values(suggested_values_lst=('additive', 'multiplicative'),
+                                               modified_lst=chosen_types_lst)
 
-                    suggest_attr_values(suggested_values_dct=eff_values_dct,
-                                        modified_dct=self.buffs_dct[buff_name]['affected_stats'][stat_name],
-                                        extra_start_msg=msg)
+                    for type_name in chosen_types_lst:
+                        self.buffs_dct[buff_name]['affected_stats'][stat_name].update({type_name: {}})
 
-                    # STAT MODS
-                    self.suggest_stat_mods(buff_name=buff_name, affected_stat=affected_stat)
+                        # (dict form effects for parameter below)
+                        eff_values_dct = {'stat_values': self.ability_effect_lst}
+
+                        suggest_attr_values(suggested_values_dct=eff_values_dct,
+                                            modified_dct=self.buffs_dct[buff_name]['affected_stats'][stat_name][type_name],
+                                            extra_start_msg=msg)
+
+                        # STAT MODS
+                        self.suggest_stat_mods(buff_name=buff_name, affected_stat=affected_stat)
 
                     break
                 elif buff_affects_stat == 'n':
@@ -3455,11 +3476,13 @@ class AbilitiesEffects(EffectsBase):
             self._single_spell_effects_creation(spell_name=spell_name)
 
 
-class Conditionals(object):
-    def __init__(self, champion_name):
-        self.champion_name = champion_name
-        self.abilities_dct = Fetch().imported_champ_module(champ_name=champion_name).ABILITIES_ATTRIBUTES
-        self.abilities_effects = Fetch().champ_abilities_attrs_dct(champ_name=champion_name)
+class ConditionalsBase(object):
+
+    def __init__(self, obj_name, obj_type, abilities_attrs_dct, abilities_effects_dct):
+        self.obj_name = obj_name
+        self.obj_type = obj_type
+        self.abilities_attrs_dct = abilities_attrs_dct
+        self.abilities_effects_dct = abilities_effects_dct
         self.conditions = {}
 
     TARGET_TYPES = ('player', 'enemy')
@@ -3469,16 +3492,16 @@ class Conditionals(object):
     NON_PER_LVL_STAT_NAMES = sorted(i for i in stats.ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
 
     def available_buff_names(self):
-        return sorted(self.abilities_dct['buffs'])
+        return sorted(self.abilities_attrs_dct['buffs'])
 
     def available_dmg_names(self):
-        return sorted(self.abilities_dct['dmgs'])
+        return sorted(self.abilities_attrs_dct['dmgs'])
 
     def available_buff_attr_names(self):
 
         s = {}
         for buff_name in self.available_buff_names():
-            s |= self.abilities_dct['buffs'][buff_name].keys()
+            s |= self.abilities_attrs_dct['buffs'][buff_name].keys()
 
         return s
 
@@ -3486,15 +3509,15 @@ class Conditionals(object):
 
         s = {}
         for dmg_name in self.available_dmg_names():
-            s |= self.abilities_dct['dmgs'][dmg_name].keys()
+            s |= self.abilities_attrs_dct['dmgs'][dmg_name].keys()
 
         return s
 
     def available_ability_attr_names(self):
 
         s = {}
-        for ability_name in self.abilities_dct['general_attributes']:
-            s |= self.abilities_dct['general_attributes'][ability_name].keys()
+        for ability_name in self.abilities_attrs_dct['general_attributes']:
+            s |= self.abilities_attrs_dct['general_attributes'][ability_name].keys()
 
         return s
 
@@ -3768,8 +3791,17 @@ class Conditionals(object):
 
         print(fat_delimiter(40))
         print('\nCONDITIONALS')
-        print('\nCHAMPION: {}'.format(self.champion_name))
+        print('\n{}: {}'.format(self.obj_type.upper(), self.obj_name))
         pp.pprint(self.conditions)
+
+
+class AbilitiesConditionals(ConditionalsBase):
+
+    def __init__(self, champion_name):
+        super().__init__(obj_name=champion_name,
+                         obj_type='champion',
+                         abilities_attrs_dct=Fetch().champ_abilities_attrs_dct(champ_name=champion_name),
+                         abilities_effects_dct=Fetch().champ_effects_dct(champ_name=champion_name))
 
 
 # ---------------------------------------------------------------
@@ -3818,7 +3850,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         self.item_id = self.explore_items_module_inst.item_dct(item_name)['id']
         self.item_simple_stats_dct = {}     # (stats between <stats> and </stats>)
         self.item_gen_attrs = {}
-        self.non_unique_item_stats = None
+        self.non_unique_item_stats = {}
         self.item_dmgs = None
         self.item_buffs = None
         self.item_effects = None
@@ -3899,9 +3931,9 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         except AttributeError:
             return ''
 
-    def create_non_unique_stats_values(self):
+    def _create_stats_names_and_values(self, given_description_str, split_tags_lst, modified_dct):
         """
-        Creates a dict with stat names as values and stat value as key.
+        Stores a dict with stat names as values and stat value as key.
 
         Returns:
             (None)
@@ -3909,11 +3941,13 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
 
         dct = {}
 
-        stats_part_str = self._content_between_tags_in_description(
-            item_description=self._item_description_str.lower(),
-            tag_str='stats')
+        # STRING SPLITTING
+        partitions_lst = [given_description_str, ]
+        for tag_str in split_tags_lst:
+            partitions_lst = [re.split(tag_str, i)[0] for i in partitions_lst]
 
-        partitions_lst = re.split(r'<br>', stats_part_str)
+        # Filters out empty split-parts.
+        partitions_lst = [i for i in partitions_lst if i != '']
 
         for str_part in partitions_lst:
 
@@ -3930,15 +3964,41 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
 
                     # Converts percent to float.
                     if '%' in stat_val_str:
+                        stat_type = 'percent'
                         stat_val_str = stat_val_str.replace('%', '')
                         stat_val = ast.literal_eval(stat_val_str) / 100.
 
                     else:
+                        stat_type = 'additive'
                         stat_val = ast.literal_eval(stat_val_str)
 
-                    dct.update({stat_name: stat_val})
+                    dct.update({stat_type: {stat_name: stat_val}})
 
-        self.non_unique_item_stats = dct
+        modified_dct.update(dct)
+        
+    def create_non_unique_stats_names_and_values(self):
+        """
+        Creates a dict with stat names as values and stat value as key.
+
+        Returns:
+            (None)
+        """
+
+        stats_part_str = self._content_between_tags_in_description(
+            item_description=self._item_description_str.lower(),
+            tag_str='stats')
+
+        self._create_stats_names_and_values(given_description_str=stats_part_str, split_tags_lst=[r'<br>'],
+                                            modified_dct=self.non_unique_item_stats)
+
+    def create_unique_stats_values(self):
+        """
+        Detects unique stats and their values in an item description, and stores them.
+
+        :return: (None)
+        """
+
+
 
     @repeat_cluster(cluster_name='ITEM GEN ATTRS')
     def create_item_gen_attrs(self):
@@ -4236,6 +4296,15 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         return dct
 
 
+class ItemsConditionals(ConditionalsBase):
+
+    def __init__(self, item_name):
+        super().__init__(obj_name=item_name,
+                         obj_type='item',
+                         abilities_attrs_dct=Fetch().items_attrs_dct(),
+                         abilities_effects_dct=Fetch().items_effects_dct())
+
+
 # ===============================================================
 #       MODULE CREATION
 # ===============================================================
@@ -4401,7 +4470,7 @@ class ChampionModuleCreator(ModuleCreatorBase):
             return effects_inst.spells_effects
 
         elif obj_name == ABILITIES_CONDITIONS_DCT_NAME:
-            instance = Conditionals(champion_name=self.champion_name)
+            instance = AbilitiesConditionals(champion_name=self.champion_name)
             instance.run_conditions_creation()
 
             return instance.conditions
@@ -4453,7 +4522,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
         :return: (dict)
         """
         self.temporary_item_attr_creation_instance = ItemAttrCreation(item_name=item_name)
-        self.temporary_item_attr_creation_instance.create_non_unique_stats_values()
+        self.temporary_item_attr_creation_instance.create_non_unique_stats_names_and_values()
         self.temporary_item_attr_creation_instance.create_item_gen_attrs()
         self.temporary_item_attr_creation_instance.create_item_dmgs()
         self.temporary_item_attr_creation_instance.create_item_buffs()
@@ -4543,8 +4612,8 @@ class ItemsModuleCreator(ModuleCreatorBase):
                                                                          ITEMS_DATA_MODULE_NAME)) + '.py',
                                       verify_replacement=False)
 
-
-
+    def insert_conditionals(self, item_name, auto_replace=False):
+        None
 
 # ===============================================================
 # ===============================================================
@@ -4606,17 +4675,18 @@ if __name__ == '__main__':
         r = Fetch().castable(spell_or_item_name='q', champ_or_item='champion', champ_name='jax')
         print(r)
 
-    testItems = False
+    testItems = True
     if testItems is True:
         inst = ItemAttrCreation(item_name='gun')
-        inst.create_item_buffs()
+        inst.create_non_unique_stats_names_and_values()
+        print(inst.non_unique_item_stats)
 
     testItemEffCreation = False
     if testItemEffCreation:
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
 
-    testItemAttrInsertion = True
+    testItemAttrInsertion = False
     if testItemAttrInsertion is True:
         inst = ItemsModuleCreator()
         inst.insert_item_created_attrs_or_effects(item_name='dorans_blade', effects_or_attrs='effects')
