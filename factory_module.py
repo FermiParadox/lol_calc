@@ -3832,6 +3832,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         'Spell Vamp': 'spellvamp',
         }
 
+    ITEM_ADDITIVE_STATS = [ITEM_STAT_NAMES_MAP['Spell Vamp'], ITEM_STAT_NAMES_MAP['Life Steal']]
+
     def items_stat_names(self):
         """
         Returns a list of names of item stats.
@@ -3851,6 +3853,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         self.item_simple_stats_dct = {}     # (stats between <stats> and </stats>)
         self.item_gen_attrs = {}
         self.non_unique_item_stats = {}
+        self.unique_item_stats = {}
         self.item_dmgs = None
         self.item_buffs = None
         self.item_effects = None
@@ -3942,10 +3945,14 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         dct = {}
 
         # STRING SPLITTING
-        partitions_lst = [given_description_str, ]
-        for tag_str in split_tags_lst:
-            partitions_lst = [re.split(tag_str, i)[0] for i in partitions_lst]
+        # Creates split-string.
+        split_str = ''
+        for tag_name in split_tags_lst:
+            split_str += '|<{tag_name}>|</{tag_name}>'.format(tag_name=tag_name)
 
+        split_str = split_str.lstrip('|')
+
+        partitions_lst = re.split(split_str, given_description_str)
         # Filters out empty split-parts.
         partitions_lst = [i for i in partitions_lst if i != '']
 
@@ -3964,15 +3971,21 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
 
                     # Converts percent to float.
                     if '%' in stat_val_str:
-                        stat_type = 'percent'
                         stat_val_str = stat_val_str.replace('%', '')
                         stat_val = ast.literal_eval(stat_val_str) / 100.
+                        # (some stats that have a '%' are additive)
+                        if stat_name in self.ITEM_ADDITIVE_STATS:
+                            stat_type = 'additive'
+                        else:
+                            stat_type = 'percent'
 
                     else:
                         stat_type = 'additive'
                         stat_val = ast.literal_eval(stat_val_str)
 
-                    dct.update({stat_type: {stat_name: stat_val}})
+                    if stat_type not in dct:
+                        dct.update({stat_type: {}})
+                    dct[stat_type].update({stat_name: stat_val})
 
         modified_dct.update(dct)
         
@@ -3988,7 +4001,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
             item_description=self._item_description_str.lower(),
             tag_str='stats')
 
-        self._create_stats_names_and_values(given_description_str=stats_part_str, split_tags_lst=[r'<br>'],
+        self._create_stats_names_and_values(given_description_str=stats_part_str, split_tags_lst=['br'],
                                             modified_dct=self.non_unique_item_stats)
 
     def create_unique_stats_values(self):
@@ -3998,7 +4011,15 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         :return: (None)
         """
 
+        # Filters out string between stacking stats' tag.
+        description_match = re.search(r'</stats>(.+)', self._item_description_str.lower())
+        if description_match:
+            description_str = description_match.group()
+        else:
+            description_str = ''
 
+        self._create_stats_names_and_values(given_description_str=description_str, split_tags_lst=[r'[a-zA-Z]*'],
+                                            modified_dct=self.unique_item_stats)
 
     @repeat_cluster(cluster_name='ITEM GEN ATTRS')
     def create_item_gen_attrs(self):
@@ -4523,16 +4544,18 @@ class ItemsModuleCreator(ModuleCreatorBase):
         """
         self.temporary_item_attr_creation_instance = ItemAttrCreation(item_name=item_name)
         self.temporary_item_attr_creation_instance.create_non_unique_stats_names_and_values()
+        self.temporary_item_attr_creation_instance.create_unique_stats_values()
         self.temporary_item_attr_creation_instance.create_item_gen_attrs()
         self.temporary_item_attr_creation_instance.create_item_dmgs()
         self.temporary_item_attr_creation_instance.create_item_buffs()
 
         dct = {}
 
+        dct.update({'non_unique_stats': self.temporary_item_attr_creation_instance.non_unique_item_stats})
+        dct.update({'unique_stats': self.temporary_item_attr_creation_instance.unique_item_stats})
         dct.update({'general_attributes': self.temporary_item_attr_creation_instance.item_gen_attrs})
         dct.update({'dmgs': self.temporary_item_attr_creation_instance.item_dmgs})
         dct.update({'buffs': self.temporary_item_attr_creation_instance.item_buffs})
-        dct.update({'non_unique_stats': self.temporary_item_attr_creation_instance.non_unique_item_stats})
 
         return dct
 
