@@ -182,7 +182,7 @@ class Fetch(object):
 
         else:
             item_name = spell_or_item_name
-            return self.items_attrs_dct()[item_name]['general_attributes']
+            return self.items_attrs_dct()[item_name]['general_attributes']['castable']
 
 
 # ---------------------------------------------------------------
@@ -204,6 +204,43 @@ def delimiter(num_of_lines, line_type='-'):
 
 def fat_delimiter(num_of_lines):
     return delimiter(num_of_lines=num_of_lines, line_type='=')
+
+
+# ---------------------------------------------------------------
+def full_or_partial_match_in_iterable(searched_name, iterable):
+    """
+    Searches for given name, looking for an exact match, or a partial otherwise.
+
+    Raises:
+        (KeyValue) if more than one matches found, or no matches
+    Returns:
+        (str) String matching searched name.
+    """
+
+    # EXACT MATCH
+    try:
+        for elem in iterable:
+            if elem == searched_name:
+                return searched_name
+    except KeyError:
+        pass
+
+    # PARTIAL MATCH
+    partial_matches_lst = []
+
+    for existing_name in iterable:
+        existing_name = existing_name.lower()
+
+        if searched_name.lower() in existing_name:
+            partial_matches_lst.append(existing_name)
+
+    tot_partial_matches = len(partial_matches_lst)
+    if tot_partial_matches == 1:
+        return partial_matches_lst[0]
+    elif tot_partial_matches > 1:
+        raise KeyError('More than one partial matches found.')
+    else:
+        raise KeyError('No full or partial match.')
 
 
 # ---------------------------------------------------------------
@@ -1204,43 +1241,9 @@ class RequestAllMasteriesFromAPI(RequestDataFromAPI):
 #       API EXPLORATION
 # ===============================================================
 class ExploreBase(object):
+
     @staticmethod
-    def _full_or_partial_match(searched_name, iterable):
-        """
-        Searches for given name, looking for an exact match, or a partial otherwise.
-
-        Raises:
-            (KeyValue) if more than one matches found, or no matches
-        Returns:
-            (str)
-        """
-
-        # EXACT MATCH
-        try:
-            for elem in iterable:
-                if elem == searched_name:
-                    return searched_name
-        except KeyError:
-            pass
-
-        # PARTIAL MATCH
-        partial_matches_lst = []
-
-        for existing_name in iterable:
-            existing_name = existing_name.lower()
-
-            if searched_name.lower() in existing_name:
-                partial_matches_lst.append(existing_name)
-
-        tot_partial_matches = len(partial_matches_lst)
-        if tot_partial_matches == 1:
-            return partial_matches_lst[0]
-        elif tot_partial_matches > 1:
-            raise KeyError('More than one partial matches found.')
-        else:
-            raise KeyError('No full or partial match.')
-
-    def champion_id(self, searched_name):
+    def champion_id(searched_name):
         """
         Finds a champion's id number.
 
@@ -1252,7 +1255,7 @@ class ExploreBase(object):
         # Dict with champ names as keys and ids as values.
         inverted_ids_dct = {val.lower(): key for key, val in champ_ids_dct.items()}
 
-        match_found = self._full_or_partial_match(searched_name=searched_name, iterable=inverted_ids_dct)
+        match_found = full_or_partial_match_in_iterable(searched_name=searched_name, iterable=inverted_ids_dct)
 
         return int(inverted_ids_dct[match_found])
 
@@ -1644,6 +1647,16 @@ class ExploreApiItems(ExploreBase):
         """
         return len(self.used_items_by_name_dct)
 
+    def guessed_item(self, item_name):
+        """
+        Returns the actual item name that matches given item name.
+
+        :param item_name: (str) Incomplete (or complete) item name.
+        :return: (str)
+        """
+        return full_or_partial_match_in_iterable(searched_name=item_name,
+                                                 iterable=self.used_items_by_name_dct)
+
     def item_dct(self, given_name, print_mode=False):
         """
         Checks for an exact match of given name,
@@ -1655,7 +1668,7 @@ class ExploreApiItems(ExploreBase):
             (dct)
         """
 
-        matched_name = self._full_or_partial_match(searched_name=given_name, iterable=self.used_items_by_name_dct)
+        matched_name = full_or_partial_match_in_iterable(searched_name=given_name, iterable=self.used_items_by_name_dct)
 
         return _return_or_pprint_complex_obj(print_mode=print_mode, dct=self.used_items_by_name_dct[matched_name])
 
@@ -1680,7 +1693,7 @@ class ExploreApiItems(ExploreBase):
             item_lst = self.used_items_by_name_dct
         else:
             # (need a list so it inserts selection into a list)
-            matched_name = self._full_or_partial_match(searched_name=item, iterable=self.used_items_by_name_dct)
+            matched_name = full_or_partial_match_in_iterable(searched_name=item, iterable=self.used_items_by_name_dct)
             item_lst = [matched_name, ]
 
         descriptions_lst = []
@@ -3847,9 +3860,10 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
 
     def __init__(self, item_name):
         self._validate_stats_names()
-        self.item_name = item_name
+        # Converts given item name to actual name.
+        self.item_name = ExploreApiItems().guessed_item(item_name=item_name)
         self.explore_items_module_inst = ExploreApiItems()
-        self.item_id = self.explore_items_module_inst.item_dct(item_name)['id']
+        self.item_id = self.explore_items_module_inst.item_dct(self.item_name)['id']
         self.item_simple_stats_dct = {}     # (stats between <stats> and </stats>)
         self.item_gen_attrs = {}
         self.non_unique_item_stats = {}
@@ -3858,7 +3872,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         self.item_buffs = None
         self.item_effects = None
         self.item_tree = None
-        self.item_api_data_dct = self.explore_items_module_inst.item_dct(given_name=item_name)
+        self.item_api_data_dct = self.explore_items_module_inst.item_dct(given_name=self.item_name)
         self._item_description_str = self.explore_items_module_inst.descriptions(item=self.item_name)[0]
 
     @staticmethod
@@ -4070,7 +4084,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
                         # Stat value
                         stat_val_msg = 'ITEM: {}, MOD STAT OWNER: {}, STAT NAME: {}'.format(self.item_name, tar_type,
                                                                                             stat_name)
-                        stat_val_msg += '\nStat value?'
+                        stat_val_msg += '\nMod value?'
                         stat_val = restricted_input(question_msg=stat_val_msg,
                                                     input_type='num', characteristic='non_zero',
                                                     disallow_enter=True)
@@ -4542,6 +4556,9 @@ class ItemsModuleCreator(ModuleCreatorBase):
         :param item_name: (str)
         :return: (dict)
         """
+
+        item_name = ExploreApiItems().guessed_item(item_name=item_name)
+
         self.temporary_item_attr_creation_instance = ItemAttrCreation(item_name=item_name)
         self.temporary_item_attr_creation_instance.create_non_unique_stats_names_and_values()
         self.temporary_item_attr_creation_instance.create_unique_stats_values()
@@ -4567,6 +4584,8 @@ class ItemsModuleCreator(ModuleCreatorBase):
 
         :return: (dict)
         """
+
+        item_name = ExploreApiItems().guessed_item(item_name=item_name)
 
         if self.temporary_item_attr_creation_instance:
             instance = self.temporary_item_attr_creation_instance
@@ -4600,6 +4619,8 @@ class ItemsModuleCreator(ModuleCreatorBase):
         :param auto_replace: (bool) When False, asks user for replacement confirmation (if item already existing).
         :return: (None)
         """
+
+        item_name = ExploreApiItems().guessed_item(item_name=item_name)
 
         if effects_or_attrs == 'attrs':
             obj_name = ITEMS_ATTRS_DCT_NAME
@@ -4639,6 +4660,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
                                       verify_replacement=False)
 
     def insert_conditionals(self, item_name, auto_replace=False):
+        item_name = ExploreApiItems().guessed_item(item_name=item_name)
         None
 
 # ===============================================================
@@ -4715,5 +4737,5 @@ if __name__ == '__main__':
     testItemAttrInsertion = True
     if testItemAttrInsertion is True:
         inst = ItemsModuleCreator()
-        inst.insert_item_created_attrs_or_effects(item_name='dorans_blade', effects_or_attrs='attrs')
-        inst.insert_item_created_attrs_or_effects(item_name='dorans_blade', effects_or_attrs='effects')
+        inst.insert_item_created_attrs_or_effects(item_name='gunblade', effects_or_attrs='attrs')
+        inst.insert_item_created_attrs_or_effects(item_name='gunblade', effects_or_attrs='effects')
