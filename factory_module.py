@@ -276,7 +276,7 @@ def dct_to_pretty_formatted_str(obj_name, obj_body_as_dct, width):
     body = _dct_body_to_pretty_formatted_str(given_dct=obj_body_as_dct, width=width)
     name_and_equal_sign = obj_name + ' = '
 
-    return name_and_equal_sign + body + '\n'
+    return name_and_equal_sign + body
 
 
 def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_or_str, width):
@@ -307,7 +307,7 @@ def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_
             for num_2, line_2 in enumerate(file_as_lines_lst[old_start:], old_start):
                 if line_2 == '\n':
 
-                    old_end = num_2 - 1
+                    old_end = num_2
                     break
 
             # Creates new file as string.
@@ -315,7 +315,7 @@ def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_
             for i in file_as_lines_lst[:old_start]:
                 new_str += i
             new_str += inserted_str
-            for i in file_as_lines_lst[old_end+1:]:
+            for i in file_as_lines_lst[old_end:]:
                 new_str += i
 
             return new_str
@@ -4585,8 +4585,11 @@ class ItemsModuleCreator(ModuleCreatorBase):
             obj_name = ITEMS_EFFECTS_DCT_NAME
             func = self.created_current_item_effects
 
-        items_module = Fetch().imported_items_module()
-        modified_dct = getattr(items_module, obj_name)
+        try:
+            items_module = Fetch().imported_items_module()
+            modified_dct = getattr(items_module, obj_name)
+        except AttributeError:
+            modified_dct = {}
 
         # Checks if inside dict.
         if item_name in modified_dct:
@@ -4675,7 +4678,7 @@ if __name__ == '__main__':
         r = Fetch().castable(spell_or_item_name='q', champ_or_item='champion', champ_name='jax')
         print(r)
 
-    testItems = True
+    testItems = False
     if testItems is True:
         inst = ItemAttrCreation(item_name='gun')
         inst.create_non_unique_stats_names_and_values()
@@ -4686,7 +4689,8 @@ if __name__ == '__main__':
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
 
-    testItemAttrInsertion = False
+    testItemAttrInsertion = True
     if testItemAttrInsertion is True:
         inst = ItemsModuleCreator()
+        inst.insert_item_created_attrs_or_effects(item_name='dorans_blade', effects_or_attrs='attrs')
         inst.insert_item_created_attrs_or_effects(item_name='dorans_blade', effects_or_attrs='effects')

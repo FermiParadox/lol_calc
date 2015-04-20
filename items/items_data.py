@@ -2,10 +2,7 @@ ITEMS_ATTRIBUTES = {
     'dorans_blade': {'buffs': {},
                      'dmgs': {},
                      'general_attributes': {'castable': False},
-                     'non_unique_stats': {'ad': 7,
-                                          'hp': 70,
-                                          'lifesteal': 0.03}}}
-
+                     'non_unique_stats': {'additive': {'hp': 70}}}}
 
 ITEMS_EFFECTS = {
     'dorans_blade': {'enemy': {'actives': {'buffs': [],
@@ -21,5 +18,5 @@ ITEMS_EFFECTS = {
                                              'dmg': [],
                                              'remove_buff': []}}}}
 
-
 ITEMS_CONDITIONS = {}
+
