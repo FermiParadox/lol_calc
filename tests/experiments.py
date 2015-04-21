@@ -1,18 +1,16 @@
-import abc
+def my_decorator(func):
+
+    def wrapped(*args, **kwargs):
+
+        return func(*args, **kwargs)
+
+    return wrapped
 
 
-class MyBase(metaclass=abc.ABCMeta):
-
-    @abc.abstractmethod
-    def cat(self, d):
-        pass
+@my_decorator
+def f():
+    return 1
 
 
-class MyClass(MyBase):
 
-    def cat(self, d):
-        d.update({1: 2})
-
-s = {1: 11}
-MyClass().cat(s)
-print(s)
+print(f())

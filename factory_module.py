@@ -3497,7 +3497,16 @@ class ConditionalsBase(object):
         self.obj_type = obj_type
         self.attributes_dct = attributes_dct
         self.abilities_effects_dct = effects_dct
-        self.conditions = {}
+        self.conditions_dct = {}
+
+    def conditions_dct_as_callable(self):
+        """
+        Returns condition dict. Used when conditions dict needs to be retrieved after a delayed call
+
+        :return: (dict)
+        """
+
+        return self.conditions_dct
 
     TARGET_TYPES = ('player', 'enemy')
     # (Used to determine what to insert next.)
@@ -3622,8 +3631,8 @@ class ConditionalsBase(object):
         Removes previous formula keys from condition effect.
         """
         for k in self.formula_contents_dct():
-            if k in self.conditions[con_name]['effects'][eff_name]:
-                del self.conditions[con_name]['effects'][eff_name][k]
+            if k in self.conditions_dct[con_name]['effects'][eff_name]:
+                del self.conditions_dct[con_name]['effects'][eff_name][k]
 
     def _create_and_insert_new_trigger(self, con_name):
         """
@@ -3635,26 +3644,26 @@ class ConditionalsBase(object):
 
         # Creates trig name.
         trig_name = _auto_new_name_or_ask_name(first_synthetic='trigger',
-                                               existing_names=self.conditions[con_name]['triggers'],
+                                               existing_names=self.conditions_dct[con_name]['triggers'],
                                                disallow_enter=True)
 
         # Inserts trig name.
-        self.conditions[con_name]['triggers'].update({trig_name: {}})
+        self.conditions_dct[con_name]['triggers'].update({trig_name: {}})
 
         # Inserts trig types.
         trig_type = enumerated_question(question_str='Trigger TYPE?', choices_seq=self.trigger_setup_dct(),
                                         restrict_choices=True)
 
-        self.conditions[con_name]['triggers'][trig_name].update({'trigger_type': trig_type})
+        self.conditions_dct[con_name]['triggers'][trig_name].update({'trigger_type': trig_type})
 
         # Inserts trig contents.
         suggest_attr_values(suggested_values_dct=self.trigger_setup_dct()[trig_type],
-                            modified_dct=self.conditions[con_name]['triggers'][trig_name],
+                            modified_dct=self.conditions_dct[con_name]['triggers'][trig_name],
                             restrict_choices=True)
 
         print(delimiter(40))
         print('\nTRIGGER: {}'.format(trig_name))
-        pp.pprint(self.conditions[con_name]['triggers'][trig_name])
+        pp.pprint(self.conditions_dct[con_name]['triggers'][trig_name])
 
     @repeat_cluster(cluster_name='CONDITION TRIGGERS')
     def _add_triggers(self, con_name):
@@ -3665,7 +3674,7 @@ class ConditionalsBase(object):
             (None)
         """
 
-        self.conditions[con_name].update({'triggers': {}})
+        self.conditions_dct[con_name].update({'triggers': {}})
 
         print(delimiter(20))
         # ADDS TRIGGER OR EXITS
@@ -3678,7 +3687,7 @@ class ConditionalsBase(object):
 
         print(fat_delimiter(40))
         print('\nCONDITION: {}'.format(con_name))
-        pp.pprint(self.conditions[con_name]['triggers'])
+        pp.pprint(self.conditions_dct[con_name]['triggers'])
 
     def _create_and_insert_new_effect(self, con_name):
         """
@@ -3690,63 +3699,63 @@ class ConditionalsBase(object):
 
         # Creates effect name.
         eff_name = _auto_new_name_or_ask_name(first_synthetic='effect',
-                                              existing_names=self.conditions[con_name]['effects'],
+                                              existing_names=self.conditions_dct[con_name]['effects'],
                                               disallow_enter=False)
 
         # Inserts effect name.
-        self.conditions[con_name]['effects'].update({eff_name: {}})
+        self.conditions_dct[con_name]['effects'].update({eff_name: {}})
 
         # Inserts effect types.
         eff_type = enumerated_question(question_str='Effect TYPE?', choices_seq=self.effect_setup_dct(),
                                        restrict_choices=True)
 
-        self.conditions[con_name]['effects'][eff_name].update({'effect_type': eff_type})
+        self.conditions_dct[con_name]['effects'][eff_name].update({'effect_type': eff_type})
 
         # Inserts effect contents.
         suggest_attr_values(suggested_values_dct=self.effect_setup_dct()[eff_type],
-                            modified_dct=self.conditions[con_name]['effects'][eff_name],
+                            modified_dct=self.conditions_dct[con_name]['effects'][eff_name],
                             restrict_choices=True)
 
         # Inserts effect formula.
         # (formula type is used for non buffs/dmgs)
-        if 'formula_type' in self.conditions[con_name]['effects'][eff_name]:
-            if self.conditions[con_name]['effects'][eff_name]['formula_type'] == 'x_formula':
+        if 'formula_type' in self.conditions_dct[con_name]['effects'][eff_name]:
+            if self.conditions_dct[con_name]['effects'][eff_name]['formula_type'] == 'x_formula':
                 suggested_dct = self.formula_contents_dct()
 
             else:
                 suggested_dct = self.constant_values_dct()
 
             suggest_attr_values(suggested_values_dct=suggested_dct,
-                                modified_dct=self.conditions[con_name]['effects'][eff_name],)
+                                modified_dct=self.conditions_dct[con_name]['effects'][eff_name],)
 
         # Buffs/dmgs (names)
         else:
-            self.conditions[con_name]['effects'][eff_name].update({'names_lst': []})
-            cat = self.conditions[con_name]['effects'][eff_name]['category']
+            self.conditions_dct[con_name]['effects'][eff_name].update({'names_lst': []})
+            cat = self.conditions_dct[con_name]['effects'][eff_name]['category']
             if cat in ('buffs', 'remove_buff'):
                 suggest_lst_of_attr_values(suggested_values_lst=self.available_buff_names(),
-                                           modified_lst=self.conditions[con_name]['effects'][eff_name]['names_lst'])
+                                           modified_lst=self.conditions_dct[con_name]['effects'][eff_name]['names_lst'])
             # ('modifies_cd')
             elif 'cd' in cat:
-                self.conditions[con_name]['effects'][eff_name].update({'names_dct': {}})
+                self.conditions_dct[con_name]['effects'][eff_name].update({'names_dct': {}})
 
                 suggest_lst_of_attr_values(suggested_values_lst=ALL_POSSIBLE_ABILITIES_SHORTCUTS,
-                                           modified_lst=self.conditions[con_name]['effects'][eff_name]['names_lst'])
+                                           modified_lst=self.conditions_dct[con_name]['effects'][eff_name]['names_lst'])
                 # ( {'q': (1,2..), }
                 cd_mod_suggested_dct = {i: (1, 2, 3) for i in
-                                        self.conditions[con_name]['effects'][eff_name]['names_lst']}
+                                        self.conditions_dct[con_name]['effects'][eff_name]['names_lst']}
 
                 suggest_attr_values(suggested_values_dct=cd_mod_suggested_dct,
-                                    modified_dct=self.conditions[con_name]['effects'][eff_name]['names_dct'])
+                                    modified_dct=self.conditions_dct[con_name]['effects'][eff_name]['names_dct'])
                 # (deletes list since it was used only temporarily to create the cd modification dct)
-                del self.conditions[con_name]['effects'][eff_name]['names_lst']
+                del self.conditions_dct[con_name]['effects'][eff_name]['names_lst']
             else:
                 suggest_lst_of_attr_values(suggested_values_lst=self.available_dmg_names(),
-                                           modified_lst=self.conditions[con_name]['effects'][eff_name]['names_lst'])
+                                           modified_lst=self.conditions_dct[con_name]['effects'][eff_name]['names_lst'])
 
         print(delimiter(40))
         print('\nEFFECT: {}'.format(eff_name))
-        pp.pprint(self.conditions[con_name]['effects'][eff_name])
+        pp.pprint(self.conditions_dct[con_name]['effects'][eff_name])
 
     @repeat_cluster(cluster_name='CONDITION EFFECTS')
     def _add_effects(self, con_name):
@@ -3757,7 +3766,7 @@ class ConditionalsBase(object):
             (None)
         """
 
-        self.conditions[con_name].update({'effects': {}})
+        self.conditions_dct[con_name].update({'effects': {}})
 
         print(fat_delimiter(20))
         print('\nCONDITION: {}'.format(con_name))
@@ -3772,7 +3781,7 @@ class ConditionalsBase(object):
 
         print(fat_delimiter(40))
         print('\nCONDITION: {}'.format(con_name))
-        pp.pprint(self.conditions[con_name]['effects'])
+        pp.pprint(self.conditions_dct[con_name]['effects'])
 
     def _create_single_condition(self, con_name):
 
@@ -3798,15 +3807,15 @@ class ConditionalsBase(object):
                 break
             else:
                 # CONDITION NAME
-                new_con_name = _auto_new_name_or_ask_name(first_synthetic='conditional', existing_names=self.conditions)
-                self.conditions.update({new_con_name: {}})
+                new_con_name = _auto_new_name_or_ask_name(first_synthetic='conditional', existing_names=self.conditions_dct)
+                self.conditions_dct.update({new_con_name: {}})
 
                 self._create_single_condition(con_name=new_con_name)
 
         print(fat_delimiter(40))
         print('\nCONDITIONALS')
         print('\n{}: {}'.format(self.obj_type.upper(), self.obj_name))
-        pp.pprint(self.conditions)
+        pp.pprint(self.conditions_dct)
 
 
 class AbilitiesConditionals(ConditionalsBase):
@@ -4129,8 +4138,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         self.pprinted_item_description()
 
         # Number of dmgs
-        num_of_dmgs = restricted_input(question_msg='Number of dmgs?\n', input_type='int', characteristic='non_negative',
-                                       disallow_enter=True)
+        num_of_dmgs = restricted_input(question_msg='Number of dmgs?\n', input_type='int',
+                                       characteristic='non_negative', disallow_enter=True)
 
         # Resets item_dmgs dct.
         self.item_dmgs = {}
@@ -4363,8 +4372,8 @@ class ModuleCreatorBase(object):
         else:
             obj_as_str = new_object_as_dct_or_str
 
-        with open(targeted_module, 'a') as r:
-            r.write(obj_as_str)
+        with open(targeted_module, 'a') as read_file:
+            read_file.write(obj_as_str)
 
     @staticmethod
     def _replace_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module_path_str, width):
@@ -4395,8 +4404,8 @@ class ModuleCreatorBase(object):
         :return:
         """
 
-        with open(targeted_module_path_str, 'r') as r:
-            r_as_lst = r.readlines()
+        with open(targeted_module_path_str, 'r') as read_file:
+            r_as_lst = read_file.readlines()
 
         for line in r_as_lst:
             if re.match(r'\s*{}'.format(obj_name), line):
@@ -4405,32 +4414,53 @@ class ModuleCreatorBase(object):
         else:
             return False
 
-    def _insert_object_in_module(self, obj_name, new_object_as_dct_or_str, replacement_question_msg,
-                                 targeted_module_path_str, width=None, verify_replacement=True):
+    def _insert_object_in_module(self, obj_name, targeted_module_path_str,  new_obj_as_dct_or_str=None,
+                                 obj_creation_call=None, obj_retrieve_call=None,
+                                 replacement_question_msg='', width=None, verify_replacement=True):
         """
         Inserts object in module after verifying replacement if needed.
-        If object doesnt exist, it is appended.
+        If object doesn't exist, it is appended.
 
         WARNING: When used for class insertion, assumes no empty lines between class start and __init__ end.
 
-        Returns:
-            (None)
+        :param obj_name:
+        :param new_obj_as_dct_or_str:
+        :param replacement_question_msg:
+        :param targeted_module_path_str:
+        :param obj_creation_call:
+        :param obj_retrieve_call:
+        :param width:
+        :param verify_replacement:
+        :return: (None)
         """
+
+        def create_and_return_obj():
+            obj_creation_call()
+            return obj_retrieve_call()
+
+        def obj_body():
+            if new_obj_as_dct_or_str:
+                return new_obj_as_dct_or_str
+            else:
+                return create_and_return_obj()
 
         # If object exists, replaces it.
         if self._obj_existence(obj_name=obj_name, targeted_module_path_str=targeted_module_path_str):
 
-            replacement_question_msg += '\nObject exists. Replace it?'
+            replacement_question_msg += '\nObject {} exists. Replace it?'.format(obj_name)
             # (if verify_replacement is False short-circuits)
             if (not verify_replacement) or _y_n_question(question_str=replacement_question_msg):
-                self._replace_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=new_object_as_dct_or_str,
+
+                self._replace_obj_in_module(obj_name=obj_name,
+                                            new_object_as_dct_or_str=obj_body(),
                                             targeted_module_path_str=targeted_module_path_str, width=width)
             else:
                 print('\nReplacement canceled.')
 
         # If object doesn't exist, appends object.
         else:
-            self._append_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=new_object_as_dct_or_str,
+            self._append_obj_in_module(obj_name=obj_name,
+                                       new_object_as_dct_or_str=obj_body(),
                                        targeted_module=targeted_module_path_str, width=width)
 
 
@@ -4509,7 +4539,7 @@ class ChampionModuleCreator(ModuleCreatorBase):
             instance = AbilitiesConditionals(champion_name=self.champion_name)
             instance.run_conditions_creation()
 
-            return instance.conditions
+            return instance.conditions_dct
 
         elif obj_name == CHAMPION_EXTERNAL_VAR_DCT_NAME:
             return self._external_vars()
@@ -4535,7 +4565,7 @@ class ChampionModuleCreator(ModuleCreatorBase):
             replacement_question_msg = '\nCHAMPION: {}, OBJECT NAME: {}'.format(self.champion_name, obj_name)
 
             self._insert_object_in_module(obj_name=obj_name,
-                                          new_object_as_dct_or_str=self._champ_obj_as_dct_or_str(obj_name),
+                                          new_obj_as_dct_or_str=self._champ_obj_as_dct_or_str(obj_name),
                                           replacement_question_msg=replacement_question_msg,
                                           targeted_module_path_str=self.champion_module_path_str, width=None)
             # Delay used to ensure file is "refreshed" after being writen on. (might be redundant)
@@ -4616,7 +4646,6 @@ class ItemsModuleCreator(ModuleCreatorBase):
 
         Imports or reloads the data module, and checks if item's data is inside items' attributes (or effects) dict.
 
-        :param item_name: (str)
         :param effects_or_attrs: (str) 'effects' or 'attrs'
         :param auto_replace: (bool) When False, asks user for replacement confirmation (if item already existing).
         :return: (None)
@@ -4655,7 +4684,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
             temp_dct = func(item_name=item_name)
             modified_dct[item_name] = temp_dct
 
-        self._insert_object_in_module(obj_name=obj_name, new_object_as_dct_or_str=modified_dct,
+        self._insert_object_in_module(obj_name=obj_name, new_obj_as_dct_or_str=modified_dct,
                                       replacement_question_msg='', width=1,
                                       targeted_module_path_str='/'.join((ITEMS_MODULES_FOLDER_NAME,
                                                                          ITEMS_DATA_MODULE_NAME)) + '.py',
@@ -4670,16 +4699,18 @@ class ItemsModuleCreator(ModuleCreatorBase):
                                                    auto_replace=auto_replace)
 
     def insert_conditionals(self):
+
         item_name = ExploreApiItems().actual_item_name(item_name=self.item_name)
 
         instance = ItemsConditionals(item_name=item_name)
-        instance.run_conditions_creation()
 
-        self._insert_object_in_module(obj_name=item_name, new_object_as_dct_or_str=instance.conditions,
+        self._insert_object_in_module(obj_name=item_name,
+                                      obj_creation_call=instance.run_conditions_creation,
+                                      obj_retrieve_call=instance.conditions_dct_as_callable,
+                                      new_obj_as_dct_or_str=None,
                                       replacement_question_msg='', width=1,
                                       targeted_module_path_str='/'.join((ITEMS_MODULES_FOLDER_NAME,
-                                                                         ITEMS_DATA_MODULE_NAME)) + '.py',
-                                      verify_replacement=False)
+                                                                         ITEMS_DATA_MODULE_NAME)) + '.py')
 
 
 # ===============================================================
@@ -4739,8 +4770,8 @@ if __name__ == '__main__':
 
     testFetch = False
     if testFetch:
-        r = Fetch().castable(spell_or_item_name='q', champ_or_item='champion', champ_name='jax')
-        print(r)
+        castable = Fetch().castable(spell_or_item_name='q', champ_or_item='champion', champ_name='jax')
+        print(castable)
 
     testItems = False
     if testItems:
