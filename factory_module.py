@@ -238,7 +238,7 @@ def full_or_partial_match_in_iterable(searched_name, iterable):
     if tot_partial_matches == 1:
         return partial_matches_lst[0]
     elif tot_partial_matches > 1:
-        raise KeyError('More than one partial matches found.')
+        raise KeyError('{} partial matches found instead of one.'.format(tot_partial_matches))
     else:
         raise KeyError('No full or partial match.')
 
@@ -1647,7 +1647,7 @@ class ExploreApiItems(ExploreBase):
         """
         return len(self.used_items_by_name_dct)
 
-    def guessed_item(self, item_name):
+    def actual_item_name(self, item_name):
         """
         Returns the actual item name that matches given item name.
 
@@ -3491,11 +3491,12 @@ class AbilitiesEffects(EffectsBase):
 
 class ConditionalsBase(object):
 
-    def __init__(self, obj_name, obj_type, abilities_attrs_dct, abilities_effects_dct):
+    def __init__(self, obj_name, obj_type, attributes_dct, effects_dct):
         self.obj_name = obj_name
+        # 'champion' or 'item'
         self.obj_type = obj_type
-        self.abilities_attrs_dct = abilities_attrs_dct
-        self.abilities_effects_dct = abilities_effects_dct
+        self.attributes_dct = attributes_dct
+        self.abilities_effects_dct = effects_dct
         self.conditions = {}
 
     TARGET_TYPES = ('player', 'enemy')
@@ -3505,16 +3506,16 @@ class ConditionalsBase(object):
     NON_PER_LVL_STAT_NAMES = sorted(i for i in stats.ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
 
     def available_buff_names(self):
-        return sorted(self.abilities_attrs_dct['buffs'])
+        return sorted(self.attributes_dct['buffs'])
 
     def available_dmg_names(self):
-        return sorted(self.abilities_attrs_dct['dmgs'])
+        return sorted(self.attributes_dct['dmgs'])
 
     def available_buff_attr_names(self):
 
         s = {}
         for buff_name in self.available_buff_names():
-            s |= self.abilities_attrs_dct['buffs'][buff_name].keys()
+            s |= self.attributes_dct['buffs'][buff_name].keys()
 
         return s
 
@@ -3522,15 +3523,15 @@ class ConditionalsBase(object):
 
         s = {}
         for dmg_name in self.available_dmg_names():
-            s |= self.abilities_attrs_dct['dmgs'][dmg_name].keys()
+            s |= self.attributes_dct['dmgs'][dmg_name].keys()
 
         return s
 
     def available_ability_attr_names(self):
 
         s = {}
-        for ability_name in self.abilities_attrs_dct['general_attributes']:
-            s |= self.abilities_attrs_dct['general_attributes'][ability_name].keys()
+        for ability_name in self.attributes_dct['general_attributes']:
+            s |= self.attributes_dct['general_attributes'][ability_name].keys()
 
         return s
 
@@ -3813,8 +3814,8 @@ class AbilitiesConditionals(ConditionalsBase):
     def __init__(self, champion_name):
         super().__init__(obj_name=champion_name,
                          obj_type='champion',
-                         abilities_attrs_dct=Fetch().champ_abilities_attrs_dct(champ_name=champion_name),
-                         abilities_effects_dct=Fetch().champ_effects_dct(champ_name=champion_name))
+                         attributes_dct=Fetch().champ_abilities_attrs_dct(champ_name=champion_name),
+                         effects_dct=Fetch().champ_effects_dct(champ_name=champion_name))
 
 
 # ---------------------------------------------------------------
@@ -3861,7 +3862,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
     def __init__(self, item_name):
         self._validate_stats_names()
         # Converts given item name to actual name.
-        self.item_name = ExploreApiItems().guessed_item(item_name=item_name)
+        self.item_name = ExploreApiItems().actual_item_name(item_name=item_name)
         self.explore_items_module_inst = ExploreApiItems()
         self.item_id = self.explore_items_module_inst.item_dct(self.item_name)['id']
         self.item_simple_stats_dct = {}     # (stats between <stats> and </stats>)
@@ -4336,8 +4337,8 @@ class ItemsConditionals(ConditionalsBase):
     def __init__(self, item_name):
         super().__init__(obj_name=item_name,
                          obj_type='item',
-                         abilities_attrs_dct=Fetch().items_attrs_dct(),
-                         abilities_effects_dct=Fetch().items_effects_dct())
+                         attributes_dct=Fetch().items_attrs_dct(),
+                         effects_dct=Fetch().items_effects_dct())
 
 
 # ===============================================================
@@ -4543,7 +4544,8 @@ class ChampionModuleCreator(ModuleCreatorBase):
 
 class ItemsModuleCreator(ModuleCreatorBase):
 
-    def __init__(self):
+    def __init__(self, item_name):
+        self.item_name = ExploreApiItems().actual_item_name(item_name=item_name)
         self.items_data_path_str = '{}/items_data.py'.format(ITEMS_MODULES_FOLDER_NAME)
         self.used_items = ExploreApiItems().used_items_by_name_dct
         # (the same instance of item creation is needed, so it's stored in a var)
@@ -4557,7 +4559,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
         :return: (dict)
         """
 
-        item_name = ExploreApiItems().guessed_item(item_name=item_name)
+        item_name = ExploreApiItems().actual_item_name(item_name=item_name)
 
         self.temporary_item_attr_creation_instance = ItemAttrCreation(item_name=item_name)
         self.temporary_item_attr_creation_instance.create_non_unique_stats_names_and_values()
@@ -4576,7 +4578,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
 
         return dct
 
-    def created_current_item_effects(self, item_name):
+    def created_current_item_effects(self):
         """
         Creates and returns effects of current item creation instance.
         If no instance has been created (e.g. only effects are being set without earlier data creation)
@@ -4585,7 +4587,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
         :return: (dict)
         """
 
-        item_name = ExploreApiItems().guessed_item(item_name=item_name)
+        item_name = self.item_name
 
         if self.temporary_item_attr_creation_instance:
             instance = self.temporary_item_attr_creation_instance
@@ -4608,7 +4610,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
 
             return instance.item_effects
 
-    def insert_item_created_attrs_or_effects(self, item_name, effects_or_attrs, auto_replace=False):
+    def _insert_item_created_attrs_or_effects(self, effects_or_attrs, auto_replace=False):
         """
         Inserts all data of given item in items' data module.
 
@@ -4620,7 +4622,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
         :return: (None)
         """
 
-        item_name = ExploreApiItems().guessed_item(item_name=item_name)
+        item_name = self.item_name
 
         if effects_or_attrs == 'attrs':
             obj_name = ITEMS_ATTRS_DCT_NAME
@@ -4659,28 +4661,45 @@ class ItemsModuleCreator(ModuleCreatorBase):
                                                                          ITEMS_DATA_MODULE_NAME)) + '.py',
                                       verify_replacement=False)
 
-    def insert_conditionals(self, item_name, auto_replace=False):
-        item_name = ExploreApiItems().guessed_item(item_name=item_name)
-        None
+    def insert_item_created_attrs(self, auto_replace=False):
+        self._insert_item_created_attrs_or_effects(effects_or_attrs='attrs',
+                                                   auto_replace=auto_replace)
+
+    def insert_item_created_effects(self, auto_replace=False):
+        self._insert_item_created_attrs_or_effects(effects_or_attrs='effects',
+                                                   auto_replace=auto_replace)
+
+    def insert_conditionals(self):
+        item_name = ExploreApiItems().actual_item_name(item_name=self.item_name)
+
+        instance = ItemsConditionals(item_name=item_name)
+        instance.run_conditions_creation()
+
+        self._insert_object_in_module(obj_name=item_name, new_object_as_dct_or_str=instance.conditions,
+                                      replacement_question_msg='', width=1,
+                                      targeted_module_path_str='/'.join((ITEMS_MODULES_FOLDER_NAME,
+                                                                         ITEMS_DATA_MODULE_NAME)) + '.py',
+                                      verify_replacement=False)
+
 
 # ===============================================================
 # ===============================================================
 if __name__ == '__main__':
 
     testGen = False
-    if testGen is True:
+    if testGen:
         for ability_shortcut in SPELL_SHORTCUTS:
             GeneralAbilityAttributes(ability_name=ability_shortcut, champion_name='drmundo').run_gen_attr_creation()
             break
 
     testDmg = False
-    if testDmg is True:
+    if testDmg:
         for ability_shortcut in ('q',):
             dmgAttrInstance = DmgAbilityAttributes(ability_name=ability_shortcut, champion_name='teemo')
             dmgAttrInstance.run_dmg_attr_creation()
 
     testBuffs = False
-    if testBuffs is True:
+    if testBuffs:
         for champName in ExploreApiAbilities().all_champions_data_dct:
             for abilityName in SPELL_SHORTCUTS:
                 res = BuffAbilityAttributes(abilityName, champName).refined_nth_attack()
@@ -4688,43 +4707,43 @@ if __name__ == '__main__':
                     print((champName, res))
 
     testApiStorage = False
-    if testApiStorage is True:
+    if testApiStorage:
         RequestAllAbilitiesFromAPI().store_all_champions_data()
 
     testExploration = False
-    if testExploration is True:
+    if testExploration:
         champName = 'annie'
         ExploreApiAbilities().champion_abilities(champion_name=champName, print_mode=True)
         ExploreApiAbilities().sanitized_tooltips(champ=champName, raw_str=None, print_mode=True)
 
     testCombination = False
-    if testCombination is True:
+    if testCombination:
         inst = AbilitiesAttributes(champion_name='jax')
         inst._single_spell_attrs('q')
 
     testChampIDs = False
-    if testChampIDs is True:
+    if testChampIDs:
         print(ExploreApiAbilities().champion_id('dariu'))
 
     testModuleInsertion = False
-    if testModuleInsertion is True:
+    if testModuleInsertion:
         ChampionModuleCreator(champion_name='jax').run_champ_module_creation()
 
     testItemNames = False
-    if testItemNames is True:
+    if testItemNames:
         c = ExploreApiItems().all_items_dct_by_id
 
     testRestrictedInput = False
-    if testRestrictedInput is True:
+    if testRestrictedInput:
         restricted_input(question_msg='Give num!', input_type='str', characteristic='non_negative',)
 
     testFetch = False
-    if testFetch is True:
+    if testFetch:
         r = Fetch().castable(spell_or_item_name='q', champ_or_item='champion', champ_name='jax')
         print(r)
 
     testItems = False
-    if testItems is True:
+    if testItems:
         inst = ItemAttrCreation(item_name='gun')
         inst.create_non_unique_stats_names_and_values()
         print(inst.non_unique_item_stats)
@@ -4734,8 +4753,14 @@ if __name__ == '__main__':
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
 
-    testItemAttrInsertion = True
-    if testItemAttrInsertion is True:
-        inst = ItemsModuleCreator()
-        inst.insert_item_created_attrs_or_effects(item_name='gunblade', effects_or_attrs='attrs')
-        inst.insert_item_created_attrs_or_effects(item_name='gunblade', effects_or_attrs='effects')
+    testItemAttrAndEffectsInsertion = False
+    if testItemAttrAndEffectsInsertion:
+        inst = ItemsModuleCreator(item_name='gunblade')
+        inst.insert_item_created_attrs()
+        inst.insert_item_created_effects()
+
+    testItemCondCreationAndInsertion = True
+    if testItemCondCreationAndInsertion:
+        inst = ItemsModuleCreator(item_name='gunblade')
+        inst.insert_conditionals()
+
