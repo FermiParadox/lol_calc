@@ -13,7 +13,6 @@ import importlib
 import ast
 import collections
 import api_items_database
-import abc
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -66,13 +65,17 @@ class Fetch(object):
 
         return module
 
+    @staticmethod
+    def champion_module_path(champ_name):
+        return CHAMPION_MODULES_FOLDER_NAME + '.' + champ_name
+
     def imported_champ_module(self, champ_name):
         """
         Returns champion module, ensuring it is reloaded.
         :return: (module)
         """
 
-        return self._imported_module(path_str=CHAMPION_MODULES_FOLDER_NAME + '.' + champ_name)
+        return self._imported_module(path_str=self.champion_module_path(champ_name=champ_name))
 
     def imported_items_module(self):
         """
@@ -4436,6 +4439,28 @@ class ModuleCreatorBase(object):
                                        new_object_as_dct_or_str=new_obj_as_dct_or_str,
                                        targeted_module=targeted_module_path_str, width=width)
 
+    def pformat_obj_in_module(self, obj_name, items_or_a_champ_name):
+        """
+        Edits a module by formatting a dict inside of it.
+
+        :param obj_name: (str) e.g. 'ITEMS_EFFECTS'
+        :param items_or_a_champ_name: (str) 'items' or a champion name
+        :return: (None)
+        """
+
+        try:
+            # Champion.
+            path = CHAMPION_MODULES_FOLDER_NAME + '/' + obj_name
+            module = Fetch().imported_champ_module(champ_name=items_or_a_champ_name)
+        except ImportError:
+            # Items.
+            path = 'items/items_data.py'
+            module = Fetch().imported_items_module()
+        existing_obj = getattr(module, obj_name)
+
+        self._replace_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=existing_obj,
+                                    targeted_module_path_str=path, width=1)
+
 
 class ChampionModuleCreator(ModuleCreatorBase):
 
@@ -4562,6 +4587,8 @@ class ItemsModuleCreator(ModuleCreatorBase):
         :return: (dict)
         """
 
+        dct = {}
+
         self.temporary_item_attr_creation_instance = ItemAttrCreation(item_name=self.item_name)
         self.temporary_item_attr_creation_instance.create_non_unique_stats_names_and_values()
         self.temporary_item_attr_creation_instance.create_unique_stats_values()
@@ -4569,8 +4596,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
         self.temporary_item_attr_creation_instance.create_item_dmgs()
         self.temporary_item_attr_creation_instance.create_item_buffs()
 
-        dct = {}
-
+        dct.update({'secondary_data': self.temporary_item_attr_creation_instance.item_secondary_data_dct()})
         dct.update({'non_unique_stats': self.temporary_item_attr_creation_instance.non_unique_item_stats})
         dct.update({'unique_stats': self.temporary_item_attr_creation_instance.unique_item_stats})
         dct.update({'general_attributes': self.temporary_item_attr_creation_instance.item_gen_attrs})
@@ -4668,7 +4694,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
 
     def create_and_insert_item_attrs(self, auto_replace=False):
         self._insert_item_created_attrs_or_effects_or_conds(effects_or_attrs_or_conds='attrs',
-                                                   auto_replace=auto_replace)
+                                                            auto_replace=auto_replace)
 
     def create_and_insert_item_effects(self, auto_replace=False):
         self._insert_item_created_attrs_or_effects_or_conds(effects_or_attrs_or_conds='effects',
@@ -4761,9 +4787,13 @@ if __name__ == '__main__':
         inst.create_and_insert_item_attrs()
         inst.create_and_insert_item_effects()
 
-    testItemCondCreationAndInsertion = True
+    testItemCondCreationAndInsertion = False
     if testItemCondCreationAndInsertion:
         inst = ItemsModuleCreator(item_name='gunblade')
         inst.create_and_insert_item_effects()
         inst.create_and_insert_item_conditionals()
 
+    testPFormatObj = True
+    if testPFormatObj:
+        inst = ModuleCreatorBase()
+        inst.pformat_obj_in_module(obj_name=ITEMS_ATTRS_DCT_NAME, items_or_a_champ_name='cat')

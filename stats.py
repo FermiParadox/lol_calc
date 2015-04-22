@@ -289,7 +289,7 @@ class StatCalculation(StatFilters):
             (float) unfiltered stat value after bonuses
         """
 
-        if requested_stat not in self.ALL_POSSIBLE_STAT_NAMES:
+        if requested_stat not in ALL_POSSIBLE_STAT_NAMES:
             raise NotImplementedError
 
         value = 0
