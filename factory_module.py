@@ -27,6 +27,7 @@ ITEMS_DATA_MODULE_NAME = 'items_data'
 ITEMS_DATA_MODULE_PATH = '.'.join((ITEMS_MODULES_FOLDER_NAME, ITEMS_DATA_MODULE_NAME))
 ITEMS_ATTRS_DCT_NAME = 'ITEMS_ATTRIBUTES'
 ITEMS_EFFECTS_DCT_NAME = 'ITEMS_EFFECTS'
+ITEMS_CONDITIONS_DCT_NAME = 'ITEMS_CONDITIONS'
 ABILITIES_ATTRS_DCT_NAME = 'ABILITIES_ATTRIBUTES'
 ABILITIES_EFFECT_DCT_NAME = 'ABILITIES_EFFECTS'
 ABILITIES_CONDITIONS_DCT_NAME = 'ABILITIES_CONDITIONS'
@@ -3499,15 +3500,6 @@ class ConditionalsBase(object):
         self.abilities_effects_dct = effects_dct
         self.conditions_dct = {}
 
-    def conditions_dct_as_callable(self):
-        """
-        Returns condition dict. Used when conditions dict needs to be retrieved after a delayed call
-
-        :return: (dict)
-        """
-
-        return self.conditions_dct
-
     TARGET_TYPES = ('player', 'enemy')
     # (Used to determine what to insert next.)
     FORMULA_TYPE = ('constant_value', 'x_function')
@@ -4414,8 +4406,7 @@ class ModuleCreatorBase(object):
         else:
             return False
 
-    def _insert_object_in_module(self, obj_name, targeted_module_path_str,  new_obj_as_dct_or_str=None,
-                                 obj_creation_call=None, obj_retrieve_call=None,
+    def _insert_object_in_module(self, obj_name, targeted_module_path_str, new_obj_as_dct_or_str,
                                  replacement_question_msg='', width=None, verify_replacement=True):
         """
         Inserts object in module after verifying replacement if needed.
@@ -4423,26 +4414,8 @@ class ModuleCreatorBase(object):
 
         WARNING: When used for class insertion, assumes no empty lines between class start and __init__ end.
 
-        :param obj_name:
-        :param new_obj_as_dct_or_str:
-        :param replacement_question_msg:
-        :param targeted_module_path_str:
-        :param obj_creation_call:
-        :param obj_retrieve_call:
-        :param width:
-        :param verify_replacement:
         :return: (None)
         """
-
-        def create_and_return_obj():
-            obj_creation_call()
-            return obj_retrieve_call()
-
-        def obj_body():
-            if new_obj_as_dct_or_str:
-                return new_obj_as_dct_or_str
-            else:
-                return create_and_return_obj()
 
         # If object exists, replaces it.
         if self._obj_existence(obj_name=obj_name, targeted_module_path_str=targeted_module_path_str):
@@ -4452,7 +4425,7 @@ class ModuleCreatorBase(object):
             if (not verify_replacement) or _y_n_question(question_str=replacement_question_msg):
 
                 self._replace_obj_in_module(obj_name=obj_name,
-                                            new_object_as_dct_or_str=obj_body(),
+                                            new_object_as_dct_or_str=new_obj_as_dct_or_str,
                                             targeted_module_path_str=targeted_module_path_str, width=width)
             else:
                 print('\nReplacement canceled.')
@@ -4460,7 +4433,7 @@ class ModuleCreatorBase(object):
         # If object doesn't exist, appends object.
         else:
             self._append_obj_in_module(obj_name=obj_name,
-                                       new_object_as_dct_or_str=obj_body(),
+                                       new_object_as_dct_or_str=new_obj_as_dct_or_str,
                                        targeted_module=targeted_module_path_str, width=width)
 
 
@@ -4580,18 +4553,16 @@ class ItemsModuleCreator(ModuleCreatorBase):
         self.used_items = ExploreApiItems().used_items_by_name_dct
         # (the same instance of item creation is needed, so it's stored in a var)
         self.temporary_item_attr_creation_instance = None
+        self.temporary_item_attr_creation_instance = None
 
-    def created_item_attrs(self, item_name):
+    def create_and_return_item_attrs_dct(self):
         """
         Returns a dict containing item attributes.
 
-        :param item_name: (str)
         :return: (dict)
         """
 
-        item_name = ExploreApiItems().actual_item_name(item_name=item_name)
-
-        self.temporary_item_attr_creation_instance = ItemAttrCreation(item_name=item_name)
+        self.temporary_item_attr_creation_instance = ItemAttrCreation(item_name=self.item_name)
         self.temporary_item_attr_creation_instance.create_non_unique_stats_names_and_values()
         self.temporary_item_attr_creation_instance.create_unique_stats_values()
         self.temporary_item_attr_creation_instance.create_item_gen_attrs()
@@ -4608,7 +4579,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
 
         return dct
 
-    def created_current_item_effects(self):
+    def create_and_return_current_item_effects_dct(self):
         """
         Creates and returns effects of current item creation instance.
         If no instance has been created (e.g. only effects are being set without earlier data creation)
@@ -4616,8 +4587,6 @@ class ItemsModuleCreator(ModuleCreatorBase):
 
         :return: (dict)
         """
-
-        item_name = self.item_name
 
         if self.temporary_item_attr_creation_instance:
             instance = self.temporary_item_attr_creation_instance
@@ -4630,50 +4599,58 @@ class ItemsModuleCreator(ModuleCreatorBase):
             module = Fetch().imported_items_module()
             item_attrs_dct = getattr(module, ITEMS_ATTRS_DCT_NAME)
             # Creates instance and inserts data.
-            instance = ItemAttrCreation(item_name=item_name)
-            instance.item_buffs = item_attrs_dct[item_name]['buffs']
-            instance.item_gen_attrs = item_attrs_dct[item_name]['general_attributes']
-            instance.non_unique_item_stats = item_attrs_dct[item_name]['non_unique_stats']
-            instance.item_dmgs = item_attrs_dct[item_name]['dmgs']
+            instance = ItemAttrCreation(item_name=self.item_name)
+            instance.item_buffs = item_attrs_dct[self.item_name]['buffs']
+            instance.item_gen_attrs = item_attrs_dct[self.item_name]['general_attributes']
+            instance.non_unique_item_stats = item_attrs_dct[self.item_name]['non_unique_stats']
+            instance.item_dmgs = item_attrs_dct[self.item_name]['dmgs']
             # Uses instance to create effects.
             instance.create_item_effects()
 
             return instance.item_effects
 
-    def _insert_item_created_attrs_or_effects(self, effects_or_attrs, auto_replace=False):
+    def create_and_return_current_item_conditions_dct(self):
+
+        instance = ItemsConditionals(item_name=self.item_name)
+        instance.run_conditions_creation()
+        return instance.conditions_dct
+
+    def _insert_item_created_attrs_or_effects_or_conds(self, effects_or_attrs_or_conds, auto_replace=False):
         """
         Inserts all data of given item in items' data module.
 
         Imports or reloads the data module, and checks if item's data is inside items' attributes (or effects) dict.
 
-        :param effects_or_attrs: (str) 'effects' or 'attrs'
+        :param effects_or_attrs_or_conds: (str) 'effects' or 'attrs'
         :param auto_replace: (bool) When False, asks user for replacement confirmation (if item already existing).
         :return: (None)
         """
 
-        item_name = self.item_name
-
-        if effects_or_attrs == 'attrs':
-            obj_name = ITEMS_ATTRS_DCT_NAME
-            func = self.created_item_attrs
+        if effects_or_attrs_or_conds == 'attrs':
+            property_name = ITEMS_ATTRS_DCT_NAME
+            func = self.create_and_return_item_attrs_dct
+        elif effects_or_attrs_or_conds == 'effects':
+            property_name = ITEMS_EFFECTS_DCT_NAME
+            func = self.create_and_return_current_item_effects_dct
         else:
-            obj_name = ITEMS_EFFECTS_DCT_NAME
-            func = self.created_current_item_effects
+            property_name = ITEMS_CONDITIONS_DCT_NAME
+            func = self.create_and_return_current_item_conditions_dct
 
+        # Gets existing stored dict.
         try:
             items_module = Fetch().imported_items_module()
-            modified_dct = getattr(items_module, obj_name)
+            existing_data_dct = getattr(items_module, property_name)
         except AttributeError:
-            modified_dct = {}
+            existing_data_dct = {}
 
-        # Checks if inside dict.
-        if item_name in modified_dct:
+        # Checks if object is inside dict.
+        if self.item_name in existing_data_dct:
             # (if auto replace true, skips question)
-            if auto_replace or _y_n_question('{} {} exists. Replace?'.format(item_name.capitalize(), obj_name.upper())):
+            if auto_replace or _y_n_question('{} {} exists. Replace?'.format(
+                    self.item_name.capitalize(), property_name.upper())):
 
                 # Creates and inserts item dict into items dict.
-                temp_dct = func(item_name=item_name)
-                modified_dct[item_name] = temp_dct
+                existing_data_dct[self.item_name] = func()
 
             else:
                 print('\nAborting insertion.')
@@ -4681,37 +4658,31 @@ class ItemsModuleCreator(ModuleCreatorBase):
 
         else:
             # Creates and inserts item dict into items dict.
-            temp_dct = func(item_name=item_name)
-            modified_dct[item_name] = temp_dct
+            existing_data_dct[self.item_name] = func()
 
-        self._insert_object_in_module(obj_name=obj_name, new_obj_as_dct_or_str=modified_dct,
+        self._insert_object_in_module(obj_name=property_name, new_obj_as_dct_or_str=existing_data_dct,
                                       replacement_question_msg='', width=1,
                                       targeted_module_path_str='/'.join((ITEMS_MODULES_FOLDER_NAME,
                                                                          ITEMS_DATA_MODULE_NAME)) + '.py',
                                       verify_replacement=False)
 
-    def insert_item_created_attrs(self, auto_replace=False):
-        self._insert_item_created_attrs_or_effects(effects_or_attrs='attrs',
+    def create_and_insert_item_attrs(self, auto_replace=False):
+        self._insert_item_created_attrs_or_effects_or_conds(effects_or_attrs_or_conds='attrs',
                                                    auto_replace=auto_replace)
 
-    def insert_item_created_effects(self, auto_replace=False):
-        self._insert_item_created_attrs_or_effects(effects_or_attrs='effects',
-                                                   auto_replace=auto_replace)
+    def create_and_insert_item_effects(self, auto_replace=False):
+        self._insert_item_created_attrs_or_effects_or_conds(effects_or_attrs_or_conds='effects',
+                                                            auto_replace=auto_replace)
 
-    def insert_conditionals(self):
+    def create_and_insert_item_conditionals(self, auto_replace=False):
+        """
+        Creates and inserts item conditionals.
 
-        item_name = ExploreApiItems().actual_item_name(item_name=self.item_name)
-
-        instance = ItemsConditionals(item_name=item_name)
-
-        self._insert_object_in_module(obj_name=item_name,
-                                      obj_creation_call=instance.run_conditions_creation,
-                                      obj_retrieve_call=instance.conditions_dct_as_callable,
-                                      new_obj_as_dct_or_str=None,
-                                      replacement_question_msg='', width=1,
-                                      targeted_module_path_str='/'.join((ITEMS_MODULES_FOLDER_NAME,
-                                                                         ITEMS_DATA_MODULE_NAME)) + '.py')
-
+        :param auto_replace: (bool)
+        :return: (None)
+        """
+        self._insert_item_created_attrs_or_effects_or_conds(effects_or_attrs_or_conds='conds',
+                                                            auto_replace=auto_replace)
 
 # ===============================================================
 # ===============================================================
@@ -4787,11 +4758,12 @@ if __name__ == '__main__':
     testItemAttrAndEffectsInsertion = False
     if testItemAttrAndEffectsInsertion:
         inst = ItemsModuleCreator(item_name='gunblade')
-        inst.insert_item_created_attrs()
-        inst.insert_item_created_effects()
+        inst.create_and_insert_item_attrs()
+        inst.create_and_insert_item_effects()
 
     testItemCondCreationAndInsertion = True
     if testItemCondCreationAndInsertion:
         inst = ItemsModuleCreator(item_name='gunblade')
-        inst.insert_conditionals()
+        inst.create_and_insert_item_effects()
+        inst.create_and_insert_item_conditionals()
 

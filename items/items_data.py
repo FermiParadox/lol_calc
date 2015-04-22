@@ -71,5 +71,6 @@ ITEMS_EFFECTS = {
                                                  'dmg': [],
                                                  'remove_buff': []}}}}
 
-ITEMS_CONDITIONS = {}
+ITEMS_CONDITIONS = {
+    'hextech_gunblade': {}}
 
