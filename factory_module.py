@@ -1836,6 +1836,9 @@ class ExploreApiItems(ExploreBase):
         except KeyError:
             return None
 
+    def pprint_used_items_by_name_dct(self):
+        pp.pprint(self.used_items_by_name_dct)
+
     def item_total_price(self, item_name):
         return self._item_cost_base(item_name=item_name, cost_name='total')
 
@@ -4461,6 +4464,8 @@ class ModuleCreatorBase(object):
         self._replace_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=existing_obj,
                                     targeted_module_path_str=path, width=1)
 
+        print("\n{} in '{}' pretty formatted.".format(obj_name, path))
+
 
 class ChampionModuleCreator(ModuleCreatorBase):
 
@@ -4781,9 +4786,9 @@ if __name__ == '__main__':
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
 
-    testItemAttrAndEffectsInsertion = False
+    testItemAttrAndEffectsInsertion = True
     if testItemAttrAndEffectsInsertion:
-        inst = ItemsModuleCreator(item_name='gunblade')
+        inst = ItemsModuleCreator(item_name='dorans_bl')
         inst.create_and_insert_item_attrs()
         inst.create_and_insert_item_effects()
 
