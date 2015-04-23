@@ -12,6 +12,16 @@ class ItemsProperties(object):
         self.items_effects_dct = items_data_module.ITEMS_EFFECTS
         self.items_conditions_dct = items_data_module.ITEMS_CONDITIONS
 
+    def leafs_used(self, item_name):
+        """
+        Returns items' names that are build from given item and are part of the chosen build.
+
+        :param item_name: (str)
+        :return: (set)
+        """
+
+        return self.items_attrs_dct[item_name]['secondary_data']['leafs'] & set(self.chosen_items_lst)
+
     def _create_items_properties_dcts(self):
         """
         Creates final dicts (effects, attributes, dmgs, buffs, conditions) for given item build.
@@ -37,15 +47,6 @@ class ItemsProperties(object):
 
 
 
-    def leafs_used(self, item_name):
-        """
-        Returns items' names that are build from given item and are part of the chosen build.
-
-        :param item_name: (str)
-        :return: (set)
-        """
-
-        return
 
     def items_(self):
         pass
