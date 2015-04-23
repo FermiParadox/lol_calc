@@ -1558,17 +1558,17 @@ class ExploreApiItems(ExploreBase):
 
     def __init__(self):
         self.item_related_api_data = api_items_database.ALL_ITEMS
-        # All items, INCLUDING items not used in summoners rift (they are excluded below, so might raise bugs if used)
+        # All items, INCLUDING items not usable in summoners rift (they are excluded below, so might cause bugs if used)
         self.all_items_dct_by_id = self.item_related_api_data['data']
         # (there is a method below more suitable for returning item dict, that does not require exact name match)
-        self.used_items_by_name_dct = self._used_items_dct_by_name()
+        self.usable_items_by_name_dct = self._usable_items_dct_by_name()
 
     MANDATORY_MAP_ID = 1
     DISALLOWED_ITEM_TAGS = ('trinket', 'consumable', )
 
-    def _used_items_dct_by_name(self):
+    def _usable_items_dct_by_name(self):
         """
-        Creates a dict containing only items that will be used.
+        Creates a dict containing only items that can be used.
 
         Excluded items:
             -not usable in required map
@@ -1635,21 +1635,21 @@ class ExploreApiItems(ExploreBase):
         Searches through items, and retrieves name corresponding to given id.
 
         :param id_num: (int) id number of item
-        :return: (str) or (None) if item does not belong to the used items.
+        :return: (str) or (None) if item does not belong to the usable items.
         """
 
-        for item_name in self.used_items_by_name_dct:
-            if self.used_items_by_name_dct[item_name]['id'] == id_num:
+        for item_name in self.usable_items_by_name_dct:
+            if self.usable_items_by_name_dct[item_name]['id'] == id_num:
                 return item_name
 
-    def total_used_items(self):
+    def total_usable_items(self):
         """
-        Number of items used.
+        Number of usable items.
 
         Returns:
             (int)
         """
-        return len(self.used_items_by_name_dct)
+        return len(self.usable_items_by_name_dct)
 
     def actual_item_name(self, item_name):
         """
@@ -1659,7 +1659,7 @@ class ExploreApiItems(ExploreBase):
         :return: (str)
         """
         return full_or_partial_match_in_iterable(searched_name=item_name,
-                                                 iterable=self.used_items_by_name_dct)
+                                                 iterable=self.usable_items_by_name_dct)
 
     def item_dct(self, given_name, print_mode=False):
         """
@@ -1672,9 +1672,9 @@ class ExploreApiItems(ExploreBase):
             (dct)
         """
 
-        matched_name = full_or_partial_match_in_iterable(searched_name=given_name, iterable=self.used_items_by_name_dct)
+        matched_name = full_or_partial_match_in_iterable(searched_name=given_name, iterable=self.usable_items_by_name_dct)
 
-        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=self.used_items_by_name_dct[matched_name])
+        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=self.usable_items_by_name_dct[matched_name])
 
     def _item_elements(self, element_name, item=None, raw_str=None, print_mode=False):
         """
@@ -1694,10 +1694,10 @@ class ExploreApiItems(ExploreBase):
 
         # All items, or selected item.
         if item is None:
-            item_lst = self.used_items_by_name_dct
+            item_lst = self.usable_items_by_name_dct
         else:
             # (need a list so it inserts selection into a list)
-            matched_name = full_or_partial_match_in_iterable(searched_name=item, iterable=self.used_items_by_name_dct)
+            matched_name = full_or_partial_match_in_iterable(searched_name=item, iterable=self.usable_items_by_name_dct)
             item_lst = [matched_name, ]
 
         descriptions_lst = []
@@ -1705,7 +1705,7 @@ class ExploreApiItems(ExploreBase):
         for item_name in sorted(item_lst):
 
             try:
-                self._append_all_or_matching_str(examined_str=self.used_items_by_name_dct[item_name][element_name],
+                self._append_all_or_matching_str(examined_str=self.usable_items_by_name_dct[item_name][element_name],
                                                  modified_lst=descriptions_lst,
                                                  raw_str=raw_str)
             except KeyError:
@@ -1732,7 +1732,7 @@ class ExploreApiItems(ExploreBase):
         """
         names = set()
 
-        for item_name in self.used_items_by_name_dct:
+        for item_name in self.usable_items_by_name_dct:
             item_description = self.unfiltered_descriptions(item=item_name)[0].lower()
             matches_lst = re.findall(r'<[a-z]+>', item_description)
 
@@ -1789,10 +1789,10 @@ class ExploreApiItems(ExploreBase):
         """
         item_occurrence_dct = {}
 
-        for item_name in self.used_items_by_name_dct:
+        for item_name in self.usable_items_by_name_dct:
 
             try:
-                tags_lst = self.used_items_by_name_dct[item_name]['tags']
+                tags_lst = self.usable_items_by_name_dct[item_name]['tags']
 
                 for tag_str in tags_lst:
                     self._store_and_note_frequency(string=tag_str, modified_dct=item_occurrence_dct,
@@ -1822,7 +1822,7 @@ class ExploreApiItems(ExploreBase):
 
         counter = collections.Counter()
 
-        for item_name in self.used_items_by_name_dct:
+        for item_name in self.usable_items_by_name_dct:
             counter += collections.Counter(self.item_uniques_passives_names(item_name=item_name))
 
         return _return_or_pprint_complex_obj(print_mode=print_mode, dct=counter)
@@ -1836,8 +1836,8 @@ class ExploreApiItems(ExploreBase):
         except KeyError:
             return None
 
-    def pprint_used_items_by_name_dct(self):
-        pp.pprint(self.used_items_by_name_dct)
+    def pprint_usable_items_by_name_dct(self):
+        pp.pprint(self.usable_items_by_name_dct)
 
     def item_total_price(self, item_name):
         return self._item_cost_base(item_name=item_name, cost_name='total')
@@ -4265,7 +4265,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         :param _given_id_num_as_str: (str) Initially automatically set to self.item_id,
             then set through recursion to leaf or root item ids.
         :param _set_of_ids: (set) Used in recursion to pass previous items found.
-        :return: (list)
+        :return: (set) names of items
         """
 
         # (has to be none unless called through recursion)
@@ -4289,16 +4289,16 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
             self._item_roots_leafs_base(from_or_into=from_or_into, _given_id_num_as_str=id_num_as_str,
                                         _set_of_ids=set_of_ids)
 
-        final_lst_with_item_names = {
+        final_set_with_item_names = {
             self.explore_items_module_inst.item_name_from_id(id_num=int(i)) for i in set_of_ids}
 
-        return final_lst_with_item_names
+        return final_set_with_item_names
 
     def item_roots(self):
         """
         Finds all items that this item is build from.
 
-        :return: (list)
+        :return: (set) Names of items.
         """
         return self._item_roots_leafs_base(from_or_into='from')
 
@@ -4306,8 +4306,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         """
         Finds all items that are built from this item.
 
-
-        :return: (tuple)
+        :return: (set) Names of items.
         """
         return self._item_roots_leafs_base(from_or_into='into')
 
@@ -4580,7 +4579,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
     def __init__(self, item_name):
         self.item_name = ExploreApiItems().actual_item_name(item_name=item_name)
         self.items_data_path_str = '{}/items_data.py'.format(ITEMS_MODULES_FOLDER_NAME)
-        self.used_items = ExploreApiItems().used_items_by_name_dct
+        self.used_items = ExploreApiItems().usable_items_by_name_dct
         # (the same instance of item creation is needed, so it's stored in a var)
         self.temporary_item_attr_creation_instance = None
         self.temporary_item_attr_creation_instance = None
