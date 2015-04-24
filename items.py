@@ -1,5 +1,6 @@
 import items.items_data as items_data_module
 import collections
+import copy
 
 
 class ItemsProperties(object):
@@ -11,6 +12,7 @@ class ItemsProperties(object):
         self.items_attrs_dct = items_data_module.ITEMS_ATTRIBUTES
         self.items_effects_dct = items_data_module.ITEMS_EFFECTS
         self.items_conditions_dct = items_data_module.ITEMS_CONDITIONS
+        self.selected_build_effects = {}
 
     def leafs_of_item(self, item_name):
         """
@@ -55,12 +57,33 @@ class ItemsProperties(object):
 
         return set(self.chosen_items_lst) - all_roots
 
+    @staticmethod
+    def merge_item_effects_dct_to_existing(existing_dct, new_merged_dct):
+        """
+        Merges an item's effects dict into an existing effects dict.
+
+        Assumes the final values are lists,
+        which is not the case when there is "cds_modified" for champions instead of items.
+
+        :param existing_dct:
+        :param new_merged_dct:
+        :return: (None)
+        """
+
+        for key_1 in new_merged_dct:
+            for key_2 in new_merged_dct[key_1]:
+                for key_3 in new_merged_dct[key_1][key_2]:
+                    existing_dct += new_merged_dct[key_1][key_2][key_3]
+
     def _create_items_properties_dcts(self):
         """
         Creates final dicts (effects, attributes, dmgs, buffs, conditions) for current item build.
 
         :return: (None)
         """
+
+        self.selected_build_effects = {}
+        self.selected_build_conditions = {}
 
         for item_name in self.chosen_items_lst:
             item_attrs = self.items_attrs_dct[item_name]
@@ -83,11 +106,24 @@ class ItemsProperties(object):
                     if stat_name not in leafs_stats[stat_type]:
                         self.unique_stats_dct[stat_type].update({stat_name: unique_stats_dct[stat_type][stat_name]})
 
-            # EFFECTS
-            # Root effects are ignored, since leaf is (assumed to) override them.
+            # EFFECTS AND CONDITIONS
+            # Root effects (and conditions) are ignored, since leaf is (assumed to) override them.
+            if item_name in self.non_roots_in_build():
+                # Effects
+                # (updates build-effects, or sets them equal to currently checked item)
+                if self.selected_build_effects:
+                    self.merge_item_effects_dct_to_existing(existing_dct=self.selected_build_effects,
+                                                            new_merged_dct=item_effects)
+                else:
+                    self.selected_build_effects = copy.deepcopy(item_effects)
 
-
-
+                # Conditions
+                # (updates build-conditions, or sets them equal to currently checked item)
+                if self.selected_build_conditions:
+                    self.merge_item_effects_dct_to_existing(existing_dct=self.selected_build_conditions,
+                                                            new_merged_dct=item_conditions)
+                else:
+                    self.selected_build_conditions = copy.deepcopy(item_conditions)
 
     def items_(self):
         pass

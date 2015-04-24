@@ -4785,7 +4785,7 @@ if __name__ == '__main__':
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
 
-    testItemAttrAndEffectsInsertion = True
+    testItemAttrAndEffectsInsertion = False
     if testItemAttrAndEffectsInsertion:
         inst = ItemsModuleCreator(item_name='dorans_bl')
         inst.create_and_insert_item_attrs()
