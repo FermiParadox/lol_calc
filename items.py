@@ -13,6 +13,9 @@ class ItemsProperties(object):
         self.items_effects_dct = items_data_module.ITEMS_EFFECTS
         self.items_conditions_dct = items_data_module.ITEMS_CONDITIONS
         self.selected_build_effects = {}
+        self.selected_build_conditions = {}
+
+        self._create_items_properties_dcts()
 
     def leafs_of_item(self, item_name):
         """
@@ -51,15 +54,37 @@ class ItemsProperties(object):
         :return: (list)
         """
 
-        all_roots = {}
+        all_roots = set()
         for item in self.chosen_items_lst:
-            all_roots |= items_data_module.ITEMS_ATTRIBUTES[item]['secondary_stats']
+            all_roots |= items_data_module.ITEMS_ATTRIBUTES[item]['secondary_data']['roots']
 
         return set(self.chosen_items_lst) - all_roots
 
     @staticmethod
+    def check_effects_empty(effects_dct):
+        """
+        Checks the effects of an item or ability, determining if they are completely empty.
+
+        :param effects_dct:
+        :return: (bool)
+        """
+
+        for key_1 in effects_dct:
+            for key_2 in effects_dct[key_1]:
+                for key_3 in effects_dct[key_1][key_2]:
+                    if effects_dct[key_1][key_2][key_3]:
+                        # (A single non empty ends method).
+                        return True
+
+        else:
+            return False
+
+    @staticmethod
     def merge_item_effects_dct_to_existing(existing_dct, new_merged_dct):
         """
+        OBSOLETE
+        (merging effect and condition dicts was wrong, since different actives cant be merged)
+
         Merges an item's effects dict into an existing effects dict.
 
         Assumes the final values are lists,
@@ -73,7 +98,7 @@ class ItemsProperties(object):
         for key_1 in new_merged_dct:
             for key_2 in new_merged_dct[key_1]:
                 for key_3 in new_merged_dct[key_1][key_2]:
-                    existing_dct += new_merged_dct[key_1][key_2][key_3]
+                    existing_dct[key_1][key_2][key_3] += new_merged_dct[key_1][key_2][key_3]
 
     def _create_items_properties_dcts(self):
         """
@@ -82,10 +107,8 @@ class ItemsProperties(object):
         :return: (None)
         """
 
-        self.selected_build_effects = {}
-        self.selected_build_conditions = {}
-
-        for item_name in self.chosen_items_lst:
+        # (filters out duplicate items to ensure they aren't applied twice)
+        for item_name in set(self.chosen_items_lst):
             item_attrs = self.items_attrs_dct[item_name]
             item_effects = self.items_effects_dct[item_name]
             item_conditions = self.items_conditions_dct[item_name]
@@ -109,21 +132,8 @@ class ItemsProperties(object):
             # EFFECTS AND CONDITIONS
             # Root effects (and conditions) are ignored, since leaf is (assumed to) override them.
             if item_name in self.non_roots_in_build():
-                # Effects
-                # (updates build-effects, or sets them equal to currently checked item)
-                if self.selected_build_effects:
-                    self.merge_item_effects_dct_to_existing(existing_dct=self.selected_build_effects,
-                                                            new_merged_dct=item_effects)
-                else:
-                    self.selected_build_effects = copy.deepcopy(item_effects)
-
-                # Conditions
-                # (updates build-conditions, or sets them equal to currently checked item)
-                if self.selected_build_conditions:
-                    self.merge_item_effects_dct_to_existing(existing_dct=self.selected_build_conditions,
-                                                            new_merged_dct=item_conditions)
-                else:
-                    self.selected_build_conditions = copy.deepcopy(item_conditions)
+                self.selected_build_effects.update({item_name: item_effects})
+                self.selected_build_conditions.update({item_name: item_conditions})
 
     def items_(self):
         pass
@@ -155,12 +165,21 @@ class ItemsProperties(object):
 
 if __name__ == '__main__':
 
-    testBuildCost = True
+    from pprint import pprint as pp
+
+    testBuildCost = False
     if testBuildCost:
         g = ItemsProperties(['hextech_gunblade', 'dorans_blade']).build_price()
         print(g)
 
-    testUniqueLeafsUniqueStats = True
+    testUniqueLeafsUniqueStats = False
     if testUniqueLeafsUniqueStats:
         g = ItemsProperties(['hextech_gunblade', 'dorans_blade']).unique_stats_in_leafs_of_item(item_name='dorans_blade')
         print(g)
+
+    testAllItemPropertyCreation = True
+    if testAllItemPropertyCreation:
+        g = ItemsProperties(['hextech_gunblade', 'dorans_blade'])
+        pp(g.selected_build_effects)
+        print('-'*10)
+        pp(g.selected_build_conditions)

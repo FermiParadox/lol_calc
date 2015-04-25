@@ -67,8 +67,8 @@ ITEMS_ATTRIBUTES = {
                                                        'spellvamp': 0.2}}}}
 
 ITEMS_EFFECTS = {
-    'dorans_blade': {'enemy': {'actives': {'buffs': ['hextech_gunblade_slow'],
-                                           'dmg': ['hextech_gunblade_dmg_0'],
+    'dorans_blade': {'enemy': {'actives': {'buffs': [],
+                                           'dmg': [],
                                            'remove_buff': []},
                                'passives': {'buffs': [],
                                             'dmg': [],
@@ -93,5 +93,6 @@ ITEMS_EFFECTS = {
                                                  'remove_buff': []}}}}
 
 ITEMS_CONDITIONS = {
-    'hextech_gunblade': {}}
+    'hextech_gunblade': {},
+    'dorans_blade': {}}
 
