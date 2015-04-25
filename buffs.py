@@ -4,7 +4,7 @@ import items
 import dmgs_buffs_categories
 
 
-class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems):
+class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProperties):
 
     def __init__(self,
                  selected_champions_dct,
@@ -12,7 +12,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
                  req_buff_dct_func,
                  initial_current_stats=None,
                  initial_active_buffs=None,
-                 items_lst=None):
+                 chosen_items_lst=None):
 
         self.current_time = 0
 
@@ -23,14 +23,9 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
                                          initial_active_buffs=initial_active_buffs,
                                          initial_current_stats=initial_current_stats)
 
-        items.AllItems.__init__(self,
-                                items_lst=items_lst,
-                                kwargs=dict(req_stats_func=self.request_stat,
-                                            act_buffs=self.active_buffs,
-                                            current_stats=self.current_stats,
-                                            current_target=self.current_target,
-                                            champion_lvls_dct=champion_lvls_dct,
-                                            current_target_num=self.current_target_num))
+        items.ItemsProperties.__init__(self,
+                                       chosen_items_lst=chosen_items_lst)
+
         self.set_stat_dependencies()
         self.set_current_stats()
 
@@ -183,7 +178,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
                         # Removes the buff.
                         del tar_buff_dct_in_act_buffs
 
-    def add_single_ability_passive_buff(self, ability_name, target_type, effects_dct, tar_name):
+    def add_single_ability_passive_buff(self, ability_or_item_name, target_type, effects_dct, tar_name):
         """
         Adds passive buffs of a single ability on a target.
 
@@ -193,13 +188,12 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
             (None)
         """
 
-        # Checks if selected ability has passive buffs.
-        if target_type in effects_dct[ability_name]:
-            if 'passives' in effects_dct[ability_name][target_type]:
-                if 'buffs' in effects_dct[ability_name][target_type]['passives']:
-                    # Applies all passive buffs.
-                    for buff_name in effects_dct[ability_name][target_type]['passives']['buffs']:
-                        self.add_buff(buff_name, tar_name)
+        try:
+            # Applies all passive buffs.
+            for buff_name in effects_dct[ability_or_item_name][target_type]['passives']['buffs']:
+                self.add_buff(buff_name, tar_name)
+        except KeyError:
+            pass
 
     def add_passive_buffs(self, abilities_effects_dct_func, abilities_lvls):
         """
@@ -222,23 +216,23 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.AllItems)
                 if abilities_lvls[ability_name] > 0:
 
                     # .. applies the buffs.
-                    self.add_single_ability_passive_buff(ability_name=ability_name,
+                    self.add_single_ability_passive_buff(ability_or_item_name=ability_name,
                                                          target_type=target_type,
                                                          effects_dct=abilities_effects_dct_func,
                                                          tar_name=tar_name)
 
             # Innate passive buffs.
-            self.add_single_ability_passive_buff(ability_name='inn',
+            self.add_single_ability_passive_buff(ability_or_item_name='inn',
                                                  target_type=target_type,
                                                  effects_dct=abilities_effects_dct_func,
                                                  tar_name=tar_name)
 
             # Item passive buffs.
-            for item_name in self.items_lst:
+            for item_name in self.chosen_items_lst:
                 # (If item is bought multiple times, all stacks are applied)
-                self.add_single_ability_passive_buff(ability_name=item_name,
+                self.add_single_ability_passive_buff(ability_or_item_name=item_name,
                                                      target_type=target_type,
-                                                     effects_dct=self.items_effects,
+                                                     effects_dct=self.items_effects_dct,
                                                      tar_name=tar_name)
 
 
@@ -255,14 +249,14 @@ class Counters(BuffsGeneral):
                  max_combat_time=20,
                  initial_current_stats=None,
                  initial_active_buffs=None,
-                 items_lst=None):
+                 chosen_items_lst=None):
 
         BuffsGeneral.__init__(self,
                               selected_champions_dct=selected_champions_dct,
                               champion_lvls_dct=champion_lvls_dct,
                               initial_current_stats=initial_current_stats,
                               initial_active_buffs=initial_active_buffs,
-                              items_lst=items_lst,
+                              chosen_items_lst=chosen_items_lst,
                               req_buff_dct_func=req_buff_dct_func)
 
         self.max_combat_time = max_combat_time
@@ -706,7 +700,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                  max_combat_time,
                  initial_current_stats,
                  initial_active_buffs,
-                 items_lst,
+                 chosen_items_lst,
                  req_dmg_dct_func,
                  req_buff_dct_func,
                  ability_lvls_dct,
@@ -718,7 +712,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                           max_combat_time=max_combat_time,
                           initial_current_stats=initial_current_stats,
                           initial_active_buffs=initial_active_buffs,
-                          items_lst=items_lst,
+                          chosen_items_lst=chosen_items_lst,
                           req_buff_dct_func=req_buff_dct_func)
 
         dmgs_buffs_categories.DmgCategories.__init__(self,

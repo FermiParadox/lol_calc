@@ -28,7 +28,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                  initial_active_buffs,
                  initial_current_stats,
                  req_buff_dct_func,
-                 items_lst,
+                 chosen_items_lst,
                  req_dmg_dct_func,
                  ability_lvls_dct,):
 
@@ -45,7 +45,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                                      max_combat_time=max_combat_time,
                                      initial_current_stats=initial_current_stats,
                                      initial_active_buffs=initial_active_buffs,
-                                     items_lst=items_lst,
+                                     chosen_items_lst=chosen_items_lst,
                                      req_dmg_dct_func=req_dmg_dct_func,
                                      ability_lvls_dct=ability_lvls_dct,
                                      req_buff_dct_func=req_buff_dct_func)
@@ -281,7 +281,7 @@ class AttributeBase(EventsGeneral):
                  max_combat_time,
                  initial_active_buffs,
                  initial_current_stats,
-                 items_lst
+                 chosen_items_lst
                  ):
 
         self.ability_lvls_dct = ability_lvls_dct
@@ -298,7 +298,7 @@ class AttributeBase(EventsGeneral):
                                max_combat_time=max_combat_time,
                                initial_active_buffs=initial_active_buffs,
                                initial_current_stats=initial_current_stats,
-                               items_lst=items_lst,
+                               chosen_items_lst=chosen_items_lst,
                                ability_lvls_dct=ability_lvls_dct,
                                req_dmg_dct_func=self.request_dmg,
                                req_buff_dct_func=self.request_buff)
@@ -688,7 +688,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                  champion_lvls_dct,
                  ability_lvls_dct,
                  max_combat_time,
-                 items_lst=None,
+                 chosen_items_lst=None,
                  initial_active_buffs=None,
                  initial_current_stats=None,
                  selected_runes=None):
@@ -710,7 +710,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                max_combat_time=max_combat_time,
                                initial_active_buffs=initial_active_buffs,
                                initial_current_stats=initial_current_stats,
-                               items_lst=items_lst,
+                               chosen_items_lst=chosen_items_lst,
                                )
 
         timers.Timers.__init__(self,
@@ -1449,7 +1449,7 @@ class VisualRepresentation(Actions):
                  champion_lvls_dct,
                  ability_lvls_dct,
                  max_combat_time,
-                 items_lst=None,
+                 chosen_items_lst=None,
                  initial_active_buffs=None,
                  initial_current_stats=None,
                  selected_runes=None):
@@ -1461,7 +1461,7 @@ class VisualRepresentation(Actions):
                          champion_lvls_dct=champion_lvls_dct,
                          ability_lvls_dct=ability_lvls_dct,
                          max_combat_time=max_combat_time,
-                         items_lst=items_lst,
+                         chosen_items_lst=chosen_items_lst,
                          initial_active_buffs=initial_active_buffs,
                          initial_current_stats=initial_current_stats,
                          selected_runes=selected_runes)
@@ -1763,7 +1763,7 @@ if __name__ == '__main__':
             self.initial_active_buffs = None
             self.initial_current_stats = None
             self.current_target_num = None
-            self.items_lst = ['gunblade', 'gunblade']
+            self.chosen_items_lst = ['gunblade', 'gunblade']
             self.selected_runes = None
             self.max_combat_time = None
 
@@ -1807,7 +1807,7 @@ if __name__ == '__main__':
                              max_combat_time,
                              initial_active_buffs=None,
                              initial_current_stats=None,
-                             items_lst=self.items_lst,
+                             items_lst=self.chosen_items_lst,
                              selected_runes=None):
 
                     VisualRepresentation.__init__(self,
@@ -1819,7 +1819,7 @@ if __name__ == '__main__':
                                                   max_combat_time=max_combat_time,
                                                   initial_active_buffs=initial_active_buffs,
                                                   initial_current_stats=initial_current_stats,
-                                                  items_lst=items_lst,
+                                                  chosen_items_lst=items_lst,
                                                   selected_runes=selected_runes)
 
                     player_champ_module.ChampionAttributes.__init__(self,
@@ -1894,7 +1894,7 @@ if __name__ == '__main__':
         def test_dmg_graphs(self, rotation_lst, item_lst):
             self.set_up()
 
-            self.items_lst = item_lst
+            self.chosen_items_lst = item_lst
 
             inst = self.subclass_jax_actions()(rotation_lst=rotation_lst,
                                                max_targets_dct=self.max_targets_dct,

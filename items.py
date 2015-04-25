@@ -1,6 +1,5 @@
-import items.items_data as items_data_module
+import items_folder.items_data as items_data_module
 import collections
-import copy
 
 
 class ItemsProperties(object):
@@ -10,10 +9,10 @@ class ItemsProperties(object):
         self.non_unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
         self.unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
         self.items_attrs_dct = items_data_module.ITEMS_ATTRIBUTES
-        self.items_effects_dct = items_data_module.ITEMS_EFFECTS
-        self.items_conditions_dct = items_data_module.ITEMS_CONDITIONS
-        self.selected_build_effects = {}
-        self.selected_build_conditions = {}
+        self.usable_items_effects_dct = items_data_module.ITEMS_EFFECTS
+        self.usable_items_conditions_dct = items_data_module.ITEMS_CONDITIONS
+        self.items_effects_dct = {}
+        self.items_conditions_dct = {}
 
         self._create_items_properties_dcts()
 
@@ -110,8 +109,8 @@ class ItemsProperties(object):
         # (filters out duplicate items to ensure they aren't applied twice)
         for item_name in set(self.chosen_items_lst):
             item_attrs = self.items_attrs_dct[item_name]
-            item_effects = self.items_effects_dct[item_name]
-            item_conditions = self.items_conditions_dct[item_name]
+            item_effects = self.usable_items_effects_dct[item_name]
+            item_conditions = self.usable_items_conditions_dct[item_name]
 
             # NON UNIQUE STATS
             item_non_unique_stats = item_attrs['non_unique_stats']
@@ -130,19 +129,13 @@ class ItemsProperties(object):
                         self.unique_stats_dct[stat_type].update({stat_name: unique_stats_dct[stat_type][stat_name]})
 
             # EFFECTS AND CONDITIONS
-            # Root effects (and conditions) are ignored, since leaf is (assumed to) override them.
+            # Root effects (and conditions) are set to an empty dict, since leaf is (assumed to) override them.
             if item_name in self.non_roots_in_build():
-                self.selected_build_effects.update({item_name: item_effects})
-                self.selected_build_conditions.update({item_name: item_conditions})
-
-    def items_(self):
-        pass
-
-    def items_effects(self):
-        pass
-
-    def items_conditions(self):
-        pass
+                self.items_effects_dct.update({item_name: item_effects})
+                self.items_conditions_dct.update({item_name: item_conditions})
+            else:
+                self.items_effects_dct.update({item_name: {}})
+                self.items_conditions_dct.update({item_name: {}})
 
     def build_price(self):
         """
@@ -180,6 +173,6 @@ if __name__ == '__main__':
     testAllItemPropertyCreation = True
     if testAllItemPropertyCreation:
         g = ItemsProperties(['hextech_gunblade', 'dorans_blade'])
-        pp(g.selected_build_effects)
+        pp(g.items_effects_dct)
         print('-'*10)
-        pp(g.selected_build_conditions)
+        pp(g.items_conditions_dct)
