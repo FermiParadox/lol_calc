@@ -260,11 +260,11 @@ class AttributeBase(EventsGeneral):
         '>': operator.gt,
         }
 
-    # Matches object types to object key names in abilities effects dct.
+    # Matches object types to object key names in abilities' effects dct.
     EFF_TYPE_TO_OBJ_KEY_NAME_MAP = {
         'ability_effect': 'ability_name',
         'ability_attr': 'ability_name',
-
+        'items_effects': 'item_name',
     }
 
     # ("abstract" class variables)
@@ -472,8 +472,9 @@ class AttributeBase(EventsGeneral):
 
         if mod_operation == 'append':
             modified_dct[ability_name][tar_type]['actives'][cat_type] += eff_contents
-        elif mod_operation == 'replace':
-            modified_dct[ability_name][tar_type]['actives'][cat_type] = eff_contents
+        elif mod_operation == 'remove':
+            old_lst = modified_dct[ability_name][tar_type]['actives'][cat_type]
+            modified_dct[ability_name][tar_type]['actives'][cat_type] = [i for i in old_lst if i not in eff_contents]
 
     def _on_hit_effect_buff_creator(self, eff_dct, modified_dct, buff_name):
         """
@@ -532,9 +533,9 @@ class AttributeBase(EventsGeneral):
         else:
             return [func(i, mod_val) for i in old_val]
 
-    def _attr_creator(self, eff_dct, modified_dct, obj_name, obj_category):
+    def _property_creator(self, con_eff_dct, modified_dct, obj_name, obj_category):
         """
-        Creates new attrs dct or updates existing with changes caused by effects.
+        Creates new properties' dct or updates existing with changes caused by condition-effects.
 
         Args:
             modified_dct: It is the new dict given instead of the static class variable dict.
@@ -548,15 +549,15 @@ class AttributeBase(EventsGeneral):
             modified_dct = copy.deepcopy(self.ABILITIES_ATTRIBUTES[obj_category][obj_name])
 
         # DATA MODIFICATION
-        mod_operation = eff_dct['mod_operation']
-        attr_name = eff_dct['attr_name']
-        if eff_dct['formula_type'] == 'constant_value':
-            mod_val = eff_dct['values_tpl']
+        mod_operation = con_eff_dct['mod_operation']
+        attr_name = con_eff_dct['attr_name']
+        if con_eff_dct['formula_type'] == 'constant_value':
+            mod_val = con_eff_dct['values_tpl']
         else:
-            mod_val = self._x_formula_to_value(x_formula=eff_dct['x_formula'],
-                                               x_name=eff_dct['x_name'],
-                                               x_type=eff_dct['x_type'],
-                                               x_owner=eff_dct['x_owner'],)
+            mod_val = self._x_formula_to_value(x_formula=con_eff_dct['x_formula'],
+                                               x_name=con_eff_dct['x_name'],
+                                               x_type=con_eff_dct['x_type'],
+                                               x_owner=con_eff_dct['x_owner'],)
 
         modified_dct[obj_name][attr_name] = self._modified_attr_value(mod_operation=mod_operation,
                                                                       mod_val=mod_val,
@@ -569,15 +570,11 @@ class AttributeBase(EventsGeneral):
         If single effect of interest is detected, all triggers for given condition are checked.
         If trigger state is false, condition stops being checked.
 
-        Args:
-            obj_name: (str) name of the buff, dmg, or ability
-            obj_name_dct_key: (str) 'ability_name', 'buff_name', 'dmg_name'
-                                    Name of the key pointing to the object name.
-            searched_effect_type: (str) 'ability_attr', 'ability_effect', 'buff' or 'dmg'
+        :param  obj_name: (str) name of the buff, dmg, or ability
+        :param searched_effect_type: (str) 'ability_attr', 'ability_effect', 'buff' or 'dmg'
                                         Name of effect type being searched for.
 
-        Returns:
-            (dict)
+        :returns (dict)
         """
 
         obj_name_dct_key = self.EFF_TYPE_TO_OBJ_KEY_NAME_MAP[searched_effect_type]
@@ -605,17 +602,17 @@ class AttributeBase(EventsGeneral):
                         self._ability_effects_creator(eff_dct=eff_dct, modified_dct=new_dct, ability_name=obj_name)
 
                     elif searched_effect_type == 'ability_attr':
-                        self._attr_creator(eff_dct=eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                           obj_category='general_attributes')
+                        self._property_creator(con_eff_dct=eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                               obj_category='general_attributes')
 
                     elif searched_effect_type == 'buff':
-                        self._attr_creator(eff_dct=eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                           obj_category='buffs')
+                        self._property_creator(con_eff_dct=eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                               obj_category='buffs')
                         self._on_hit_effect_buff_creator(eff_dct=eff_dct, modified_dct=new_dct, buff_name=obj_name)
 
                     elif searched_effect_type == 'dmg':
-                        self._attr_creator(eff_dct=eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                           obj_category='dmgs')
+                        self._property_creator(con_eff_dct=eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                               obj_category='dmgs')
                     else:
                         raise palette.UnexpectedValueError
 
@@ -648,6 +645,12 @@ class AttributeBase(EventsGeneral):
         return self._ability_attr_or_eff_base(obj_name=ability_name,
                                               searched_effect_type='ability_attr', main_dct=self.ABILITIES_ATTRIBUTES)
 
+    def _initial_property_dct(self):
+        """
+
+        :return:
+        """
+
     def request_buff(self, buff_name):
         """
         Returns buff dict after checking possible conditionals.
@@ -657,6 +660,9 @@ class AttributeBase(EventsGeneral):
         Returns:
             (dict)
         """
+
+        if buff_name in self.ABILITIES_ATTRIBUTES['buffs']:
+            main_dct =
 
         return self._ability_attr_or_eff_base(obj_name=buff_name,
                                               searched_effect_type='buff',
@@ -1740,6 +1746,7 @@ class VisualRepresentation(Actions):
 
 
 if __name__ == '__main__':
+    import importlib
 
     class TestCounters(object):
 
@@ -1763,7 +1770,7 @@ if __name__ == '__main__':
             self.initial_active_buffs = None
             self.initial_current_stats = None
             self.current_target_num = None
-            self.chosen_items_lst = ['gunblade', 'gunblade']
+            self.chosen_items_lst = ['hextech_gunblade', 'hextech_gunblade']
             self.selected_runes = None
             self.max_combat_time = None
 
@@ -1793,7 +1800,7 @@ if __name__ == '__main__':
         def subclass_jax_actions(self):
 
             player_champ_name = self.selected_champions_dct['player']
-            player_champ_module = __import__(player_champ_name)
+            player_champ_module = importlib.import_module('champions.'+player_champ_name)
             player_champ_tot_attr_class = getattr(player_champ_module, 'ChampionAttributes')
 
             class CombinerClass(player_champ_tot_attr_class, VisualRepresentation):
@@ -1822,14 +1829,7 @@ if __name__ == '__main__':
                                                   chosen_items_lst=items_lst,
                                                   selected_runes=selected_runes)
 
-                    player_champ_module.ChampionAttributes.__init__(self,
-                                                                    ability_lvls_dct=ability_lvls_dct,
-                                                                    req_stats_func=self.request_stat,
-                                                                    act_buffs=self.active_buffs,
-                                                                    current_stats=self.current_stats,
-                                                                    current_target=self.current_target,
-                                                                    champion_lvls_dct=champion_lvls_dct,
-                                                                    current_target_num=self.current_target_num)
+                    player_champ_module.ChampionAttributes.__init__(self)
 
             return CombinerClass
 
@@ -1937,7 +1937,7 @@ if __name__ == '__main__':
 
             msg = self.DELIMITER
 
-            msg += self.test_loop(['w', 'AA'])
+            msg += self.test_loop(['AA'])
             msg += self.DELIMITER
 
             # At 3 AAs there should be more dmg from passive R.
@@ -1978,7 +1978,7 @@ if __name__ == '__main__':
 
     print(TestCounters())
 
-    rot1 = ['e', 'r', 'q', 'AA', 'w', 'AA', 'AA', 'gunblade', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA', 'AA',
+    rot1 = ['e', 'r', 'q', 'AA', 'w', 'AA', 'AA', 'hextech_gunblade', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA', 'AA',
             'AA', 'AA', 'w', 'AA', 'q']
     rot2 = ['w', 'AA', 'e', 'AA', 'AA', 'AA']
     rot3 = ['AA', 'AA', 'AA']
@@ -1987,8 +1987,8 @@ if __name__ == '__main__':
     rot6 = ['q', 'AA']
 
     itemLst0 = []
-    itemLst1 = ['gunblade']
-    itemLst2 = ['gunblade', 'gunblade']
+    itemLst1 = ['hextech_gunblade']
+    itemLst2 = ['hextech_gunblade', 'hextech_gunblade']
 
     run_graph_test = True
     if run_graph_test:

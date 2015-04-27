@@ -3574,33 +3574,33 @@ class ConditionalsBase(object):
                 tar_type=('enemy', 'player'),
                 # Contains spell effect categories
                 lst_category=palette.ChampionsStats.spell_effects()['player']['actives'],
-                mod_operation=('append', 'replace'),
+                mod_operation=('append', 'remove'),
             ),
 
             ability_attr=dict(
                 ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
                 attr_name=self.available_ability_attr_names(),
-                mod_operation=('multiply', 'add', 'replace'),
+                mod_operation=('multiply', 'add', 'remove'),
                 formula_type=self.FORMULA_TYPE,
             ),
 
             buff_attr=dict(
                 buff_name=self.available_buff_names(),
                 buff_attr_name=self.available_buff_attr_names(),
-                mod_operation=('multiply', 'add', 'replace'),
+                mod_operation=('multiply', 'add', 'remove'),
                 formula_type=self.FORMULA_TYPE
             ),
 
             buff_on_hit=dict(
                 buff_name=self.available_buff_names(),
                 lst_category=palette.ChampionsStats.on_hit_effects(),
-                mod_operation=('append', 'replace'),
+                mod_operation=('append', 'remove'),
             ),
 
             dmg_attr=dict(
                 dmg_name=self.available_dmg_names(),
                 attr_name=self.available_dmg_attr_names(),
-                mod_operation=('multiply', 'add', 'replace'),
+                mod_operation=('multiply', 'add', 'remove'),
                 formula_type=self.FORMULA_TYPE,
             ),
         )
@@ -4713,6 +4713,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
         """
         self._insert_item_created_attrs_or_effects_or_conds(effects_or_attrs_or_conds='conds',
                                                             auto_replace=auto_replace)
+
 
 # ===============================================================
 # ===============================================================

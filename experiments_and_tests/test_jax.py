@@ -1,6 +1,6 @@
 import unittest
 
-from tests import test_base
+from experiments_and_tests import test_base
 
 
 class TestJaxAbilities(test_base.GeneralTest):
