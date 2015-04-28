@@ -213,7 +213,7 @@ ABILITIES_EFFECTS = {
                      'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}}}
 }
 
-ABILITIES_CONDITIONS = {
+ABILITIES_CONDITIONALS = {
     'q_apply_w_conditional': {'effects': {'apply_w_dmg': {'ability_name': 'q',
                                                           'lst_category': 'dmg',
                                                           'effect_type': 'ability_effect',
@@ -253,7 +253,7 @@ class ChampionAttributes(object):
 
     ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES
     ABILITIES_EFFECTS = ABILITIES_EFFECTS
-    ABILITIES_CONDITIONS = ABILITIES_CONDITIONS
+    ABILITIES_CONDITIONALS = ABILITIES_CONDITIONALS
     DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
 
     def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):

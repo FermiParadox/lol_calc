@@ -270,7 +270,7 @@ class AttributeBase(EventsGeneral):
     # ("abstract" class variables)
     ABILITIES_ATTRIBUTES = None
     ABILITIES_EFFECTS = None
-    ABILITIES_CONDITIONS = None
+    ABILITIES_CONDITIONALS = None
 
     def __init__(self,
                  ability_lvls_dct,
@@ -447,12 +447,12 @@ class AttributeBase(EventsGeneral):
         # (if no trigger is false, method reaches this)
         return True
 
-    def _ability_effects_creator(self, eff_dct, modified_dct, ability_name):
+    def _ability_effects_creator(self, con_eff_dct, modified_dct, obj_name):
         """
         Creates new ability effects dct or updates existing with changes caused by effects.
 
-        Args:
-            modified_dct: It is the new dict given instead of the static class variable dict.
+        :param modified_dct: It is the new dict given instead of the static class variable dict.
+        :param obj_name: (str) ability or item name
 
         Returns:
             (None)
@@ -460,21 +460,21 @@ class AttributeBase(EventsGeneral):
 
         # Then checks if new dict is empty.
         if not modified_dct:
-            modified_dct = copy.deepcopy(self.ABILITIES_EFFECTS[ability_name])
+            modified_dct = copy.deepcopy(self.ABILITIES_EFFECTS[obj_name])
 
         # DATA MODIFICATION
-        tar_type = eff_dct['tar_type']
-        mod_operation = eff_dct['mod_operation']
-        cat_type = eff_dct['lst_category']
-        eff_contents = eff_dct['names_lst']
+        tar_type = con_eff_dct['tar_type']
+        mod_operation = con_eff_dct['mod_operation']
+        cat_type = con_eff_dct['lst_category']
+        eff_contents = con_eff_dct['names_lst']
 
         # (it always modifies actives)
 
         if mod_operation == 'append':
-            modified_dct[ability_name][tar_type]['actives'][cat_type] += eff_contents
+            modified_dct[obj_name][tar_type]['actives'][cat_type] += eff_contents
         elif mod_operation == 'remove':
-            old_lst = modified_dct[ability_name][tar_type]['actives'][cat_type]
-            modified_dct[ability_name][tar_type]['actives'][cat_type] = [i for i in old_lst if i not in eff_contents]
+            old_lst = modified_dct[obj_name][tar_type]['actives'][cat_type]
+            modified_dct[obj_name][tar_type]['actives'][cat_type] = [i for i in old_lst if i not in eff_contents]
 
     def _on_hit_effect_buff_creator(self, eff_dct, modified_dct, buff_name):
         """
@@ -533,20 +533,20 @@ class AttributeBase(EventsGeneral):
         else:
             return [func(i, mod_val) for i in old_val]
 
-    def _property_creator(self, con_eff_dct, modified_dct, obj_name, obj_category):
+    def _property_creator(self, con_eff_dct, modified_dct, obj_name, obj_category, initial_dct):
         """
         Creates new properties' dct or updates existing with changes caused by condition-effects.
 
-        Args:
-            modified_dct: It is the new dict given instead of the static class variable dict.
-            obj_category: 'general_attributes', 'buffs', 'dmgs'
-        Returns:
-            (None)
+
+        :param modified_dct: It is the new dict given instead of the static class variable dict.
+        :param obj_category: 'general_attributes', 'buffs', 'dmgs'
+        :param initial_dct: (dct) 'ABILITIES_ATTRIBUTES', 'ITEM_ATTRIBUTES["item_name"]'
+        :return: (None)
         """
 
         # Checks if modified dct is empty.
         if not modified_dct:
-            modified_dct = copy.deepcopy(self.ABILITIES_ATTRIBUTES[obj_category][obj_name])
+            modified_dct = copy.deepcopy(initial_dct[obj_category][obj_name])
 
         # DATA MODIFICATION
         mod_operation = con_eff_dct['mod_operation']
@@ -563,32 +563,46 @@ class AttributeBase(EventsGeneral):
                                                                       mod_val=mod_val,
                                                                       old_val=modified_dct[obj_name][attr_name])
 
+    def initial_buff_or_dmg_dct(self, obj_name, dmgs_or_buffs):
+        """
+        Returns initial dict of a dmg or buff.
+
+
+        :param obj_name: (str) Buff or dmg name.
+        :param dmgs_or_buffs: (str) 'buffs', 'dmgs'
+        :return: (dict) Module dict of dmg or buff.
+        """
+
+        if obj_name in self.ABILITIES_ATTRIBUTES[dmgs_or_buffs]:
+            return
+
     # TODO: include paths to other dicts as well
-    def _ability_attr_or_eff_base(self, obj_name, searched_effect_type, main_dct):
+    def _attrs_or_effs_base(self, obj_name, searched_effect_type, initial_dct, conditional_dct):
         """
         Loops each condition. Then each effect of a condition.
         If single effect of interest is detected, all triggers for given condition are checked.
         If trigger state is false, condition stops being checked.
 
-        :param  obj_name: (str) name of the buff, dmg, or ability
+        :param obj_name: (str) name of the buff, dmg, or ability
         :param searched_effect_type: (str) 'ability_attr', 'ability_effect', 'buff' or 'dmg'
-                                        Name of effect type being searched for.
+            Name of effect type being searched for.
 
-        :returns (dict)
+        :return: (dict)
         """
 
         obj_name_dct_key = self.EFF_TYPE_TO_OBJ_KEY_NAME_MAP[searched_effect_type]
 
+        # Creates a dict that will hold the new values, replacing the "default" module dict.
         new_dct = {}
         # Checks if given ability name has conditions affecting its effects
         # All effects of all conditions on an element are applied one after the other.
-        for cond in main_dct:
+        for cond in conditional_dct:
 
             trig_state = None
-            for eff in main_dct[cond]['effects']:
+            for eff in conditional_dct[cond]['effects']:
 
-                eff_dct = main_dct[cond]['effects'][eff]
-                if obj_name == eff_dct[obj_name_dct_key]:
+                cond_eff_dct = conditional_dct[cond]['effects'][eff]
+                if obj_name == cond_eff_dct[obj_name_dct_key]:
 
                     # Trigger check is done ONCE on ALL triggers
                     # (right after a single effect affecting given object is detected).
@@ -599,27 +613,28 @@ class AttributeBase(EventsGeneral):
                             break
 
                     if searched_effect_type == 'ability_effect':
-                        self._ability_effects_creator(eff_dct=eff_dct, modified_dct=new_dct, ability_name=obj_name)
+                        self._ability_effects_creator(con_eff_dct=cond_eff_dct, modified_dct=new_dct,
+                                                      obj_name=obj_name)
 
                     elif searched_effect_type == 'ability_attr':
-                        self._property_creator(con_eff_dct=eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                               obj_category='general_attributes')
+                        self._property_creator(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                               obj_category='general_attributes', initial_dct=self.ABILITIES_ATTRIBUTES)
 
                     elif searched_effect_type == 'buff':
-                        self._property_creator(con_eff_dct=eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                               obj_category='buffs')
-                        self._on_hit_effect_buff_creator(eff_dct=eff_dct, modified_dct=new_dct, buff_name=obj_name)
+                        self._property_creator(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                               obj_category='buffs', initial_dct=)
+                        self._on_hit_effect_buff_creator(eff_dct=cond_eff_dct, modified_dct=new_dct, buff_name=obj_name)
 
                     elif searched_effect_type == 'dmg':
-                        self._property_creator(con_eff_dct=eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                               obj_category='dmgs')
+                        self._property_creator(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                               obj_category='dmgs', initial_dct=)
                     else:
                         raise palette.UnexpectedValueError
 
         if new_dct:
             return new_dct
         else:
-            return main_dct[obj_name]
+            return initial_dct[obj_name]
 
     def abilities_effects(self, ability_name):
         """
@@ -630,8 +645,9 @@ class AttributeBase(EventsGeneral):
             (dict)
         """
 
-        return self._ability_attr_or_eff_base(obj_name=ability_name,
-                                              searched_effect_type='ability_effect', main_dct=self.ABILITIES_EFFECTS)
+        return self._attrs_or_effs_base(obj_name=ability_name,
+                                        searched_effect_type='ability_effect',
+                                        initial_dct=self.ABILITIES_EFFECTS)
 
     def abilities_attributes(self, ability_name):
         """
@@ -642,12 +658,13 @@ class AttributeBase(EventsGeneral):
             (dict)
         """
 
-        return self._ability_attr_or_eff_base(obj_name=ability_name,
-                                              searched_effect_type='ability_attr', main_dct=self.ABILITIES_ATTRIBUTES)
+        return self._attrs_or_effs_base(obj_name=ability_name,
+                                        searched_effect_type='ability_attr',
+                                        initial_dct=self.ABILITIES_ATTRIBUTES)
 
     def _initial_property_dct(self):
         """
-
+        ?? Replaced by initial_buff_or_dmg_dct?
         :return:
         """
 
@@ -664,9 +681,9 @@ class AttributeBase(EventsGeneral):
         if buff_name in self.ABILITIES_ATTRIBUTES['buffs']:
             main_dct =
 
-        return self._ability_attr_or_eff_base(obj_name=buff_name,
-                                              searched_effect_type='buff',
-                                              main_dct=self.ABILITIES_EFFECTS)
+        return self._attrs_or_effs_base(obj_name=buff_name,
+                                        searched_effect_type='buff',
+                                        initial_dct=)
 
     def request_dmg(self, dmg_name):
         """
@@ -678,9 +695,9 @@ class AttributeBase(EventsGeneral):
             (dict)
         """
 
-        return self._ability_attr_or_eff_base(obj_name=dmg_name,
-                                              searched_effect_type='dmg',
-                                              main_dct=self.ABILITIES_EFFECTS)
+        return self._attrs_or_effs_base(obj_name=dmg_name,
+                                        searched_effect_type='dmg',
+                                        initial_dct=s)
 
 
 class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
