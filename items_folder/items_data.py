@@ -1,3 +1,12 @@
+class DuplicateName(Exception):
+    """
+    To be raised when a duplicate buff or dmg name is found.
+
+    Duplicate buffs or dmgs can cause bugs when translated.
+    """
+    pass
+
+
 ITEMS_ATTRIBUTES = {
     'dorans_blade': {'buffs': {},
                      'dmgs': {},
@@ -96,3 +105,36 @@ ITEMS_CONDITIONS = {
     'hextech_gunblade': {},
     'dorans_blade': {}}
 
+
+def _items_buffs_or_dmgs_names_lst(buffs_or_dmgs):
+    """
+    Creates a list of all items' dmgs or buffs names.
+
+    :param buffs_or_dmgs: (str) 'dmgs', 'buffs'
+    :return: (list)
+    """
+
+    lst = []
+
+    for item_name in ITEMS_ATTRIBUTES:
+        for buff_name in ITEMS_ATTRIBUTES[item_name][buffs_or_dmgs]:
+
+            # Checks if obj already exists.
+            if buff_name in lst:
+                raise DuplicateName
+            # Adds obj name to list
+            else:
+                lst.append(buff_name)
+
+    return lst
+
+
+ITEMS_BUFFS_NAMES = _items_buffs_or_dmgs_names_lst(buffs_or_dmgs='buffs')
+ITEMS_DMGS_NAMES = _items_buffs_or_dmgs_names_lst(buffs_or_dmgs='dmgs')
+
+
+if __name__ == '__main__':
+
+    # Buffs and dmgs names.
+    print("Item buffs' names: {}".format(ITEMS_BUFFS_NAMES))
+    print("Item buffs' names: {}".format(ITEMS_DMGS_NAMES))

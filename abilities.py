@@ -577,7 +577,7 @@ class AttributeBase(EventsGeneral):
             return
 
     # TODO: include paths to other dicts as well
-    def _attrs_or_effs_base(self, obj_name, searched_effect_type, initial_dct, conditional_dct):
+    def _attrs_or_effs_base(self, obj_name, searched_effect_type, initial_dct, conditionals_dct):
         """
         Loops each condition. Then each effect of a condition.
         If single effect of interest is detected, all triggers for given condition are checked.
@@ -596,12 +596,12 @@ class AttributeBase(EventsGeneral):
         new_dct = {}
         # Checks if given ability name has conditions affecting its effects
         # All effects of all conditions on an element are applied one after the other.
-        for cond in conditional_dct:
+        for cond in conditionals_dct:
 
             trig_state = None
-            for eff in conditional_dct[cond]['effects']:
+            for eff in conditionals_dct[cond]['effects']:
 
-                cond_eff_dct = conditional_dct[cond]['effects'][eff]
+                cond_eff_dct = conditionals_dct[cond]['effects'][eff]
                 if obj_name == cond_eff_dct[obj_name_dct_key]:
 
                     # Trigger check is done ONCE on ALL triggers
@@ -622,12 +622,13 @@ class AttributeBase(EventsGeneral):
 
                     elif searched_effect_type == 'buff':
                         self._property_creator(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                               obj_category='buffs', initial_dct=)
+                                               obj_category='buffs', initial_dct=initial_dct)
                         self._on_hit_effect_buff_creator(eff_dct=cond_eff_dct, modified_dct=new_dct, buff_name=obj_name)
 
                     elif searched_effect_type == 'dmg':
                         self._property_creator(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                               obj_category='dmgs', initial_dct=)
+                                               obj_category='dmgs', initial_dct=initial_dct)
+
                     else:
                         raise palette.UnexpectedValueError
 
@@ -647,7 +648,8 @@ class AttributeBase(EventsGeneral):
 
         return self._attrs_or_effs_base(obj_name=ability_name,
                                         searched_effect_type='ability_effect',
-                                        initial_dct=self.ABILITIES_EFFECTS)
+                                        initial_dct=self.ABILITIES_EFFECTS,
+                                        conditionals_dct=self.ABILITIES_CONDITIONALS)
 
     def abilities_attributes(self, ability_name):
         """
@@ -660,7 +662,8 @@ class AttributeBase(EventsGeneral):
 
         return self._attrs_or_effs_base(obj_name=ability_name,
                                         searched_effect_type='ability_attr',
-                                        initial_dct=self.ABILITIES_ATTRIBUTES)
+                                        initial_dct=self.ABILITIES_ATTRIBUTES,
+                                        conditionals_dct=self.ABILITIES_CONDITIONALS)
 
     def _initial_property_dct(self):
         """
@@ -679,11 +682,14 @@ class AttributeBase(EventsGeneral):
         """
 
         if buff_name in self.ABILITIES_ATTRIBUTES['buffs']:
-            main_dct =
+            initial_dct = self.ABILITIES_ATTRIBUTES
+            conditionals_dct = self.ABILITIES_CONDITIONALS
+        elif buff_name in
 
         return self._attrs_or_effs_base(obj_name=buff_name,
                                         searched_effect_type='buff',
-                                        initial_dct=)
+                                        initial_dct=initial_dct,
+                                        conditionals_dct=conditionals_dct)
 
     def request_dmg(self, dmg_name):
         """
