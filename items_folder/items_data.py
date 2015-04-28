@@ -101,36 +101,36 @@ ITEMS_EFFECTS = {
                                                  'dmg': [],
                                                  'remove_buff': []}}}}
 
-ITEMS_CONDITIONS = {
+ITEMS_CONDITIONALS = {
     'hextech_gunblade': {},
     'dorans_blade': {}}
 
 
-def _items_buffs_or_dmgs_names_lst(buffs_or_dmgs):
+def _items_buffs_or_dmgs_names_dct(buffs_or_dmgs):
     """
-    Creates a list of all items' dmgs or buffs names.
+    Creates a dict of all items' dmgs or buffs names as keys, and corresponding item name as value.
 
     :param buffs_or_dmgs: (str) 'dmgs', 'buffs'
-    :return: (list)
+    :return: (dict) Key: buff name, value: item name
     """
 
-    lst = []
+    dct = {}
 
     for item_name in ITEMS_ATTRIBUTES:
         for buff_name in ITEMS_ATTRIBUTES[item_name][buffs_or_dmgs]:
 
             # Checks if obj already exists.
-            if buff_name in lst:
+            if buff_name in dct:
                 raise DuplicateName
             # Adds obj name to list
             else:
-                lst.append(buff_name)
+                dct.update({buff_name: item_name})
 
-    return lst
+    return dct
 
 
-ITEMS_BUFFS_NAMES = _items_buffs_or_dmgs_names_lst(buffs_or_dmgs='buffs')
-ITEMS_DMGS_NAMES = _items_buffs_or_dmgs_names_lst(buffs_or_dmgs='dmgs')
+ITEMS_BUFFS_NAMES = _items_buffs_or_dmgs_names_dct(buffs_or_dmgs='buffs')
+ITEMS_DMGS_NAMES = _items_buffs_or_dmgs_names_dct(buffs_or_dmgs='dmgs')
 
 
 if __name__ == '__main__':

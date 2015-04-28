@@ -4,13 +4,16 @@ import collections
 
 class ItemsProperties(object):
 
+    ITEMS_BUFFS_NAMES = items_data_module.ITEMS_BUFFS_NAMES
+    ITEMS_DMGS_NAMES = items_data_module.ITEMS_DMGS_NAMES
+    ITEMS_ATTRIBUTES = items_data_module.ITEMS_ATTRIBUTES
+    ITEMS_EFFECTS = items_data_module.ITEMS_EFFECTS
+    ITEMS_CONDITIONALS = items_data_module.ITEMS_CONDITIONALS
+
     def __init__(self, chosen_items_lst):
         self.chosen_items_lst = chosen_items_lst
         self.non_unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
         self.unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
-        self.items_attrs_dct = items_data_module.ITEMS_ATTRIBUTES
-        self.usable_items_effects_dct = items_data_module.ITEMS_EFFECTS
-        self.usable_items_conditions_dct = items_data_module.ITEMS_CONDITIONS
         self.items_effects_dct = {}
         self.items_conditions_dct = {}
 
@@ -24,7 +27,7 @@ class ItemsProperties(object):
         :return: (set)
         """
 
-        return self.items_attrs_dct[item_name]['secondary_data']['leafs'] & set(self.chosen_items_lst)
+        return self.ITEMS_ATTRIBUTES[item_name]['secondary_data']['leafs'] & set(self.chosen_items_lst)
 
     def unique_stats_in_leafs_of_item(self, item_name):
         """
@@ -38,7 +41,7 @@ class ItemsProperties(object):
 
         # For each leaf-item..
         for leaf in used_leafs:
-            leaf_dct = self.items_attrs_dct[leaf]
+            leaf_dct = self.ITEMS_ATTRIBUTES[leaf]
             # ..for each stat type..
             for stat_type in leaf_dct:
                 # ..creates a list of the stat names and adds it in existing results.
@@ -101,21 +104,30 @@ class ItemsProperties(object):
 
     def _create_items_properties_dcts(self):
         """
-        Creates final dicts (effects, attributes, dmgs, buffs, conditions) for current item build.
+        Creates final dicts (non unique stats, unique stats, effects, conditions) for current item build.
 
         :return: (None)
         """
 
-        # (filters out duplicate items to ensure they aren't applied twice)
-        for item_name in set(self.chosen_items_lst):
-            item_attrs = self.items_attrs_dct[item_name]
-            item_effects = self.usable_items_effects_dct[item_name]
-            item_conditions = self.usable_items_conditions_dct[item_name]
+        # Counter of an item's occurrence, e.g. {'item_1': 2, ..}.
+        items_counter = collections.Counter(self.chosen_items_lst)
+
+        # Each item name is applied once.
+        for item_name in items_counter:
+
+            item_count = items_counter[item_name]
+
+            item_attrs = self.ITEMS_ATTRIBUTES[item_name]
+            item_effects = self.ITEMS_EFFECTS[item_name]
+            item_conditions = self.ITEMS_CONDITIONALS[item_name]
 
             # NON UNIQUE STATS
             item_non_unique_stats = item_attrs['non_unique_stats']
             for stat_type in item_non_unique_stats:
-                self.non_unique_stats_dct[stat_type] += collections.Counter(item_non_unique_stats[stat_type])
+                for stat_name in item_non_unique_stats[stat_type]:
+                    # (multiplies stat by item's count before adding it to existing stats)
+                    stat_val = item_non_unique_stats[stat_type][stat_name] * item_count
+                    self.non_unique_stats_dct[stat_type] += collections.Counter({stat_name: stat_val})
 
             # UNIQUE STATS
             # If item A (leaf) builds from item B, then unique stats from B that are included in A are ignored.

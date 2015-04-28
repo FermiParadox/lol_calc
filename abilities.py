@@ -265,6 +265,8 @@ class AttributeBase(EventsGeneral):
         'ability_effect': 'ability_name',
         'ability_attr': 'ability_name',
         'items_effects': 'item_name',
+        'buff': 'buffs',
+        'dmg': 'dmgs',
     }
 
     # ("abstract" class variables)
@@ -665,12 +667,6 @@ class AttributeBase(EventsGeneral):
                                         initial_dct=self.ABILITIES_ATTRIBUTES,
                                         conditionals_dct=self.ABILITIES_CONDITIONALS)
 
-    def _initial_property_dct(self):
-        """
-        ?? Replaced by initial_buff_or_dmg_dct?
-        :return:
-        """
-
     def request_buff(self, buff_name):
         """
         Returns buff dict after checking possible conditionals.
@@ -684,7 +680,15 @@ class AttributeBase(EventsGeneral):
         if buff_name in self.ABILITIES_ATTRIBUTES['buffs']:
             initial_dct = self.ABILITIES_ATTRIBUTES
             conditionals_dct = self.ABILITIES_CONDITIONALS
-        elif buff_name in
+        elif buff_name in self.ITEMS_BUFFS_NAMES:
+            item_name = self.ITEMS_BUFFS_NAMES[buff_name]
+            initial_dct = self.ITEMS_ATTRIBUTES[item_name]
+            conditionals_dct = self.ITEMS_CONDITIONALS[item_name]
+        # TODO: add summoner spells and talent related buffs and perhaps turn whole thing ..
+        # ..into a method since it repeats in below method
+        else:
+            initial_dct = 'not implemented yet'
+            conditionals_dct = 'not implemented yet'
 
         return self._attrs_or_effs_base(obj_name=buff_name,
                                         searched_effect_type='buff',
@@ -701,9 +705,22 @@ class AttributeBase(EventsGeneral):
             (dict)
         """
 
+        if dmg_name in self.ABILITIES_ATTRIBUTES['dmgs']:
+            initial_dct = self.ABILITIES_ATTRIBUTES
+            conditionals_dct = self.ABILITIES_CONDITIONALS
+        elif dmg_name in self.ITEMS_DMGS_NAMES:
+            item_name = self.ITEMS_DMGS_NAMES[dmg_name]
+            initial_dct = self.ITEMS_ATTRIBUTES[item_name]
+            conditionals_dct = self.ITEMS_CONDITIONALS[item_name]
+
+        else:
+            initial_dct = 'not implemented yet'
+            conditionals_dct = 'not implemented yet'
+
         return self._attrs_or_effs_base(obj_name=dmg_name,
                                         searched_effect_type='dmg',
-                                        initial_dct=s)
+                                        initial_dct=initial_dct,
+                                        conditionals_dct=conditionals_dct)
 
 
 class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
