@@ -684,11 +684,8 @@ class AttributeBase(EventsGeneral):
             item_name = self.ITEMS_BUFFS_NAMES[buff_name]
             initial_dct = self.ITEMS_ATTRIBUTES[item_name]
             conditionals_dct = self.ITEMS_CONDITIONALS[item_name]
-        # TODO: add summoner spells and talent related buffs and perhaps turn whole thing ..
-        # ..into a method since it repeats in below method
         else:
-            initial_dct = 'not implemented yet'
-            conditionals_dct = 'not implemented yet'
+            return getattr(self, buff_name)()
 
         return self._attrs_or_effs_base(obj_name=buff_name,
                                         searched_effect_type='buff',
@@ -714,8 +711,7 @@ class AttributeBase(EventsGeneral):
             conditionals_dct = self.ITEMS_CONDITIONALS[item_name]
 
         else:
-            initial_dct = 'not implemented yet'
-            conditionals_dct = 'not implemented yet'
+            return getattr(self, dmg_name)()
 
         return self._attrs_or_effs_base(obj_name=dmg_name,
                                         searched_effect_type='dmg',

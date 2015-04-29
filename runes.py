@@ -170,6 +170,8 @@ class RunesFinal(object):
                         else:
                             self.runes_buff_store['stats'][stat_name][bonus_type] += total_stat
 
+        return
+
     def runes_buff(self):
         """
         Returns runes_buff_store.
