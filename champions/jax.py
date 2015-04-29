@@ -181,6 +181,8 @@ ABILITIES_ATTRIBUTES = {
 }
 
 ABILITIES_EFFECTS = {
+    'inn': {'enemy': {'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
+            'player': {'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}}},
     'e': {'enemy': {'actives': {'buffs': [], 'dmg': [], 'remove_buff': []},
                     'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
           'player': {'actives': {'buffs': [],

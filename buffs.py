@@ -218,13 +218,13 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
                     # .. applies the buffs.
                     self.add_single_ability_passive_buff(ability_or_item_name=ability_name,
                                                          target_type=target_type,
-                                                         effects_dct=abilities_effects_dct_func,
+                                                         effects_dct=abilities_effects_dct_func(ability_name),
                                                          tar_name=tar_name)
 
             # Innate passive buffs.
             self.add_single_ability_passive_buff(ability_or_item_name='inn',
                                                  target_type=target_type,
-                                                 effects_dct=abilities_effects_dct_func,
+                                                 effects_dct=abilities_effects_dct_func('inn'),
                                                  tar_name=tar_name)
 
             # Item passive buffs.

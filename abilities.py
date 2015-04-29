@@ -380,7 +380,7 @@ class AttributeBase(EventsGeneral):
             (bool)
         """
 
-        triggers_dct = self.ABILITIES_CONDITIONS[cond_name]['triggers']
+        triggers_dct = self.ABILITIES_CONDITIONALS[cond_name]['triggers']
 
         # (if any trigger is False, returns False ending method before reaching bottom)
         for trig_name in triggers_dct:
@@ -473,10 +473,10 @@ class AttributeBase(EventsGeneral):
         # (it always modifies actives)
 
         if mod_operation == 'append':
-            modified_dct[obj_name][tar_type]['actives'][cat_type] += eff_contents
+            modified_dct[tar_type]['actives'][cat_type] += eff_contents
         elif mod_operation == 'remove':
             old_lst = modified_dct[obj_name][tar_type]['actives'][cat_type]
-            modified_dct[obj_name][tar_type]['actives'][cat_type] = [i for i in old_lst if i not in eff_contents]
+            modified_dct[tar_type]['actives'][cat_type] = [i for i in old_lst if i not in eff_contents]
 
     def _on_hit_effect_buff_creator(self, eff_dct, modified_dct, buff_name):
         """
@@ -578,7 +578,6 @@ class AttributeBase(EventsGeneral):
         if obj_name in self.ABILITIES_ATTRIBUTES[dmgs_or_buffs]:
             return
 
-    # TODO: include paths to other dicts as well
     def _attrs_or_effs_base(self, obj_name, searched_effect_type, initial_dct, conditionals_dct):
         """
         Loops each condition. Then each effect of a condition.
@@ -604,7 +603,7 @@ class AttributeBase(EventsGeneral):
             for eff in conditionals_dct[cond]['effects']:
 
                 cond_eff_dct = conditionals_dct[cond]['effects'][eff]
-                if obj_name == cond_eff_dct[obj_name_dct_key]:
+                if (obj_name_dct_key in cond_eff_dct) and (cond_eff_dct[obj_name_dct_key] == obj_name):
 
                     # Trigger check is done ONCE on ALL triggers
                     # (right after a single effect affecting given object is detected).

@@ -21,7 +21,7 @@ import api_items_database
 # ===============================================================
 # Objects in champion module (exact strings are re.matched inside module)
 CHAMPION_MODULES_FOLDER_NAME = 'champions'
-ITEMS_MODULES_FOLDER_NAME = 'items'
+ITEMS_MODULES_FOLDER_NAME = 'items_folder'
 ITEMS_DATA_MODULE_NAME = 'items_data'
 ITEMS_DATA_MODULE_PATH = '.'.join((ITEMS_MODULES_FOLDER_NAME, ITEMS_DATA_MODULE_NAME))
 ITEMS_ATTRS_DCT_NAME = 'ITEMS_ATTRIBUTES'
@@ -4456,7 +4456,7 @@ class ModuleCreatorBase(object):
             module = Fetch().imported_champ_module(champ_name=items_or_a_champ_name)
         except ImportError:
             # Items.
-            path = 'items/items_data.py'
+            path = ITEMS_MODULES_FOLDER_NAME + '/' + ITEMS_DATA_MODULE_NAME + '.py'
             module = Fetch().imported_items_module()
         existing_obj = getattr(module, obj_name)
 
