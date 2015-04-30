@@ -4,7 +4,9 @@ import copy
 
 ALL_RESOURCE_NAMES = frozenset({'mp', 'energy', 'rage', None, 'flow'})
 
+
 RESOURCE_CURRENT_STAT_NAMES = frozenset({'current_'+i for i in ALL_RESOURCE_NAMES if i is not None})
+
 
 DEFENSIVE_SPECIAL_STATS = frozenset({'percent_physical_reduction_by_armor',
                                      'percent_magic_reduction_by_mr',
@@ -14,6 +16,44 @@ DEFENSIVE_SPECIAL_STATS = frozenset({'percent_physical_reduction_by_armor',
                                      'magic_dmg_taken',
                                      })
 
+
+# Contains 2 stat variants of a defense reducing stat; one for armor and one for mr.
+# e.g. percent_armor_reduction and percent_mr_reduction
+# (used for a method, to avoid code repetition)
+DEFENSE_REDUCING_MR_AND_ARMOR_MAP = dict(
+    armor=dict(
+        _percent_reduction='percent_armor_reduction',
+        _percent_penetration='percent_armor_penetration',
+        _flat_reduction='flat_armor_reduction',
+        _flat_penetration='flat_armor_penetration',
+    ),
+    mr=dict(
+        _percent_reduction='percent_mr_reduction',
+        _percent_penetration='percent_mr_penetration',
+        _flat_reduction='flat_mr_reduction',
+        _flat_penetration='flat_mr_penetration',
+    )
+)
+
+
+# Defensive stats that normally exist without need of special function to create
+# (contains deepest dict values from DEFENSE_REDUCING_STATS)
+DEFENSIVE_NORMAL_STATS = {'percent_dmg_reduction', 'flat_dmg_reduction'}
+for armor_or_mr in DEFENSE_REDUCING_MR_AND_ARMOR_MAP:
+    for _key in DEFENSE_REDUCING_MR_AND_ARMOR_MAP[armor_or_mr]:
+        DEFENSIVE_NORMAL_STATS.update({DEFENSE_REDUCING_MR_AND_ARMOR_MAP[armor_or_mr][_key]})
+
+
+# Contains all champions' base stats names.
+BASE_STATS = set()
+for _champ_name in app_champions_base_stats.CHAMPION_BASE_STATS:
+    for _base_stat_name in app_champions_base_stats.CHAMPION_BASE_STATS[_champ_name]:
+        BASE_STATS.update({_base_stat_name})
+
+
+# Stats by items or buffs that are not calculated by their own (special) method.
+NORMAL_STAT_NAMES = set()
+
 # Extracted from rune_stat_names_map with: re.findall(r'\'(\w+)\'', s)
 RUNE_STAT_NAMES = frozenset({'ap', 'mr', 'mr_per_lvl', 'armor_per_lvl', 'crit_chance', 'ap_per_lvl', 'hp_per_lvl',
                              'mp5', 'hp5_per_lvl', 'xp', 'energy', 'ep5_per_lvl', 'gp5', 'hp', 'att_speed',
@@ -22,7 +62,11 @@ RUNE_STAT_NAMES = frozenset({'ap', 'mr', 'mr_per_lvl', 'armor_per_lvl', 'crit_ch
                              'lifesteal', 'move_speed', 'armor', 'energy_per_lvl', 'flat_magic_penetration',
                              'hp', 'cdr_per_lvl', 'cdr'})
 
-ALL_STANDARD_STAT_NAMES = frozenset((RUNE_STAT_NAMES | RESOURCE_CURRENT_STAT_NAMES) - ALL_RESOURCE_NAMES)
+
+ALL_STANDARD_STAT_NAMES = frozenset(
+    (NORMAL_STAT_NAMES | BASE_STATS | RUNE_STAT_NAMES | RESOURCE_CURRENT_STAT_NAMES | DEFENSIVE_NORMAL_STATS)
+    - ALL_RESOURCE_NAMES)
+
 
 # Contains stats that are not included in base_stats_dct and are calculated separately by their own methods.
 SPECIAL_STATS_SET = frozenset({'base_ad',
@@ -37,6 +81,7 @@ SPECIAL_STATS_SET = frozenset({'base_ad',
                                'bonus_mr',
                                'bonus_hp',
                                } | DEFENSIVE_SPECIAL_STATS)
+
 
 ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | (ALL_RESOURCE_NAMES - {None})
 
@@ -290,7 +335,7 @@ class StatCalculation(StatFilters):
         """
 
         if requested_stat not in ALL_POSSIBLE_STAT_NAMES:
-            raise NotImplementedError
+            raise NotImplementedError(requested_stat)
 
         value = 0
         base_stats_tar = self.base_stats_dct[tar_name]
@@ -747,28 +792,13 @@ class DmgReductionStats(StatRequest):
     Contains methods for the calculation of dmg reduction related stats' values.
     """
 
-    # Contains 2 stat variants of a defense reducing stat; one for armor and one for mr.
-    # e.g. percent_armor_reduction and percent_mr_reduction
-    DEFENSE_REDUCING_STATS = dict(
-        armor=dict(
-            percent_reduction='percent_armor_reduction',
-            percent_penetration='percent_armor_penetration',
-            flat_reduction='flat_armor_reduction',
-            flat_penetration='flat_armor_penetration',
-        ),
-        mr=dict(
-            percent_reduction='percent_mr_reduction',
-            percent_penetration='percent_mr_penetration',
-            flat_reduction='flat_mr_reduction',
-            flat_penetration='flat_mr_penetration',
-        )
-    )
+    DEFENSE_REDUCING_MR_AND_ARMOR_MAP = DEFENSE_REDUCING_MR_AND_ARMOR_MAP
 
     # structure: {tar_name: {stat_1: [controller_stat_1, controller_stat_2,], }, }
     DMG_REDUCTION_STAT_DEPENDENCIES = {
         'all_targets': dict(
-            reduced_armor=list(DEFENSE_REDUCING_STATS['armor'].keys()),
-            reduced_mr=list(DEFENSE_REDUCING_STATS['mr'].keys())), }
+            reduced_armor=list(DEFENSE_REDUCING_MR_AND_ARMOR_MAP['armor'].values()),
+            reduced_mr=list(DEFENSE_REDUCING_MR_AND_ARMOR_MAP['mr'].values())), }
 
     def reduced_armor(self, target, stat='armor'):
         """
@@ -791,7 +821,7 @@ class DmgReductionStats(StatRequest):
         tar_bonuses = self.bonuses_dct[target]
 
         # percent_reduction calculation
-        percent_reduction_name = self.DEFENSE_REDUCING_STATS[stat]['percent_reduction']
+        percent_reduction_name = self.DEFENSE_REDUCING_MR_AND_ARMOR_MAP[stat]['_percent_reduction']
         if percent_reduction_name in tar_bonuses:
             percent_reduction = self.request_stat(target_name=target,
                                                   stat_name=percent_reduction_name)
@@ -799,7 +829,7 @@ class DmgReductionStats(StatRequest):
             percent_reduction = 0
 
         # percent_penetration calculation
-        percent_penetration_name = self.DEFENSE_REDUCING_STATS[stat]['percent_penetration']
+        percent_penetration_name = self.DEFENSE_REDUCING_MR_AND_ARMOR_MAP[stat]['_percent_penetration']
         if percent_penetration_name in self.bonuses_dct['player']:
             percent_penetration = self.request_stat(target_name='player',
                                                     stat_name=percent_penetration_name)
@@ -809,7 +839,7 @@ class DmgReductionStats(StatRequest):
         armor_after_reductions = self.request_stat(target_name=target,
                                                    stat_name=stat)
         # flat_reduction calculation
-        flat_reduction_name = self.DEFENSE_REDUCING_STATS[stat]['flat_reduction']
+        flat_reduction_name = self.DEFENSE_REDUCING_MR_AND_ARMOR_MAP[stat]['_flat_reduction']
         if flat_reduction_name in tar_bonuses:
             armor_after_reductions -= self.request_stat(target_name=target,
                                                         stat_name=flat_reduction_name)
@@ -822,7 +852,7 @@ class DmgReductionStats(StatRequest):
             armor_after_reductions *= (1-percent_reduction) * (1-percent_penetration)
 
         # flat_penetration
-        flat_penetration_name = self.DEFENSE_REDUCING_STATS[stat]['flat_penetration']
+        flat_penetration_name = self.DEFENSE_REDUCING_MR_AND_ARMOR_MAP[stat]['_flat_penetration']
         if flat_penetration_name in self.bonuses_dct['player']:
             if armor_after_reductions > self.request_stat(target_name='player',
                                                           stat_name=flat_penetration_name):

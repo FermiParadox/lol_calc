@@ -2,10 +2,11 @@ import buffs
 import timers
 import runes
 import app_champions_base_stats
+import palette
+
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import operator
-import palette
 import copy
 
 

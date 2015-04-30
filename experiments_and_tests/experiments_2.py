@@ -1,7 +1,7 @@
-class A(object):
+def factorial(n):
+    if n == 1:
+        return 1
+    else:
+        return n * factorial(n-1)
 
-    def f(self):
-        if not (False or self.cat):
-            print('hi')
-
-A().f()
+factorial(4)
