@@ -189,14 +189,13 @@ class StatCalculation(StatFilters):
     """
 
     ALL_RESOURCE_NAMES = ALL_RESOURCE_NAMES
-
     RESOURCE_CURRENT_STAT_NAMES = RESOURCE_CURRENT_STAT_NAMES
-
     DEFENSIVE_SPECIAL_STATS = DEFENSIVE_SPECIAL_STATS
-
     RUNE_STAT_NAMES = RUNE_STAT_NAMES
-
     ALL_STANDARD_STAT_NAMES = ALL_STANDARD_STAT_NAMES
+
+    # Modifier
+    _MINIMUM_MOVEMENT_REDUCTION_MODIFIER = 0.35
 
     def __init__(self,
                  champion_lvls_dct,
@@ -407,6 +406,42 @@ class StatCalculation(StatFilters):
 
         return self._base_stat(stat_name='ad', tar_name=tar_name)
 
+    def move_speed_reduction(self, tar_name):
+        """
+        Calculates final move speed reduction.
+
+        Highest magnitude slow reduction is applied first.
+
+
+        :param tar_name:
+        :return: (float)
+        """
+
+        value = 1
+
+        tar_bonuses = self.bonuses_dct[tar_name]
+
+        try:
+            # If move speed reductions exist.
+            max_to_min_values = sorted(tar_bonuses['move_speed_reduction']['percent'].values(), reverse=True)
+
+            # First move reduction is applied normally.
+            # Following have a
+            apply_mod = False
+            for val in max_to_min_values:
+                if apply_mod:
+                    value *= 1-val
+                    apply_mod = True
+                else:
+                    value *= (1-val) * self._MINIMUM_MOVEMENT_REDUCTION_MODIFIER
+
+            # Reverts value and returns it.
+            return 1 - value
+
+        # If they don't exist.
+        except KeyError:
+            return 0
+
     def att_speed(self, tar_name):
         """
         Calculates final value of att_speed, after all bonuses and filters have been applied.
@@ -474,22 +509,7 @@ class StatCalculation(StatFilters):
 
         # SPEED REDUCTIONS
         if 'move_speed_reduction' in tar_bonuses:
-            max_reduction_bonus_name = ''
-            reductions_values_dct = {}
-            # Creates a reverse dictionary with stat_value as key (some keys might be overwritten without problem).
-            for bonus in tar_bonuses['move_speed_reduction']['percent']:
-                reductions_values_dct.update(
-                    {tar_bonuses['move_speed_reduction']['percent'][bonus]: bonus})
-
-                # Bonus name of max value is stored.
-                max_value = max(reductions_values_dct.keys())
-                max_reduction_bonus_name = tar_bonuses['move_speed_reduction']['percent'][max_value]
-
-            for bonus in tar_bonuses['move_speed_reduction']['percent']:
-                if bonus == max_reduction_bonus_name:
-                    value *= 1-tar_bonuses['move_speed_reduction']['percent'][bonus]*(1-slow_mod)
-                else:
-                    value *= 1-tar_bonuses['move_speed_reduction']['percent'][bonus]*(1-slow_mod)*0.35
+            value *= self.move_speed_reduction(tar_name=tar_name)
 
         return self.filtered_move_speed(unfiltered_stat=value)
 
