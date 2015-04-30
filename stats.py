@@ -68,22 +68,25 @@ ALL_STANDARD_STAT_NAMES = frozenset(
     - ALL_RESOURCE_NAMES)
 
 
+# All bonus_ stats can be calculated through corresponding method, but only those noted below are allowed.
+ALLOWED_BONUS_STATS = frozenset({'bonus_ad',
+                                 'bonus_armor',
+                                 'bonus_mr',
+                                 'bonus_hp'})
+
+
 # Contains stats that are not included in base_stats_dct and are calculated separately by their own methods.
 SPECIAL_STATS_SET = frozenset({'base_ad',
-                               'bonus_ad',
                                'att_speed',
                                'move_speed',
                                'crit_chance',
                                'cdr',
                                'move_speed_reduction',
-                               # TODO: create their methods
-                               'bonus_armor',
-                               'bonus_mr',
-                               'bonus_hp',
                                } | DEFENSIVE_SPECIAL_STATS)
 
 
-ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | (ALL_RESOURCE_NAMES - {None})
+ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_BONUS_STATS | (ALL_RESOURCE_NAMES
+                                                                                               - {None})
 
 
 class NonExistingNormalStat(Exception):
@@ -377,6 +380,20 @@ class StatCalculation(StatFilters):
 
         return value
 
+    def _base_stat(self, stat_name, tar_name):
+        """
+        Returns stat value resulting from base stat value and per lvl scaling,
+        that is based exclusively on champion (no items, runes, masteries etc.).
+
+        :param stat_name: (str)
+        :param tar_name: (str)
+        :return: (float)
+        """
+
+        base_val = self.base_stats_dct[tar_name][stat_name]
+        per_lvl_val = (self.champion_lvls_dct[tar_name] * self.base_stats_dct[tar_name]['{}_per_lvl'.format(stat_name)])
+        return base_val + per_lvl_val
+
     def base_ad(self, tar_name):
         """
         Calculates the value of base ad.
@@ -388,8 +405,7 @@ class StatCalculation(StatFilters):
             (float)
         """
 
-        return self.base_stats_dct[tar_name]['ad'] + (self.champion_lvls_dct[tar_name] *
-                                                      self.base_stats_dct[tar_name]['ad_per_lvl'])
+        return self._base_stat(stat_name='ad', tar_name=tar_name)
 
     def att_speed(self, tar_name):
         """
@@ -538,7 +554,9 @@ class StatRequest(StatCalculation):
         """
 
         # Special stats have their own methods.
-        if stat_name in self.SPECIAL_STATS_SET:
+        if stat_name in ALLOWED_BONUS_STATS:
+            self.stored_stats[target_name][stat_name] = self._bonus_stat(stat_name=stat_name, tar_name=target_name)
+        elif stat_name in self.SPECIAL_STATS_SET:
             self.stored_stats[target_name][stat_name] = getattr(self, stat_name)(target_name)
 
         # Most stats can be calculated using the 'standard_stat' method.
@@ -776,14 +794,19 @@ class StatRequest(StatCalculation):
                             {('current_' + resource_used): self.request_stat(target_name=tar,
                                                                              stat_name=resource_used)})
 
-    def bonus_ad(self, tar_name):
+    def _bonus_stat(self, stat_name, tar_name):
         """
-        Calculates the value of bonus ad (that is, total ad minus base_ad).
+        Base method for methods that return only the bonus value of a stat,
+        that is, only non-champion related value (base and per lvl).
 
-        Returns:
-            (float)
+        :param stat_name: (str)
+        :param tar_name: (str)
+        :return: (float)
         """
-        return self.request_stat(target_name=tar_name, stat_name='ad') - self.base_ad(tar_name=tar_name)
+
+        base_val = self._base_stat(stat_name=stat_name, tar_name=tar_name)
+
+        return self.request_stat(target_name=tar_name, stat_name=stat_name) - base_val
 
 
 class DmgReductionStats(StatRequest):
