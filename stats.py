@@ -52,7 +52,7 @@ for _champ_name in app_champions_base_stats.CHAMPION_BASE_STATS:
 
 
 # Stats by items or buffs that are not calculated by their own (special) method.
-NORMAL_STAT_NAMES = set()
+NORMAL_STAT_NAMES = {'healing_reduction'}
 
 # Extracted from rune_stat_names_map with: re.findall(r'\'(\w+)\'', s)
 RUNE_STAT_NAMES = frozenset({'ap', 'mr', 'mr_per_lvl', 'armor_per_lvl', 'crit_chance', 'ap_per_lvl', 'hp_per_lvl',
@@ -421,7 +421,7 @@ class StatCalculation(StatFilters):
 
         tar_bonuses = self.bonuses_dct[tar_name]
 
-        try:
+        if 'move_speed_reduction' in tar_bonuses:
             # If move speed reductions exist.
             max_to_min_values = sorted(tar_bonuses['move_speed_reduction']['percent'].values(), reverse=True)
 
@@ -439,7 +439,7 @@ class StatCalculation(StatFilters):
             return 1 - value
 
         # If they don't exist.
-        except KeyError:
+        else:
             return 0
 
     def att_speed(self, tar_name):

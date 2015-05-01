@@ -1001,6 +1001,8 @@ class DeathAndRegen(DmgApplication):
     NATURAL_REGEN_PERIOD = 0.5  # Tick period of hp5, mp5,
     PER_5_DIVISOR = 10.  # Divides "per 5" stats. Used to create per tick value (ticks have 0.5s period)
 
+    _REGEN_BASE_DCT =
+
     @staticmethod
     def dead_buff():
         return dict(
@@ -1034,8 +1036,7 @@ class DeathAndRegen(DmgApplication):
             period=self.NATURAL_REGEN_PERIOD,
             dmg_type='true',
             target='enemy',
-            dot=True,
-            duration='permanent',)
+            )
 
     @staticmethod
     def enemy_hp5_buff():

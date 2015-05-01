@@ -2038,6 +2038,7 @@ class DmgsBase(object):
         return dict(
             target_type='placeholder',
             dmg_category='placeholder',
+            resource_type='placeholder',
             dmg_type='placeholder',
             dmg_values='placeholder',
             dmg_source='placeholder',
@@ -2056,6 +2057,7 @@ class DmgsBase(object):
         return dict(
             target_type=('enemy', 'player'),
             dmg_category=sorted(self.AVAILABLE_DMG_CATEGORIES),
+            resource_type=('hp', 'mp', 'energy'),
             dmg_source=ALL_POSSIBLE_ABILITIES_SHORTCUTS,
             life_conversion_type=('spellvamp', None, 'lifesteal'),
             radius=(None, ),

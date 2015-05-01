@@ -126,7 +126,10 @@ class DmgCategories(BuffCategories):
         dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
         cat = dmg_dct['dmg_category']
 
-        val = self.standard_dmg_value(dmg_dct=dmg_dct)
+        if dmg_name == 'aa_dmg':
+            val = self.aa_dmg_value()
+        else:
+            val = self.standard_dmg_value(dmg_dct=dmg_dct)
 
         if cat == 'standard_dmg':
             return val
@@ -151,7 +154,7 @@ class DmgCategories(BuffCategories):
         Value includes critable bonuses and modifiers.
         """
         return dict(
-            dmg_category='aa_dmg_value',
+            dmg_category='aa_dmg',
             dmg_type='AA',
             target='enemy',
             dmg_source='AA',

@@ -1,16 +1,7 @@
-def my_decorator(func):
+import experiments_and_tests.experiments_2 as ex2
 
-    def wrapped(*args, **kwargs):
+l = [4,4,4]
 
-        return func(*args, **kwargs)
+ex2.A().f(l)
 
-    return wrapped
-
-
-@my_decorator
-def f():
-    return 1
-
-
-
-print(f())
+print(l)

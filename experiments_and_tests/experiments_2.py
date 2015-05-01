@@ -1,7 +1,8 @@
-def factorial(n):
-    if n == 1:
-        return 1
-    else:
-        return n * factorial(n-1)
+class A(object):
 
-factorial(4)
+    X = 1
+
+
+    def f(self, lst):
+        for i in range(10):
+            lst.append(i)
