@@ -6,6 +6,41 @@ class UnexpectedValueError(Exception):
     pass
 
 
+BUFF_DCT_BASE = dict(
+    target_type='placeholder',
+    duration='placeholder',
+    max_stacks='placeholder',
+    affected_stats=dict(
+        placeholder_stat_1='placeholder'
+    ),
+    on_hit=dict(
+        apply_buff=['placeholder', ],
+        add_dmg=['placeholder', ],
+        reduce_cd={},
+        remove_buff=['placeholder', ]
+    ),
+    prohibit_cd_start='placeholder',
+)
+
+
+DMG_DCT_BASE = dict(
+    target_type='placeholder',
+    dmg_category='placeholder',
+    resource_type='placeholder',
+    dmg_type='placeholder',
+    dmg_values='placeholder',
+    dmg_source='placeholder',
+    # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
+    mods='placeholder',
+    # (None or lifesteal or spellvamp)
+    life_conversion_type='placeholder',
+    radius='placeholder',
+    dot='placeholder',
+    max_targets='placeholder',
+    delay='placeholder',
+)
+
+
 class ChampionsStats(object):
 
     @staticmethod
@@ -119,12 +154,5 @@ class BaseStatsWithMana(object):
 
         # Set always to 2.
         crit_modifier=2,
-        )
-
-    def buff(self):
-        return dict(
-            max_stacks=0,
-            _stat=dict(additive_bonus='_buff'),
-            duration=0
         )
 

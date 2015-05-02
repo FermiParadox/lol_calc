@@ -756,7 +756,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                )
 
         timers.Timers.__init__(self,
-                               ability_lvls_dct=ability_lvls_dct)
+                               ability_lvls_dct=ability_lvls_dct,
+                               req_dmg_dct_func=self.request_dmg,
+                               req_abilities_attrs_func=self.abilities_attributes)
 
     def spell_on_cd(self, action_name):
         """
@@ -799,7 +801,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # ACTIVATED ABILITIES
         if action_name in 'qwer':
             # NORMAL COST
-            ability_stats_dct = self.request_ability_stats(ability_name=action_name)
+            ability_stats_dct = self.request_ability_gen_attrs_dct(ability_name=action_name)
             resource_cost_type = ability_stats_dct['general']['resource_cost_type']
 
             # Check if ability has a fixed cost,
@@ -888,7 +890,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # Movement starts after cast (or channelling) ends,
         # unless action allows movement during cast.
         if ((pre_last_action_name != 'AA') and
-                (self.request_ability_stats(ability_name=pre_last_action_name)['general']['move_while_casting'] is True)):
+                (self.request_ability_gen_attrs_dct(ability_name=pre_last_action_name)['move_while_casting'] is True)):
             lower_limit = pre_last_action_start
 
         elif 'channel_end' in self.actions_dct[pre_last_action_start]:
@@ -914,7 +916,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         # Abilities
         if last_action_name in 'qwer':
-            ability_gen_stats = self.request_ability_stats(ability_name=last_action_name)['general']
+            ability_gen_stats = self.request_ability_gen_attrs_dct(ability_name=last_action_name)
 
             self.total_movement += ability_gen_stats['dashed_distance']
 
@@ -940,7 +942,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        if self.request_ability_stats(ability_name=action_name)['general']['resets_aa']:
+        if self.request_ability_gen_attrs_dct(ability_name=action_name)['resets_aa']:
 
             for action_time in sorted(self.actions_dct, reverse=True):
 
@@ -1036,7 +1038,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                            stats_function=self.request_stat,
                                            actions_dct=self.actions_dct)))
 
-            if 'channel_time' in self.request_ability_stats(ability_name=action_name)['general']:
+            if 'channel_time' in self.request_ability_gen_attrs_dct(ability_name=action_name):
                 self.actions_dct[cast_start].update(dict(
                     channel_end=self.channel_end(ability_name=action_name,
                                                  action_cast_start=cast_start)))
@@ -1088,7 +1090,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             # If the buff is a dot, applies event as well.
             if 'period' in self.req_buff_dct_func(buff_name=buff_name):
 
-                first_tick = self.first_dot_tick(current_time=self.current_time, ability_name=buff_name)
+                first_tick = self.first_dot_tick(current_time=self.current_time, dmg_name=dmg_name)
 
                 self.add_events(effect_name=buff_name, start_time=first_tick)
 

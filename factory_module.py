@@ -1856,21 +1856,7 @@ class BuffsBase(object):
 
     @staticmethod
     def buff_attributes():
-        return dict(
-            target_type='placeholder',
-            duration='placeholder',
-            max_stacks='placeholder',
-            affected_stats=dict(
-                placeholder_stat_1='placeholder'
-            ),
-            on_hit=dict(
-                apply_buff=['placeholder', ],
-                add_dmg=['placeholder', ],
-                reduce_cd={},
-                remove_buff=['placeholder', ]
-            ),
-            prohibit_cd_start='placeholder',
-        )
+        return palette.BUFF_DCT_BASE
 
     USUAL_BUFF_ATTR_VALUES = dict(
         target_type=('player', 'enemy'),
@@ -2035,22 +2021,7 @@ class DmgsBase(object):
 
     @staticmethod
     def dmg_attributes():
-        return dict(
-            target_type='placeholder',
-            dmg_category='placeholder',
-            resource_type='placeholder',
-            dmg_type='placeholder',
-            dmg_values='placeholder',
-            dmg_source='placeholder',
-            # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
-            mods='placeholder',
-            # (None or lifesteal or spellvamp)
-            life_conversion_type='placeholder',
-            radius='placeholder',
-            dot='placeholder',
-            max_targets='placeholder',
-            delay='placeholder',
-        )
+        return palette.DMG_DCT_BASE
 
     def usual_values_dmg_attrs(self):
 

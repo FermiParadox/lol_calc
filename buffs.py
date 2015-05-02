@@ -1,7 +1,9 @@
 import stats
 import targeting
 import items
+import palette
 import dmgs_buffs_categories
+import copy
 
 
 class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProperties):
@@ -996,12 +998,81 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         return self.refined_combat_history()['all_targets']['total_dmg'] / last_cast_completion
 
 
+NATURAL_REGEN_PERIOD = 0.5  # Tick period of hp5, mp5, etc.
+PER_5_DIVISOR = 10.  # Divides "per 5" stats. Used to create per tick value.
+
+# ----------------------------------------------------------------------------------------------------------------------
+# BUFF BASE
+
+# Creates base dict for regenerations (hp, mp, energy, etc).
+_REGEN_BUFF_DCT_BASE = copy.deepcopy(palette.BUFF_DCT_BASE)
+# Sets values correctly for regenerations.
+for regen_buff_base_key in ('on_hit', 'prohibit_cd_start', 'affected_stats'):
+    _REGEN_BUFF_DCT_BASE[regen_buff_base_key] = None
+_REGEN_BUFF_DCT_BASE['max_stacks'] = 1
+_REGEN_BUFF_DCT_BASE['duration'] = 'permanent'
+# (adds period)
+_REGEN_BUFF_DCT_BASE['period'] = NATURAL_REGEN_PERIOD
+
+
+# PLAYER buff base.
+_REGEN_BUFF_DCT_BASE_PLAYER = copy.deepcopy(_REGEN_BUFF_DCT_BASE)
+_REGEN_BUFF_DCT_BASE_PLAYER['target_type'] = 'player'
+
+# ENEMY buff base.
+_REGEN_BUFF_DCT_BASE_ENEMY = copy.deepcopy(_REGEN_BUFF_DCT_BASE)
+_REGEN_BUFF_DCT_BASE_ENEMY['target_type'] = 'enemy'
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# DMG BASE
+# A mod 1 is used (hp5, mp5, etc.) and 0 dmg value.
+# Final regen value is calculated as it would normally do for any other dmg with a mod;
+# mod*mod_val + base_dmg_val
+
+# Creates base dict for regenerations' dmg dicts.
+_REGEN_DMG_DCT_BASE = dict(
+    target_type='placeholder',
+    dmg_category='standard',
+    resource_type='placeholder',
+    dmg_type='true',
+    dmg_values=0,
+    dmg_source='regen',
+    # (None or {'enemy': {}, 'player': {'bonus_ad': 0.5}})
+    mods='placeholder',
+    # (None or lifesteal or spellvamp)
+    life_conversion_type=None,
+    radius=None,
+    dot=True,
+    max_targets=1,
+    delay=NATURAL_REGEN_PERIOD,)
+
+# HEALTH
+_HP5_DMG_DCT_BASE = copy.deepcopy(_REGEN_DMG_DCT_BASE)
+_HP5_DMG_DCT_BASE['resource_type'] = 'hp'
+# Player
+_PLAYER_HP5_DMG_DCT = copy.deepcopy(_HP5_DMG_DCT_BASE)
+_PLAYER_HP5_DMG_DCT['target_type'] = 'player'
+_PLAYER_HP5_DMG_DCT['mods'] = {'player': {'hp5': 1}}
+# Enemy
+_ENEMY_HP5_DMG_DCT_BASE = copy.deepcopy(_HP5_DMG_DCT_BASE)
+_ENEMY_HP5_DMG_DCT_BASE['target_type'] = 'enemy'
+
+# MP
+_PLAYER_MP_DMG_DCT_BASE = copy.deepcopy(_PLAYER_HP5_DMG_DCT)
+_PLAYER_MP_DMG_DCT_BASE['resource_type'] = 'mp'
+_PLAYER_MP_DMG_DCT_BASE['mods'] = {'player': {'mp5': 1}}
+
+
 class DeathAndRegen(DmgApplication):
 
-    NATURAL_REGEN_PERIOD = 0.5  # Tick period of hp5, mp5,
-    PER_5_DIVISOR = 10.  # Divides "per 5" stats. Used to create per tick value (ticks have 0.5s period)
-
-    _REGEN_BASE_DCT =
+    REGEN_BUFF_DCT_BASE_PLAYER = _REGEN_BUFF_DCT_BASE_PLAYER
+    REGEN_BUFF_DCT_BASE_ENEMY = _REGEN_BUFF_DCT_BASE_ENEMY
+    ENEMY_HP5_DMG_DCT_BASE = _ENEMY_HP5_DMG_DCT_BASE
+    PLAYER_HP5_DMG_DCT = _PLAYER_HP5_DMG_DCT
+    PLAYER_MP_DMG_DCT_BASE = _PLAYER_MP_DMG_DCT_BASE
+    NATURAL_REGEN_PERIOD = NATURAL_REGEN_PERIOD
+    PER_5_DIVISOR = PER_5_DIVISOR
 
     @staticmethod
     def dead_buff():
@@ -1038,57 +1109,45 @@ class DeathAndRegen(DmgApplication):
             target='enemy',
             )
 
-    @staticmethod
-    def enemy_hp5_buff():
+    def enemy_hp5_buff(self):
         # Used only as a marker.
-        return dict(
-            max_stacks=1,
-            duration='permanent',)
+        return self.REGEN_BUFF_DCT_BASE_ENEMY
+
+    def _per5_dmg_value_base(self, tar_name, per_5_stat_name):
+        """
+        Calculates healing per tick by regeneration.
+
+        Dmg value returned is NEGATIVE since it is a healing effect.
+
+        :return: (float)
+        """
+
+        return -self.request_stat(target_name=tar_name, stat_name=per_5_stat_name) / self.PER_5_DIVISOR
 
     def enemy_hp5_dmg_value(self):
-        """
-        Calculates healing per 0.5 seconds by regeneration.
-        """
-        return -self.request_stat(stat_name='hp5', target_name=self.current_target)/self.PER_5_DIVISOR
+        return self._per5_dmg_value_base(tar_name=self.current_target, per_5_stat_name='hp5')
 
     def player_hp5_dmg(self):
 
-        return dict(
-            period=self.NATURAL_REGEN_PERIOD,
-            dmg_type='true',
-            target='player',
-            dot=True,
-            duration='permanent',)
+        return self.PLAYER_HP5_DMG_DCT
 
-    @staticmethod
-    def player_hp5_buff():
-        return dict(
-            max_stacks=1,
-            duration='permanent',)
+    def player_hp5_buff(self):
+        return self.REGEN_BUFF_DCT_BASE_PLAYER
 
     def player_hp5_dmg_value(self):
         """
         Returns healing per 0.5 seconds by regeneration.
         """
-        return -self.request_stat(stat_name='hp5', target_name='player')/self.PER_5_DIVISOR
+        return self._per5_dmg_value_base(tar_name='player', per_5_stat_name='hp5')
 
-    @staticmethod
-    def mp5_buff():
-        return dict(
-            max_stacks=1,
-            duration='permanent',)
+    def mp5_buff(self):
+        return self.REGEN_BUFF_DCT_BASE_PLAYER
 
     def mp5_dmg(self):
-        return dict(
-            period=self.NATURAL_REGEN_PERIOD,
-            resource_type='mp',
-            target='player',
-            dot=True,
-            duration='permanent',
-            )
+        return self.PLAYER_MP_DMG_DCT_BASE
 
     def mp5_dmg_value(self):
-        return -self.request_stat(stat_name='mp5', target_name='player')/self.PER_5_DIVISOR
+        return self._per5_dmg_value_base(tar_name='player', per_5_stat_name='mp5')
 
 
 if __name__ == '__main__':

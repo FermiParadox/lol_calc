@@ -264,7 +264,7 @@ class StatCalculation(StatFilters):
 
     def set_base_stats_dct(self):
         """
-        Creates base stats dict.
+        Creates base stats dict. (e.g. ad at lvl1 without per lvl bonus, ad_per_lvl, etc.)
 
         Returns:
             (None)
