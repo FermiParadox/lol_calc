@@ -970,17 +970,13 @@ def repeat_cluster(cluster_name):
     return dec
 
 # ---------------------------------------------------------------
-SPELL_SHORTCUTS = ('q', 'w', 'e', 'r')
-ABILITY_SHORTCUTS = ('inn', ) + SPELL_SHORTCUTS
-EXTRA_SPELL_SHORTCUTS = ('q2', 'w2', 'e2', 'r2')
-ALL_POSSIBLE_SPELL_SHORTCUTS = SPELL_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
-ALL_POSSIBLE_ABILITIES_SHORTCUTS = ABILITY_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
 
-ALLOWED_ABILITY_LVLS = ('1', '2', '3', '4', '5')
+
+ALLOWED_ABILITY_LVLS = ('1', '2', '3', '4', '5', '0')
 
 
 def spell_num(spell_name):
-    return SPELL_SHORTCUTS.index(spell_name)
+    return palette.SPELL_SHORTCUTS.index(spell_name)
 
 
 def ability_num(ability_name):
@@ -1517,7 +1513,7 @@ class ExploreApiAbilities(ExploreBase):
         cost_categories_dct = {}
 
         for champ in self.champions_lst:
-            for ability_name in SPELL_SHORTCUTS:
+            for ability_name in palette.SPELL_SHORTCUTS:
                 category_name = self.single_cost_category(champ_name=champ, ability_name=ability_name)['costType']
                 category_name.lower().strip()
 
@@ -2029,7 +2025,7 @@ class DmgsBase(object):
             target_type=('enemy', 'player'),
             dmg_category=sorted(self.AVAILABLE_DMG_CATEGORIES),
             resource_type=('hp', 'mp', 'energy'),
-            dmg_source=ALL_POSSIBLE_ABILITIES_SHORTCUTS,
+            dmg_source=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS,
             life_conversion_type=('spellvamp', None, 'lifesteal'),
             radius=(None, ),
             dot=(False, True),
@@ -2327,7 +2323,7 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
         """
         reduced_ability_names = []
         suggest_lst_of_attr_values(modified_lst=reduced_ability_names,
-                                   suggested_values_lst=ALL_POSSIBLE_SPELL_SHORTCUTS,
+                                   suggested_values_lst=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
                                    extra_start_msg='\nOn cast modifies abilities:',
                                    sort_suggested_lst=False)
 
@@ -3144,7 +3140,7 @@ class AbilitiesAttributes(object):
 
     def __init__(self, champion_name):
         self.champion_name = champion_name
-        self.initial_abilities_attrs = {shortcut: self.single_spell_attrs() for shortcut in ABILITY_SHORTCUTS}
+        self.initial_abilities_attrs = {shortcut: self.single_spell_attrs() for shortcut in palette.ABILITY_SHORTCUTS}
         # e.g. {'general': {'q':{},}, 'buffs':{}, 'dmgs':{} }
         self.final_abilities_attrs = {'general': {}, 'dmgs': {}, 'buffs': {}}
 
@@ -3235,7 +3231,7 @@ class AbilitiesAttributes(object):
             (None)
         """
 
-        for spell_name in SPELL_SHORTCUTS:
+        for spell_name in palette.SPELL_SHORTCUTS:
 
             # Creates spell att
             self.initial_abilities_attrs[spell_name] = self._single_spell_attrs(spell_name=spell_name)
@@ -3271,12 +3267,12 @@ class AbilitiesAttributes(object):
         self.final_abilities_attrs = {'general_attributes': {}, 'dmgs': {}, 'buffs': {}}
 
         # GENERAL ATTRIBUTES
-        for ability_name in ABILITY_SHORTCUTS:
+        for ability_name in palette.ABILITY_SHORTCUTS:
             self.final_abilities_attrs['general_attributes'].update(
                 {ability_name: self.initial_abilities_attrs[ability_name]['general']})
 
         # DMGS AND BUFFS
-        for shortcut in ABILITY_SHORTCUTS:
+        for shortcut in palette.ABILITY_SHORTCUTS:
             for attr_type in ('dmgs', 'buffs'):
                 for existing_name in self.initial_abilities_attrs[shortcut][attr_type]:
 
@@ -3402,7 +3398,7 @@ class EffectsBase(object):
         # CD MODIFICATION
         lst_of_modified = []
         cd_mod_msg = '\nCDs MODIFIED ON CAST'
-        suggest_lst_of_attr_values(suggested_values_lst=SPELL_SHORTCUTS,
+        suggest_lst_of_attr_values(suggested_values_lst=palette.SPELL_SHORTCUTS,
                                    modified_lst=lst_of_modified,
                                    extra_start_msg=cd_mod_msg)
 
@@ -3436,7 +3432,7 @@ class AbilitiesEffects(EffectsBase):
 
         dct = {}
 
-        for spell_name in SPELL_SHORTCUTS:
+        for spell_name in palette.SPELL_SHORTCUTS:
             dct.update({spell_name: palette.ChampionsStats.spell_effects()})
 
         return dct
@@ -3465,7 +3461,7 @@ class AbilitiesEffects(EffectsBase):
         # Resets dict
         self.spells_effects = self._spells_effects_dct()
 
-        for spell_name in SPELL_SHORTCUTS:
+        for spell_name in palette.SPELL_SHORTCUTS:
             self._single_spell_effects_creation(spell_name=spell_name)
 
 
@@ -3531,19 +3527,19 @@ class ConditionalsBase(object):
                 value=()
             ),
             spell_lvl=dict(
-                spell_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
+                spell_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
                 operator=self.OPERATOR_TYPES,
                 lvl=ALLOWED_ABILITY_LVLS
             ),
             on_cd=dict(
-                spell_name=ALL_POSSIBLE_SPELL_SHORTCUTS
+                spell_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS
             ))
 
     def effect_setup_dct(self):
 
         dct = dict(
             ability_effect=dict(
-                ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
+                ability_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
                 tar_type=('enemy', 'player'),
                 # Contains spell effect categories
                 lst_category=palette.ChampionsStats.spell_effects()['player']['actives'],
@@ -3551,7 +3547,7 @@ class ConditionalsBase(object):
             ),
 
             ability_attr=dict(
-                ability_name=ALL_POSSIBLE_SPELL_SHORTCUTS,
+                ability_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
                 attr_name=self.available_ability_attr_names(),
                 mod_operation=('multiply', 'add', 'remove'),
                 formula_type=self.FORMULA_TYPE,
@@ -3710,7 +3706,7 @@ class ConditionalsBase(object):
             elif 'cd' in cat:
                 self.conditions_dct[con_name]['effects'][eff_name].update({'names_dct': {}})
 
-                suggest_lst_of_attr_values(suggested_values_lst=ALL_POSSIBLE_ABILITIES_SHORTCUTS,
+                suggest_lst_of_attr_values(suggested_values_lst=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS,
                                            modified_lst=self.conditions_dct[con_name]['effects'][eff_name]['names_lst'])
                 # ( {'q': (1,2..), }
                 cd_mod_suggested_dct = {i: (1, 2, 3) for i in
@@ -4453,7 +4449,7 @@ class ChampionModuleCreator(ModuleCreatorBase):
         """
 
         priority_lst = []
-        suggest_lst_of_attr_values(suggested_values_lst=('AA',) + ALL_POSSIBLE_SPELL_SHORTCUTS,
+        suggest_lst_of_attr_values(suggested_values_lst=('AA',) + palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
                                    modified_lst=priority_lst,
                                    extra_start_msg='ACTION PRIORITY TUPLE',
                                    sort_suggested_lst=False)
@@ -4694,7 +4690,7 @@ if __name__ == '__main__':
 
     testGen = False
     if testGen:
-        for ability_shortcut in SPELL_SHORTCUTS:
+        for ability_shortcut in palette.SPELL_SHORTCUTS:
             GeneralAbilityAttributes(ability_name=ability_shortcut, champion_name='drmundo').run_gen_attr_creation()
             break
 
@@ -4707,7 +4703,7 @@ if __name__ == '__main__':
     testBuffs = False
     if testBuffs:
         for champName in ExploreApiAbilities().all_champions_data_dct:
-            for abilityName in SPELL_SHORTCUTS:
+            for abilityName in palette.SPELL_SHORTCUTS:
                 res = BuffAbilityAttributes(abilityName, champName).refined_nth_attack()
                 if res:
                     print((champName, res))

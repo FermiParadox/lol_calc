@@ -1,3 +1,6 @@
+import palette
+
+
 class Timers(object):
 
     def __init__(self,
@@ -90,18 +93,11 @@ class Timers(object):
         dmg_dct = self.req_dmg_func(dmg_name)
 
         start = current_time
-        ability_name = dmg_dct['dmg_source']
-
         start += dmg_dct['delay']
-        start += self.request_ability_gen_attrs_dct(ability_name)['travel_time']
+
+        dmg_source_name = dmg_dct['dmg_source']
+        if dmg_source_name in palette.ALL_POSSIBLE_SPELL_SHORTCUTS:
+            start += self.request_ability_gen_attrs_dct(dmg_source_name)['travel_time']
 
         return start
 
-    def next_dot_tick(self, previous_tick, ability_name):
-        """
-        Calculates time of next dot tick.
-
-        Returns:
-            (float)
-        """
-        return previous_tick + self.request_ability_gen_attrs_dct(ability_name)['period']
