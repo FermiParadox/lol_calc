@@ -58,16 +58,13 @@ class Timers(object):
         Returns:
             (float)
         """
-        if 'fixed_base_cd' in self.request_ability_gen_attrs_dct(ability_name):
-            return (1-stats_function(target_name='player',
-                                     stat_name='cdr')) * self.request_ability_gen_attrs_dct(ability_name)['fixed_base_cd']
 
-        else:
-            return (
-                (1-stats_function(target_name='player', stat_name='cdr')) *
+        cd_multiplier = 1 - stats_function(target_name='player', stat_name='cdr')
 
-                self.request_ability_gen_attrs_dct(ability_name)['base_cd_tpl'][self.ability_lvls_dct[ability_name]-1]
-            )
+        cd_index = self.ability_lvls_dct[ability_name] - 1
+        base_cd_value = self.request_ability_gen_attrs_dct(ability_name)['base_cd'][cd_index]
+
+        return cd_multiplier * base_cd_value
 
     def ability_cd_end(self, ability_name, cast_start, stats_function, actions_dct):
         """
@@ -77,18 +74,8 @@ class Timers(object):
             (float)
         """
 
-        time = actions_dct[cast_start]['cast_end'] + self.ability_cooldown(ability_name=ability_name,
-                                                                           stats_function=stats_function)
-
-        ability_special_dct = self.request_ability_gen_attrs_dct(ability_name=ability_name)
-
-        # Cooldown starts after the cast of the action ends plus the extender buff's duration.
-        # (If the buff is removed earlier, cd_end is modified to the normal cd in appropriate method.)
-        if 'special' in ability_special_dct:
-            if 'cd_extendable' in ability_special_dct['special']:
-
-                extender_name = ability_special_dct['special']['cd_extendable']
-                time += getattr(self, extender_name)()['duration']
+        time = actions_dct[cast_start]['cast_end']
+        time += self.ability_cooldown(ability_name=ability_name, stats_function=stats_function)
 
         return time
 
