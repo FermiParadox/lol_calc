@@ -2830,9 +2830,9 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
                     if stat_mods_answer == 'y':
 
                         # Creates new mod dict for affected stat.
-                        self.buffs_dct[buff_name]['affected_stats'][affected_stat_app_form].update({'stat_mods': {}})
+                        self.buffs_dct[buff_name]['stats'][affected_stat_app_form].update({'stat_mods': {}})
                         # Inserts new mod name.
-                        self.buffs_dct[buff_name]['affected_stats'][affected_stat_app_form]['stat_mods'].update(
+                        self.buffs_dct[buff_name]['stats'][affected_stat_app_form]['stat_mods'].update(
                             {stat_mod_app_form: None})
 
                         pp.pprint(self.ability_vars_dct)
@@ -2840,7 +2840,7 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
                         # (params for method below)
                         mod_vals_lst = [var_dct['coeff'] for var_dct in self.ability_vars_dct]
                         suggested_vals_dct = {stat_mod_app_form: mod_vals_lst}
-                        modified_dct = self.buffs_dct[buff_name]['affected_stats'][affected_stat_app_form]['stat_mods']
+                        modified_dct = self.buffs_dct[buff_name]['stats'][affected_stat_app_form]['stat_mods']
                         extra_msg = '\nmod value:'
 
                         suggest_attr_values(suggested_values_dct=suggested_vals_dct,
@@ -2848,7 +2848,7 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
                                             extra_start_msg=extra_msg)
                         break
                     elif stat_mods_answer == 'n':
-                        self.buffs_dct[buff_name]['affected_stats'][affected_stat_app_form]['stat_mods'] = None
+                        self.buffs_dct[buff_name]['stats'][affected_stat_app_form]['stat_mods'] = None
                         break
                     else:
                         print_invalid_answer()
@@ -2875,20 +2875,20 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
 
                     msg = 'AFFECTED STAT: %s' % stat_name
 
-                    self.buffs_dct[buff_name]['affected_stats'].update({stat_name: {}})
+                    self.buffs_dct[buff_name]['stats'].update({stat_name: {}})
 
                     chosen_types_lst = []
                     suggest_lst_of_attr_values(suggested_values_lst=('additive', 'multiplicative'),
                                                modified_lst=chosen_types_lst)
 
                     for type_name in chosen_types_lst:
-                        self.buffs_dct[buff_name]['affected_stats'][stat_name].update({type_name: {}})
+                        self.buffs_dct[buff_name]['stats'][stat_name].update({type_name: {}})
 
                         # (dict form effects for parameter below)
                         eff_values_dct = {'stat_values': self.ability_effect_lst}
 
                         suggest_attr_values(suggested_values_dct=eff_values_dct,
-                                            modified_dct=self.buffs_dct[buff_name]['affected_stats'][stat_name][type_name],
+                                            modified_dct=self.buffs_dct[buff_name]['stats'][stat_name][type_name],
                                             extra_start_msg=msg)
 
                         # STAT MODS
@@ -2919,13 +2919,13 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
 
             if changes_stats == 'n':
                 print("\nDoesn't modify stats.")
-                self.buffs_dct[buff_name]['affected_stats'] = None
+                self.buffs_dct[buff_name]['stats'] = None
                 break
 
             elif changes_stats == 'y':
                 if self._stat_names_in_tooltip():
                     # (clears placeholder)
-                    del self.buffs_dct[buff_name]['affected_stats']['placeholder_stat_1']
+                    del self.buffs_dct[buff_name]['stats']['placeholder_stat_1']
 
                     # Inserts each affected stat.
                     self.suggest_affected_stats_and_their_attrs(buff_name=buff_name)
@@ -4131,7 +4131,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         if _y_n_question(question_str='Buff {} affects stats?'.format(buff_name.upper())) is True:
 
             # Resets affected_stats dict.
-            self.item_buffs[buff_name]['affected_stats'] = {}
+            self.item_buffs[buff_name]['stats'] = {}
 
             while 1:
                 # Stat name
@@ -4152,9 +4152,9 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
                                             input_type='num', characteristic='non_zero',
                                             disallow_enter=True)
 
-                self.item_buffs[buff_name]['affected_stats'].update({stat_name: stat_val})
+                self.item_buffs[buff_name]['stats'].update({stat_name: stat_val})
 
-        pp.pprint(self.item_buffs[buff_name]['affected_stats'])
+        pp.pprint(self.item_buffs[buff_name]['stats'])
 
     @repeat_cluster(cluster_name='ITEM BUFFS')
     def create_item_buffs(self):

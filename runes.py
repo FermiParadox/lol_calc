@@ -1,4 +1,5 @@
 import app_runes_database as api_module
+import palette
 
 # Matched rune names.
 API_TO_APP_STAT_NAME_MAP = dict(
@@ -37,6 +38,16 @@ API_TO_APP_STAT_NAME_MAP = dict(
     rPercentCooldownModPerLevel=dict(additive='cdr_per_lvl'),
     rPercentCooldownMod=dict(additive='cdr')
 )
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+_RUNE_BUFF_DCT_BASE = palette.BUFF_DCT_BASE
+_RUNE_BUFF_DCT_BASE['duration'] = 'permanent'
+_RUNE_BUFF_DCT_BASE['target_type'] = 'player'
+_RUNE_BUFF_DCT_BASE['max_stacks'] = 1
+_RUNE_BUFF_DCT_BASE['on_hit'] = None
+_RUNE_BUFF_DCT_BASE['prohibit_cd_start'] = False
+_RUNE_BUFF_DCT_BASE['dot'] = False
 
 
 class ApiToAppRunesData(object):
@@ -127,9 +138,7 @@ class RunesFinal(object):
 
         self.player_lvl = player_lvl
         self.selected_runes = selected_runes        # e.g. {'red': {'ad': 5, 'ad_per_lvl': {'additive: 4},}, }
-        self.runes_buff_store = dict(
-            stats={},
-            duration='permanent')     # e.g. {'stats': 'att_speed': {'percent': },}
+        self.runes_buff_store = _RUNE_BUFF_DCT_BASE     # e.g. {'stats': 'att_speed': {'percent': },}
 
         self.set_runes_buff_store()
 

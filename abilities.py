@@ -1088,11 +1088,13 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # If it's a new dot..
         if new_periodic_event:
             # If the buff is a dot, applies event as well.
-            if 'period' in self.req_buff_dct_func(buff_name=buff_name):
+            buff_dct = self.req_buff_dct_func(buff_name=buff_name)
+            buff_dot_dct = buff_dct['dot']
+            if buff_dot_dct:
+                dmg_dot_name = buff_dot_dct['dmg_name']
+                first_tick = self.first_dot_tick(current_time=self.current_time, dmg_name=dmg_dot_name)
 
-                first_tick = self.first_dot_tick(current_time=self.current_time, dmg_name=dmg_name)
-
-                self.add_events(effect_name=buff_name, start_time=first_tick)
+                self.add_events(effect_name=dmg_dot_name, start_time=first_tick)
 
     def remove_buff_on_action(self, buff_name):
         """

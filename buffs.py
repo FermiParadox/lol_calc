@@ -1001,18 +1001,30 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 NATURAL_REGEN_PERIOD = 0.5  # Tick period of hp5, mp5, etc.
 PER_5_DIVISOR = 10.  # Divides "per 5" stats. Used to create per tick value.
 
+
 # ----------------------------------------------------------------------------------------------------------------------
-# BUFF BASE
+# REGEN BUFF BASE
+_DEAD_BUFF_DCT_BASE = palette.BUFF_DCT_BASE
+_DEAD_BUFF_DCT_BASE['duration'] = 'permanent'
+_DEAD_BUFF_DCT_BASE['max_stacks'] = 1
+_DEAD_BUFF_DCT_BASE['stats'] = None
+_DEAD_BUFF_DCT_BASE['oh_hit'] = None
+_DEAD_BUFF_DCT_BASE['prohibit_cd_start'] = None
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# REGEN BUFF BASE
 
 # Creates base dict for regenerations (hp, mp, energy, etc).
 _REGEN_BUFF_DCT_BASE = copy.deepcopy(palette.BUFF_DCT_BASE)
 # Sets values correctly for regenerations.
-for regen_buff_base_key in ('on_hit', 'prohibit_cd_start', 'affected_stats'):
+for regen_buff_base_key in ('on_hit', 'prohibit_cd_start', 'stats'):
     _REGEN_BUFF_DCT_BASE[regen_buff_base_key] = None
 _REGEN_BUFF_DCT_BASE['max_stacks'] = 1
 _REGEN_BUFF_DCT_BASE['duration'] = 'permanent'
-# (adds period)
-_REGEN_BUFF_DCT_BASE['period'] = NATURAL_REGEN_PERIOD
+# (adds dot data)
+_REGEN_BUFF_DCT_BASE['dot'] = {'period': None, 'dmg_name': None}
+_REGEN_BUFF_DCT_BASE['dot']['period'] = NATURAL_REGEN_PERIOD
 
 
 # PLAYER buff base.
@@ -1076,9 +1088,7 @@ class DeathAndRegen(DmgApplication):
 
     @staticmethod
     def dead_buff():
-        return dict(
-            max_stacks=1,
-            duration='permanent',)
+        return _DEAD_BUFF_DCT_BASE
 
     def apply_death(self, tar_name):
         """
@@ -1102,12 +1112,7 @@ class DeathAndRegen(DmgApplication):
                 self.add_buff(buff_name='dead_buff', tar_name=tar_name)
 
     def enemy_hp5_dmg(self):
-
-        return dict(
-            period=self.NATURAL_REGEN_PERIOD,
-            dmg_type='true',
-            target='enemy',
-            )
+        return self.ENEMY_HP5_DMG_DCT_BASE
 
     def enemy_hp5_buff(self):
         # Used only as a marker.

@@ -7,19 +7,11 @@ ALL_POSSIBLE_ABILITIES_SHORTCUTS = ABILITY_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
 ALLOWED_ABILITY_LVLS = ('1', '2', '3', '4', '5', '0')
 
 
-class UnexpectedValueError(Exception):
-    """
-    NOT TO BE HANDLED!
-    Exception indicating that an unexpected value has been given to a variable.
-    """
-    pass
-
-
 BUFF_DCT_BASE = dict(
     target_type='placeholder',
     duration='placeholder',
     max_stacks='placeholder',
-    affected_stats=dict(
+    stats=dict(
         placeholder_stat_1='placeholder'
     ),
     on_hit=dict(
@@ -29,6 +21,7 @@ BUFF_DCT_BASE = dict(
         remove_buff=['placeholder', ]
     ),
     prohibit_cd_start='placeholder',
+    dot=False
 )
 
 
@@ -44,10 +37,18 @@ DMG_DCT_BASE = dict(
     # (None or lifesteal or spellvamp)
     life_conversion_type='placeholder',
     radius='placeholder',
-    dot='placeholder',
+    dot={'dot_buff': 'placeholder'},
     max_targets='placeholder',
     delay='placeholder',
 )
+
+
+class UnexpectedValueError(Exception):
+    """
+    NOT TO BE HANDLED!
+    Exception indicating that an unexpected value has been given to a variable.
+    """
+    pass
 
 
 class ChampionsStats(object):
