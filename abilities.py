@@ -1153,7 +1153,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         for buff_name in frozenset(self.active_buffs['player']):
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
-            if 'on_hit' in buff_dct:
+            if buff_dct['on_hit']:
 
                 # DMG CAUSED ON HIT.
                 for dmg_name in buff_dct['on_hit']['cause_dmg']:

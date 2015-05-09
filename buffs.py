@@ -1008,7 +1008,7 @@ _DEAD_BUFF_DCT_BASE = palette.BUFF_DCT_BASE
 _DEAD_BUFF_DCT_BASE['duration'] = 'permanent'
 _DEAD_BUFF_DCT_BASE['max_stacks'] = 1
 _DEAD_BUFF_DCT_BASE['stats'] = None
-_DEAD_BUFF_DCT_BASE['oh_hit'] = None
+_DEAD_BUFF_DCT_BASE['on_hit'] = None
 _DEAD_BUFF_DCT_BASE['prohibit_cd_start'] = None
 
 
@@ -1030,10 +1030,12 @@ _REGEN_BUFF_DCT_BASE['dot']['period'] = NATURAL_REGEN_PERIOD
 # PLAYER buff base.
 _REGEN_BUFF_DCT_BASE_PLAYER = copy.deepcopy(_REGEN_BUFF_DCT_BASE)
 _REGEN_BUFF_DCT_BASE_PLAYER['target_type'] = 'player'
+_REGEN_BUFF_DCT_BASE_PLAYER['dot']['dmg_name'] = 'player_hp5_dmg'
 
 # ENEMY buff base.
 _REGEN_BUFF_DCT_BASE_ENEMY = copy.deepcopy(_REGEN_BUFF_DCT_BASE)
 _REGEN_BUFF_DCT_BASE_ENEMY['target_type'] = 'enemy'
+_REGEN_BUFF_DCT_BASE_ENEMY['dot']['dmg_name'] = 'enemy_hp5_dmg'
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1045,7 +1047,7 @@ _REGEN_BUFF_DCT_BASE_ENEMY['target_type'] = 'enemy'
 # Creates base dict for regenerations' dmg dicts.
 _REGEN_DMG_DCT_BASE = dict(
     target_type='placeholder',
-    dmg_category='standard',
+    dmg_category='standard_dmg',
     resource_type='placeholder',
     dmg_type='true',
     dmg_values=0,
@@ -1112,10 +1114,11 @@ class DeathAndRegen(DmgApplication):
                 self.add_buff(buff_name='dead_buff', tar_name=tar_name)
 
     def enemy_hp5_dmg(self):
-        return self.ENEMY_HP5_DMG_DCT_BASE
+        dct = copy.deepcopy(self.ENEMY_HP5_DMG_DCT_BASE)
+        dct['mods'] = {self.current_target: {'hp5': 1}}
+        return dct
 
     def enemy_hp5_buff(self):
-        # Used only as a marker.
         return self.REGEN_BUFF_DCT_BASE_ENEMY
 
     def _per5_dmg_value_base(self, tar_name, per_5_stat_name):
@@ -1137,6 +1140,7 @@ class DeathAndRegen(DmgApplication):
         return self.PLAYER_HP5_DMG_DCT
 
     def player_hp5_buff(self):
+        self.REGEN_BUFF_DCT_BASE_PLAYER['dot']['dmg_name'] = 'enemy_hp5_dmg'
         return self.REGEN_BUFF_DCT_BASE_PLAYER
 
     def player_hp5_dmg_value(self):

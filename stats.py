@@ -20,7 +20,7 @@ DEFENSIVE_SPECIAL_STATS = frozenset({'percent_physical_reduction_by_armor',
 # Contains 2 stat variants of a defense reducing stat; one for armor and one for mr.
 # e.g. percent_armor_reduction and percent_mr_reduction
 # (used for a method, to avoid code repetition)
-DEFENSE_REDUCING_MR_AND_ARMOR_MAP = dict(
+_DEFENSE_REDUCING_MR_AND_ARMOR_MAP = dict(
     armor=dict(
         _percent_reduction='percent_armor_reduction',
         _percent_penetration='percent_armor_penetration',
@@ -39,9 +39,9 @@ DEFENSE_REDUCING_MR_AND_ARMOR_MAP = dict(
 # Defensive stats that normally exist without need of special function to create
 # (contains deepest dict values from DEFENSE_REDUCING_STATS)
 DEFENSIVE_NORMAL_STATS = {'percent_dmg_reduction', 'flat_dmg_reduction'}
-for armor_or_mr in DEFENSE_REDUCING_MR_AND_ARMOR_MAP:
-    for _key in DEFENSE_REDUCING_MR_AND_ARMOR_MAP[armor_or_mr]:
-        DEFENSIVE_NORMAL_STATS.update({DEFENSE_REDUCING_MR_AND_ARMOR_MAP[armor_or_mr][_key]})
+for armor_or_mr in _DEFENSE_REDUCING_MR_AND_ARMOR_MAP:
+    for _key in _DEFENSE_REDUCING_MR_AND_ARMOR_MAP[armor_or_mr]:
+        DEFENSIVE_NORMAL_STATS.update({_DEFENSE_REDUCING_MR_AND_ARMOR_MAP[armor_or_mr][_key]})
 
 
 # Contains all champions' base stats names.
@@ -606,7 +606,7 @@ class StatRequest(StatCalculation):
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
             # Checks if buff modifies stats.
-            if 'stats' in buff_dct:
+            if buff_dct['stats']:
 
                 # If so stores each stat that gets modified by it.
                 self.stored_buffs[tar_name][buff_name] = {'stats_it_mods': []}
@@ -660,7 +660,7 @@ class StatRequest(StatCalculation):
         for buff in tar_act_buffs:
             if buff not in tar_stored_buffs:
                 buff_dct = self.req_buff_dct_func(buff_name=buff)
-                if ('stats' in buff_dct) and (stat_name in buff_dct['stats']):
+                if buff_dct['stats'] and (stat_name in buff_dct['stats']):
 
                     self._check_and_update_stored_buff(tar_name=tar_name, buff_name=buff)
 
@@ -702,7 +702,7 @@ class StatRequest(StatCalculation):
             # Checks if the buff has stat bonuses.
             if 'stats' in buff_dct:
 
-                if stat_name in buff_dct['stats']:
+                if buff_dct['stats'] and (stat_name in buff_dct['stats']):
 
                     tar_bonuses = self.bonuses_dct[tar_name]
 
@@ -835,7 +835,7 @@ class DmgReductionStats(StatRequest):
     Contains methods for the calculation of dmg reduction related stats' values.
     """
 
-    DEFENSE_REDUCING_MR_AND_ARMOR_MAP = DEFENSE_REDUCING_MR_AND_ARMOR_MAP
+    DEFENSE_REDUCING_MR_AND_ARMOR_MAP = _DEFENSE_REDUCING_MR_AND_ARMOR_MAP
 
     # structure: {tar_name: {stat_1: [controller_stat_1, controller_stat_2,], }, }
     DMG_REDUCTION_STAT_DEPENDENCIES = {

@@ -103,13 +103,18 @@ class DmgCategories(BuffCategories):
             val = dmg_dct['dmg_values']
 
         # MODS
-        for mod_name in dmg_dct['mods']['player']:
-            val += dmg_dct['mods']['player'][mod_name] * self.req_stats_func(target_name='player',
-                                                                             stat_name=mod_name)
+        dmg_dct_mods = dmg_dct['mods']
+        if dmg_dct_mods:
+            if 'player' in dmg_dct_mods:
+                for mod_name in dmg_dct_mods['player']:
+                    val += dmg_dct_mods['player'][mod_name] * self.req_stats_func(target_name='player',
+                                                                                  stat_name=mod_name)
 
-        for mod_name in dmg_dct['mods']['enemy']:
-            val += dmg_dct['mods'][self.current_target][mod_name] * self.req_stats_func(target_name=self.current_target,
-                                                                                        stat_name=mod_name)
+            if 'enemy' in dmg_dct_mods:
+                for mod_name in dmg_dct_mods['enemy']:
+                    val += dmg_dct_mods[self.current_target][mod_name] * self.req_stats_func(
+                        target_name=self.current_target,
+                        stat_name=mod_name)
 
         return val
 
