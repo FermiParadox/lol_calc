@@ -1919,8 +1919,6 @@ if __name__ == '__main__':
             msg += ('enemy_1 current_stats: %s \n'
                     'all current_stats: %s\n') % (inst.current_stats['enemy_1'], inst.current_stats)
 
-            msg += '\nr_dmg_initiator: %s' % inst.r_dmg_initiator()
-
             msg += '\ncombat_history: %s' % inst.combat_history
 
             msg += '\ntotal dmg types: %s' % inst.refined_combat_history()
