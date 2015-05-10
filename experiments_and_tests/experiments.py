@@ -1,8 +1,13 @@
-class A(object):
+x = None
 
-    def __init__(self):
-        self.X = []
 
-    def f(self):            
-        for i in range(10):
-            self.X.append(i)
+def f():
+
+    x = 4
+
+    return 2
+
+
+f()
+
+print(x)

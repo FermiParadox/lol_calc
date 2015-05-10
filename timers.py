@@ -23,7 +23,7 @@ class Timers(object):
             (dict)
         """
 
-        return self.req_abilities_dct_func(ability_name)['general_attributes']
+        return self.req_abilities_dct_func(ability_name)
 
     def cast_end(self, ability_name, action_cast_start):
         """

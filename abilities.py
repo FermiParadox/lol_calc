@@ -210,6 +210,7 @@ class EventsGeneral(buffs.DeathAndRegen):
 
         tar_act_buffs = self.active_buffs[tar_name]
         buff_name = dmg_name[:-3]+'buff'
+        buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
         # Checks dot's buff.
         if buff_name in tar_act_buffs:
@@ -217,7 +218,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                     (tar_act_buffs[buff_name]['ending_time'] > self.current_time)):
 
                 self.add_events(effect_name=dmg_name,
-                                start_time=self.current_time + dmg_dct['period'])
+                                start_time=self.current_time + buff_dct['dot']['period'])
 
                 self.intermediate_events_changed = True
 
@@ -450,7 +451,7 @@ class AttributeBase(EventsGeneral):
         # (if no trigger is false, method reaches this)
         return True
 
-    def _ability_effects_creator(self, con_eff_dct, modified_dct, obj_name):
+    def _ability_effects_updater(self, con_eff_dct, modified_dct, obj_name):
         """
         Creates new ability effects dct or updates existing with changes caused by effects.
 
@@ -463,7 +464,7 @@ class AttributeBase(EventsGeneral):
 
         # Then checks if new dict is empty.
         if not modified_dct:
-            modified_dct = copy.deepcopy(self.ABILITIES_EFFECTS[obj_name])
+            modified_dct.update(copy.deepcopy(self.ABILITIES_EFFECTS[obj_name]))
 
         # DATA MODIFICATION
         tar_type = con_eff_dct['tar_type']
@@ -479,7 +480,7 @@ class AttributeBase(EventsGeneral):
             old_lst = modified_dct[obj_name][tar_type]['actives'][cat_type]
             modified_dct[tar_type]['actives'][cat_type] = [i for i in old_lst if i not in eff_contents]
 
-    def _on_hit_effect_buff_creator(self, eff_dct, modified_dct, buff_name):
+    def _on_hit_effect_buff_updater(self, eff_dct, modified_dct, buff_name):
         """
         Creates new buff dct or updates existing with changes caused by effects.
 
@@ -536,7 +537,7 @@ class AttributeBase(EventsGeneral):
         else:
             return [func(i, mod_val) for i in old_val]
 
-    def _property_creator(self, con_eff_dct, modified_dct, obj_name, obj_category, initial_dct):
+    def _property_updater(self, con_eff_dct, modified_dct, obj_name, obj_category, initial_dct):
         """
         Creates new properties' dct or updates existing with changes caused by condition-effects.
 
@@ -549,7 +550,7 @@ class AttributeBase(EventsGeneral):
 
         # Checks if modified dct is empty.
         if not modified_dct:
-            modified_dct = copy.deepcopy(initial_dct[obj_category][obj_name])
+            modified_dct.update(copy.deepcopy(initial_dct[obj_category][obj_name]))
 
         # DATA MODIFICATION
         mod_operation = con_eff_dct['mod_operation']
@@ -565,6 +566,9 @@ class AttributeBase(EventsGeneral):
         modified_dct[obj_name][attr_name] = self._modified_attr_value(mod_operation=mod_operation,
                                                                       mod_val=mod_val,
                                                                       old_val=modified_dct[obj_name][attr_name])
+
+        if obj_category == 'buffs':
+            self._on_hit_effect_buff_updater(eff_dct=con_eff_dct, modified_dct=modified_dct, buff_name=obj_name)
 
     def initial_buff_or_dmg_dct(self, obj_name, dmgs_or_buffs):
         """
@@ -586,7 +590,7 @@ class AttributeBase(EventsGeneral):
         If trigger state is false, condition stops being checked.
 
         :param obj_name: (str) name of the buff, dmg, or ability
-        :param searched_effect_type: (str) 'ability_attr', 'ability_effect', 'buff' or 'dmg'
+        :param searched_effect_type: (str) 'general_attributes', 'ability_effect', 'buffs' or 'dmgs'
             Name of effect type being searched for.
 
         :return: (dict)
@@ -596,6 +600,9 @@ class AttributeBase(EventsGeneral):
 
         # Creates a dict that will hold the new values, replacing the "default" module dict.
         new_dct = {}
+
+        second_key = None
+
         # Checks if given ability name has conditions affecting its effects
         # All effects of all conditions on an element are applied one after the other.
         for cond in conditionals_dct:
@@ -614,30 +621,47 @@ class AttributeBase(EventsGeneral):
                         if trig_state is False:
                             break
 
-                    if searched_effect_type == 'ability_effect':
-                        self._ability_effects_creator(con_eff_dct=cond_eff_dct, modified_dct=new_dct,
+                    if searched_effect_type in ('ability_effect', 'items_effects'):
+                        self._ability_effects_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct,
                                                       obj_name=obj_name)
 
                     elif searched_effect_type == 'ability_attr':
-                        self._property_creator(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                               obj_category='general_attributes', initial_dct=self.ABILITIES_ATTRIBUTES)
+                        second_key = 'general_attributes'
+                        self._property_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                               obj_category=second_key, initial_dct=self.ABILITIES_ATTRIBUTES)
 
                     elif searched_effect_type == 'buff':
-                        self._property_creator(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                               obj_category='buffs', initial_dct=initial_dct)
-                        self._on_hit_effect_buff_creator(eff_dct=cond_eff_dct, modified_dct=new_dct, buff_name=obj_name)
+                        second_key = 'buffs'
+                        self._property_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                               obj_category=second_key, initial_dct=initial_dct)
 
                     elif searched_effect_type == 'dmg':
-                        self._property_creator(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                               obj_category='dmgs', initial_dct=initial_dct)
+                        second_key = 'dmgs'
+                        self._property_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                               obj_category=second_key, initial_dct=initial_dct)
 
                     else:
                         raise palette.UnexpectedValueError
 
+        if searched_effect_type == 'ability_attr':
+            second_key = 'general_attributes'
+
+        elif searched_effect_type == 'buff':
+            second_key = 'buffs'
+
+        elif searched_effect_type == 'dmg':
+            second_key = 'dmgs'
+
         if new_dct:
             return new_dct
         else:
-            return initial_dct[obj_name]
+            # Unlike ABILITIES_EFFECTS which are returned as is,
+            # ..ABILITIES_ATTRIBUTES (and other dicts) contains 'dmgs', 'buffs' etc.
+            # ..so the second key has to be used too.
+            if second_key:
+                return initial_dct[second_key][obj_name]
+            else:
+                return initial_dct[obj_name]
 
     def abilities_effects(self, ability_name):
         """
@@ -652,6 +676,12 @@ class AttributeBase(EventsGeneral):
                                         searched_effect_type='ability_effect',
                                         initial_dct=self.ABILITIES_EFFECTS,
                                         conditionals_dct=self.ABILITIES_CONDITIONALS)
+
+    def items_effects(self, item_name):
+        return self._attrs_or_effs_base(obj_name=item_name,
+                                        searched_effect_type='item_effect',
+                                        initial_dct=self.ITEMS_EFFECTS,
+                                        conditionals_dct=self.ITEMS_CONDITIONALS)
 
     def abilities_attributes(self, ability_name):
         """
