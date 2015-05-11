@@ -2222,7 +2222,7 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
 
         modified_dct = self.general_attr_dct['cost']['standard_cost']
 
-        suggest_attr_values(suggested_values_dct={'COST CATEGORY': self.COST_CATEGORIES},
+        suggest_attr_values(suggested_values_dct={'cost_category': self.COST_CATEGORIES},
                             modified_dct=modified_dct, restrict_choices=True)
 
     def fill_base_cd_values(self):
@@ -4727,7 +4727,7 @@ if __name__ == '__main__':
     if testChampIDs:
         print(ExploreApiAbilities().champion_id('dariu'))
 
-    testModuleInsertion = False
+    testModuleInsertion = True
     if testModuleInsertion:
         ChampionModuleCreator(champion_name='jax').run_champ_module_creation()
 

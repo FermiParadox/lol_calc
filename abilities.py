@@ -815,7 +815,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             return False
 
     # COSTS
-    def ability_cost_dct(self, action_name):
+    def non_toggled_action_cost_dct(self, action_name):
         """
         Creates a dict containing each resource used,
         it's value cost, buff name cost and number of buff's stacks.
@@ -826,31 +826,36 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (dict)
         """
 
-        cost_dct = {}
+        returned_cost_dct = {}
 
-        # ACTIVATED ABILITIES
-        if action_name in 'qwer':
-            # NORMAL COST
-            ability_stats_dct = self.request_ability_gen_attrs_dct(ability_name=action_name)
-            resource_cost_type = ability_stats_dct['general']['resource_cost_type']
+        # CASTABLE SPELLS
+        if action_name in palette.ALL_POSSIBLE_SPELL_SHORTCUTS:
+            spell_gen_attrs_dct = self.request_ability_gen_attrs_dct(ability_name=action_name)
 
-            # Check if ability has a fixed cost,
-            # or one that scales per ability_lvl,
-            # or no resource cost (none of the if's are true).
-            if 'fixed_cost' in ability_stats_dct['general']:
-                resource_cost = ability_stats_dct['general']['fixed_cost']
-                cost_dct = {resource_cost_type: resource_cost}
-            elif 'cost_tpl' in ability_stats_dct['general']:
-                resource_cost = ability_stats_dct['general']['cost_tpl'][self.ability_lvls_dct[action_name]-1]
-                cost_dct = {resource_cost_type: resource_cost}
+            if spell_gen_attrs_dct['castable']:
+                spell_cost_dct = spell_gen_attrs_dct['cost']
+                spell_lvl = self.ability_lvls_dct[action_name]
 
-            # STACK COST
-            # (e.g. Akali R stacks)
-            if 'stack_cost' in ability_stats_dct['general']:
-                stack_name = ability_stats_dct['general']['stack_cost']
-                cost_dct.update({stack_name: ability_stats_dct['general']['stack_cost'][stack_name]})
+                # NORMAL COST
+                standard_cost_dct = spell_cost_dct['standard_cost']
 
-        return cost_dct
+                # Check if ability has a fixed cost,
+                # or one that scales per ability_lvl,
+                # or no resource cost (none of the if's are true).
+                if standard_cost_dct:
+                    resource_type = standard_cost_dct['resource_type']
+                    resource_cost_val = standard_cost_dct['values'][spell_lvl - 1]
+                    returned_cost_dct.update({resource_type: resource_cost_val})
+
+                # STACK COST
+                # (e.g. Akali R stacks)
+                stack_cost_dct = spell_cost_dct['stack_cost']
+                if stack_cost_dct:
+                    buff_cost_name = stack_cost_dct['buff_name']
+                    stack_cost_val = stack_cost_dct['values'][spell_lvl - 1]
+                    returned_cost_dct.update({buff_cost_name: stack_cost_val})
+
+        return returned_cost_dct
 
     def cost_sufficiency(self, action_name):
         """
@@ -862,8 +867,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         sufficiency = True
 
-        for cost_name in self.ability_cost_dct(action_name):
-            cost_value = self.ability_cost_dct(action_name)[cost_name]
+        for cost_name in self.non_toggled_action_cost_dct(action_name):
+            cost_value = self.non_toggled_action_cost_dct(action_name)[cost_name]
 
             if cost_name in ('mp', 'energy', 'hp'):
                 if self.current_stats['player']['current_'+cost_name] < cost_value:
@@ -886,8 +891,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        for cost_name in self.ability_cost_dct(action_name):
-            cost_value = self.ability_cost_dct(action_name)[cost_name]
+        for cost_name in self.non_toggled_action_cost_dct(action_name):
+            cost_value = self.non_toggled_action_cost_dct(action_name)[cost_name]
 
             if cost_name in ('mp', 'energy', 'hp', 'rage'):
                 self.current_stats['player']['current_' + cost_name] -= cost_value
@@ -947,8 +952,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # Abilities
         if last_action_name in 'qwer':
             ability_gen_stats = self.request_ability_gen_attrs_dct(ability_name=last_action_name)
-
-            self.total_movement += ability_gen_stats['dashed_distance']
+            dash_val = ability_gen_stats['dashed_distance']
+            if dash_val:
+                self.total_movement += dash_val
 
     def add_kalista_dash(self):
         """
@@ -1055,10 +1061,11 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         cast_start = self.action_cast_start(action_name=action_name)
 
         # CHAMPION ABILITIES
-        if action_name in 'qwer':
+        if action_name in palette.ALL_POSSIBLE_SPELL_SHORTCUTS:
+            spell_dct = self.abilities_attributes(ability_name=action_name)
             self.actions_dct.update(
                 {cast_start: dict(
-                    cast_end=self.cast_end(action_name, cast_start),
+                    cast_end=self.cast_end(action_gen_attrs_dct=spell_dct, action_cast_start=cast_start),
                     action_name=action_name,)})
 
             # (cd_end is applied later since it requires cast_end)
@@ -1068,10 +1075,12 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                            stats_function=self.request_stat,
                                            actions_dct=self.actions_dct)))
 
-            if 'channel_time' in self.request_ability_gen_attrs_dct(ability_name=action_name):
-                self.actions_dct[cast_start].update(dict(
-                    channel_end=self.channel_end(ability_name=action_name,
-                                                 action_cast_start=cast_start)))
+            # CHANNEL
+            channel_val = self.abilities_attributes(ability_name=action_name)['channel_time']
+            if channel_val:
+                channel_end_time = self.actions_dct[cast_start]['cast_end'] + channel_val
+
+                self.actions_dct[cast_start].update({"channel_end": channel_end_time})
 
             # Checks if ability resets AA's cd_end, and applies it.
             self.reset_aa_cd(action_name=action_name)

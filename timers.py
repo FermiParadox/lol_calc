@@ -25,21 +25,24 @@ class Timers(object):
 
         return self.req_abilities_dct_func(ability_name)
 
-    def cast_end(self, ability_name, action_cast_start):
+    @staticmethod
+    def cast_end(action_cast_start, action_gen_attrs_dct):
         """
         Calculates the time an action's cast ends.
 
         Returns:
             (float)
         """
-        time = action_cast_start + self.request_ability_gen_attrs_dct(ability_name=ability_name)['cast_time']
 
-        if 'channel_time' in self.request_ability_gen_attrs_dct(ability_name=ability_name):
-            time += self.request_ability_gen_attrs_dct(ability_name=ability_name)['channel_time']
+        time = action_cast_start + action_gen_attrs_dct['cast_time']
+
+        action_channel = action_gen_attrs_dct['channel_time']
+        if action_channel:
+            time += action_gen_attrs_dct['channel_time']
 
         return time
 
-    def channel_end(self, ability_name, action_cast_start):
+    def channel_end(self, action_cast_start, action_gen_attrs_dct):
         """
         Calculates the time an action's channel ends.
 
@@ -47,8 +50,7 @@ class Timers(object):
             (float)
         """
 
-        time = self.cast_end(ability_name=ability_name, action_cast_start=action_cast_start)
-        ability_stats_dct = self.request_ability_gen_attrs_dct(ability_name=ability_name)
+        time = self.cast_end(action_cast_start=action_cast_start, action_gen_attrs_dct=action_gen_attrs_dct)
 
         time += ability_stats_dct['channel_time']
 
