@@ -550,11 +550,11 @@ class AttributeBase(EventsGeneral):
 
         # Checks if modified dct is empty.
         if not modified_dct:
-            modified_dct.update(copy.deepcopy(initial_dct[obj_category][obj_name]))
+            modified_dct.update(copy.deepcopy(initial_dct[obj_category]))
 
         # DATA MODIFICATION
         mod_operation = con_eff_dct['mod_operation']
-        attr_name = con_eff_dct['attr_name']
+        modified_attr_name = con_eff_dct['attr_name']
         if con_eff_dct['formula_type'] == 'constant_value':
             mod_val = con_eff_dct['values_tpl']
         else:
@@ -563,9 +563,10 @@ class AttributeBase(EventsGeneral):
                                                x_type=con_eff_dct['x_type'],
                                                x_owner=con_eff_dct['x_owner'],)
 
-        modified_dct[obj_name][attr_name] = self._modified_attr_value(mod_operation=mod_operation,
-                                                                      mod_val=mod_val,
-                                                                      old_val=modified_dct[obj_name][attr_name])
+        modified_dct[obj_name][modified_attr_name] = self._modified_attr_value(
+            mod_operation=mod_operation,
+            mod_val=mod_val,
+            old_val=modified_dct[obj_name][modified_attr_name])
 
         if obj_category == 'buffs':
             self._on_hit_effect_buff_updater(eff_dct=con_eff_dct, modified_dct=modified_dct, buff_name=obj_name)
@@ -613,35 +614,37 @@ class AttributeBase(EventsGeneral):
                 cond_eff_dct = conditionals_dct[cond]['effects'][eff]
                 if (obj_name_dct_key in cond_eff_dct) and (cond_eff_dct[obj_name_dct_key] == obj_name):
 
-                    # Trigger check is done ONCE on ALL triggers
-                    # (right after a single effect affecting given object is detected).
-                    if trig_state is None:
-                        trig_state = self._check_triggers_state(cond_name=cond)
-                        # (if triggers are false, ends current condition checks)
-                        if trig_state is False:
-                            break
+                    if searched_effect_type == cond_eff_dct['effect_type']:
 
-                    if searched_effect_type in ('ability_effect', 'items_effects'):
-                        self._ability_effects_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct,
-                                                      obj_name=obj_name)
+                        # Trigger check is done ONCE on ALL triggers
+                        # (right after a single effect affecting given object is detected).
+                        if trig_state is None:
+                            trig_state = self._check_triggers_state(cond_name=cond)
+                            # (if triggers are false, ends current condition checks)
+                            if trig_state is False:
+                                break
 
-                    elif searched_effect_type == 'ability_attr':
-                        second_key = 'general_attributes'
-                        self._property_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                               obj_category=second_key, initial_dct=self.ABILITIES_ATTRIBUTES)
+                        if searched_effect_type in ('ability_effect', 'items_effects'):
+                            self._ability_effects_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct,
+                                                          obj_name=obj_name)
 
-                    elif searched_effect_type == 'buff':
-                        second_key = 'buffs'
-                        self._property_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                               obj_category=second_key, initial_dct=initial_dct)
+                        elif searched_effect_type == 'ability_attr':
+                            second_key = 'general_attributes'
+                            self._property_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                                   obj_category=second_key, initial_dct=self.ABILITIES_ATTRIBUTES)
 
-                    elif searched_effect_type == 'dmg':
-                        second_key = 'dmgs'
-                        self._property_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                               obj_category=second_key, initial_dct=initial_dct)
+                        elif searched_effect_type == 'buff':
+                            second_key = 'buffs'
+                            self._property_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                                   obj_category=second_key, initial_dct=initial_dct)
 
-                    else:
-                        raise palette.UnexpectedValueError
+                        elif searched_effect_type == 'dmg':
+                            second_key = 'dmgs'
+                            self._property_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                                   obj_category=second_key, initial_dct=initial_dct)
+
+                        else:
+                            raise palette.UnexpectedValueError
 
         if searched_effect_type == 'ability_attr':
             second_key = 'general_attributes'
