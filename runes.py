@@ -168,16 +168,18 @@ class RunesFinal(object):
                             # .. and removes '_per_lvl' from the stat to be stored.
                             stat_name = stat_name.replace('_per_lvl', '')
 
-                        # Creates keyword if stat doesnt exist,
-                        if stat_name not in self.runes_buff_store['stats']:
-                            self.runes_buff_store['stats'].update({stat_name: {}})
+                        # Creates keyword if stat doesnt exist
+                        runes_buff_stats = self.runes_buff_store['stats']
+                        if runes_buff_stats:
+                            if stat_name not in runes_buff_stats:
+                                runes_buff_stats.update({stat_name: {}})
 
-                        if bonus_type not in self.runes_buff_store['stats'][stat_name]:
-                            self.runes_buff_store['stats'][stat_name].update({bonus_type: total_stat})
+                            if bonus_type not in runes_buff_stats[stat_name]:
+                                runes_buff_stats[stat_name].update({bonus_type: total_stat})
 
-                        # ..otherwise adds total stat value.
-                        else:
-                            self.runes_buff_store['stats'][stat_name][bonus_type] += total_stat
+                            # ..otherwise adds total stat value.
+                            else:
+                                runes_buff_stats[stat_name][bonus_type] += total_stat
 
         return
 

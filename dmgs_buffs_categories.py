@@ -96,11 +96,15 @@ class DmgCategories(BuffCategories):
         """
 
         # Checks if it dependents on ability-lvl.
-        try:
-            # Ability name is found by dmg_source, and then ability lvl in ability_lvls_dct.
-            val = dmg_dct['dmg_values'][self.ability_lvls_dct[dmg_dct['dmg_source']]]
-        except KeyError:
-            val = dmg_dct['dmg_values']
+        dmg_vals = dmg_dct['dmg_values']
+        dmg_source_name = dmg_dct['dmg_source']
+
+        if dmg_source_name in palette.ALL_POSSIBLE_SPELL_SHORTCUTS:
+            # (Ability name is found by dmg_source, and ability lvl by ability_lvls_dct.)
+            spell_lvl = self.ability_lvls_dct[dmg_source_name]
+            val = dmg_vals[spell_lvl-1]
+        else:
+            val = dmg_vals
 
         # MODS
         dmg_dct_mods = dmg_dct['mods']

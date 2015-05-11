@@ -161,7 +161,7 @@ class EventsGeneral(buffs.DeathAndRegen):
             (None)
         """
 
-        effect_dct = getattr(self, effect_name)()
+        effect_dct = self.req_dmg_dct_func(effect_name)
         # Changes event start if needed.
         if 'delay' in effect_dct:
             start_time += effect_dct['delay']
@@ -1240,7 +1240,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
     def apply_ability_actives_on_tar(self, tar_type, eff_dct):
         """
-        Applies an action's effect on target, if action has actives.
+        Applies an action's effects on target.
 
         Target is automatically chosen.
 
@@ -1250,22 +1250,19 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        # Checks if the ability has any active effects.
-        if 'actives' in eff_dct[tar_type]:
-            # BUFFS
-            if 'buffs' in eff_dct[tar_type]['actives']:
-                for buff_name in eff_dct[tar_type]['actives']['buffs']:
-                    self.add_buff(buff_name=buff_name, tar_name=self.current_target)
+        # BUFFS
+        for buff_name in eff_dct[tar_type]['actives']['buffs']:
+            self.add_buff(buff_name=buff_name, tar_name=self.current_target)
 
-            # DMG
-            if 'dmg' in eff_dct[tar_type]['actives']:
-                for dmg_name in eff_dct[tar_type]['actives']['dmg']:
-                    self.add_events(effect_name=dmg_name, start_time=self.current_time)
+        # DMGS
+        for dmg_name in eff_dct[tar_type]['actives']['dmg']:
+            self.add_events(effect_name=dmg_name, start_time=self.current_time)
 
-            # BUFF REMOVAL
-            if 'remove_buff' in eff_dct[tar_type]['actives']:
-                for buff_name_to_remove in eff_dct[tar_type]['actives']['remove_buff']:
-                    del self.active_buffs[tar_type][buff_name_to_remove]
+        # BUFF REMOVAL
+        for buff_name_to_remove in eff_dct[tar_type]['actives']['remove_buff']:
+            tar_act_buffs = self.active_buffs[tar_type]
+            if buff_name_to_remove in tar_act_buffs:
+                del tar_act_buffs[buff_name_to_remove]
 
     def apply_ability_effects(self, eff_dct):
         """
