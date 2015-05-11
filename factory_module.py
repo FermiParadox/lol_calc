@@ -4727,7 +4727,7 @@ if __name__ == '__main__':
     if testChampIDs:
         print(ExploreApiAbilities().champion_id('dariu'))
 
-    testModuleInsertion = True
+    testModuleInsertion = False
     if testModuleInsertion:
         ChampionModuleCreator(champion_name='jax').run_champ_module_creation()
 

@@ -212,7 +212,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
             target_type = self.target_type(tar_name=tar_name)
 
             # For Q,W,E and R...
-            for ability_name in 'qwer':
+            for ability_name in palette.ALL_POSSIBLE_SPELL_SHORTCUTS:
 
                 # ..if the ability has at least one lvl...
                 if abilities_lvls[ability_name] > 0:
