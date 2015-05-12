@@ -1,4 +1,15 @@
 import palette
+import copy
+
+_AA_DMG_DCT = copy.deepcopy(palette.DMG_DCT_BASE)
+_AA_DMG_DCT['delay'] = None
+_AA_DMG_DCT['dmg_category'] = 'aa_dmg'
+_AA_DMG_DCT['dmg_type'] = 'AA'
+_AA_DMG_DCT['target'] = 'AA'
+_AA_DMG_DCT['dmg_source'] = 'AA'
+_AA_DMG_DCT['max_targets'] = 1
+_AA_DMG_DCT['dot'] = 'False'
+_AA_DMG_DCT['usual_targets'] = 1
 
 
 class GeneralCategories(object):
@@ -162,11 +173,5 @@ class DmgCategories(BuffCategories):
 
         Value includes critable bonuses and modifiers.
         """
-        return dict(
-            dmg_category='aa_dmg',
-            dmg_type='AA',
-            target='enemy',
-            dmg_source='AA',
-            max_targets=1,
-            dot=False,)
+        return _AA_DMG_DCT
 

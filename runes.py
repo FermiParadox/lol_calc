@@ -1,5 +1,6 @@
 import app_runes_database as api_module
 import palette
+import copy
 
 # Matched rune names.
 API_TO_APP_STAT_NAME_MAP = dict(
@@ -41,7 +42,7 @@ API_TO_APP_STAT_NAME_MAP = dict(
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-_RUNE_BUFF_DCT_BASE = palette.BUFF_DCT_BASE
+_RUNE_BUFF_DCT_BASE = copy.deepcopy(palette.BUFF_DCT_BASE)
 _RUNE_BUFF_DCT_BASE['duration'] = 'permanent'
 _RUNE_BUFF_DCT_BASE['target_type'] = 'player'
 _RUNE_BUFF_DCT_BASE['max_stacks'] = 1
@@ -52,7 +53,7 @@ _RUNE_BUFF_DCT_BASE['dot'] = False
 
 class ApiToAppRunesData(object):
 
-    SPACEBARS_4 = ' '*4
+    WHITESPACES_4 = ' '*4
     RUNES_DCT_STRUCTURE = {}
     RUNES_COLORS = ('red', 'blue', 'yellow', 'quint')
 
@@ -117,7 +118,7 @@ class ApiToAppRunesData(object):
         dct_string += 'APP_RUNES_DCT = ' + str(self.runes_dct())
 
         dct_string = dct_string.replace(': {',
-                                        ': \n%s{' % self.SPACEBARS_4)
+                                        ': \n%s{' % self.WHITESPACES_4)
 
         dct_string = dct_string.replace('}}, ',
                                         '}}, \n')

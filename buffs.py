@@ -4,9 +4,10 @@ import items
 import palette
 import dmgs_buffs_categories
 import copy
+import abc
 
 
-class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProperties):
+class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProperties, metaclass=abc.ABCMeta):
 
     def __init__(self,
                  selected_champions_dct,
@@ -31,9 +32,20 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
         self.set_stat_dependencies()
         self.set_current_stats()
 
+    @abc.abstractproperty
+    def castable_spells_shortcuts(self):
+        """
+        Contains champion spells that can be casted.
+
+        To be overridden for champions that castablility is dynamic (e.g. Volibear).
+
+        :return: seq
+        """
+        pass
+
     def apply_stat_dependency_to_tar(self, tar, dependent_stat_dct):
         """
-        Applies dependency to
+        Applies dependency to target.
         """
         for controlled_stat in dependent_stat_dct:
 
@@ -212,7 +224,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
             target_type = self.target_type(tar_name=tar_name)
 
             # For Q,W,E and R...
-            for ability_name in palette.ALL_POSSIBLE_SPELL_SHORTCUTS:
+            for ability_name in self.castable_spells_shortcuts:
 
                 # ..if the ability has at least one lvl...
                 if abilities_lvls[ability_name] > 0:
@@ -1004,7 +1016,7 @@ PER_5_DIVISOR = 10.  # Divides "per 5" stats. Used to create per tick value.
 
 # ----------------------------------------------------------------------------------------------------------------------
 # REGEN BUFF BASE
-_DEAD_BUFF_DCT_BASE = palette.BUFF_DCT_BASE
+_DEAD_BUFF_DCT_BASE = copy.deepcopy(palette.BUFF_DCT_BASE)
 _DEAD_BUFF_DCT_BASE['duration'] = 'permanent'
 _DEAD_BUFF_DCT_BASE['max_stacks'] = 1
 _DEAD_BUFF_DCT_BASE['stats'] = None

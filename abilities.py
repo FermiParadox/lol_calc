@@ -163,8 +163,9 @@ class EventsGeneral(buffs.DeathAndRegen):
 
         effect_dct = self.req_dmg_dct_func(effect_name)
         # Changes event start if needed.
-        if 'delay' in effect_dct:
-            start_time += effect_dct['delay']
+        eff_delay = effect_dct['delay']
+        if eff_delay:
+            start_time += eff_delay
 
         # Adds event to first target.
         self.add_event_to_first_tar(effect_name=effect_name, start_time=start_time)
@@ -208,6 +209,7 @@ class EventsGeneral(buffs.DeathAndRegen):
             (None)
         """
 
+        None    # TODO probably committed without fully fixing this.
         tar_act_buffs = self.active_buffs[tar_name]
         buff_name = dmg_name[:-3]+'buff'
         buff_dct = self.req_buff_dct_func(buff_name=buff_name)
@@ -292,8 +294,7 @@ class AttributeBase(EventsGeneral):
         self.current_target_num = None
         self.action_on_cd_func = action_on_cd_func
 
-        # ("abstract")
-        self.champion_abilities_names = None
+        self.__castable_spells_shortcuts = None
 
         EventsGeneral.__init__(self,
                                champion_lvls_dct=champion_lvls_dct,
@@ -607,11 +608,15 @@ class AttributeBase(EventsGeneral):
         # Checks if given ability name has conditions affecting its effects
         # All effects of all conditions on an element are applied one after the other.
         for cond in conditionals_dct:
+            cond_dct = conditionals_dct[cond]
+            # TODO fix this method for item effect. Currently cant be handled because of different structure.
+            if not cond_dct:
+                continue
 
             trig_state = None
-            for eff in conditionals_dct[cond]['effects']:
+            for eff in cond_dct['effects']:
 
-                cond_eff_dct = conditionals_dct[cond]['effects'][eff]
+                cond_eff_dct = cond_dct['effects'][eff]
                 if (obj_name_dct_key in cond_eff_dct) and (cond_eff_dct[obj_name_dct_key] == obj_name):
 
                     if searched_effect_type == cond_eff_dct['effect_type']:
@@ -682,9 +687,15 @@ class AttributeBase(EventsGeneral):
 
     def items_effects(self, item_name):
         return self._attrs_or_effs_base(obj_name=item_name,
-                                        searched_effect_type='item_effect',
+                                        searched_effect_type='items_effects',
                                         initial_dct=self.ITEMS_EFFECTS,
-                                        conditionals_dct=self.ITEMS_CONDITIONALS)
+                                        conditionals_dct=self.ITEMS_CONDITIONALS[item_name])
+
+    def item_attributes(self, item_name):
+        return self._attrs_or_effs_base(obj_name=item_name,
+                                        searched_effect_type='item_attr',
+                                        initial_dct=self.ITEMS_EFFECTS,
+                                        conditionals_dct=self.ITEMS_CONDITIONALS[item_name])
 
     def abilities_attributes(self, ability_name):
         """
@@ -751,6 +762,17 @@ class AttributeBase(EventsGeneral):
                                         initial_dct=initial_dct,
                                         conditionals_dct=conditionals_dct)
 
+    @property
+    def castable_spells_shortcuts(self):
+        if self.__castable_spells_shortcuts:
+            pass
+        # Else creates contents.
+        else:
+            spells_set = set(self.ABILITIES_ATTRIBUTES['general_attributes']) & set(palette.ALL_POSSIBLE_SPELL_SHORTCUTS)
+            self.__castable_spells_shortcuts = tuple(i for i in spells_set)
+
+        return self.__castable_spells_shortcuts
+
 
 class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
@@ -792,6 +814,12 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                ability_lvls_dct=ability_lvls_dct,
                                req_dmg_dct_func=self.request_dmg,
                                req_abilities_attrs_func=self.abilities_attributes)
+
+    def action_gen_attrs(self, action_name):
+        if action_name in self.castable_spells_shortcuts:
+            return self.request_ability_gen_attrs_dct(ability_name=action_name)
+        elif action_name in self.chosen_items_lst:
+            return  # TODO
 
     def spell_on_cd(self, action_name):
         """
@@ -915,7 +943,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         sorted_action_times = sorted(self.actions_dct, reverse=True)
 
         # Last action's cast start.
-        upper_limit = sorted_action_times[0]
+        time_final = sorted_action_times[0]
 
         # Checks if there was only one action (therefor lower limit should be 0)
         if len(sorted_action_times) == 1:
@@ -923,22 +951,25 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         else:
             pre_last_action_start = sorted_action_times[1]
 
-        pre_last_action_name = self.actions_dct[pre_last_action_start]['action_name']
+        pre_last_action_dct = self.actions_dct[pre_last_action_start]
+        pre_last_action_name = pre_last_action_dct['action_name']
 
         # Movement starts after cast (or channelling) ends,
         # unless action allows movement during cast.
-        if ((pre_last_action_name != 'AA') and
-                (self.request_ability_gen_attrs_dct(ability_name=pre_last_action_name)['move_while_casting'] is True)):
-            lower_limit = pre_last_action_start
+        if pre_last_action_name != 'AA':
+            move_while_cast_val = self.request_ability_gen_attrs_dct(
+                ability_name=pre_last_action_name)['move_while_casting']
+            if move_while_cast_val:
+                time_initial = pre_last_action_start
 
-        elif 'channel_end' in self.actions_dct[pre_last_action_start]:
-            lower_limit = self.actions_dct[pre_last_action_start]['channel_end']
+        elif 'channel_end' in pre_last_action_dct:
+            time_initial = pre_last_action_dct['channel_end']
 
         else:
-            lower_limit = self.actions_dct[pre_last_action_start]['cast_end']
+            time_initial = pre_last_action_dct['cast_end']
 
-        # Calculates and adds meaningful values.
-        move_value = (upper_limit-lower_limit) * self.request_stat(target_name='player', stat_name='move_speed')
+        # Calculates and adds meaningful (above a minimum) values.
+        move_value = (time_final-time_initial) * self.request_stat(target_name='player', stat_name='move_speed')
         if move_value > 0.1:
             self.total_movement += move_value
 
@@ -953,7 +984,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         last_action_name = self.actions_dct[last_action_time]['action_name']
 
         # Abilities
-        if last_action_name in 'qwer':
+        if last_action_name in self.castable_spells_shortcuts:
             ability_gen_stats = self.request_ability_gen_attrs_dct(ability_name=last_action_name)
             dash_val = ability_gen_stats['dashed_distance']
             if dash_val:
@@ -1307,13 +1338,13 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             self.apply_aa_effects(current_time=self.current_time)
 
         # ABILITY
-        elif action_name in 'qwer':
+        elif action_name in self.castable_spells_shortcuts:
             self.apply_ability_effects(eff_dct=self.abilities_effects(ability_name=action_name))
 
         # ITEM ACTIVE - SUMMONER SPELL
         else:
             # TODO: convert item effects to function like ability effects
-            self.apply_ability_effects(eff_dct=self.items_effects[action_name])
+            self.apply_ability_effects(eff_dct=self.items_effects(action_name))
 
     def apply_pre_action_events(self):
         """
