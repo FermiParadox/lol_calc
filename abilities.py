@@ -961,6 +961,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 ability_name=pre_last_action_name)['move_while_casting']
             if move_while_cast_val:
                 time_initial = pre_last_action_start
+            else:
+                time_initial = pre_last_action_dct['cast_end']
 
         elif 'channel_end' in pre_last_action_dct:
             time_initial = pre_last_action_dct['channel_end']

@@ -964,10 +964,10 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
 
         # Checks if the effect is affecting a resource or hp.
-        if 'resource_type' in dmg_dct:
+        if dmg_dct['resource_type'] != 'hp':
             self.apply_resource_dmg_or_heal(dmg_name=dmg_name)
 
-        elif 'dmg_type' in dmg_dct:
+        else:
             self.apply_hp_dmg_or_heal(dmg_name=dmg_name,
                                       target_name=target_name)
 

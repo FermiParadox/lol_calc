@@ -5,11 +5,16 @@ _AA_DMG_DCT = copy.deepcopy(palette.DMG_DCT_BASE)
 _AA_DMG_DCT['delay'] = None
 _AA_DMG_DCT['dmg_category'] = 'aa_dmg'
 _AA_DMG_DCT['dmg_type'] = 'AA'
-_AA_DMG_DCT['target'] = 'AA'
 _AA_DMG_DCT['dmg_source'] = 'AA'
 _AA_DMG_DCT['max_targets'] = 1
 _AA_DMG_DCT['dot'] = 'False'
 _AA_DMG_DCT['usual_targets'] = 1
+_AA_DMG_DCT['radius'] = 0
+_AA_DMG_DCT['target_type'] = 'enemy'
+_AA_DMG_DCT['life_conversion_type'] = 'lifesteal'
+_AA_DMG_DCT['resource_type'] = 'hp'
+_AA_DMG_DCT['dmg_values'] = 1
+_AA_DMG_DCT['mods'] = None
 
 
 class GeneralCategories(object):
@@ -146,8 +151,8 @@ class DmgCategories(BuffCategories):
         dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
         cat = dmg_dct['dmg_category']
 
-        if dmg_name == 'aa_dmg':
-            val = self.aa_dmg_value()
+        if cat == 'aa_dmg':
+            return self.aa_dmg_value()
         else:
             val = self.standard_dmg_value(dmg_dct=dmg_dct)
 
@@ -160,9 +165,6 @@ class DmgCategories(BuffCategories):
 
             if self.current_target <= stabilized_tar_num:
                 return val * (1 - coef(self.current_target - 1))
-
-        elif cat == 'aa_dmg':
-            return self.aa_dmg_value()
 
         else:
             raise palette.UnexpectedValueError
