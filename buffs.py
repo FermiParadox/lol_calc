@@ -129,13 +129,13 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
 
         # DURATION
         # If non permanent buff, refreshes its duration.
-        if buff_dct()['duration'] != 'permanent':
+        if buff_dct['duration'] != 'permanent':
 
-            tar_buff_dct_in_act_buffs['ending_time'] = self.current_time + buff_dct()['duration']
+            tar_buff_dct_in_act_buffs['ending_time'] = self.current_time + buff_dct['duration']
 
         # STACKS
         # If max_stacks have not been reached..
-        if tar_buff_dct_in_act_buffs['current_stacks'] < buff_dct()['max_stacks']:
+        if tar_buff_dct_in_act_buffs['current_stacks'] < buff_dct['max_stacks']:
 
             # ..adds +1 to the stacks (unless increment is different).
             tar_buff_dct_in_act_buffs['current_stacks'] += stack_increment
@@ -143,9 +143,9 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
             # Ensures max_stacks aren't exceeded for stack_increments larger than 1.
             if stack_increment > 1:
 
-                if tar_buff_dct_in_act_buffs['current_stacks'] > buff_dct()['max_stacks']:
+                if tar_buff_dct_in_act_buffs['current_stacks'] > buff_dct['max_stacks']:
                     # If max_stacks exceeded, set to max_stacks.
-                    tar_buff_dct_in_act_buffs['current_stacks'] = buff_dct()['max_stacks']
+                    tar_buff_dct_in_act_buffs['current_stacks'] = buff_dct['max_stacks']
 
     def add_buff(self, buff_name, tar_name, stack_increment=1, initial_stacks_increment=1):
         """

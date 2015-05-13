@@ -35,7 +35,7 @@ ABILITIES_ATTRIBUTES = {
               'r_n_hit_initiator': {'stats': None,
                                     'duration': 'permanent',
                                     'max_stacks': 1,
-                                    'on_hit': {'add_dmg': [],
+                                    'on_hit': {'cause_dmg': [],
                                                'apply_buff': ['r_hit_counter'],
                                                'reduce_cd': {},
                                                'remove_buff': []},

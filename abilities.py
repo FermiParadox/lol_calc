@@ -551,7 +551,7 @@ class AttributeBase(EventsGeneral):
 
         # Checks if modified dct is empty.
         if not modified_dct:
-            modified_dct.update(copy.deepcopy(initial_dct[obj_category]))
+            modified_dct.update(copy.deepcopy(initial_dct))
 
         # DATA MODIFICATION
         mod_operation = con_eff_dct['mod_operation']
@@ -564,10 +564,10 @@ class AttributeBase(EventsGeneral):
                                                x_type=con_eff_dct['x_type'],
                                                x_owner=con_eff_dct['x_owner'],)
 
-        modified_dct[obj_name][modified_attr_name] = self._modified_attr_value(
+        modified_dct[modified_attr_name] = self._modified_attr_value(
             mod_operation=mod_operation,
             mod_val=mod_val,
-            old_val=modified_dct[obj_name][modified_attr_name])
+            old_val=modified_dct[modified_attr_name])
 
         if obj_category == 'buffs':
             self._on_hit_effect_buff_updater(eff_dct=con_eff_dct, modified_dct=modified_dct, buff_name=obj_name)
@@ -603,13 +603,11 @@ class AttributeBase(EventsGeneral):
         # Creates a dict that will hold the new values, replacing the "default" module dict.
         new_dct = {}
 
-        second_key = None
-
         # Checks if given ability name has conditions affecting its effects
         # All effects of all conditions on an element are applied one after the other.
         for cond in conditionals_dct:
             cond_dct = conditionals_dct[cond]
-            # TODO fix this method for item effect. Currently cant be handled because of different structure.
+
             if not cond_dct:
                 continue
 
@@ -632,44 +630,25 @@ class AttributeBase(EventsGeneral):
                         if searched_effect_type in ('ability_effect', 'items_effects'):
                             self._ability_effects_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct,
                                                           obj_name=obj_name)
-
-                        elif searched_effect_type == 'ability_attr':
-                            second_key = 'general_attributes'
-                            self._property_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                                   obj_category=second_key, initial_dct=self.ABILITIES_ATTRIBUTES)
-
-                        elif searched_effect_type == 'buff':
-                            second_key = 'buffs'
-                            self._property_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                                   obj_category=second_key, initial_dct=initial_dct)
-
-                        elif searched_effect_type == 'dmg':
-                            second_key = 'dmgs'
-                            self._property_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
-                                                   obj_category=second_key, initial_dct=initial_dct)
-
                         else:
-                            raise palette.UnexpectedValueError
+                            if searched_effect_type == 'buff':
+                                second_key = 'buffs'
 
-        if searched_effect_type == 'ability_attr':
-            second_key = 'general_attributes'
+                            elif searched_effect_type == 'dmg':
+                                second_key = 'dmgs'
 
-        elif searched_effect_type == 'buff':
-            second_key = 'buffs'
+                            else:
+                                raise palette.UnexpectedValueError
 
-        elif searched_effect_type == 'dmg':
-            second_key = 'dmgs'
+                            self._property_updater(con_eff_dct=cond_eff_dct, modified_dct=new_dct, obj_name=obj_name,
+                                                   obj_category=second_key, initial_dct=initial_dct)
 
         if new_dct:
-            return new_dct
+            returned_dct = new_dct
         else:
-            # Unlike ABILITIES_EFFECTS which are returned as is,
-            # ..ABILITIES_ATTRIBUTES (and other dicts) contains 'dmgs', 'buffs' etc.
-            # ..so the second key has to be used too.
-            if second_key:
-                return initial_dct[second_key][obj_name]
-            else:
-                return initial_dct[obj_name]
+            returned_dct = initial_dct
+
+        return returned_dct
 
     def abilities_effects(self, ability_name):
         """
@@ -688,13 +667,13 @@ class AttributeBase(EventsGeneral):
     def items_effects(self, item_name):
         return self._attrs_or_effs_base(obj_name=item_name,
                                         searched_effect_type='items_effects',
-                                        initial_dct=self.ITEMS_EFFECTS,
+                                        initial_dct=self.ITEMS_EFFECTS[item_name],
                                         conditionals_dct=self.ITEMS_CONDITIONALS[item_name])
 
     def item_attributes(self, item_name):
         return self._attrs_or_effs_base(obj_name=item_name,
                                         searched_effect_type='item_attr',
-                                        initial_dct=self.ITEMS_EFFECTS,
+                                        initial_dct=self.ITEMS_EFFECTS[item_name],
                                         conditionals_dct=self.ITEMS_CONDITIONALS[item_name])
 
     def abilities_attributes(self, ability_name):
@@ -708,7 +687,7 @@ class AttributeBase(EventsGeneral):
 
         return self._attrs_or_effs_base(obj_name=ability_name,
                                         searched_effect_type='ability_attr',
-                                        initial_dct=self.ABILITIES_ATTRIBUTES,
+                                        initial_dct=self.ABILITIES_ATTRIBUTES['general_attributes'][ability_name],
                                         conditionals_dct=self.ABILITIES_CONDITIONALS)
 
     def request_buff(self, buff_name):
@@ -724,16 +703,18 @@ class AttributeBase(EventsGeneral):
         if buff_name in self.ABILITIES_ATTRIBUTES['buffs']:
             initial_dct = self.ABILITIES_ATTRIBUTES
             conditionals_dct = self.ABILITIES_CONDITIONALS
+
         elif buff_name in self.ITEMS_BUFFS_NAMES:
             item_name = self.ITEMS_BUFFS_NAMES[buff_name]
             initial_dct = self.ITEMS_ATTRIBUTES[item_name]
             conditionals_dct = self.ITEMS_CONDITIONALS[item_name]
+
         else:
             return getattr(self, buff_name)()
 
         return self._attrs_or_effs_base(obj_name=buff_name,
                                         searched_effect_type='buff',
-                                        initial_dct=initial_dct,
+                                        initial_dct=initial_dct['buffs'][buff_name],
                                         conditionals_dct=conditionals_dct)
 
     def request_dmg(self, dmg_name):
@@ -749,6 +730,7 @@ class AttributeBase(EventsGeneral):
         if dmg_name in self.ABILITIES_ATTRIBUTES['dmgs']:
             initial_dct = self.ABILITIES_ATTRIBUTES
             conditionals_dct = self.ABILITIES_CONDITIONALS
+
         elif dmg_name in self.ITEMS_DMGS_NAMES:
             item_name = self.ITEMS_DMGS_NAMES[dmg_name]
             initial_dct = self.ITEMS_ATTRIBUTES[item_name]
@@ -759,7 +741,7 @@ class AttributeBase(EventsGeneral):
 
         return self._attrs_or_effs_base(obj_name=dmg_name,
                                         searched_effect_type='dmg',
-                                        initial_dct=initial_dct,
+                                        initial_dct=initial_dct['dmgs'][dmg_name],
                                         conditionals_dct=conditionals_dct)
 
     @property
@@ -956,7 +938,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         # Movement starts after cast (or channelling) ends,
         # unless action allows movement during cast.
-        if pre_last_action_name != 'AA':
+        if pre_last_action_name in self.castable_spells_shortcuts:
             move_while_cast_val = self.request_ability_gen_attrs_dct(
                 ability_name=pre_last_action_name)['move_while_casting']
             if move_while_cast_val:
@@ -1240,7 +1222,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 for buff_applied_on_hit in buff_dct['on_hit']['apply_buff']:
 
                     self.add_buff(buff_name=buff_applied_on_hit,
-                                  tar_name=getattr(self, buff_applied_on_hit)()['target'])
+                                  tar_name=self.request_buff(buff_name=buff_applied_on_hit)['target_type'])
 
                 # BUFFS REMOVED ON HIT.
                 for buff_removed_on_hit in buff_dct['on_hit']['remove_buff']:
@@ -2047,7 +2029,7 @@ if __name__ == '__main__':
 
             msg = self.DELIMITER
 
-            msg += self.test_loop(['AA'])
+            msg += self.test_loop(['q'])
             msg += self.DELIMITER
 
             # At 3 AAs there should be more dmg from passive R.
@@ -2108,7 +2090,7 @@ if __name__ == '__main__':
     if run_time_test:
         # Crude time testing.
         import cProfile
-        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*100
+        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*1
         cProfile.run(test_text, 'cprof_results', sort='cumtime')
 
         import pstats
