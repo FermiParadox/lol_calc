@@ -202,12 +202,9 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
             (None)
         """
 
-        try:
-            # Applies all passive buffs.
-            for buff_name in effects_dct[ability_or_item_name][target_type]['passives']['buffs']:
-                self.add_buff(buff_name, tar_name)
-        except KeyError:
-            pass
+        # Applies all passive buffs.
+        for buff_name in effects_dct[ability_or_item_name][target_type]['passives']['buffs']:
+            self.add_buff(buff_name, tar_name)
 
     def add_passive_buffs(self, abilities_effects_dct_func, abilities_lvls):
         """

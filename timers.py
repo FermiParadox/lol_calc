@@ -52,7 +52,7 @@ class Timers(object):
 
         time = self.cast_end(action_cast_start=action_cast_start, action_gen_attrs_dct=action_gen_attrs_dct)
 
-        time += ability_stats_dct['channel_time']
+        time += action_gen_attrs_dct['channel_time']
 
         return time
 

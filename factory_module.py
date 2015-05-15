@@ -3539,7 +3539,7 @@ class ConditionalsBase(object):
 
         dct = dict(
             ability_effect=dict(
-                ability_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
+                obj_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
                 tar_type=('enemy', 'player'),
                 # Contains spell effect categories
                 lst_category=palette.ChampionsStats.spell_effects()['player']['actives'],
@@ -3547,14 +3547,14 @@ class ConditionalsBase(object):
             ),
 
             ability_attr=dict(
-                ability_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
+                obj_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
                 attr_name=self.available_ability_attr_names(),
                 mod_operation=('multiply', 'add', 'remove'),
                 formula_type=self.FORMULA_TYPE,
             ),
 
             buff_attr=dict(
-                buff_name=self.available_buff_names(),
+                obj_name=self.available_buff_names(),
                 buff_attr_name=self.available_buff_attr_names(),
                 mod_operation=('multiply', 'add', 'remove'),
                 formula_type=self.FORMULA_TYPE
