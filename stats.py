@@ -674,14 +674,36 @@ class StatRequest(StatCalculation):
             (None)
         """
 
-        values_dct = buff_dct['stats'][stat_name][bonus_type]
+        buff_stats_dct = buff_dct['stats']
 
+        value_num_or_dct = buff_stats_dct[stat_name][bonus_type]
+        if type(value_num_or_dct) in (int, float):
+            stat_val = value_num_or_dct
+        else:
+            # Value index
+            spell_name = buff_dct['buff_source']
+            spell_lvl = self.ability_lvls_dct[spell_name]
+
+            lvl_index = spell_lvl - 1
+            stat_val = value_num_or_dct['stat_values'][lvl_index]
+
+            # Stat mods.
+            stat_mods_dct = value_num_or_dct['stat_mods']
+            if stat_mods_dct:
+                for mod_name in stat_mods_dct:
+                    mod_vals = stat_mods_dct[mod_name]
+
+                    if mod_vals:
+                        if len(mod_vals) == 1:
+                            stat_val += mod_vals[0]
+                        else:
+                            stat_val += mod_vals[lvl_index]
 
         # Stacks.
-        value *= self.active_buffs[tar_name][buff_name]['current_stacks']
+        stat_val *= self.active_buffs[tar_name][buff_name]['current_stacks']
 
         # Inserts bonus_name and its value in bonuses_dct.
-        self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: value})
+        self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: stat_val})
 
     def _buffs_to_bonuses(self, stat_name, tar_name):
         """

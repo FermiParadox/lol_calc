@@ -1,22 +1,25 @@
-
-# ---------------------------------------
 import abc
 
 
-class A(metaclass=abc.ABCMeta):
+class MyClass1(metaclass=abc.ABCMeta):
 
-    @abc.abstractproperty
-    def x(self):
-        pass
+    @abc.abstractmethod
+    def func_2(self):
+        return 'zzzz'
+
+    def func_1(self):
+        return self.func_2() * 2
 
 
-class B(A):
+class MyClass4(MyClass1):
+    pass
 
-    def __init__(self):
-        self.x = None
-        self.f()
 
-    def f(self):
-        self.x = 4
+class MyClass5(MyClass4):
 
-print(B().x)
+    def func_2(self):
+        return 10
+
+
+a = MyClass5().func_1()
+print(a)    # Prints 20
