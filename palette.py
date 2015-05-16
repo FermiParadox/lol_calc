@@ -21,6 +21,7 @@ BUFF_DCT_BASE = dict(
         remove_buff=['placeholder', ]
     ),
     prohibit_cd_start='placeholder',
+    buff_source='placeholder',
     dot=False
 )
 
@@ -56,7 +57,7 @@ class ChampionsStats(object):
     @staticmethod
     def on_hit_effects():
         return dict(
-            apply_dmg=[],
+            cause_dmg=[],
             add_buff=[],
             remove_buff=[],
             cds_modified={},

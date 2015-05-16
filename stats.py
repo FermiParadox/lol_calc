@@ -674,7 +674,9 @@ class StatRequest(StatCalculation):
             (None)
         """
 
-        value = buff_dct['stats'][stat_name][bonus_type]
+        values_dct = buff_dct['stats'][stat_name][bonus_type]
+
+
         # Stacks.
         value *= self.active_buffs[tar_name][buff_name]['current_stacks']
 

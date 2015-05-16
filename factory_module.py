@@ -1858,7 +1858,8 @@ class BuffsBase(object):
         target_type=('player', 'enemy'),
         max_stacks=(1,),
         duration=(1, 2, 3, 4, 5, 'permanent'),
-        prohibit_cd_start=(None, )
+        prohibit_cd_start=(None, ),
+        buff_source=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS
     )
 
     @staticmethod
@@ -3885,7 +3886,9 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         return {k: v for k, v in self.buff_attributes().items() if k != 'prohibit_cd_start'}
 
     def usual_item_buff_attrs_values(self):
-        return {k: v for k, v in self.USUAL_BUFF_ATTR_VALUES.items() if k != 'prohibit_cd_start'}
+        # (buff_source of item buffs is always the item)
+        disallowed = ('prohibit_cd_start', 'buff_source')
+        return {k: v for k, v in self.USUAL_BUFF_ATTR_VALUES.items() if k not in disallowed}
 
     def item_buff_affected_stat_attributes(self):
         return self.affected_stat_attributes()

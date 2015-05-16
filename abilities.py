@@ -502,9 +502,9 @@ class AttributeBase(EventsGeneral):
         cat_type = eff_dct['lst_category']
 
         if mod_operation == 'append':
-            modified_dct[buff_name]['on_hit'][cat_type] += eff_contents
+            modified_dct['on_hit'][cat_type] += eff_contents
         elif mod_operation == 'replace':
-            modified_dct[buff_name]['on_hit'][cat_type] = eff_contents
+            modified_dct['on_hit'][cat_type] = eff_contents
 
     @staticmethod
     def _modified_attr_value(mod_operation, mod_val, old_val):
@@ -668,7 +668,7 @@ class AttributeBase(EventsGeneral):
 
         return self._attrs_or_effs_base(obj_name=ability_name,
                                         searched_obj_type='abilities_effects',
-                                        initial_dct=self.ABILITIES_EFFECTS,
+                                        initial_dct=self.ABILITIES_EFFECTS[ability_name],
                                         conditionals_dct=self.ABILITIES_CONDITIONALS)
 
     def items_effects(self, item_name):
