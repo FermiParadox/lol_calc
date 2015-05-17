@@ -464,6 +464,8 @@ class StatCalculation(StatFilters):
 
         # _PER_LVL
         # Adds _per_lvl bonus of att_speed to the modifier.
+        # TODO change 50% in base stats to 0.5 and adapt below code
+        # (champion att speed is in the form of 50%)
         multiplication_mod = 100
         multiplication_mod += self.base_stats_dct[tar_name]['att_speed_per_lvl'] * (self.champion_lvls_dct[tar_name]-1)
 
@@ -471,15 +473,18 @@ class StatCalculation(StatFilters):
         # Adds item and buff bonuses of att_speed to the modifier.
         tar_bonuses = self.bonuses_dct[tar_name]
         if 'att_speed' in tar_bonuses:       # 'percent..' not checked since it can only be that.
-            for bonus_name in tar_bonuses['att_speed']['percent']:
-                multiplication_mod += tar_bonuses['att_speed']['percent'][bonus_name]
+            tar_percent_att_speed_bonuses = tar_bonuses['att_speed']['percent']
+            for bonus_name in tar_percent_att_speed_bonuses:
+                # (att speed in non champion base stats is in the form 0.02)
+                multiplication_mod += tar_percent_att_speed_bonuses[bonus_name] * 100
 
         value *= multiplication_mod / 100
 
         # REDUCTIONS
         if 'att_speed_reduction' in tar_bonuses:
-            for bonus_name in tar_bonuses['att_speed_reduction']['percent']:
-                value *= 1 - tar_bonuses['att_speed_reduction']['percent'][bonus_name]
+            tar_percent_att_speed_reduction_bonuses = tar_bonuses['att_speed_reduction']['percent']
+            for bonus_name in tar_percent_att_speed_reduction_bonuses:
+                value *= 1 - tar_percent_att_speed_reduction_bonuses[bonus_name]
 
         return value
 

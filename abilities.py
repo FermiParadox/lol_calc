@@ -919,11 +919,15 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         for cost_name in self.non_toggled_action_cost_dct(action_name):
             cost_value = self.non_toggled_action_cost_dct(action_name)[cost_name]
 
-            if cost_name in ('mp', 'energy', 'hp', 'rage'):
+            # RESOURCE COST
+            if cost_name in ('hp', 'mp', 'energy', 'rage'):
                 self.current_stats['player']['current_' + cost_name] -= cost_value
 
+            # STACK COST
             else:
                 del self.active_buffs['player'][cost_name]
+                # TODO make it remove only one stack
+                raise NotImplementedError
 
     # MOVEMENT
     def between_action_walking(self):
@@ -1165,7 +1169,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
                 self.add_events(effect_name=dmg_dot_name, start_time=first_tick)
 
-    def remove_buff_on_action(self, buff_name):
+    def remove_buff_on_action_and_change_cd(self, buff_name):
         """
         Removes a player's buff on_hit or on_cast,
         and starts corresponding action's cd if buff delays the cd start.
@@ -1241,7 +1245,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
                     # Checks if the buff exists on the player.
                     if buff_removed_on_hit in self.active_buffs['player']:
-                        self.remove_buff_on_action(buff_name=buff_removed_on_hit)
+                        self.remove_buff_on_action_and_change_cd(buff_name=buff_removed_on_hit)
 
                     # Checks if the buff exists on current enemy target.
                     elif buff_removed_on_hit in self.active_buffs[self.current_target]:
