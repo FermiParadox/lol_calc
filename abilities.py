@@ -361,7 +361,7 @@ class AttributeBase(EventsGeneral):
             (bool)
         """
 
-        return self.OPERATORS_STR_MAP[operator_as_str](trig_val, checked_val)
+        return self.OPERATORS_STR_MAP[operator_as_str](checked_val, trig_val)
 
     def _trig_attr_owner(self, trig_dct):
         """
@@ -494,17 +494,22 @@ class AttributeBase(EventsGeneral):
 
         # Checks if modified dct is empty.
         if not modified_dct:
-            modified_dct = copy.deepcopy(self.ABILITIES_ATTRIBUTES['buffs'][buff_name])
+            modified_dct.update(copy.deepcopy(self.ABILITIES_ATTRIBUTES['buffs'][buff_name]))
 
         # DATA MODIFICATION
         mod_operation = eff_dct['mod_operation']
         eff_contents = eff_dct['names_lst']
         cat_type = eff_dct['lst_category']
 
+        lst_of_on_hit_effects = modified_dct['on_hit'][cat_type]
+
         if mod_operation == 'append':
-            modified_dct['on_hit'][cat_type] += eff_contents
-        elif mod_operation == 'replace':
-            modified_dct['on_hit'][cat_type] = eff_contents
+            lst_of_on_hit_effects += eff_contents
+
+        elif mod_operation == 'remove':
+            for eff_to_remove in eff_contents:
+                if eff_to_remove in lst_of_on_hit_effects:
+                    lst_of_on_hit_effects.remove(eff_to_remove)
 
     @staticmethod
     def _modified_attr_value(mod_operation, mod_val, old_val):
@@ -2097,7 +2102,7 @@ if __name__ == '__main__':
     if run_time_test:
         # Crude time testing.
         import cProfile
-        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*1
+        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*100
         cProfile.run(test_text, 'cprof_results', sort='cumtime')
 
         import pstats
