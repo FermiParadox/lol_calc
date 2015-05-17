@@ -204,6 +204,7 @@ class StatCalculation(StatFilters):
                  initial_current_stats=None):
 
         self.champion_lvls_dct = champion_lvls_dct
+        self.player_lvl = self.champion_lvls_dct['player']
 
         self.selected_champions_dct = selected_champions_dct
 
@@ -535,6 +536,18 @@ class StatCalculation(StatFilters):
         return self.filtered_cdr(self.standard_stat(requested_stat='cdr',
                                                     tar_name=tar_name))
 
+    def innate_special_lvl(self, values_tpl_length):
+        """
+        Returns the innate "lvl" of given tuple, which may vary depending on the length of it.
+
+        For example a tuple with 6 values would divide champion lvl by 6
+
+        :param values_tpl_length: (int)
+        :return: (int) Index of tuple
+        """
+
+        return (self.player_lvl - 1) // values_tpl_length
+
 
 class StatRequest(StatCalculation):
 
@@ -680,14 +693,21 @@ class StatRequest(StatCalculation):
         if type(value_num_or_dct) in (int, float):
             stat_val = value_num_or_dct
         else:
-            # Value index
-            spell_name = buff_dct['buff_source']
-            spell_lvl = self.ability_lvls_dct[spell_name]
+            # VALUE INDEX
+            values_tpl = value_num_or_dct['stat_values']
+            ability_name = buff_dct['buff_source']
 
-            lvl_index = spell_lvl - 1
-            stat_val = value_num_or_dct['stat_values'][lvl_index]
+            if ability_name == 'inn':
+                ability_lvl = self.innate_special_lvl(values_tpl_length=len(values_tpl))
+            else:
+                ability_lvl = self.ability_lvls_dct[ability_name]
 
-            # Stat mods.
+            lvl_index = ability_lvl - 1
+
+            # STAT VALUE
+            stat_val = values_tpl[lvl_index]
+
+            # STAT MODS
             stat_mods_dct = value_num_or_dct['stat_mods']
             if stat_mods_dct:
                 for mod_name in stat_mods_dct:

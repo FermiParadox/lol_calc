@@ -11,8 +11,8 @@ ABILITIES_ATTRIBUTES = {
                             'prohibit_cd_start': None,
                             'target_type': 'player',
                             'dot': False},
-              'inn_buff_0': {'stats': {'aoe_dmg_reduction': {'percent': {'stat_values': (0.04, 0.06, 0.08, 0.10, 0.12),
-                                                                         'stat_mods': {}}},
+              'inn_buff_0': {'stats': {'att_speed': {'percent': {'stat_values': (0.04, 0.06, 0.08, 0.10, 0.12),
+                                                                 'stat_mods': None}},
                                        },
                              'buff_source': 'inn',
                              'duration': 2.5,
@@ -207,7 +207,7 @@ ABILITIES_ATTRIBUTES = {
 
 ABILITIES_EFFECTS = {
     'inn': {'enemy': {'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
-            'player': {'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}}},
+            'player': {'passives': {'buffs': ['inn_buff_0'], 'dmg': [], 'remove_buff': []}}},
     'e': {'enemy': {'actives': {'buffs': [], 'dmg': [], 'remove_buff': []},
                     'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
           'player': {'actives': {'buffs': [],
