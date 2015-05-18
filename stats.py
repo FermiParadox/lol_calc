@@ -694,7 +694,7 @@ class StatRequest(StatCalculation):
 
         buff_stats_dct = buff_dct['stats']
 
-        value_num_or_dct = buff_stats_dct[stat_name][bonus_type]
+        value_num_or_dct = buff_stats_dct[bonus_type][stat_name]
         if type(value_num_or_dct) in (int, float):
             stat_val = value_num_or_dct
         else:
@@ -748,40 +748,33 @@ class StatRequest(StatCalculation):
             self._check_and_update_stored_buff(tar_name=tar_name, buff_name=buff_name)
 
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
+            buff_stats_dct = buff_dct['stats']
             # Checks if the buff has stat bonuses.
-            if 'stats' in buff_dct:
+            if buff_stats_dct:
+                for bonus_type in buff_stats_dct:
+                    if stat_name in buff_stats_dct[bonus_type]:
 
-                if buff_dct['stats'] and (stat_name in buff_dct['stats']):
+                        tar_bonuses = self.bonuses_dct[tar_name]
 
-                    tar_bonuses = self.bonuses_dct[tar_name]
+                        # Checks if stat name in bonuses
+                        if stat_name in tar_bonuses:
 
-                    if stat_name in tar_bonuses:
-                        # Iterates through types. (additive, percent or both)
-                        for bonus_type in buff_dct['stats'][stat_name]:
                             if bonus_type in tar_bonuses[stat_name]:
-
-                                self._insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
-                                                                  buff_dct=buff_dct, tar_name=tar_name,
-                                                                  buff_name=buff_name)
-
+                                pass
                             else:
                                 # Inserts bonus_type in bonuses_dct.
                                 tar_bonuses[stat_name].update({bonus_type: {}})
 
-                                self._insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
-                                                                  buff_dct=buff_dct, tar_name=tar_name,
-                                                                  buff_name=buff_name)
+                        else:
 
-                    else:
-                        for bonus_type in buff_dct['stats'][stat_name]:
                             # Inserts stat_name in bonuses_dct.
                             tar_bonuses.update({stat_name: {}})
                             # Inserts bonus_type in bonuses_dct.
                             tar_bonuses[stat_name].update({bonus_type: {}})
 
-                            self._insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
-                                                              buff_dct=buff_dct, tar_name=tar_name,
-                                                              buff_name=buff_name)
+                        self._insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
+                                                          buff_dct=buff_dct, tar_name=tar_name,
+                                                          buff_name=buff_name)
 
     def request_stat(self, target_name, stat_name, _return_value=True):
         """

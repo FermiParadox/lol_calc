@@ -1,5 +1,19 @@
 import items_folder.items_data as items_data_module
+import palette
+
 import collections
+
+
+_CHOSEN_ITEMS_BUFF_BASE = palette.buff_dct_base()
+_CHOSEN_ITEMS_BUFF_BASE['target_type'] = 'player'
+_CHOSEN_ITEMS_BUFF_BASE['duration'] = 'permanent'
+_CHOSEN_ITEMS_BUFF_BASE['max_stacks'] = 1
+_CHOSEN_ITEMS_BUFF_BASE['on_hit'] = None
+_CHOSEN_ITEMS_BUFF_BASE['prohibit_cd_start'] = None
+_CHOSEN_ITEMS_BUFF_BASE['buff_source'] = 'items'
+_CHOSEN_ITEMS_BUFF_BASE['dot'] = None
+# (deleted so that a dict can be created later on that will have this dict updated in it as a reference)
+del _CHOSEN_ITEMS_BUFF_BASE['stats']
 
 
 class ItemsProperties(object):
@@ -10,12 +24,18 @@ class ItemsProperties(object):
     ITEMS_EFFECTS = items_data_module.ITEMS_EFFECTS
     ITEMS_CONDITIONALS = items_data_module.ITEMS_CONDITIONALS
 
+    CHOSEN_ITEMS_BUFF_BASE = _CHOSEN_ITEMS_BUFF_BASE
+
     def __init__(self, chosen_items_lst):
         self.chosen_items_lst = chosen_items_lst
+
         self.non_unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
         self.unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
+
         self.items_effects_dct = {}
         self.items_conditions_dct = {}
+
+        self.items_static_stats_buff_dct = {}
 
         self._create_items_properties_dcts()
 
@@ -102,9 +122,40 @@ class ItemsProperties(object):
                 for key_3 in new_merged_dct[key_1][key_2]:
                     existing_dct[key_1][key_2][key_3] += new_merged_dct[key_1][key_2][key_3]
 
+    def total_items_stats(self):
+        """
+        Creates a dict with all unique and non-unique stats from chosen items.
+
+        :return: (dict)
+        """
+
+        additive_stats_dct = collections.Counter()
+        percent_stats_dct = collections.Counter()
+
+        for dct in (self.non_unique_stats_dct, self.unique_stats_dct):
+
+            additive_stats_dct += dct['additive']
+            percent_stats_dct += dct['percent']
+
+        return {'additive': additive_stats_dct, 'percent': percent_stats_dct}
+
+    def _set_chosen_items_static_stats_buff(self):
+        """
+        Creates a buff containing all passive stats of chosen items.
+
+        :return: (None)
+        """
+        returned_dct = {'stats': self.total_items_stats()}
+        returned_dct.update(self.CHOSEN_ITEMS_BUFF_BASE)
+
+        self.items_static_stats_buff_dct = returned_dct
+
+    def items_static_stats_buff(self):
+        return self.items_static_stats_buff_dct
+
     def _create_items_properties_dcts(self):
         """
-        Creates final dicts (non unique stats, unique stats, effects, conditions) for current item build.
+        Creates final dicts (non unique stats, unique stats, stats buff, effects, conditions) for current item build.
 
         :return: (None)
         """
@@ -140,6 +191,9 @@ class ItemsProperties(object):
                     if stat_name not in leafs_stats[stat_type]:
                         self.unique_stats_dct[stat_type].update({stat_name: unique_stats_dct[stat_type][stat_name]})
 
+            # ITEMS BUFF
+            self._set_chosen_items_static_stats_buff()
+
             # EFFECTS AND CONDITIONS
             # Root effects (and conditions) are set to an empty dict, since leaf is (assumed to) override them.
             if item_name in self.non_roots_in_build():
@@ -162,10 +216,6 @@ class ItemsProperties(object):
             cost += items_data_module.ITEMS_ATTRIBUTES[item_name]['secondary_data']['total_price']
 
         return cost
-
-
-
-
 
 
 if __name__ == '__main__':

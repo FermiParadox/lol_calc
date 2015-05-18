@@ -1,25 +1,20 @@
-import abc
+d = {'a': 'aa', 'b': 'bb'}
+
+print('d', id(d))
+print('d["a"]', id(d['a']))
+
+c = {}
+
+c.update(d)
+
+print('c', id(c))
+print('c["a"]', id(c['a']))
 
 
-class MyClass1(metaclass=abc.ABCMeta):
-
-    @abc.abstractmethod
-    def func_2(self):
-        return 'zzzz'
-
-    def func_1(self):
-        return self.func_2() * 2
+def f():
+    return d
 
 
-class MyClass4(MyClass1):
-    pass
+f()['a'] = 1
 
-
-class MyClass5(MyClass4):
-
-    def func_2(self):
-        return 10
-
-
-a = MyClass5().func_1()
-print(a)    # Prints 20
+print(d)

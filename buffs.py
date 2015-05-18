@@ -1010,7 +1010,7 @@ PER_5_DIVISOR = 10.  # Divides "per 5" stats. Used to create per tick value.
 
 # ----------------------------------------------------------------------------------------------------------------------
 # REGEN BUFF BASE
-_DEAD_BUFF_DCT_BASE = copy.deepcopy(palette.BUFF_DCT_BASE)
+_DEAD_BUFF_DCT_BASE = palette.buff_dct_base()
 _DEAD_BUFF_DCT_BASE['duration'] = 'permanent'
 _DEAD_BUFF_DCT_BASE['max_stacks'] = 1
 _DEAD_BUFF_DCT_BASE['stats'] = None
@@ -1022,7 +1022,7 @@ _DEAD_BUFF_DCT_BASE['prohibit_cd_start'] = None
 # REGEN BUFF BASE
 
 # Creates base dict for regenerations (hp, mp, energy, etc).
-_REGEN_BUFF_DCT_BASE = copy.deepcopy(palette.BUFF_DCT_BASE)
+_REGEN_BUFF_DCT_BASE = palette.buff_dct_base()
 # Sets values correctly for regenerations.
 for regen_buff_base_key in ('on_hit', 'prohibit_cd_start', 'stats'):
     _REGEN_BUFF_DCT_BASE[regen_buff_base_key] = None

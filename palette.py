@@ -1,3 +1,6 @@
+import copy
+
+
 SPELL_SHORTCUTS = ('q', 'w', 'e', 'r')
 ABILITY_SHORTCUTS = ('inn', ) + SPELL_SHORTCUTS
 EXTRA_SPELL_SHORTCUTS = ('q2', 'w2', 'e2', 'r2')
@@ -26,6 +29,10 @@ BUFF_DCT_BASE = dict(
 )
 
 
+def buff_dct_base():
+    return copy.deepcopy(BUFF_DCT_BASE)
+
+
 DMG_DCT_BASE = dict(
     target_type='placeholder',
     dmg_category='placeholder',
@@ -42,6 +49,11 @@ DMG_DCT_BASE = dict(
     max_targets='placeholder',
     delay='placeholder',
 )
+
+
+def dmg_dct_base():
+    return copy.deepcopy(DMG_DCT_BASE)
+
 
 
 class UnexpectedValueError(Exception):

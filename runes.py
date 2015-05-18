@@ -49,6 +49,7 @@ _RUNE_BUFF_DCT_BASE['max_stacks'] = 1
 _RUNE_BUFF_DCT_BASE['on_hit'] = None
 _RUNE_BUFF_DCT_BASE['prohibit_cd_start'] = False
 _RUNE_BUFF_DCT_BASE['dot'] = False
+_RUNE_BUFF_DCT_BASE['buff_source'] = 'runes'
 
 
 class ApiToAppRunesData(object):
@@ -182,7 +183,7 @@ class RunesFinal(object):
                             else:
                                 runes_buff_stats[stat_name][bonus_type] += total_stat
 
-        return
+        return  # TODO
 
     def runes_buff(self):
         """

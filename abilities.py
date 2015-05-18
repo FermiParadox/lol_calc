@@ -1533,6 +1533,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # Adds runes buff.
         self.add_buff(buff_name='runes_buff', tar_name='player')
 
+        # Adds items stats buff.
+        self.add_buff(buff_name='items_static_stats_buff', tar_name='player')
+
         # Adds hp5 and mp5.
         self.add_regenerations()
 
@@ -1970,8 +1973,6 @@ if __name__ == '__main__':
             msg += '\nTesting method: combat_loop\n'
             msg += '\nrotation: %s\n' % inst.rotation_lst
 
-            msg += 'player active_buffs: %s\n\n' % inst.active_buffs['player']
-
             # Runs loop.
             inst.combat_loop()
 
@@ -1979,6 +1980,8 @@ if __name__ == '__main__':
             msg += 'actions dict: %s\n\n' % inst.actions_dct
 
             msg += 'active_buffs: %s\n' % inst.active_buffs
+            msg += 'player active_buffs: %s\n\n' % inst.active_buffs['player']
+
             msg += 'player att_speed: %s\n' % inst.request_stat(target_name='player', stat_name='att_speed')
 
             if use_runes:
@@ -2106,7 +2109,7 @@ if __name__ == '__main__':
     if run_time_test:
         # Crude time testing.
         import cProfile
-        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*100
+        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*1
         cProfile.run(test_text, 'cprof_results', sort='cumtime')
 
         import pstats
