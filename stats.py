@@ -759,19 +759,11 @@ class StatRequest(StatCalculation):
 
                         tar_bonuses = self.bonuses_dct[tar_name]
 
-                        # Checks if stat name in bonuses
-                        if stat_name in tar_bonuses:
-
-                            if bonus_type in tar_bonuses[stat_name]:
-                                pass
-                            else:
-                                # Inserts bonus_type in bonuses_dct.
-                                tar_bonuses[stat_name].update({bonus_type: {}})
-
-                        else:
-
+                        if stat_name not in tar_bonuses:
                             # Inserts stat_name in bonuses_dct.
                             tar_bonuses.update({stat_name: {}})
+
+                        if bonus_type not in tar_bonuses[stat_name]:
                             # Inserts bonus_type in bonuses_dct.
                             tar_bonuses[stat_name].update({bonus_type: {}})
 
