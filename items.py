@@ -129,6 +129,7 @@ class ItemsProperties(object):
         :return: (dict)
         """
 
+        # COMBINES ALL STATS
         additive_stats_dct = collections.Counter()
         percent_stats_dct = collections.Counter()
 
@@ -137,7 +138,27 @@ class ItemsProperties(object):
             additive_stats_dct += dct['additive']
             percent_stats_dct += dct['percent']
 
-        return {'additive': additive_stats_dct, 'percent': percent_stats_dct}
+        combined_stats_dct = {'additive': additive_stats_dct, 'percent': percent_stats_dct}
+
+        # CONVERTS THEM TO DIFFERENT FORMAT
+        # (type-name-val to name-type-val)
+        final_dct = {}
+
+        for stat_type in combined_stats_dct:
+
+            stats_of_given_type_dct = combined_stats_dct[stat_type]
+            for stat_name in stats_of_given_type_dct:
+
+                stat_val = stats_of_given_type_dct[stat_name]
+
+                # If stat name doesn't exist in final dict, it creates it.
+                if stat_name not in final_dct:
+                    final_dct.update({stat_name: {'additive': 0,
+                                                  'percent': 0}})
+
+                final_dct[stat_name][stat_type] += stat_val
+
+        return final_dct
 
     def _set_chosen_items_static_stats_buff(self):
         """

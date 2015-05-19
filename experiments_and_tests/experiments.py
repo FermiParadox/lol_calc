@@ -1,14 +1,10 @@
-class MyClass1(object):
-
-    def func_1(self):
-        return self.func_2() * 2
+from collections import Counter
 
 
-class MyClass6(MyClass1):
+d1 = {'t': {'b': 1}, 'c': {'a': 2}}
+d2 = {'t': {'b': 3}}
 
-    def func_2(self):
-        return 10
+print(d1)
 
 
-a = MyClass6().func_1()
-print(a)  # Prints 20
+c = {}

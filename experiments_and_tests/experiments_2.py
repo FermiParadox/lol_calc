@@ -11,10 +11,4 @@ print('c', id(c))
 print('c["a"]', id(c['a']))
 
 
-def f():
-    return d
 
-
-f()['a'] = 1
-
-print(d)

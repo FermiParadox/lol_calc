@@ -694,7 +694,7 @@ class StatRequest(StatCalculation):
 
         buff_stats_dct = buff_dct['stats']
 
-        value_num_or_dct = buff_stats_dct[bonus_type][stat_name]
+        value_num_or_dct = buff_stats_dct[stat_name][bonus_type]
         if type(value_num_or_dct) in (int, float):
             stat_val = value_num_or_dct
         else:
@@ -751,8 +751,11 @@ class StatRequest(StatCalculation):
             buff_stats_dct = buff_dct['stats']
             # Checks if the buff has stat bonuses.
             if buff_stats_dct:
-                for bonus_type in buff_stats_dct:
-                    if stat_name in buff_stats_dct[bonus_type]:
+                if stat_name in buff_stats_dct:
+
+                    for bonus_type in buff_stats_dct[stat_name]:
+                        if not buff_stats_dct[stat_name][bonus_type]:
+                            continue
 
                         tar_bonuses = self.bonuses_dct[tar_name]
 

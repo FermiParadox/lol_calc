@@ -57,8 +57,8 @@ ITEMS_ATTRIBUTES = {
                                                 'resets_aa': False,
                                                 'toggled': False,
                                                 'travel_time': 0.25},
-                         'non_unique_stats': {'additive': {'ad': 45,
-                                                           'ap': 65,
+                         'non_unique_stats': {'additive': {'ad': 40,
+                                                           'ap': 80,
                                                            'lifesteal': 0.12}},
                          'secondary_data': {'build_from': {'bilgewater_cutlass': 1,
                                                            'hextech_revolver': 1},
@@ -73,9 +73,7 @@ ITEMS_ATTRIBUTES = {
                                                       'vampiric_scepter'},
                                             'sell_price': 2380,
                                             'total_price': 3400},
-                         'unique_stats': {'additive': {'ap': 150,
-                                                       'move_speed': 150,
-                                                       'spellvamp': 0.2}}}}
+                         'unique_stats': {'additive': {'spellvamp': 0.2}}}}
 
 ITEMS_EFFECTS = {
     'dorans_blade': {'enemy': {'actives': {'buffs': [],
