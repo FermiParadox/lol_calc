@@ -86,7 +86,7 @@ ABILITIES_ATTRIBUTES = {
                          'dmg_category': 'standard_dmg',
                          'dmg_source': 'e',
                          'dmg_type': 'physical',
-                         'dmg_values': (1.0, 1.0, 1.0, 1.0, 1.0),
+                         'dmg_values': (50.0, 75.0, 100.0, 125.0, 150.0),
                          'dot': False,
                          'life_conversion_type': 'spellvamp',
                          'max_targets': 5,
@@ -219,7 +219,7 @@ ABILITIES_ATTRIBUTES = {
 ABILITIES_EFFECTS = {
     'inn': {'enemy': {'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
             'player': {'passives': {'buffs': ['inn_att_speed_initiator'], 'dmg': [], 'remove_buff': []}}},
-    'e': {'enemy': {'actives': {'buffs': [], 'dmg': [], 'remove_buff': []},
+    'e': {'enemy': {'actives': {'buffs': [], 'dmg': ['e_dmg_0'], 'remove_buff': []},
                     'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
           'player': {'actives': {'buffs': [],
                                  'cds_modified': {},

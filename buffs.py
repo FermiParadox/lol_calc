@@ -1010,7 +1010,7 @@ PER_5_DIVISOR = 10.  # Divides "per 5" stats. Used to create per tick value.
 
 # ----------------------------------------------------------------------------------------------------------------------
 # REGEN BUFF BASE
-_DEAD_BUFF_DCT_BASE = palette.buff_dct_base()
+_DEAD_BUFF_DCT_BASE = palette.buff_dct_base_deepcopy()
 _DEAD_BUFF_DCT_BASE['duration'] = 'permanent'
 _DEAD_BUFF_DCT_BASE['max_stacks'] = 1
 _DEAD_BUFF_DCT_BASE['stats'] = None
@@ -1022,7 +1022,7 @@ _DEAD_BUFF_DCT_BASE['prohibit_cd_start'] = None
 # REGEN BUFF BASE
 
 # Creates base dict for regenerations (hp, mp, energy, etc).
-_REGEN_BUFF_DCT_BASE = palette.buff_dct_base()
+_REGEN_BUFF_DCT_BASE = palette.buff_dct_base_deepcopy()
 # Sets values correctly for regenerations.
 for regen_buff_base_key in ('on_hit', 'prohibit_cd_start', 'stats'):
     _REGEN_BUFF_DCT_BASE[regen_buff_base_key] = None
@@ -1063,7 +1063,7 @@ _REGEN_DMG_DCT_BASE = dict(
     # (None or lifesteal or spellvamp)
     life_conversion_type=None,
     radius=None,
-    dot=True,
+    dot={'buff_name': 'placeholder'},
     max_targets=1,
     delay=NATURAL_REGEN_PERIOD,)
 
@@ -1074,14 +1074,17 @@ _HP5_DMG_DCT_BASE['resource_type'] = 'hp'
 _PLAYER_HP5_DMG_DCT = copy.deepcopy(_HP5_DMG_DCT_BASE)
 _PLAYER_HP5_DMG_DCT['target_type'] = 'player'
 _PLAYER_HP5_DMG_DCT['mods'] = {'player': {'hp5': 1}}
+_PLAYER_HP5_DMG_DCT['dot']['buff_name'] = 'player_hp5_buff'
 # Enemy
 _ENEMY_HP5_DMG_DCT_BASE = copy.deepcopy(_HP5_DMG_DCT_BASE)
 _ENEMY_HP5_DMG_DCT_BASE['target_type'] = 'enemy'
+_ENEMY_HP5_DMG_DCT_BASE['dot']['buff_name'] = 'enemy_hp5_buff'
 
 # MP
 _PLAYER_MP_DMG_DCT_BASE = copy.deepcopy(_PLAYER_HP5_DMG_DCT)
 _PLAYER_MP_DMG_DCT_BASE['resource_type'] = 'mp'
 _PLAYER_MP_DMG_DCT_BASE['mods'] = {'player': {'mp5': 1}}
+_PLAYER_MP_DMG_DCT_BASE['dot']['buff_name'] = 'mp5_buff'
 
 
 class DeathAndRegen(DmgApplication):
@@ -1146,7 +1149,6 @@ class DeathAndRegen(DmgApplication):
         return self.PLAYER_HP5_DMG_DCT
 
     def player_hp5_buff(self):
-        self.REGEN_BUFF_DCT_BASE_PLAYER['dot']['dmg_name'] = 'enemy_hp5_dmg'
         return self.REGEN_BUFF_DCT_BASE_PLAYER
 
     def player_hp5_dmg_value(self):

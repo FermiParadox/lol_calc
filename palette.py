@@ -29,7 +29,7 @@ BUFF_DCT_BASE = dict(
 )
 
 
-def buff_dct_base():
+def buff_dct_base_deepcopy():
     return copy.deepcopy(BUFF_DCT_BASE)
 
 

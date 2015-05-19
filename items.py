@@ -4,7 +4,7 @@ import palette
 import collections
 
 
-_CHOSEN_ITEMS_BUFF_BASE = palette.buff_dct_base()
+_CHOSEN_ITEMS_BUFF_BASE = palette.buff_dct_base_deepcopy()
 _CHOSEN_ITEMS_BUFF_BASE['target_type'] = 'player'
 _CHOSEN_ITEMS_BUFF_BASE['duration'] = 'permanent'
 _CHOSEN_ITEMS_BUFF_BASE['max_stacks'] = 1

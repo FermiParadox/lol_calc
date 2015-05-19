@@ -74,6 +74,13 @@ ALLOWED_BONUS_STATS = frozenset({'bonus_ad',
                                  'bonus_mr',
                                  'bonus_hp'})
 
+BONUS_STAT_NAME_TO_BASE_NAME_MAP = {
+    'bonus_ad': 'ad',
+    'bonus_armor': 'armor',
+    'bonus_mr': 'mr',
+    'bonus_hp': 'hp'
+}
+
 
 # Contains stats that are not included in base_stats_dct and are calculated separately by their own methods.
 SPECIAL_STATS_SET = frozenset({'base_ad',
@@ -751,6 +758,7 @@ class StatRequest(StatCalculation):
             buff_stats_dct = buff_dct['stats']
             # Checks if the buff has stat bonuses.
             if buff_stats_dct:
+                # Checks if examined stat exists in this buff dict.
                 if stat_name in buff_stats_dct:
 
                     for bonus_type in buff_stats_dct[stat_name]:
@@ -861,9 +869,11 @@ class StatRequest(StatCalculation):
         :return: (float)
         """
 
-        base_val = self._base_stat(stat_name=stat_name, tar_name=tar_name)
+        base_stat_name = BONUS_STAT_NAME_TO_BASE_NAME_MAP[stat_name]
 
-        return self.request_stat(target_name=tar_name, stat_name=stat_name) - base_val
+        base_val = self._base_stat(stat_name=base_stat_name, tar_name=tar_name)
+
+        return self.request_stat(target_name=tar_name, stat_name=base_stat_name) - base_val
 
 
 class DmgReductionStats(StatRequest):

@@ -209,9 +209,8 @@ class EventsGeneral(buffs.DeathAndRegen):
             (None)
         """
 
-        None    # TODO probably committed without fully fixing this.
         tar_act_buffs = self.active_buffs[tar_name]
-        buff_name = dmg_name[:-3]+'buff'
+        buff_name = dmg_dct['dot']['buff_name']
         buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
         # Checks dot's buff.
@@ -241,7 +240,7 @@ class EventsGeneral(buffs.DeathAndRegen):
         dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
 
         # Checks if event is periodic.
-        if dmg_dct['dot'] is True:
+        if dmg_dct['dot']:
             # If only temporary periodic events are re-applied..
             if only_temporary:
                 # ..checks if their duration is not permanent.
