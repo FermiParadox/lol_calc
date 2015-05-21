@@ -134,8 +134,19 @@ class DmgCategories(BuffCategories):
 
                 for mod_name in dmg_dct_mods[owner_type]:
 
-                    val += dmg_dct_mods[owner_type][mod_name] * self.req_stats_func(target_name=owner,
-                                                                                    stat_name=mod_name)
+                    for application_type in dmg_dct_mods[owner_type][mod_name]:
+
+                        if application_type == 'additive':
+                            val += dmg_dct_mods[owner_type][mod_name][application_type] * self.req_stats_func(
+                                target_name=owner,
+                                stat_name=mod_name)
+                        elif application_type == 'multiplicative':
+                            val *= dmg_dct_mods[owner_type][mod_name][application_type] * self.req_stats_func(
+                                target_name=owner,
+                                stat_name=mod_name)
+
+                        else:
+                            raise palette.UnexpectedValueError
 
         return val
 

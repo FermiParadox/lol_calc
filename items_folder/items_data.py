@@ -41,7 +41,7 @@ ITEMS_ATTRIBUTES = {
                                                              'life_conversion_type': 'spellvamp',
                                                              'max_targets': 1,
                                                              'mods': {'enemy': {},
-                                                                      'player': {'ap': 0.4}},
+                                                                      'player': {'ap': {'additive': 0.4}}},
                                                              'radius': None,
                                                              'target_type': 'enemy',
                                                              'usual_max_targets': 1,

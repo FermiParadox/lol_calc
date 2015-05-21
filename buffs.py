@@ -1056,7 +1056,8 @@ _REGEN_DMG_DCT_BASE = dict(
     dmg_category='standard_dmg',
     resource_type='placeholder',
     dmg_type='true',
-    dmg_values=0,
+    # Regen is "healing" a stat so it has to be negative.
+    dmg_values=-1,
     dmg_source='regen',
     # (None or {'enemy': {}, 'player': {'bonus_ad': 0.5}})
     mods='placeholder',
@@ -1073,7 +1074,7 @@ _HP5_DMG_DCT_BASE['resource_type'] = 'hp'
 # Player
 _PLAYER_HP5_DMG_DCT = copy.deepcopy(_HP5_DMG_DCT_BASE)
 _PLAYER_HP5_DMG_DCT['target_type'] = 'player'
-_PLAYER_HP5_DMG_DCT['mods'] = {'player': {'hp5': 1}}
+_PLAYER_HP5_DMG_DCT['mods'] = {'player': {'hp5': {'multiplicative': 1}}}
 _PLAYER_HP5_DMG_DCT['dot']['buff_name'] = 'player_hp5_buff'
 # Enemy
 _ENEMY_HP5_DMG_DCT_BASE = copy.deepcopy(_HP5_DMG_DCT_BASE)
@@ -1083,7 +1084,7 @@ _ENEMY_HP5_DMG_DCT_BASE['dot']['buff_name'] = 'enemy_hp5_buff'
 # MP
 _PLAYER_MP_DMG_DCT_BASE = copy.deepcopy(_PLAYER_HP5_DMG_DCT)
 _PLAYER_MP_DMG_DCT_BASE['resource_type'] = 'mp'
-_PLAYER_MP_DMG_DCT_BASE['mods'] = {'player': {'mp5': 1}}
+_PLAYER_MP_DMG_DCT_BASE['mods'] = {'player': {'mp5': {'multiplicative': 1}}}
 _PLAYER_MP_DMG_DCT_BASE['dot']['buff_name'] = 'mp5_buff'
 
 
@@ -1124,7 +1125,7 @@ class DeathAndRegen(DmgApplication):
 
     def enemy_hp5_dmg(self):
         dct = copy.deepcopy(self.ENEMY_HP5_DMG_DCT_BASE)
-        dct['mods'] = {'enemy': {'hp5': 1}}
+        dct['mods'] = {'enemy': {'hp5': {'multiplicative': 1}}}
         return dct
 
     def enemy_hp5_buff(self):
