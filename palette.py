@@ -55,7 +55,6 @@ def dmg_dct_base():
     return copy.deepcopy(DMG_DCT_BASE)
 
 
-
 class UnexpectedValueError(Exception):
     """
     NOT TO BE HANDLED!
@@ -125,20 +124,6 @@ class ChampionsStats(object):
         del dct['player']['actives']['cds_modified']
 
         return dct
-
-    def champion_abilities(self):
-        return dict(
-            inn=self.inn_effects(),
-            q=self.q_effects(),
-            w=self.w_effect(),
-            e=self.e_effect(),
-            r=self.r_effect()
-        )
-
-    def champion_aa(self):
-        return dict(
-
-        )
 
 
 class BaseStatsWithMana(object):

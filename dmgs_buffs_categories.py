@@ -125,16 +125,17 @@ class DmgCategories(BuffCategories):
         # MODS
         dmg_dct_mods = dmg_dct['mods']
         if dmg_dct_mods:
-            if 'player' in dmg_dct_mods:
-                for mod_name in dmg_dct_mods['player']:
-                    val += dmg_dct_mods['player'][mod_name] * self.req_stats_func(target_name='player',
-                                                                                  stat_name=mod_name)
 
-            if 'enemy' in dmg_dct_mods:
-                for mod_name in dmg_dct_mods['enemy']:
-                    val += dmg_dct_mods[self.current_target][mod_name] * self.req_stats_func(
-                        target_name=self.current_target,
-                        stat_name=mod_name)
+            for owner_type in dmg_dct_mods:
+                if owner_type == 'player':
+                    owner = 'player'
+                else:
+                    owner = self.current_target
+
+                for mod_name in dmg_dct_mods[owner_type]:
+
+                    val += dmg_dct_mods[owner_type][mod_name] * self.req_stats_func(target_name=owner,
+                                                                                    stat_name=mod_name)
 
         return val
 

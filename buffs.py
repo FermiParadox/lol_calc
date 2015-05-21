@@ -1124,7 +1124,7 @@ class DeathAndRegen(DmgApplication):
 
     def enemy_hp5_dmg(self):
         dct = copy.deepcopy(self.ENEMY_HP5_DMG_DCT_BASE)
-        dct['mods'] = {self.current_target: {'hp5': 1}}
+        dct['mods'] = {'enemy': {'hp5': 1}}
         return dct
 
     def enemy_hp5_buff(self):
