@@ -2113,7 +2113,7 @@ if __name__ == '__main__':
 
         import pstats
         results_run = pstats.Stats('cprof_results').sort_stats('cumtime')
-        results_run.strip_dirs().sort_stats('cumtime').print_stats(5)
+        results_run.strip_dirs().sort_stats('cumtime').print_stats(50)
         # print(results_run.strip_dirs().sort_stats('cumtime').stats)
 
 
