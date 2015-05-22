@@ -178,22 +178,17 @@ class EventsGeneral(buffs.DeathAndRegen):
         try:
             # External max targets.
             if effect_name in self.max_targets_dct:
+                max_tars_val = self.max_targets_dct[effect_name]
 
-                # While the last target number is less than max targets, adds event.
-                while self.targets_already_hit < self.max_targets_dct[effect_name]:
-                    self.add_aoe_events(effect_name=effect_name, start_time=start_time)
+            else:
+                max_tars_val = effect_dct['usual_max_targets']
+                if max_tars_val == 'unlimited':
+                    # If targets are unlimited applies to everyone.
+                    max_tars_val = len(self.enemy_target_names)
 
-            # If it has max_targets (implying it's aoe).
-            elif 'max_targets' in effect_dct:
-                if effect_dct['max_targets'] == 'unlimited':
-
-                    # While the last target number is less than max targets, adds event.
-                    while self.targets_already_hit < len(self.enemy_target_names):
-                        self.add_aoe_events(effect_name=effect_name, start_time=start_time)
-
-                else:
-                    while self.targets_already_hit < effect_dct['max_targets']:
-                        self.add_aoe_events(effect_name=effect_name, start_time=start_time)
+            # While the last target number is less than max targets, adds event.
+            while self.targets_already_hit < max_tars_val:
+                self.add_aoe_events(effect_name=effect_name, start_time=start_time)
 
         except EnemyTargetsDeadException:
             pass
@@ -1342,7 +1337,6 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         # ITEM ACTIVE - SUMMONER SPELL
         else:
-            # TODO: convert item effects to function like ability effects
             self.apply_ability_effects(eff_dct=self.items_effects(action_name))
 
     def apply_pre_action_events(self):
@@ -2095,6 +2089,7 @@ if __name__ == '__main__':
     rot4 = ['AA']
     rot5 = ['e', 'e']
     rot6 = ['q', 'AA']
+    rot7 = ['q', 'q']
 
     itemLst0 = []
     itemLst1 = ['hextech_gunblade']
@@ -2113,7 +2108,7 @@ if __name__ == '__main__':
 
         import pstats
         results_run = pstats.Stats('cprof_results').sort_stats('cumtime')
-        results_run.strip_dirs().sort_stats('cumtime').print_stats(50)
+        results_run.strip_dirs().sort_stats('cumtime').print_stats(5)
         # print(results_run.strip_dirs().sort_stats('cumtime').stats)
 
 

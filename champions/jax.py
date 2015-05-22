@@ -82,7 +82,7 @@ ABILITIES_ATTRIBUTES = {
                            'prohibit_cd_start': 'w',
                            'target_type': 'player',
                            'dot': False}},
-    'dmgs': {'e_dmg_0': {'delay': None,
+    'dmgs': {'e_dmg_0': {'delay': 1,
                          'dmg_category': 'standard_dmg',
                          'dmg_source': 'e',
                          'dmg_type': 'physical',

@@ -1057,7 +1057,7 @@ _REGEN_DMG_DCT_BASE = dict(
     resource_type='placeholder',
     dmg_type='true',
     # Regen is "healing" a stat so it has to be negative.
-    dmg_values=-1,
+    dmg_values=-1/PER_5_DIVISOR,
     dmg_source='regen',
     # (None or {'enemy': {}, 'player': {'bonus_ad': 0.5}})
     mods='placeholder',
@@ -1066,6 +1066,7 @@ _REGEN_DMG_DCT_BASE = dict(
     radius=None,
     dot={'buff_name': 'placeholder'},
     max_targets=1,
+    usual_max_targets=1,
     delay=NATURAL_REGEN_PERIOD,)
 
 # HEALTH
@@ -1131,6 +1132,7 @@ class DeathAndRegen(DmgApplication):
     def enemy_hp5_buff(self):
         return self.REGEN_BUFF_DCT_BASE_ENEMY
 
+    # TODO check if value methods below are completely unused and useless
     def _per5_dmg_value_base(self, tar_name, per_5_stat_name):
         """
         Calculates healing per tick by regeneration.
