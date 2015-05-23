@@ -10,7 +10,7 @@ import operator
 import copy
 
 
-class EnemyTargetsDeadException(Exception):
+class EnemyTargetsDeadError(Exception):
     """
     To be used (and handled) when no other valid targets are available for an event application.
     """
@@ -136,7 +136,7 @@ class EventsGeneral(buffs.DeathAndRegen):
         # If next target is None (because no valid targets exist) the loop breaks.
         self.next_target(enemy_tar_names=self.enemy_target_names)
         if self.current_target is None:
-            raise EnemyTargetsDeadException
+            raise EnemyTargetsDeadError
 
         self.targets_already_hit += 1
 
@@ -190,7 +190,7 @@ class EventsGeneral(buffs.DeathAndRegen):
             while self.targets_already_hit < max_tars_val:
                 self.add_aoe_events(effect_name=effect_name, start_time=start_time)
 
-        except EnemyTargetsDeadException:
+        except EnemyTargetsDeadError:
             pass
 
     def refresh_periodic_event(self, dmg_name, tar_name, dmg_dct):

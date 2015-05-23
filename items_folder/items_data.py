@@ -1,4 +1,4 @@
-class DuplicateName(Exception):
+class DuplicateNameError(Exception):
     """
     To be raised when a duplicate buff or dmg name is found.
 
@@ -121,7 +121,7 @@ def _items_buffs_or_dmgs_names_dct(buffs_or_dmgs):
 
             # Checks if obj already exists.
             if buff_name in dct:
-                raise DuplicateName
+                raise DuplicateNameError
             # Adds obj name to list
             else:
                 dct.update({buff_name: item_name})

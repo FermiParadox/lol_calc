@@ -401,15 +401,15 @@ def _return_or_pprint_lst(print_mode, lst):
 
 
 # ---------------------------------------------------------------
-class OuterLoopExit(Exception):
+class OuterLoopExitError(Exception):
     pass
 
 
-class InnerLoopExit(Exception):
+class InnerLoopExitError(Exception):
     pass
 
 
-class RepeatChoiceError(Exception):
+class RepeatChoiceErrorError(Exception):
     pass
 
 
@@ -422,16 +422,16 @@ REPEAT_CHOICE_KEY = '^'
 def _check_loop_exit(key):
     if key == OUTER_LOOP_KEY:
         print('#### OUTER LOOP EXITED ####')
-        raise OuterLoopExit
+        raise OuterLoopExitError
     elif key == INNER_LOOP_KEY:
         print('#### INNER LOOP EXITED ####')
-        raise InnerLoopExit
+        raise InnerLoopExitError
 
 
 def _check_for_repeat_choice_error(key):
     if key == REPEAT_CHOICE_KEY:
         print('# Repeating previous choice #')
-        raise RepeatChoiceError
+        raise RepeatChoiceErrorError
 
 
 def _check_factory_custom_exception(given_str, exclude_repeat_key=False):
@@ -483,12 +483,12 @@ def _loop_exit_handler(func, _exception_class=None):
     return wrapped
 
 
-def inner_loop_exit_handler(func, _exception_class=InnerLoopExit):
+def inner_loop_exit_handler(func, _exception_class=InnerLoopExitError):
 
     return _loop_exit_handler(func=func, _exception_class=_exception_class)
 
 
-def outer_loop_exit_handler(func, _exception_class=OuterLoopExit):
+def outer_loop_exit_handler(func, _exception_class=OuterLoopExitError):
 
     return _loop_exit_handler(func=func, _exception_class=_exception_class)
 
@@ -774,7 +774,7 @@ def suggest_attr_values(suggested_values_dct, modified_dct, restrict_choices=Fal
                                            restrict_choices=restrict_choices)
                 break
 
-            except RepeatChoiceError:
+            except RepeatChoiceErrorError:
                 # (reduces attr_num, and ensures it doesn't reach negative values)
                 attr_num -= 1
                 attr_num = max(attr_num, 0)
@@ -1045,7 +1045,7 @@ def data_storage(targeted_module, obj_name, str_to_insert, write_mode='w', force
 # ===============================================================
 #       API REQUESTS
 # ===============================================================
-class RequestAborted(Exception):
+class RequestAbortedError(Exception):
     pass
 
 
@@ -1066,7 +1066,7 @@ class RequestDataFromAPI(object):
         def wrapped(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except RequestAborted as exception_msg:
+            except RequestAbortedError as exception_msg:
                 print(exception_msg)
 
         return wrapped
@@ -1092,7 +1092,7 @@ class RequestDataFromAPI(object):
         if dev_start_question == 'y':
             pass
         else:
-            raise RequestAborted(abort_msg)
+            raise RequestAbortedError(abort_msg)
 
     @staticmethod
     def request_single_page_from_api(page_url):

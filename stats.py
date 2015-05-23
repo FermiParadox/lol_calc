@@ -96,7 +96,7 @@ ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_
                                                                                                - {None})
 
 
-class NonExistingNormalStat(Exception):
+class NonExistingNormalStatError(Exception):
     """
     Used to indicate stat was not found when searched by request stat function
     in ALL_STANDARD_STAT_NAMES and current stats.
