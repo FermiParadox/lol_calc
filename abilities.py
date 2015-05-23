@@ -1418,6 +1418,44 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                     # (break inner loop)
                     break
 
+    def apply_single_action(self, new_action):
+        """
+        Applies a single new action, and events in between,
+        until everyone is dead or the max_time is exceeded.
+
+        :param new_action: (str)
+        :return: (bool)
+        """
+        # Checks if action meets the cost requirements.
+        if not self.cost_sufficiency(action_name=new_action):
+            # If the cost is too high, action is skipped.
+            # TODO: Make it a new method (ignore mode, wait mode)
+            return False
+
+        self.apply_action_cost(action_name=new_action)
+
+        self.add_new_action(new_action)
+
+        # (movement distance)
+        self.between_action_walking()
+
+        self.apply_pre_action_events()
+
+        # If everyone died, stops applying actions as well.
+        if self.everyone_dead:
+            return True
+
+        # Sets current_time to current action's cast end.
+        self.current_time = self.actions_dct[max(self.actions_dct)]['cast_end']
+
+        # If max time exceeded, exits loop.
+        if self.max_combat_time:
+            if self.current_time > self.max_combat_time:
+                return True
+
+        # After previous events are applied, applies action effects.
+        self.apply_action_effects(action_name=self.actions_dct[max(self.actions_dct)]['action_name'])
+
     def apply_all_actions(self):
         """
         Applies all actions, and events in between,
@@ -1434,36 +1472,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             # (used for champions that action application is affected by existing buffs)
             self.remove_expired_buffs()
 
-            # Checks if action meets the cost requirements.
-            if self.cost_sufficiency(action_name=new_action):
-
-                self.apply_action_cost(action_name=new_action)
-
-                self.add_new_action(new_action)
-
-                # (movement distance)
-                self.between_action_walking()
-
-                self.apply_pre_action_events()
-
-                # If everyone died, stops applying actions as well.
-                if self.everyone_dead:
-                    break
-
-                # Sets current_time to current action's cast end.
-                self.current_time = self.actions_dct[max(self.actions_dct)]['cast_end']
-
-                # If max time exceeded, exits loop.
-                if self.max_combat_time:
-                    if self.current_time > self.max_combat_time:
-                        break
-
-                # After previous events are applied, applies action effects.
-                self.apply_action_effects(action_name=self.actions_dct[max(self.actions_dct)]['action_name'])
-
-            # If the cost is too high, action is skipped.
-            else:
-                pass  # TODO: Make it a new method (ignore mode, wait mode)
+            if self.apply_single_action(new_action=new_action):
+                break
 
     def apply_events_after_actions(self, fully_apply_dots=False):
         """
@@ -2035,7 +2045,7 @@ if __name__ == '__main__':
 
             print(msg)
 
-            return plt.show()
+            plt.show()
 
         def __repr__(self):
 
@@ -2103,7 +2113,7 @@ if __name__ == '__main__':
     if run_time_test:
         # Crude time testing.
         import cProfile
-        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*1
+        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*100
         cProfile.run(test_text, 'cprof_results', sort='cumtime')
 
         import pstats
@@ -2118,3 +2128,5 @@ if __name__ == '__main__':
 # dps: 406.06856388086914 (rotation and targets changed)
 # dps: 414.08610981856975 (rotation and targets changed) 1.1sec / 100 rotations
 # dps: 414.1, 2434 movement, 1.1sec / 100 rotations
+# MAJOR CHANGES
+# dps: 320.3, 2631 movement, 2.8sec / 100 rotations
