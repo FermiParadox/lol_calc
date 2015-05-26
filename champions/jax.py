@@ -11,7 +11,7 @@ ABILITIES_ATTRIBUTES = {
                             'prohibit_cd_start': None,
                             'target_type': 'player',
                             'dot': False},
-              'inn_att_speed_buff': {'stats': {'att_speed': {'percent': {'stat_values': (0.04, 0.06, 0.08, 0.10, 0.12),
+              'inn_att_speed_buff': {'stats': {'att_speed': {'percent': {'stat_values': (0.04, 0.06, 0.08, 0.10, 0.12, 0.14),
                                                                          'stat_mods': None}},
                                                },
                                      'buff_source': 'inn',

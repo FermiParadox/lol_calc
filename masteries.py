@@ -1,4 +1,31 @@
 import collections
+import palette
+
+BUFF_DCT_BASE = dict(
+    target_type='placeholder',
+    duration='placeholder',
+    max_stacks='placeholder',
+    stats=dict(
+        placeholder_stat_1='placeholder'
+    ),
+    on_hit=dict(
+        apply_buff=['placeholder', ],
+        cause_dmg=['placeholder', ],
+        reduce_cd={},
+        remove_buff=['placeholder', ]
+    ),
+    prohibit_cd_start='placeholder',
+    buff_source='placeholder',
+    dot=False
+)
+_MASTERIES_BUFF_DCT = palette.buff_dct_base_deepcopy()
+_MASTERIES_BUFF_DCT['target'] = 'player'
+_MASTERIES_BUFF_DCT['duration'] = 'permanent'
+_MASTERIES_BUFF_DCT['max_stacks'] = 1
+_MASTERIES_BUFF_DCT['on_hit'] = None
+_MASTERIES_BUFF_DCT['prohibit_cd_start'] = None
+_MASTERIES_BUFF_DCT['buff_source'] = 'masteries'
+_MASTERIES_BUFF_DCT['dot'] = False
 
 
 class InvalidMasteriesSetupError(Exception):
@@ -14,9 +41,13 @@ class Masteries(object):
 
     def __init__(self, selected_masteries_dct):
         self.selected_masteries_dct = selected_masteries_dct
+        self.__masteries_stats_buff = {}
 
     def _mastery_dct(self, mastery_name):
         return self.MASTERIES_ATTRIBUTES[mastery_name]
+
+    def _mastery_stats_dct(self, mastery_name):
+        return self._mastery_dct(mastery_name=mastery_name)['stats']
 
     def _max_mastery_points(self, mastery_name):
         return self._mastery_dct(mastery_name=mastery_name)['max_points']
@@ -101,3 +132,46 @@ class Masteries(object):
 
         self._validate_tier_counts(tiers_points_dct=tiers_points_dct)
         self._validate_total_masteries_count(total_masteries_points=total_points)
+
+    def _create_masteries_buff(self):
+        """
+        Creates a single buff for stat-only masteries to avoid calculating everything multiple times.
+
+        :return: None
+        """
+
+        self.__masteries_stats_buff
+
+        total_stats = {}
+
+        for mastery_name in self.selected_masteries_dct:
+            stats_dct = self._mastery_stats_dct(mastery_name=mastery_name)
+
+            # If it has no stats, goes to next mastery.
+            if not stats_dct:
+                continue
+
+            # Index of mastery stat value tuple.
+            index = self.selected_masteries_dct[mastery_name] - 1
+
+            for stat_name in stats_dct:
+
+                # (creates stat name if it doesnt exist)
+                if stat_name not in total_stats:
+                    total_stats.update({stat_name: {}})
+
+                for stat_type in stats_dct[stat_name]:
+
+                    # (creates type of given stat name if it doesnt exist)
+                    if stat_type not in total_stats[stat_name]:
+                        total_stats[stat_name].update({stat_type: 0})
+
+                    # Values are determined by points in mastery.
+                    stat_val = stats_dct[stat_name][stat_type][index]
+                    # Adds value to existing counter.
+                    total_stats[stat_name][stat_type] += stat_val
+
+        self.__masteries_stats_buff['stats'] = total_stats
+
+    def masteries_buff(self):
+        return self.__masteries_stats_buff

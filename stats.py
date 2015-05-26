@@ -548,17 +548,20 @@ class StatCalculation(StatFilters):
         return self.filtered_cdr(self.standard_stat(requested_stat='cdr',
                                                     tar_name=tar_name))
 
-    def innate_special_lvl(self, values_tpl_length):
+    def innate_special_lvl(self, values_tpl):
         """
         Returns the innate "lvl" of given tuple, which may vary depending on the length of it.
 
-        For example a tuple with 6 values would divide champion lvl by 6
+        For example a tuple with 6 values would divide champion lvl by 6,
+        and each value in the tuple would correspond to 3 consecutive lvls.
 
-        :param values_tpl_length: (int)
+        :param values_tpl: (tuple)
         :return: (int) Index of tuple
         """
 
-        return (self.player_lvl - 1) // values_tpl_length
+        divisor = 18 // len(values_tpl)
+
+        return (self.player_lvl - 1) // divisor + 1
 
 
 class StatRequest(StatCalculation):
@@ -710,7 +713,7 @@ class StatRequest(StatCalculation):
             ability_name = buff_dct['buff_source']
 
             if ability_name == 'inn':
-                ability_lvl = self.innate_special_lvl(values_tpl_length=len(values_tpl))
+                ability_lvl = self.innate_special_lvl(values_tpl=values_tpl)
             else:
                 ability_lvl = self.ability_lvls_dct[ability_name]
 
