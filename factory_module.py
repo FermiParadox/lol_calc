@@ -4424,7 +4424,7 @@ class ModuleCreatorBase(object):
 
         try:
             # Champion.
-            path = CHAMPION_MODULES_FOLDER_NAME + '/' + obj_name
+            path = CHAMPION_MODULES_FOLDER_NAME + '/' + items_or_a_champ_name + '.py'
             module = Fetch().imported_champ_module(champ_name=items_or_a_champ_name)
         except ImportError:
             # Items.
@@ -4773,4 +4773,4 @@ if __name__ == '__main__':
     testPFormatObj = True
     if testPFormatObj:
         inst = ModuleCreatorBase()
-        inst.pformat_obj_in_module(obj_name=ITEMS_ATTRS_DCT_NAME, items_or_a_champ_name='cat')
+        inst.pformat_obj_in_module(obj_name=ABILITIES_ATTRS_DCT_NAME, items_or_a_champ_name='jax')
