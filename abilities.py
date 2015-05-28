@@ -1163,10 +1163,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
                 self.add_events(effect_name=dmg_dot_name, start_time=first_tick)
 
-    def remove_buff_on_action_and_change_cd(self, buff_name):
+    def change_cd_before_buff_removal(self, buff_dct):
         """
-        Removes a player's buff on_hit or on_cast,
-        and starts corresponding action's cd if buff delays the cd start.
+        Refreshes the cd expiration of corresponding action if given buff prohibits its cd.
 
         (e.g. Jax w_buff delays start of W cd)
 
@@ -1177,25 +1176,48 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        buff_dct = self.req_buff_dct_func(buff_name=buff_name)
+        if 'prohibit_cd_start' in buff_dct:
+            prohibit_cd_start_val = buff_dct['prohibit_cd_start']
 
-        # Checks if buff delays the start of an action's cd.
-        if buff_dct['prohibit_cd_start']:
-            prohibited_ability_dc = buff_dct['prohibit_cd_start']
+            # Checks if buff delays the start of an action's cd.
+            if prohibit_cd_start_val:
 
-            # Finds the affected action..
-            for action_time in sorted(self.actions_dct, reverse=True):
-                if self.actions_dct[action_time]['action_name'] == prohibited_ability_dc:
+                # Finds the affected action..
+                for action_time in sorted(self.actions_dct, reverse=True):
+                    if self.actions_dct[action_time]['action_name'] == prohibit_cd_start_val:
 
-                    # .. and applies the new cd.
-                    self.actions_dct[action_time]['cd_end'] = self.ability_cooldown(
-                        ability_name=self.actions_dct[action_time]['action_name'],
-                        stats_function=self.request_stat)
+                        # .. and applies the new cd.
+                        self.actions_dct[action_time]['cd_end'] = self.ability_cooldown(
+                            ability_name=self.actions_dct[action_time]['action_name'],
+                            stats_function=self.request_stat)
 
-                    break
+                        break
 
-        # Removes buff.
-        del self.active_buffs['player'][buff_name]
+    def remove_expired_buffs(self):
+        """
+        Removes all expired buffs.
+
+        Modifies:
+            active_buffs
+        Return:
+            (None)
+        """
+
+        for tar_name in self.active_buffs:
+            tar_act_buffs = self.active_buffs[tar_name]
+
+            for buff_name in sorted(tar_act_buffs):
+                tar_buff_dct_in_act_buffs = tar_act_buffs[buff_name]
+
+                if tar_buff_dct_in_act_buffs['ending_time'] != 'permanent':
+                    if tar_buff_dct_in_act_buffs['ending_time'] < self.current_time:
+
+                        # Applies cd before removing.
+                        buff_dct = self.request_buff(buff_name=buff_name)
+                        self.change_cd_before_buff_removal(buff_dct=buff_dct)
+
+                        # Removes the buff.
+                        del tar_buff_dct_in_act_buffs
 
     def apply_on_hit_effects(self):
         """
@@ -1239,7 +1261,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
                     # Checks if the buff exists on the player.
                     if buff_removed_on_hit in self.active_buffs['player']:
-                        self.remove_buff_on_action_and_change_cd(buff_name=buff_removed_on_hit)
+                        self.change_cd_before_buff_removal(buff_dct=buff_dct)
+                        del self.active_buffs['player'][buff_removed_on_hit]
 
                     # Checks if the buff exists on current enemy target.
                     elif buff_removed_on_hit in self.active_buffs[self.current_target]:

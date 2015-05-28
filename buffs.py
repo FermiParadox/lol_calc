@@ -170,28 +170,6 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
                                          tar_name=tar_name,
                                          stack_increment=stack_increment)
 
-    def remove_expired_buffs(self):
-        """
-        Removes all expired buffs.
-
-        Modifies:
-            active_buffs
-        Return:
-            (None)
-        """
-
-        for tar_name in self.active_buffs:
-            tar_act_buffs = self.active_buffs[tar_name]
-
-            for buff_name in sorted(tar_act_buffs):
-                tar_buff_dct_in_act_buffs = tar_act_buffs[buff_name]
-
-                if tar_buff_dct_in_act_buffs['ending_time'] != 'permanent':
-                    if tar_buff_dct_in_act_buffs['ending_time'] < self.current_time:
-
-                        # Removes the buff.
-                        del tar_buff_dct_in_act_buffs
-
     def add_single_ability_passive_buff(self, target_type, effects_dct, tar_name):
         """
         Adds passive buffs of a single ability on a target.

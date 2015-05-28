@@ -864,8 +864,9 @@ class StatRequest(StatCalculation):
 
     def _bonus_stat(self, stat_name, tar_name):
         """
-        Base method for methods that return only the bonus value of a stat,
-        that is, only non-champion related value (base and per lvl).
+        Returns only the bonus value of a stat,
+        that is, only champion related value (base and per lvl),
+        without abilities, items, masteries, runes, etc.
 
         :param stat_name: (str)
         :param tar_name: (str)
@@ -873,7 +874,6 @@ class StatRequest(StatCalculation):
         """
 
         base_stat_name = BONUS_STAT_NAME_TO_BASE_NAME_MAP[stat_name]
-
         base_val = self._base_stat(stat_name=base_stat_name, tar_name=tar_name)
 
         return self.request_stat(target_name=tar_name, stat_name=base_stat_name) - base_val

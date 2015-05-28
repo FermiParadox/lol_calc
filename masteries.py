@@ -1,6 +1,7 @@
 import collections
 import palette
 
+
 BUFF_DCT_BASE = dict(
     target_type='placeholder',
     duration='placeholder',
@@ -26,6 +27,8 @@ _MASTERIES_BUFF_DCT['on_hit'] = None
 _MASTERIES_BUFF_DCT['prohibit_cd_start'] = None
 _MASTERIES_BUFF_DCT['buff_source'] = 'masteries'
 _MASTERIES_BUFF_DCT['dot'] = False
+# Deletes 'stats' key, so that an update can be used pointing at initial object without modifying it.
+del _MASTERIES_BUFF_DCT['stats']
 
 
 class InvalidMasteriesSetupError(Exception):
@@ -42,6 +45,7 @@ class Masteries(object):
     def __init__(self, selected_masteries_dct):
         self.selected_masteries_dct = selected_masteries_dct
         self.__masteries_stats_buff = {}
+        self.__masteries_stats_buff.update(_MASTERIES_BUFF_DCT)
 
     def _mastery_dct(self, mastery_name):
         return self.MASTERIES_ATTRIBUTES[mastery_name]
@@ -140,8 +144,6 @@ class Masteries(object):
         :return: None
         """
 
-        self.__masteries_stats_buff
-
         total_stats = {}
 
         for mastery_name in self.selected_masteries_dct:
@@ -175,3 +177,4 @@ class Masteries(object):
 
     def masteries_buff(self):
         return self.__masteries_stats_buff
+
