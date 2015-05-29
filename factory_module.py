@@ -1,4 +1,5 @@
 import api_champions_database
+import api_masteries_database
 import re
 import time
 import urllib.request
@@ -19,7 +20,7 @@ import api_items_database
 
 # ===============================================================
 # ===============================================================
-# Objects in champion module (exact strings are re.matched inside module)
+# Objects in champion module (exact strings are re.matched inside module) (???)
 CHAMPION_MODULES_FOLDER_NAME = 'champions'
 ITEMS_MODULES_FOLDER_NAME = 'items_folder'
 ITEMS_DATA_MODULE_NAME = 'items_data'
@@ -36,6 +37,8 @@ DEFAULT_ACTIONS_PRIORITY_NAME = 'DEFAULT_ACTIONS_PRIORITY'
 CHAMPION_MODULE_OBJECT_NAMES = (ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME,
                                 ABILITIES_CONDITIONALS_DCT_NAME, CHAMPION_EXTERNAL_VAR_DCT_NAME, CHAMP_CLASS_NAME,
                                 DEFAULT_ACTIONS_PRIORITY_NAME)
+API_STORED_MASTERIES_MODULE = 'api_masteries_database.py'
+
 
 child_class_as_str = """class ChampionAttributes(object):
     DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
@@ -1228,11 +1231,11 @@ class RequestAllMasteriesFromAPI(RequestDataFromAPI):
                           + api_key.KEY)
 
     @RequestDataFromAPI.request_abortion_handler
-    def store_all_items_from_api(self):
+    def store_all_masteries_from_api(self):
         page_as_str = self.request_single_page_from_api_as_str(page_url=self.MASTERIES_PAGE_URL,
                                                                requested_item='MASTERIES')
 
-        data_storage(targeted_module='api_masteries_database.py',
+        data_storage(targeted_module=API_STORED_MASTERIES_MODULE,
                      obj_name='ALL_MASTERIES',
                      str_to_insert=page_as_str)
 
@@ -1306,6 +1309,30 @@ class ExploreBase(object):
             # Notes champion (or item) name.
             if name not in modified_dct[string][champions_or_items]:
                 modified_dct[string][champions_or_items].append(name)
+
+    @staticmethod
+    def modify_api_names_to_callable_string(name):
+        """
+        Converts to lowercase everything and
+        removes or replaces characters that would not be allowed in a python object name (e.g. -'" whitespace).
+
+        :param name: (str)
+        :return: (str)
+        """
+
+        replacement_dct = {
+            ' ': '_',
+            "'": '',
+            '-': '_'
+            }
+
+        for character in replacement_dct:
+            name = name.replace(character, replacement_dct[character])
+
+        name = name.lower()
+        name = name.strip('_')
+
+        return name
 
 
 class ExploreApiAbilities(ExploreBase):
@@ -1630,9 +1657,11 @@ class ExploreApiItems(ExploreBase):
         """
         Searches through items, and retrieves name corresponding to given id.
 
-        :param id_num: (int) id number of item
+        :param id_num: (str), (int) id number of item
         :return: (str) or (None) if item does not belong to the usable items.
         """
+
+        id_num = int(id_num)
 
         for item_name in self.usable_items_by_name_dct:
             if self.usable_items_by_name_dct[item_name]['id'] == id_num:
@@ -1668,7 +1697,8 @@ class ExploreApiItems(ExploreBase):
             (dct)
         """
 
-        matched_name = full_or_partial_match_in_iterable(searched_name=given_name, iterable=self.usable_items_by_name_dct)
+        matched_name = full_or_partial_match_in_iterable(searched_name=given_name,
+                                                         iterable=self.usable_items_by_name_dct)
 
         return _return_or_pprint_complex_obj(print_mode=print_mode, dct=self.usable_items_by_name_dct[matched_name])
 
@@ -1843,6 +1873,50 @@ class ExploreApiItems(ExploreBase):
 
     def item_sell_price(self, item_name):
         return self._item_cost_base(item_name=item_name, cost_name='sell')
+
+
+class ExploreApiMasteries(ExploreBase):
+
+    def __init__(self):
+        # Contains all masteries dict, along with version and tree.
+        self.all_api_masteries_data_dct = api_masteries_database.ALL_MASTERIES
+        # Dict of dicts containing each mastery's attributes.
+        self.api_masteries_dcts = self.all_api_masteries_data_dct['data']
+        self.masteries_dct = {}
+
+    def mastery_name_from_id(self, id_num):
+        """
+        Returns name corresponding to given item id.
+
+        :param id_num: (str) or (num)
+        :return: (str) mastery name
+        """
+
+        id_num = str(id_num)
+
+        return self.api_masteries_dcts[id_num]['name']
+
+    def masteries_names(self):
+        """
+        Returns all mastery names.
+
+        :return: (list)
+        """
+        lst_returned = []
+
+        for id_num in self.api_masteries_dcts:
+            mastery_name = self.mastery_name_from_id(id_num=id_num)
+            mastery_name = self.modify_api_names_to_callable_string(name=mastery_name)
+            lst_returned.append(mastery_name)
+
+        return lst_returned
+
+    def __create_masteries_dct(self):
+
+        None
+
+    def mastery_tree(self, mastery_name):
+        None
 
 
 # ===============================================================
@@ -4205,7 +4279,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         if key_name in self.item_api_data_dct:
             for id_num_as_str in self.item_api_data_dct[key_name]:
                 # Appends all names corresponding to the id_nums.
-                item_name = self.explore_items_module_inst.item_name_from_id(id_num=int(id_num_as_str))
+                item_name = self.explore_items_module_inst.item_name_from_id(id_num=id_num_as_str)
                 if item_name:
                     lst.append(item_name)
 
@@ -4262,7 +4336,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
                                         _set_of_ids=set_of_ids)
 
         final_set_with_item_names = {
-            self.explore_items_module_inst.item_name_from_id(id_num=int(i)) for i in set_of_ids}
+            self.explore_items_module_inst.item_name_from_id(id_num=i) for i in set_of_ids}
 
         return final_set_with_item_names
 
@@ -4319,9 +4393,16 @@ class ItemsConditionals(ConditionalsBase):
                          effects_dct=Fetch().items_effects_dct())
 
 
+# ---------------------------------------------------------------
+# MASTERIES
+class MasteriesCreation(object):
+    pass
+
+
 # ===============================================================
 #       MODULE CREATION
 # ===============================================================
+
 class ModuleCreatorBase(object):
 
     @staticmethod

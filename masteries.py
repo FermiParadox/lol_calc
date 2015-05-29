@@ -27,7 +27,7 @@ _MASTERIES_BUFF_DCT['on_hit'] = None
 _MASTERIES_BUFF_DCT['prohibit_cd_start'] = None
 _MASTERIES_BUFF_DCT['buff_source'] = 'masteries'
 _MASTERIES_BUFF_DCT['dot'] = False
-# Deletes 'stats' key, so that an update can be used pointing at initial object without modifying it.
+# Deletes 'stats' key, so that a dict update can be used pointing at initial object without modifying it.
 del _MASTERIES_BUFF_DCT['stats']
 
 
