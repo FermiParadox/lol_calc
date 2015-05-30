@@ -974,8 +974,6 @@ def repeat_cluster(cluster_name):
     return dec
 
 # ---------------------------------------------------------------
-
-
 ALLOWED_ABILITY_LVLS = ('1', '2', '3', '4', '5', '0')
 
 
@@ -988,6 +986,22 @@ def ability_num(ability_name):
         return 0
     else:
         return spell_num(spell_name=ability_name) + 1
+
+
+# ---------------------------------------------------------------
+ALLOWED_STATS_NAMES = stats.ALL_POSSIBLE_STAT_NAMES
+
+
+def check_stat_name_validity(stat_name):
+    """
+    Checks if given name exists in app allowed stats' names.
+
+    :param stat_name: (str)
+    :return: (None)
+    """
+
+    if stat_name not in ALLOWED_STATS_NAMES:
+        raise palette.UnexpectedValueError
 
 
 # ---------------------------------------------------------------
@@ -1884,11 +1898,13 @@ class ExploreApiMasteries(ExploreBase):
         'magic resist': {'app_name': 'mr', 'stat_type': 'undefined'},
         '% maximum health': {'app_name': 'hp', 'stat_type': 'percent'},
         'attack speed': {'app_name': 'att_speed', 'stat_type': 'percent'},
-        'ability power': {'app_name': 'ap', 'stat_type': 'undefined', 'priority': 'lowest'},
+        'ability power': {'app_name': 'ap', 'stat_type': 'undefined'},
         'bonus attack damage': {'app_name': 'bonus_ad', 'stat_type': 'undefined'},
-        'attack damage': {'app_name': 'ad', 'stat_type': 'undefined', 'priority': 'lowest'},
-        'attack damage per level': {'app_name': 'ad', 'stat_type': 'undefined'},
+        'attack damage': {'app_name': 'ad', 'stat_type': 'undefined'},
+        'attack damage per level': {'app_name': 'ad_per_lvl', 'stat_type': 'undefined'},
         'movement speed': {'app_name': 'move_speed', 'stat_type': 'undefined'},
+        'lifesteal': {'app_name': 'lifesteal', 'stat_type': 'percent'},
+        'spellvamp': {'app_name': 'spellvamp', 'stat_type': 'percent'},
     }
 
     def __init__(self):
@@ -1898,6 +1914,10 @@ class ExploreApiMasteries(ExploreBase):
         self.api_masteries_dcts = self.all_api_masteries_data_dct['data']
         self.masteries_dct = {}
         self.__create_masteries_dct()
+
+        # Checks if stats names correspond to allowed app stats names.
+        for i in self.STAT_NAMES_IN_MASTERIES_MAP:
+            check_stat_name_validity(stat_name=self.STAT_NAMES_IN_MASTERIES_MAP[i]['app_name'])
 
     def mastery_name_from_id(self, id_num):
         """
@@ -2027,6 +2047,31 @@ class ExploreApiMasteries(ExploreBase):
             lst_returned.append(tuple(lst))
 
         return lst_returned
+
+    def stats_detected(self, mastery_name):
+        """
+        Detects all stats' names in given mastery's description.
+
+        :param mastery_name:
+        :return: (list)
+        """
+
+        description_lst = self.mastery_description(mastery_name=mastery_name)
+        # (first element should be enough to extract stats' names since they don't change with points)
+        description_str = description_lst[0].lower()
+
+        lst_returned = []
+
+        for description_stat_name in self.STAT_NAMES_IN_MASTERIES_MAP:
+
+            if description_stat_name in description_str:
+                app_stat_name = self.STAT_NAMES_IN_MASTERIES_MAP[description_stat_name]['app_name']
+                lst_returned.append(app_stat_name)
+
+        return lst_returned
+
+
+
 
 
 # ===============================================================
@@ -2239,7 +2284,7 @@ class DmgsBase(object):
                    health='hp',
                    mana='mp', )
 
-        if set(dct.values()) - stats.ALL_POSSIBLE_STAT_NAMES:
+        if set(dct.values()) - ALLOWED_STATS_NAMES:
             raise palette.UnexpectedValueError('Some APP stat names suggested here are not registered.')
 
         return dct
@@ -4958,7 +5003,12 @@ if __name__ == '__main__':
 
     # MASTERIES EXPLORATION
     # Tuple of values detection.
-    if 1:
+    if 0:
         inst = ExploreApiMasteries()
         l = inst.extracted_numbers_from_description('sorcery')
+        print(l)
+    # Stats names detection.
+    if 1:
+        inst = ExploreApiMasteries()
+        l = inst.stats_detected('warlord')
         print(l)
