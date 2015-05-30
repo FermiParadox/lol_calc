@@ -4882,87 +4882,77 @@ class ItemsModuleCreator(ModuleCreatorBase):
 # ===============================================================
 if __name__ == '__main__':
 
-    testGen = False
-    if testGen:
+    # ABILITY GEN ATTR CREATION
+    if 0:
         for ability_shortcut in palette.SPELL_SHORTCUTS:
             GeneralAbilityAttributes(ability_name=ability_shortcut, champion_name='drmundo').run_gen_attr_creation()
             break
 
-    testDmg = False
-    if testDmg:
+    # DMG ATTR CREATION
+    if 0:
         for ability_shortcut in ('q',):
             dmgAttrInstance = DmgAbilityAttributes(ability_name=ability_shortcut, champion_name='teemo')
             dmgAttrInstance.run_dmg_attr_creation()
 
-    testBuffs = False
-    if testBuffs:
+    # NTH ATTACK
+    if 0:
         for champName in ExploreApiAbilities().all_champions_data_dct:
             for abilityName in palette.SPELL_SHORTCUTS:
                 res = BuffAbilityAttributes(abilityName, champName).refined_nth_attack()
                 if res:
                     print((champName, res))
 
-    testApiStorage = False
-    if testApiStorage:
+    # STORING ALL CHAMPIONS DATA
+    if 0:
         RequestAllAbilitiesFromAPI().store_all_champions_data()
 
-    testExploration = False
-    if testExploration:
+    # EXPLORING CHAMPION ABILITIES AND TOOLTIPS
+    if 0:
         champName = 'annie'
         ExploreApiAbilities().champion_abilities(champion_name=champName, print_mode=True)
         ExploreApiAbilities().sanitized_tooltips(champ=champName, raw_str=None, print_mode=True)
 
-    testCombination = False
-    if testCombination:
+    # ABILITY ATTRIBUTES
+    if 0:
         inst = AbilitiesAttributes(champion_name='jax')
         inst._single_spell_attrs('q')
 
-    testChampIDs = False
-    if testChampIDs:
+    # CHAMPION ID
+    if 0:
         print(ExploreApiAbilities().champion_id('dariu'))
 
-    testModuleInsertion = False
-    if testModuleInsertion:
+    # CHAMPION MODULE CREATION
+    if 0:
         ChampionModuleCreator(champion_name='jax').run_champ_module_creation()
 
-    testItemNames = False
-    if testItemNames:
-        c = ExploreApiItems().all_items_dct_by_id
-
-    testRestrictedInput = False
-    if testRestrictedInput:
-        restricted_input(question_msg='Give num!', input_type='str', characteristic='non_negative',)
-
-    testFetch = False
-    if testFetch:
+    # FETCHING CASTABLE ABILITIES
+    if 0:
         castable = Fetch().castable(spell_or_item_name='q', champ_or_item='champion', champ_name='jax')
         print(castable)
 
-    testItems = False
-    if testItems:
+    # ITEM ATTR CREATION
+    if 0:
         inst = ItemAttrCreation(item_name='gun')
         inst.create_non_unique_stats_names_and_values()
         print(inst.non_unique_item_stats)
 
-    testItemEffCreation = False
-    if testItemEffCreation:
+    # ITEM ATTRS AND EFFECTS CREATION AND INSERTION
+    if 0:
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
-
-    testItemAttrAndEffectsInsertion = False
-    if testItemAttrAndEffectsInsertion:
+    if 0:
         inst = ItemsModuleCreator(item_name='dorans_bl')
         inst.create_and_insert_item_attrs()
         inst.create_and_insert_item_effects()
 
-    testItemCondCreationAndInsertion = False
-    if testItemCondCreationAndInsertion:
+    # ITEM CONDITION CREATION AND INSERTION
+    if 0:
         inst = ItemsModuleCreator(item_name='gunblade')
         inst.create_and_insert_item_effects()
         inst.create_and_insert_item_conditionals()
 
-    testPFormatObj = False
-    if testPFormatObj:
+    # PRETTY FORMAT OBJECT IN MODULE
+    if 0:
         inst = ModuleCreatorBase()
         inst.pformat_obj_in_module(obj_name=ABILITIES_ATTRS_DCT_NAME, items_or_a_champ_name='jax')
 
