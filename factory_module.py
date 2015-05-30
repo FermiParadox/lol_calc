@@ -1,19 +1,20 @@
 import api_champions_database
 import api_masteries_database
-import re
-import time
-import urllib.request
 import champion_ids
-import json
-import pprint as pp
-import copy
 import api_key
 import palette
 import stats
+import api_items_database
+
+import re
+import time
+import urllib.request
+import json
+import pprint as pp
+import copy
 import importlib
 import ast
 import collections
-import api_items_database
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -1877,12 +1878,26 @@ class ExploreApiItems(ExploreBase):
 
 class ExploreApiMasteries(ExploreBase):
 
+    STAT_NAMES_IN_MASTERIES_MAP = {
+        'cooldown reduction': {'app_name': 'cdr', 'stat_type': 'percent'},
+        'armor': {'app_name': 'armor', 'stat_type': 'undefined'},
+        'magic resist': {'app_name': 'mr', 'stat_type': 'undefined'},
+        '% maximum health': {'app_name': 'hp', 'stat_type': 'percent'},
+        'attack speed': {'app_name': 'att_speed', 'stat_type': 'percent'},
+        'ability power': {'app_name': 'ap', 'stat_type': 'undefined', 'priority': 'lowest'},
+        'bonus attack damage': {'app_name': 'bonus_ad', 'stat_type': 'undefined'},
+        'attack damage': {'app_name': 'ad', 'stat_type': 'undefined', 'priority': 'lowest'},
+        'attack damage per level': {'app_name': 'ad', 'stat_type': 'undefined'},
+        'movement speed': {'app_name': 'move_speed', 'stat_type': 'undefined'},
+    }
+
     def __init__(self):
         # Contains all masteries dict, along with version and tree.
         self.all_api_masteries_data_dct = api_masteries_database.ALL_MASTERIES
         # Dict of dicts containing each mastery's attributes.
         self.api_masteries_dcts = self.all_api_masteries_data_dct['data']
         self.masteries_dct = {}
+        self.__create_masteries_dct()
 
     def mastery_name_from_id(self, id_num):
         """
@@ -1896,6 +1911,11 @@ class ExploreApiMasteries(ExploreBase):
 
         return self.api_masteries_dcts[id_num]['name']
 
+    def refined_mastery_name_from_id(self, id_num):
+        mastery_name = self.mastery_name_from_id(id_num=id_num)
+
+        return self.modify_api_names_to_callable_string(name=mastery_name)
+
     def masteries_names(self):
         """
         Returns all mastery names.
@@ -1905,18 +1925,108 @@ class ExploreApiMasteries(ExploreBase):
         lst_returned = []
 
         for id_num in self.api_masteries_dcts:
-            mastery_name = self.mastery_name_from_id(id_num=id_num)
-            mastery_name = self.modify_api_names_to_callable_string(name=mastery_name)
+            mastery_name = self.refined_mastery_name_from_id(id_num=id_num)
             lst_returned.append(mastery_name)
 
         return lst_returned
 
     def __create_masteries_dct(self):
 
-        None
+        for id_num in self.api_masteries_dcts:
+            mastery_name = self.refined_mastery_name_from_id(id_num=id_num)
+            mastery_dct = self.api_masteries_dcts[id_num]
+
+            self.masteries_dct.update({mastery_name: mastery_dct})
 
     def mastery_tree(self, mastery_name):
-        None
+        return self.masteries_dct[mastery_name]['masteryTree']
+
+    def prereq_mastery(self, mastery_name):
+        """
+        Returns prerequisite for given mastery name if it has any.
+
+        :param mastery_name: (str)
+        :return: (str) or (None)
+        """
+        prereq_id = self.masteries_dct[mastery_name]['prereq']
+        if prereq_id != '0':
+            return self.refined_mastery_name_from_id(id_num=prereq_id)
+
+    def max_points(self, mastery_name):
+        return self.masteries_dct[mastery_name]['ranks']
+
+    def mastery_description(self, mastery_name):
+        """
+        Returns list of description strings for given mastery name.
+
+        :param mastery_name: (str)
+        :return: (list)
+        """
+
+        return self.masteries_dct[mastery_name]['description']
+
+    @staticmethod
+    def _extracted_numbers_from_single_description_str(single_description_str):
+        """
+        Returns a tuple of values that are detected in given description string.
+
+        :param single_description_str: (str) A single string of the description list.
+        :return: (tuple)
+        """
+
+        single_description_str = single_description_str.lower()
+
+        # Detects and stores values (ints and decimals along with '%').
+        pattern = re.compile(r'\d+(?:\.\d+)?%?')
+        matched_lst = re.findall(pattern, single_description_str)
+
+        new_lst = []
+
+        if matched_lst:
+            for matched_str in matched_lst:
+                # Converts percent values to decimals
+                if '%' in matched_str:
+                    matched_str = float(matched_str.strip('%')) / 100
+
+                new_lst.append(float(matched_str))
+
+        return tuple(new_lst)
+
+    def extracted_numbers_from_description(self, mastery_name):
+        """
+        Returns a list of tuples of values that are detected in given mastery's description.
+
+        After finding matches for each description string,
+        it creates a tuple of values from first element, second, etc.
+
+        :param mastery_name:
+        :return: (list)
+        """
+
+        # List containing matches from each description string.
+        lst_of_lists = []
+
+        description_lst = self.mastery_description(mastery_name=mastery_name)
+
+        for string in description_lst:
+            single_tpl = self._extracted_numbers_from_single_description_str(single_description_str=string)
+            lst_of_lists.append(single_tpl)
+
+        # If no matches are detect ends method.
+        if not any(lst_of_lists):
+            return []
+
+        # FINAL LIST
+        lst_returned = []
+
+        num_of_tuples = len(lst_of_lists[0])
+        # Picks n-th element for each n-list.
+        for num in range(num_of_tuples):
+            lst = [i[num] for i in lst_of_lists]
+
+            lst_returned.append(tuple(lst))
+
+        return lst_returned
 
 
 # ===============================================================
@@ -4851,7 +4961,14 @@ if __name__ == '__main__':
         inst.create_and_insert_item_effects()
         inst.create_and_insert_item_conditionals()
 
-    testPFormatObj = True
+    testPFormatObj = False
     if testPFormatObj:
         inst = ModuleCreatorBase()
         inst.pformat_obj_in_module(obj_name=ABILITIES_ATTRS_DCT_NAME, items_or_a_champ_name='jax')
+
+    # MASTERIES EXPLORATION
+    # Tuple of values detection.
+    if 1:
+        inst = ExploreApiMasteries()
+        l = inst.extracted_numbers_from_description('sorcery')
+        print(l)
