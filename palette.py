@@ -51,7 +51,7 @@ DMG_DCT_BASE = dict(
 )
 
 
-def dmg_dct_base():
+def dmg_dct_base_deepcopy():
     return copy.deepcopy(DMG_DCT_BASE)
 
 

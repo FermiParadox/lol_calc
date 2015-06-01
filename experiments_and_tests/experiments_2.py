@@ -1,14 +1,11 @@
-d = {'a': 'aa', 'b': 'bb'}
+import copy
 
-print('d', id(d))
-print('d["a"]', id(d['a']))
+mom = dict(
+    a=4,
+    b={'b2': 4}
+)
 
-c = {}
-
-c.update(d)
-
-print('c', id(c))
-print('c["a"]', id(c['a']))
-
-
+kid = dict(
+    c=33)
+kid.update(mom)
 

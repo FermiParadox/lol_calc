@@ -54,7 +54,7 @@ child_class_as_str = """class ChampionAttributes(object):
 # ===============================================================
 class Fetch(object):
     """
-    Used for retrieving stored data in a champion module, or items module.
+    Used for retrieving stored data in a champion module, items module, or masteries module.
     """
 
     @staticmethod
@@ -191,6 +191,7 @@ class Fetch(object):
         else:
             item_name = spell_or_item_name
             return self.items_attrs_dct()[item_name]['general_attributes']['castable']
+
 
 
 # ---------------------------------------------------------------
@@ -912,7 +913,7 @@ def suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_m
 
     # Asks dev.
     while True:
-        dev_choice = input('\nSelect all valid names. (press only enter for empty)\n')
+        dev_choice = input('\nSelect ALL valid names. (press only enter for empty)\n')
 
         # Exits loop if requested.
         _check_loop_exit(dev_choice)
@@ -925,13 +926,13 @@ def suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_m
             # Checks if given values correspond to actual indexes.
             # If not, message is repeated.
             try:
-                # (e.g. '2, 7,5, 1')
-                pattern = re.compile(r'(\d{1,2})+')
+                # (e.g. '2, 74,5 ,1')
+                pattern = re.compile(r'\d+')
                 matches = re.findall(pattern, dev_choice)
 
                 for match in matches:
                     index_num = int(match)
-                    modified_lst.append(suggested_values_lst[index_num - 1])
+                    modified_lst.append(suggested_lst[index_num - 1])
                 break
 
             except IndexError:
@@ -1975,7 +1976,7 @@ class ExploreApiMasteries(ExploreBase):
     def max_points(self, mastery_name):
         return self.masteries_dct[mastery_name]['ranks']
 
-    def mastery_description(self, mastery_name):
+    def mastery_description(self, mastery_name, print_mode=False):
         """
         Returns list of description strings for given mastery name.
 
@@ -1983,7 +1984,7 @@ class ExploreApiMasteries(ExploreBase):
         :return: (list)
         """
 
-        return self.masteries_dct[mastery_name]['description']
+        return _return_or_pprint_complex_obj(dct=self.masteries_dct[mastery_name]['description'], print_mode=print_mode)
 
     @staticmethod
     def _extracted_numbers_from_single_description_str(single_description_str):
@@ -2012,7 +2013,7 @@ class ExploreApiMasteries(ExploreBase):
 
         return tuple(new_lst)
 
-    def extracted_numbers_from_description(self, mastery_name):
+    def stats_values_detected(self, mastery_name):
         """
         Returns a list of tuples of values that are detected in given mastery's description.
 
@@ -2040,15 +2041,15 @@ class ExploreApiMasteries(ExploreBase):
         lst_returned = []
 
         num_of_tuples = len(lst_of_lists[0])
-        # Picks n-th element for each n-list.
         for num in range(num_of_tuples):
+            # Nth lst contains n-th element from detected elements.
             lst = [i[num] for i in lst_of_lists]
 
             lst_returned.append(tuple(lst))
 
         return lst_returned
 
-    def stats_detected(self, mastery_name):
+    def stats_names_detected(self, mastery_name):
         """
         Detects all stats' names in given mastery's description.
 
@@ -2069,9 +2070,6 @@ class ExploreApiMasteries(ExploreBase):
                 lst_returned.append(app_stat_name)
 
         return lst_returned
-
-
-
 
 
 # ===============================================================
@@ -2247,7 +2245,7 @@ class DmgsBase(object):
 
     @staticmethod
     def dmg_attributes():
-        return palette.DMG_DCT_BASE
+        return palette.dmg_dct_base_deepcopy()
 
     def usual_values_dmg_attrs(self):
 
@@ -4550,8 +4548,75 @@ class ItemsConditionals(ConditionalsBase):
 
 # ---------------------------------------------------------------
 # MASTERIES
-class MasteriesCreation(object):
-    pass
+class MasteriesCreation(BuffsBase, DmgsBase):
+
+    BASE_MASTERY_DCT = dict(
+        stats=None,
+        buffs={},
+        dmgs={})
+
+    def __init__(self):
+        self.inst = ExploreApiMasteries()
+        self.raw_masteries_dct = self.inst.masteries_dct
+        self.final_masteries_dct = {}#Fetch().
+
+    def possible_stats_names(self, mastery_name):
+        """
+        Returns a list with possible stat names.
+        On the top of the list are stats detected since they are most probably the ones to use.
+
+        :param mastery_name: (str)
+        :return: (list)
+        """
+
+        detected_names_set = set(self.inst.stats_names_detected(mastery_name=mastery_name))
+        allowed_names_set = set(ALLOWED_STATS_NAMES)
+
+        allowed_names_set -= detected_names_set
+
+        names_lst = sorted(detected_names_set) + sorted(allowed_names_set)
+
+        return names_lst
+
+    def possible_stat_values(self, mastery_name):
+        return self.inst.stats_values_detected(mastery_name=mastery_name)
+
+    def _create_and_return_mastery_stats(self, mastery_name):
+
+        possible_stat_names = self.possible_stats_names(mastery_name=mastery_name)
+        possible_stat_values = self.possible_stat_values(mastery_name=mastery_name)
+
+        selected_names_lst = []
+        suggest_lst_of_attr_values(suggested_values_lst=possible_stat_names,
+                                   modified_lst=selected_names_lst,
+                                   sort_suggested_lst=False)
+        dct = {k: None for k in selected_names_lst}
+
+        suggested_values_dct = {k: possible_stat_values for k in selected_names_lst}
+
+        suggest_attr_values(suggested_values_dct=suggested_values_dct, modified_dct=dct, )
+
+        return dct
+
+    def create_single_mastery_dct(self, mastery_name):
+
+        self.final_masteries_dct.update({mastery_name: {}})
+
+        print(fat_delimiter(40))
+        print('\nMASTERY: {}\n'.format(mastery_name))
+        self.inst.mastery_description(mastery_name=mastery_name, print_mode=True)
+
+        stats_dct = self._create_and_return_mastery_stats(mastery_name=mastery_name)
+
+        self.final_masteries_dct[mastery_name].update({'stats': stats_dct})
+
+    def create_all_mastery_dcts(self):
+        print(fat_delimiter(80))
+
+        for mastery_name in self.raw_masteries_dct:
+            self.create_single_mastery_dct(mastery_name=mastery_name)
+
+
 
 
 # ===============================================================
@@ -5005,10 +5070,17 @@ if __name__ == '__main__':
     # Tuple of values detection.
     if 0:
         inst = ExploreApiMasteries()
-        l = inst.extracted_numbers_from_description('sorcery')
+        l = inst.stats_values_detected('sorcery')
         print(l)
     # Stats names detection.
-    if 1:
+    if 0:
         inst = ExploreApiMasteries()
-        l = inst.stats_detected('warlord')
+        l = inst.stats_names_detected('warlord')
         print(l)
+
+    # MASTERIES CREATION
+    if 1:
+        inst = MasteriesCreation()
+        inst.create_single_mastery_dct('devastating_strikes')
+        d = inst.final_masteries_dct
+        print(d)
