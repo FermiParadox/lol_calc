@@ -2079,7 +2079,7 @@ class BuffsBase(object):
 
     @staticmethod
     def buff_attributes():
-        return palette.BUFF_DCT_BASE
+        return palette.buff_dct_base_deepcopy()
 
     USUAL_BUFF_ATTR_VALUES = dict(
         target_type=('player', 'enemy'),
@@ -4598,23 +4598,29 @@ class MasteriesCreation(BuffsBase, DmgsBase):
 
         return dct
 
-    def create_single_mastery_dct(self, mastery_name):
+    def create_single_mastery_stats_dct(self, mastery_name):
 
-        self.final_masteries_dct.update({mastery_name: {}})
-
-        print(fat_delimiter(40))
-        print('\nMASTERY: {}\n'.format(mastery_name))
         self.inst.mastery_description(mastery_name=mastery_name, print_mode=True)
 
         stats_dct = self._create_and_return_mastery_stats(mastery_name=mastery_name)
 
         self.final_masteries_dct[mastery_name].update({'stats': stats_dct})
 
+    def create_single_mastery_buffs(self, mastery_name):
+
+
+    def create_single_mastery_dmgs(self, mastery_name):
+        pass
+
     def create_all_mastery_dcts(self):
         print(fat_delimiter(80))
 
         for mastery_name in self.raw_masteries_dct:
-            self.create_single_mastery_dct(mastery_name=mastery_name)
+            print(fat_delimiter(40))
+            print('\nMASTERY: {}\n'.format(mastery_name))
+            self.final_masteries_dct.update({mastery_name: {}})
+
+            self.create_single_mastery_stats_dct(mastery_name=mastery_name)
 
 
 
@@ -5079,8 +5085,8 @@ if __name__ == '__main__':
         print(l)
 
     # MASTERIES CREATION
-    if 1:
+    if 0:
         inst = MasteriesCreation()
-        inst.create_single_mastery_dct('devastating_strikes')
+        inst.create_single_mastery_stats_dct('devastating_strikes')
         d = inst.final_masteries_dct
         print(d)

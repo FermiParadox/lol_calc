@@ -692,7 +692,7 @@ class StatRequest(StatCalculation):
 
                     self._check_and_update_stored_buff(tar_name=tar_name, buff_name=buff)
 
-    def _insert_bonus_to_tar_bonuses(self, stat_name, bonus_type, buff_dct, tar_name, buff_name):
+    def _insert_bonus_to_tar_bonuses(self, stat_name, bonus_type, buff_dct, tar_name, buff_name, buff_stats_dct):
         """
         Updates a target's bonuses_dct by adding the name and value of a bonus.
 
@@ -701,8 +701,6 @@ class StatRequest(StatCalculation):
         Returns:
             (None)
         """
-
-        buff_stats_dct = buff_dct['stats']
 
         value_num_or_dct = buff_stats_dct[stat_name][bonus_type]
         if type(value_num_or_dct) in (int, float):
@@ -723,6 +721,7 @@ class StatRequest(StatCalculation):
             stat_val = values_tpl[lvl_index]
 
             # STAT MODS
+            # (all stat mods are additive)
             stat_mods_dct = value_num_or_dct['stat_mods']
             if stat_mods_dct:
                 for mod_name in stat_mods_dct:
@@ -730,7 +729,7 @@ class StatRequest(StatCalculation):
 
                     if mod_vals:
                         if len(mod_vals) == 1:
-                            stat_val += mod_vals[0]
+                            stat_val += mod_vals[0] * self.request_stat(target_name='player', stat_name=mod_name)
                         else:
                             stat_val += mod_vals[lvl_index]
 
@@ -758,14 +757,17 @@ class StatRequest(StatCalculation):
             self._check_and_update_stored_buff(tar_name=tar_name, buff_name=buff_name)
 
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
+            # (All buff stats dict)
             buff_stats_dct = buff_dct['stats']
             # Checks if the buff has stat bonuses.
             if buff_stats_dct:
                 # Checks if examined stat exists in this buff dict.
                 if stat_name in buff_stats_dct:
+                    # (single stat dict)
+                    stat_dct = buff_stats_dct[stat_name]
 
-                    for bonus_type in buff_stats_dct[stat_name]:
-                        if not buff_stats_dct[stat_name][bonus_type]:
+                    for bonus_type in stat_dct:
+                        if not stat_dct[bonus_type]:
                             continue
 
                         tar_bonuses = self.bonuses_dct[tar_name]
@@ -780,7 +782,7 @@ class StatRequest(StatCalculation):
 
                         self._insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
                                                           buff_dct=buff_dct, tar_name=tar_name,
-                                                          buff_name=buff_name)
+                                                          buff_name=buff_name, buff_stats_dct=buff_stats_dct)
 
     def request_stat(self, target_name, stat_name, _return_value=True):
         """
