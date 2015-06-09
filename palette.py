@@ -63,6 +63,40 @@ class UnexpectedValueError(Exception):
     pass
 
 
+class DuplicateNameError(Exception):
+    """
+    To be raised when a duplicate buff or dmg name is found.
+
+    Duplicate buffs or dmgs can cause bugs when translated.
+    """
+    pass
+
+
+def items_buffs_or_dmgs_names_dct(str_buffs_or_dmgs, attrs_dct):
+    """
+    Creates a dict of all items' (or masteries') dmgs or buffs names as keys, and corresponding item name as value.
+
+    Raises error if duplicate names are found.
+
+    :param str_buffs_or_dmgs: (str) 'dmgs', 'buffs'
+    :return: (dict) Key: buff name, value: item name
+    """
+
+    dct = {}
+
+    for obj_name in attrs_dct:
+        for attr_name in attrs_dct[obj_name][str_buffs_or_dmgs]:
+
+            # Checks if obj already exists.
+            if attr_name in dct:
+                raise DuplicateNameError
+            # Adds obj name to list
+            else:
+                dct.update({attr_name: obj_name})
+
+    return dct
+
+
 class ChampionsStats(object):
 
     @staticmethod
@@ -163,4 +197,5 @@ class BaseStatsWithMana(object):
         # Set always to 2.
         crit_modifier=2,
         )
+
 

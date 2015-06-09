@@ -1,10 +1,4 @@
-class DuplicateNameError(Exception):
-    """
-    To be raised when a duplicate buff or dmg name is found.
-
-    Duplicate buffs or dmgs can cause bugs when translated.
-    """
-    pass
+import palette
 
 
 ITEMS_ATTRIBUTES = {
@@ -106,35 +100,12 @@ ITEMS_CONDITIONALS = {
     'dorans_blade': {}}
 
 
-def _items_buffs_or_dmgs_names_dct(buffs_or_dmgs):
-    """
-    Creates a dict of all items' dmgs or buffs names as keys, and corresponding item name as value.
-
-    :param buffs_or_dmgs: (str) 'dmgs', 'buffs'
-    :return: (dict) Key: buff name, value: item name
-    """
-
-    dct = {}
-
-    for item_name in ITEMS_ATTRIBUTES:
-        for buff_name in ITEMS_ATTRIBUTES[item_name][buffs_or_dmgs]:
-
-            # Checks if obj already exists.
-            if buff_name in dct:
-                raise DuplicateNameError
-            # Adds obj name to list
-            else:
-                dct.update({buff_name: item_name})
-
-    return dct
-
-
-ITEMS_BUFFS_NAMES = _items_buffs_or_dmgs_names_dct(buffs_or_dmgs='buffs')
-ITEMS_DMGS_NAMES = _items_buffs_or_dmgs_names_dct(buffs_or_dmgs='dmgs')
+ITEMS_BUFFS_NAMES = palette.items_buffs_or_dmgs_names_dct(str_buffs_or_dmgs='buffs', attrs_dct=ITEMS_ATTRIBUTES)
+ITEMS_DMGS_NAMES = palette.items_buffs_or_dmgs_names_dct(str_buffs_or_dmgs='dmgs', attrs_dct=ITEMS_ATTRIBUTES)
 
 
 if __name__ == '__main__':
 
-    # Buffs and dmgs names.
+    # All buffs and dmgs names of all items.
     print("Item buffs' names: {}".format(ITEMS_BUFFS_NAMES))
     print("Item buffs' names: {}".format(ITEMS_DMGS_NAMES))

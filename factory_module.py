@@ -4047,8 +4047,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         'Magic Resist': 'mr',
         'Mana': 'mp',
         'Movement Speed': 'move_speed',
-        'Spell Vamp': 'spellvamp',
-        }
+        'Spell Vamp': 'spellvamp'}
 
     ITEM_ADDITIVE_STATS = [ITEM_STAT_NAMES_MAP['Spell Vamp'], ITEM_STAT_NAMES_MAP['Life Steal']]
 
@@ -4121,7 +4120,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         return self.affected_stat_attributes()
 
     # ------------------------------------------------------------
-    def pprinted_item_description(self):
+    def pprint_item_description(self):
         print('\nITEM: {}\n'.format(self.item_name))
         pp.pprint(self._item_description_str)
 
@@ -4264,7 +4263,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         self.item_dmgs[dmg_name]['mods'] = self.dmg_mod_contents()
 
         # MODS
-        self.pprinted_item_description()
+        self.pprint_item_description()
 
         # Ask dmg has mods.
         if _y_n_question(question_str='New dmg mod?') is True:
@@ -4275,7 +4274,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
                     self.item_dmgs[dmg_name]['mods'].update({tar_type: {}})
 
                     # MOD STATS (names and values)
-                    self.pprinted_item_description()
+                    self.pprint_item_description()
                     while 1:
                         # Stat name
                         stat_name_msg = 'ITEM: {}, MOD STAT OWNER: {}.'.format(self.item_name, tar_type)
@@ -4332,7 +4331,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
 
         # Prints item description.
         print(fat_delimiter(40))
-        self.pprinted_item_description()
+        self.pprint_item_description()
 
         # Number of dmgs
         num_of_dmgs = restricted_input(question_msg='Number of dmgs?\n', input_type='int',
@@ -4356,7 +4355,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         """
 
         pp.pprint(delimiter(40))
-        self.pprinted_item_description()
+        self.pprint_item_description()
         # Asks if buff affects stats.
         if _y_n_question(question_str='Buff {} affects stats?'.format(buff_name.upper())) is True:
 
@@ -4390,7 +4389,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
     def create_item_buffs(self):
 
         print(fat_delimiter(80))
-        self.pprinted_item_description()
+        self.pprint_item_description()
 
         self.item_buffs = {}
         self._ask_amount_of_buffs_and_change_names(modified_dct=self.item_buffs, obj_name=self.item_name)
@@ -4548,28 +4547,28 @@ class ItemsConditionals(ConditionalsBase):
 
 # ---------------------------------------------------------------
 # MASTERIES
-class MasteriesCreation(BuffsBase, DmgsBase):
+class MasteryCreation(BuffsBase, DmgsBase):
 
     BASE_MASTERY_DCT = dict(
         stats=None,
         buffs={},
         dmgs={})
 
-    def __init__(self):
+    def __init__(self, mastery_name):
+        self.mastery_name = mastery_name
         self.inst = ExploreApiMasteries()
         self.raw_masteries_dct = self.inst.masteries_dct
         self.final_masteries_dct = {}#Fetch().
 
-    def possible_stats_names(self, mastery_name):
+    def possible_stats_names(self,):
         """
         Returns a list with possible stat names.
         On the top of the list are stats detected since they are most probably the ones to use.
 
-        :param mastery_name: (str)
         :return: (list)
         """
 
-        detected_names_set = set(self.inst.stats_names_detected(mastery_name=mastery_name))
+        detected_names_set = set(self.inst.stats_names_detected(mastery_name=self.mastery_name))
         allowed_names_set = set(ALLOWED_STATS_NAMES)
 
         allowed_names_set -= detected_names_set
@@ -4578,13 +4577,13 @@ class MasteriesCreation(BuffsBase, DmgsBase):
 
         return names_lst
 
-    def possible_stat_values(self, mastery_name):
-        return self.inst.stats_values_detected(mastery_name=mastery_name)
+    def possible_stat_values(self):
+        return self.inst.stats_values_detected(mastery_name=self.mastery_name)
 
-    def _create_and_return_mastery_stats(self, mastery_name):
+    def _create_and_return_mastery_stats(self):
 
-        possible_stat_names = self.possible_stats_names(mastery_name=mastery_name)
-        possible_stat_values = self.possible_stat_values(mastery_name=mastery_name)
+        possible_stat_names = self.possible_stats_names()
+        possible_stat_values = self.possible_stat_values()
 
         selected_names_lst = []
         suggest_lst_of_attr_values(suggested_values_lst=possible_stat_names,
@@ -4598,30 +4597,23 @@ class MasteriesCreation(BuffsBase, DmgsBase):
 
         return dct
 
-    def create_single_mastery_stats_dct(self, mastery_name):
+    def create_single_mastery_stats_dct(self):
 
-        self.inst.mastery_description(mastery_name=mastery_name, print_mode=True)
+        self.inst.mastery_description(mastery_name=self.mastery_name, print_mode=True)
 
-        stats_dct = self._create_and_return_mastery_stats(mastery_name=mastery_name)
+        stats_dct = self._create_and_return_mastery_stats()
 
-        self.final_masteries_dct[mastery_name].update({'stats': stats_dct})
+        self.final_masteries_dct[self.mastery_name] = {}
+        self.final_masteries_dct[self.mastery_name].update({'stats': stats_dct})
 
-    def create_single_mastery_buffs(self, mastery_name):
-
-
-    def create_single_mastery_dmgs(self, mastery_name):
+    def create_single_mastery_buffs(self,):
+        # Name
+        print(delimiter(40))
+        # Description
         pass
 
-    def create_all_mastery_dcts(self):
-        print(fat_delimiter(80))
-
-        for mastery_name in self.raw_masteries_dct:
-            print(fat_delimiter(40))
-            print('\nMASTERY: {}\n'.format(mastery_name))
-            self.final_masteries_dct.update({mastery_name: {}})
-
-            self.create_single_mastery_stats_dct(mastery_name=mastery_name)
-
+    def create_single_mastery_dmgs(self):
+        pass
 
 
 
@@ -4994,6 +4986,19 @@ class ItemsModuleCreator(ModuleCreatorBase):
                                                             auto_replace=auto_replace)
 
 
+class MasteryModuleCreator(ModuleCreatorBase):
+
+    def create_all_mastery_dcts(self):
+        print(fat_delimiter(80))
+
+        for mastery_name in self.raw_masteries_dct:
+            print(fat_delimiter(40))
+            print('\nMASTERY: {}\n'.format(mastery_name))
+            self.final_masteries_dct.update({mastery_name: {}})
+
+            self.create_single_mastery_stats_dct()
+
+
 # ===============================================================
 # ===============================================================
 if __name__ == '__main__':
@@ -5085,8 +5090,8 @@ if __name__ == '__main__':
         print(l)
 
     # MASTERIES CREATION
-    if 0:
-        inst = MasteriesCreation()
-        inst.create_single_mastery_stats_dct('devastating_strikes')
+    if 1:
+        inst = MasteryCreation(mastery_name='devastating_strikes')
+        inst.create_single_mastery_stats_dct()
         d = inst.final_masteries_dct
         print(d)
