@@ -1,6 +1,16 @@
 import palette
 
 
+"""
+hextech_gunblade:
+    Reduction by AAs and single target abilities is ignored.
+    (e.g. ranged runaan's AAs with 2 hits per sec and item cd mastery would require 8 seconds to reset it)
+
+
+
+"""
+
+
 ITEMS_ATTRIBUTES = {
     'dorans_blade': {'buffs': {},
                      'dmgs': {},

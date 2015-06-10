@@ -2351,6 +2351,72 @@ class AbilitiesAttributesBase(GenAttrsBase):
         return mod_val
 
 
+class ItemAndMasteriesBase(object):
+
+    @staticmethod
+    def pprint_item_or_mastery_description(obj_name, obj_description_str, str_item_or_mastery):
+        """
+        Pretty prints mastery or item description.
+
+        :param obj_name: (str) Item or mastery name.
+        :param obj_description_str:
+        :param str_item_or_mastery: 'item' or 'mastery'
+        :return: (None)
+        """
+        print('\n:{} {}\n'.format(str_item_or_mastery.upper(), obj_name))
+        pp.pprint(obj_description_str)
+
+    @staticmethod
+    def item_or_buff_attributes():
+        return {k: v for k, v in BuffsBase.buff_attributes().items() if k != 'prohibit_cd_start'}
+
+    @staticmethod
+    def _suggest_buff_affected_stats_of_item_or_mastery(buff_name, str_item_or_mastery, pprint_description_func,
+                                                        mastery_or_item_name, buffs_dct, available_stat_names):
+        """
+        Modifies item buffs dict for given buff,
+        by inserting buff affected stats suggested by dev.
+
+        :param buff_name: (str)
+        :param mastery_or_item_name: (str)
+        :param buffs_dct: (dict) Dict of all masteries' or all items' buffs.
+        :return: (None)
+        """
+
+        available_stat_names = available_stat_names + ['']
+
+        pp.pprint(delimiter(40))
+        pprint_description_func()
+        # Asks if buff affects stats.
+        if _y_n_question(question_str='Buff {} affects stats?'.format(buff_name.upper())) is True:
+
+            # Resets affected_stats dict.
+            buffs_dct[buff_name]['stats'] = {}
+
+            while 1:
+                # Stat name
+                stat_name_msg = '{}: {}, BUFF: {}.'.format(str_item_or_mastery.upper(), mastery_or_item_name, buff_name)
+                stat_name_msg += '\nStat name? (empty string to exit)'
+                stat_name = enumerated_question(question_str=stat_name_msg,
+                                                # (enter added as a choice by '')
+                                                choices_seq=available_stat_names,
+                                                restrict_choices=True)
+
+                if stat_name == '':
+                    break
+
+                # Stat value
+                stat_val_msg = 'ITEM: {}, BUFF: {}, STAT NAME: {}'.format(mastery_or_item_name, buff_name, stat_name)
+                stat_val_msg += '\nStat value?'
+                stat_val = restricted_input(question_msg=stat_val_msg,
+                                            input_type='num', characteristic='non_zero',
+                                            disallow_enter=True)
+
+                buffs_dct[buff_name]['stats'].update({stat_name: stat_val})
+
+        pp.pprint(buffs_dct[buff_name]['stats'])
+
+
 # ---------------------------------------------------------------
 # ABILITIES
 
@@ -4025,7 +4091,7 @@ class AbilitiesConditionals(ConditionalsBase):
 # ---------------------------------------------------------------
 # ITEMS
 
-class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
+class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMasteriesBase):
 
     """
     Responsible for creating a SINGLE item's attributes: unique and stacking item stats, item buffs, item effects.
@@ -4109,7 +4175,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         return dct
 
     def item_buff_attributes(self):
-        return {k: v for k, v in self.buff_attributes().items() if k != 'prohibit_cd_start'}
+        return self.item_or_buff_attributes()
 
     def usual_item_buff_attrs_values(self):
         # (buff_source of item buffs is always the item)
@@ -4121,8 +4187,9 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
 
     # ------------------------------------------------------------
     def pprint_item_description(self):
-        print('\nITEM: {}\n'.format(self.item_name))
-        pp.pprint(self._item_description_str)
+        self.pprint_item_or_mastery_description(obj_name=self.item_name,
+                                                obj_description_str=self._item_description_str,
+                                                str_item_or_mastery='item')
 
     def _validate_stats_names(self):
         """
@@ -4345,45 +4412,12 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
         # Prints all dmgs
         pp.pprint(self.item_dmgs)
 
-    def _suggest_buff_affected_stats(self, buff_name):
-        """
-        Modifies item buffs dict for given buff,
-        by inserting buff affected stats suggested by dev.
-
-        :param buff_name: (str)
-        :return: (None)
-        """
-
-        pp.pprint(delimiter(40))
-        self.pprint_item_description()
-        # Asks if buff affects stats.
-        if _y_n_question(question_str='Buff {} affects stats?'.format(buff_name.upper())) is True:
-
-            # Resets affected_stats dict.
-            self.item_buffs[buff_name]['stats'] = {}
-
-            while 1:
-                # Stat name
-                stat_name_msg = 'ITEM: {}, BUFF: {}.'.format(self.item_name, buff_name)
-                stat_name_msg += '\nStat name?(empty string to exit)'
-                stat_name = enumerated_question(question_str=stat_name_msg,
-                                                # (enter added as a choice by '')
-                                                choices_seq=self.items_stat_names() + [''],
-                                                restrict_choices=True)
-
-                if stat_name == '':
-                    break
-
-                # Stat value
-                stat_val_msg = 'ITEM: {}, BUFF: {}, STAT NAME: {}'.format(self.item_name, buff_name, stat_name)
-                stat_val_msg += '\nStat value?'
-                stat_val = restricted_input(question_msg=stat_val_msg,
-                                            input_type='num', characteristic='non_zero',
-                                            disallow_enter=True)
-
-                self.item_buffs[buff_name]['stats'].update({stat_name: stat_val})
-
-        pp.pprint(self.item_buffs[buff_name]['stats'])
+    def _suggest_buff_affected_stats_of_item(self, buff_name):
+        self._suggest_buff_affected_stats_of_item_or_mastery(buff_name=buff_name, str_item_or_mastery='item',
+                                                             pprint_description_func=self.pprint_item_description,
+                                                             mastery_or_item_name=self.item_name,
+                                                             buffs_dct=self.item_buffs,
+                                                             available_stat_names=self.items_stat_names())
 
     @repeat_cluster(cluster_name='ITEM BUFFS')
     def create_item_buffs(self):
@@ -4399,7 +4433,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase):
 
             buff_msg = '\nITEM: {}, BUFF: {}'.format(self.item_name, buff_name)
             # Stats affected by buff.
-            self._suggest_buff_affected_stats(buff_name=buff_name)
+            self._suggest_buff_affected_stats_of_item(buff_name=buff_name)
             # Rest of buff attrs.
             suggest_attr_values(suggested_values_dct=self.usual_item_buff_attrs_values(),
                                 modified_dct=self.item_buffs[buff_name], extra_start_msg=buff_msg)
@@ -4547,7 +4581,13 @@ class ItemsConditionals(ConditionalsBase):
 
 # ---------------------------------------------------------------
 # MASTERIES
-class MasteryCreation(BuffsBase, DmgsBase):
+class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
+
+    """
+    Responsible for creation of a mastery's stats, buffs and dmgs.
+
+    Dmgs are to be created manually, since there is only a single dmg in masteries.
+    """
 
     BASE_MASTERY_DCT = dict(
         stats=None,
@@ -4558,7 +4598,13 @@ class MasteryCreation(BuffsBase, DmgsBase):
         self.mastery_name = mastery_name
         self.inst = ExploreApiMasteries()
         self.raw_masteries_dct = self.inst.masteries_dct
-        self.final_masteries_dct = {}#Fetch().
+        self.mastery_buffs = {}
+
+    def print_mastery_description(self):
+        return self.inst.mastery_description(mastery_name=self.mastery_name, print_mode=True)
+
+    def mastery_buff_attributes(self):
+        return self.item_or_buff_attributes()
 
     def possible_stats_names(self,):
         """
@@ -4580,7 +4626,7 @@ class MasteryCreation(BuffsBase, DmgsBase):
     def possible_stat_values(self):
         return self.inst.stats_values_detected(mastery_name=self.mastery_name)
 
-    def _create_and_return_mastery_stats(self):
+    def create_and_return_mastery_stats(self):
 
         possible_stat_names = self.possible_stats_names()
         possible_stat_values = self.possible_stat_values()
@@ -4597,22 +4643,35 @@ class MasteryCreation(BuffsBase, DmgsBase):
 
         return dct
 
-    def create_single_mastery_stats_dct(self):
+    def suggest_buff_affected_stats_of_mastery(self, buff_name):
+        self._suggest_buff_affected_stats_of_item_or_mastery(buff_name=buff_name, str_item_or_mastery='mastery',
+                                                             pprint_description_func=self.print_mastery_description,
+                                                             mastery_or_item_name=self.mastery_name,
+                                                             buffs_dct=self.mastery_buffs,
+                                                             available_stat_names=self.possible_stats_names())
 
-        self.inst.mastery_description(mastery_name=self.mastery_name, print_mode=True)
+    def create_and_return_single_mastery_buffs(self):
 
-        stats_dct = self._create_and_return_mastery_stats()
+        print(fat_delimiter(40))
+        print('MASTERY: {}'.format(self.mastery_name))
+        self.print_mastery_description()
 
-        self.final_masteries_dct[self.mastery_name] = {}
-        self.final_masteries_dct[self.mastery_name].update({'stats': stats_dct})
+        self.mastery_buffs = {}
+        self._ask_amount_of_buffs_and_change_names(modified_dct=self.mastery_buffs, obj_name=self.mastery_name)
 
-    def create_single_mastery_buffs(self,):
-        # Name
-        print(delimiter(40))
-        # Description
-        pass
+        for buff_name in self.mastery_buffs:
+            self.mastery_buffs.update({buff_name: self.mastery_buff_attributes()})
 
-    def create_single_mastery_dmgs(self):
+            buff_msg = '\nMASTERY: {}, BUFF: {}'.format(self.mastery_name, buff_name)
+            # Stats affected by buff.
+            self._suggest_buff_affected_stats(buff_name=buff_name)
+            # Rest of buff attrs.
+            suggest_attr_values(suggested_values_dct=self.usual_item_buff_attrs_values(),
+                                modified_dct=self.mastery_buffs[buff_name], extra_start_msg=buff_msg)
+
+        pp.pprint(self.mastery_buffs)
+
+    def create_and_return_mastery(self):
         pass
 
 
@@ -4988,6 +5047,10 @@ class ItemsModuleCreator(ModuleCreatorBase):
 
 class MasteryModuleCreator(ModuleCreatorBase):
 
+    def __init__(self):
+        self.masteries_dct = ExploreApiMasteries().masteries_dct
+
+
     def create_all_mastery_dcts(self):
         print(fat_delimiter(80))
 
@@ -5092,6 +5155,5 @@ if __name__ == '__main__':
     # MASTERIES CREATION
     if 1:
         inst = MasteryCreation(mastery_name='devastating_strikes')
-        inst.create_single_mastery_stats_dct()
-        d = inst.final_masteries_dct
+        d = inst.create_and_return_mastery_stats()
         print(d)
