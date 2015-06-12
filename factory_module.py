@@ -2416,6 +2416,12 @@ class ItemAndMasteriesBase(object):
 
         pp.pprint(buffs_dct[buff_name]['stats'])
 
+    @staticmethod
+    def usual_item_or_mastery_buff_attrs_values():
+        # (buff_source of item buffs is always the item)
+        disallowed = ('prohibit_cd_start', 'buff_source')
+        return {k: v for k, v in BuffsBase().USUAL_BUFF_ATTR_VALUES.items() if k not in disallowed}
+
 
 # ---------------------------------------------------------------
 # ABILITIES
@@ -3074,6 +3080,8 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
 
         self.buffs_dct = {}
 
+    # ---------------------------------------------------------------
+    # Stats
     def _stat_names_in_tooltip(self):
         """
         Checks if ability contains a buff that modifies stats.
@@ -3228,6 +3236,8 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
 
             else:
                 print_invalid_answer()
+
+    # ---------------------------------------------------------------
 
     def every_nth_attack(self):
         """
@@ -4177,11 +4187,6 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
     def item_buff_attributes(self):
         return self.item_or_buff_attributes()
 
-    def usual_item_buff_attrs_values(self):
-        # (buff_source of item buffs is always the item)
-        disallowed = ('prohibit_cd_start', 'buff_source')
-        return {k: v for k, v in self.USUAL_BUFF_ATTR_VALUES.items() if k not in disallowed}
-
     def item_buff_affected_stat_attributes(self):
         return self.affected_stat_attributes()
 
@@ -4435,7 +4440,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
             # Stats affected by buff.
             self._suggest_buff_affected_stats_of_item(buff_name=buff_name)
             # Rest of buff attrs.
-            suggest_attr_values(suggested_values_dct=self.usual_item_buff_attrs_values(),
+            suggest_attr_values(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
                                 modified_dct=self.item_buffs[buff_name], extra_start_msg=buff_msg)
 
         pp.pprint(self.item_buffs)
@@ -4650,7 +4655,7 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
                                                              buffs_dct=self.mastery_buffs,
                                                              available_stat_names=self.possible_stats_names())
 
-    def create_and_return_single_mastery_buffs(self):
+    def create_single_mastery_buffs(self):
 
         print(fat_delimiter(40))
         print('MASTERY: {}'.format(self.mastery_name))
@@ -4664,9 +4669,9 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
 
             buff_msg = '\nMASTERY: {}, BUFF: {}'.format(self.mastery_name, buff_name)
             # Stats affected by buff.
-            self._suggest_buff_affected_stats(buff_name=buff_name)
+            self.suggest_buff_affected_stats_of_mastery(buff_name=buff_name)
             # Rest of buff attrs.
-            suggest_attr_values(suggested_values_dct=self.usual_item_buff_attrs_values(),
+            suggest_attr_values(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
                                 modified_dct=self.mastery_buffs[buff_name], extra_start_msg=buff_msg)
 
         pp.pprint(self.mastery_buffs)
@@ -5155,5 +5160,5 @@ if __name__ == '__main__':
     # MASTERIES CREATION
     if 1:
         inst = MasteryCreation(mastery_name='devastating_strikes')
-        d = inst.create_and_return_mastery_stats()
-        print(d)
+        inst.create_single_mastery_buffs()
+        print(inst.mastery_buffs)

@@ -327,6 +327,67 @@ class StatCalculation(StatFilters):
             if tar not in self.active_buffs:
                 self.active_buffs.update({tar: {}})
 
+    def _base_stat(self, stat_name, tar_name):
+        """
+        Returns stat value resulting from base stat value and per lvl scaling,
+        that is based exclusively on champion (no items, runes, masteries etc.).
+
+        :param stat_name: (str)
+        :param tar_name: (str)
+        :return: (float)
+        """
+        value = 0
+
+        tar_base_stats_dct = self.base_stats_dct[tar_name]
+
+        # If the stat exists in target's base stats..
+        if stat_name in tar_base_stats_dct:
+            # .. its initial value is set to it.
+            value = tar_base_stats_dct[stat_name]
+
+        # PER_LVL BONUS
+        # Iterates through all base stats.
+        base_stat_per_lvl_name = stat_name + '_per_lvl'
+        if base_stat_per_lvl_name in tar_base_stats_dct:
+            # .. it adds it to the value.
+            value += self.champion_lvls_dct[tar_name] * tar_base_stats_dct[base_stat_per_lvl_name]
+
+        return value
+
+    def _bonus_stat(self, stat_name, tar_name):
+        """
+        Returns only the bonus value of a stat,
+        that is, only champion related value (base and per lvl),
+        without abilities, items, masteries, runes, etc.
+
+        :param stat_name: (str)
+        :param tar_name: (str)
+        :return: (float)
+        """
+
+        value = 0
+
+        tar_bonuses = self.bonuses_dct[tar_name]
+        if stat_name in tar_bonuses:
+
+            # .. if there are additive bonuses..
+            if 'additive' in tar_bonuses[stat_name]:
+                # .. adds each bonus.
+                for bonus_name in tar_bonuses[stat_name]['additive']:
+                    value += tar_bonuses[stat_name]['additive'][bonus_name]
+
+            # if there are percent bonuses..
+            if 'percent' in tar_bonuses[stat_name]:
+                multiplication_mod = 1
+                # .. adds each bonus modifier..
+                for bonus_name in tar_bonuses[stat_name]['percent']:
+                    multiplication_mod += tar_bonuses[stat_name]['percent'][bonus_name]
+
+                # .. and applies the modifier to the value.
+                value *= multiplication_mod
+
+        return value
+
     def standard_stat(self, requested_stat, tar_name):
         """
         Calculates the value of a stat after applying all its bonuses to its base value found in base_stats_dct.
@@ -347,59 +408,17 @@ class StatCalculation(StatFilters):
         if requested_stat not in ALL_POSSIBLE_STAT_NAMES:
             raise NotImplementedError(requested_stat)
 
-        value = 0
-        base_stats_tar = self.base_stats_dct[tar_name]
-
-        # BASE VALUE
-        # If the stat exists in target's base stats..
-        if requested_stat in base_stats_tar:
-            # .. its initial value is set to it.
-            value = base_stats_tar[requested_stat]
-
-        # PER_LVL BONUS
-        # Iterates through all base stats.
-        for base_stat_name in base_stats_tar:
-
-            if requested_stat + '_per_lvl' in base_stat_name:
-                # .. it adds it to the value.
-                value += self.champion_lvls_dct[tar_name] * base_stats_tar[base_stat_name]
+        # BASE VALUE PLUS BASE PER LVL
+        value = self._base_stat(stat_name=requested_stat, tar_name=tar_name)
 
         # ITEM AND BUFF BONUSES
         # If the requested_stat has bonuses..
-        tar_bonuses = self.bonuses_dct[tar_name]
-        if requested_stat in tar_bonuses:
+        per_lvl_value = self._bonus_stat(stat_name=requested_stat, tar_name=tar_name)
 
-            # .. if there are additive bonuses..
-            if 'additive' in tar_bonuses[requested_stat]:
-                # .. adds each bonus.
-                for bonus_name in tar_bonuses[requested_stat]['additive']:
-                    value += tar_bonuses[requested_stat]['additive'][bonus_name]
-
-            # if there are percent bonuses..
-            if 'percent' in tar_bonuses[requested_stat]:
-                multiplication_mod = 1
-                # .. adds each bonus modifier..
-                for bonus_name in tar_bonuses[requested_stat]['percent']:
-                    multiplication_mod += tar_bonuses[requested_stat]['percent'][bonus_name]
-
-                # .. and applies the modifier to the value.
-                value *= multiplication_mod
-
-        return value
-
-    def _base_stat(self, stat_name, tar_name):
-        """
-        Returns stat value resulting from base stat value and per lvl scaling,
-        that is based exclusively on champion (no items, runes, masteries etc.).
-
-        :param stat_name: (str)
-        :param tar_name: (str)
-        :return: (float)
-        """
-
-        base_val = self.base_stats_dct[tar_name][stat_name]
-        per_lvl_val = (self.champion_lvls_dct[tar_name] * self.base_stats_dct[tar_name]['{}_per_lvl'.format(stat_name)])
-        return base_val + per_lvl_val
+        if per_lvl_value:
+            return value + per_lvl_value
+        else:
+            return value
 
     def base_ad(self, tar_name):
         """
@@ -863,22 +882,6 @@ class StatRequest(StatCalculation):
 
                             {('current_' + resource_used): self.request_stat(target_name=tar,
                                                                              stat_name=resource_used)})
-
-    def _bonus_stat(self, stat_name, tar_name):
-        """
-        Returns only the bonus value of a stat,
-        that is, only champion related value (base and per lvl),
-        without abilities, items, masteries, runes, etc.
-
-        :param stat_name: (str)
-        :param tar_name: (str)
-        :return: (float)
-        """
-
-        base_stat_name = BONUS_STAT_NAME_TO_BASE_NAME_MAP[stat_name]
-        base_val = self._base_stat(stat_name=base_stat_name, tar_name=tar_name)
-
-        return self.request_stat(target_name=tar_name, stat_name=base_stat_name) - base_val
 
 
 class DmgReductionStats(StatRequest):
