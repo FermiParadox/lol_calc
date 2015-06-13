@@ -2089,12 +2089,7 @@ class BuffsBase(object):
         buff_source=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS
     )
 
-    @staticmethod
-    def affected_stat_attributes():
-        return dict(
-            bonus_type='placeholder',
-            stat_values='placeholder',
-            stat_mods={})
+    BUFF_STAT_TYPES = ('additive', 'percent', 'multiplicative')
 
     @staticmethod
     def stat_mod_attributes():
@@ -2372,7 +2367,8 @@ class ItemAndMasteriesBase(object):
 
     @staticmethod
     def _suggest_buff_affected_stats_of_item_or_mastery(buff_name, str_item_or_mastery, pprint_description_func,
-                                                        mastery_or_item_name, buffs_dct, available_stat_names):
+                                                        mastery_or_item_name, buffs_dct, available_stat_names,
+                                                        lst_of_values_tuples):
         """
         Modifies item buffs dict for given buff,
         by inserting buff affected stats suggested by dev.
@@ -2394,9 +2390,14 @@ class ItemAndMasteriesBase(object):
             buffs_dct[buff_name]['stats'] = {}
 
             while 1:
-                # Stat name
-                stat_name_msg = '{}: {}, BUFF: {}.'.format(str_item_or_mastery.upper(), mastery_or_item_name, buff_name)
+                pp.pprint(delimiter(40))
+                pprint_description_func()
+
+                # STAT NAME
+                stat_name_msg = '{}: {}, '.format(str_item_or_mastery.upper(), mastery_or_item_name)
+                stat_name_msg += 'BUFF: {}.'.format(buff_name)
                 stat_name_msg += '\nStat name? (empty string to exit)'
+
                 stat_name = enumerated_question(question_str=stat_name_msg,
                                                 # (enter added as a choice by '')
                                                 choices_seq=available_stat_names,
@@ -2405,14 +2406,54 @@ class ItemAndMasteriesBase(object):
                 if stat_name == '':
                     break
 
-                # Stat value
-                stat_val_msg = 'ITEM: {}, BUFF: {}, STAT NAME: {}'.format(mastery_or_item_name, buff_name, stat_name)
-                stat_val_msg += '\nStat value?'
-                stat_val = restricted_input(question_msg=stat_val_msg,
-                                            input_type='num', characteristic='non_zero',
-                                            disallow_enter=True)
+                # STAT TYPE
+                stat_type_msg = '{}: {}, '.format(str_item_or_mastery.upper(), mastery_or_item_name)
+                stat_type_msg += 'BUFF: {}, '.format(buff_name)
+                stat_type_msg += 'STAT NAME: {}.'.format(stat_name)
+                stat_type_msg += '\nStat type?'
 
-                buffs_dct[buff_name]['stats'].update({stat_name: stat_val})
+                stat_type = enumerated_question(question_str=stat_type_msg,
+                                                choices_seq=BuffsBase.BUFF_STAT_TYPES,
+                                                restrict_choices=True)
+
+                # STAT VALUE
+                stat_val_msg = '{}: {}, '.format(str_item_or_mastery.upper(), mastery_or_item_name)
+                stat_val_msg += 'BUFF: {}, '.format(buff_name)
+                stat_val_msg += 'TYPE: {}, '.format(stat_type)
+                stat_val_msg += 'STAT NAME: {}.'.format(stat_name)
+                stat_val_msg += '\nStat value?'
+
+                stat_vals = enumerated_question(question_str=stat_val_msg, choices_seq=lst_of_values_tuples)
+
+                # STATS DICT INSERTION
+                buff_stats_dct = buffs_dct[buff_name]['stats']
+
+                if stat_name not in buff_stats_dct:
+                    buff_stats_dct.update({stat_name: {}})
+
+                if stat_type not in buff_stats_dct[stat_name]:
+                    buff_stats_dct[stat_name].update(
+                        {stat_type: {'stat_mods': {}, 'stat_values': None}})
+
+                buff_stats_dct[stat_name]['stat_values'] = stat_vals
+
+                # MODS
+                while 1:
+
+                    # MOD NAME
+                    mod_name_msg = '\nMod names?'
+
+                    mod_name = enumerated_question(question_str=mod_name_msg,
+                                                   # (enter added as a choice by '')
+                                                   choices_seq=available_stat_names,
+                                                   restrict_choices=True)
+
+                    buff_stats_dct[stat_name]['stat_mods'].update({mod_name: None})
+
+                    # MOD VALUE
+                    mod_vals = enumerated_question(question_str=stat_val_msg, choices_seq=lst_of_values_tuples)
+
+                    buff_stats_dct[stat_name]['stat_mods'][mod_name] = mod_vals
 
         pp.pprint(buffs_dct[buff_name]['stats'])
 
@@ -4187,9 +4228,6 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
     def item_buff_attributes(self):
         return self.item_or_buff_attributes()
 
-    def item_buff_affected_stat_attributes(self):
-        return self.affected_stat_attributes()
-
     # ------------------------------------------------------------
     def pprint_item_description(self):
         self.pprint_item_or_mastery_description(obj_name=self.item_name,
@@ -4422,7 +4460,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                                                              pprint_description_func=self.pprint_item_description,
                                                              mastery_or_item_name=self.item_name,
                                                              buffs_dct=self.item_buffs,
-                                                             available_stat_names=self.items_stat_names())
+                                                             available_stat_names=self.items_stat_names(),
+                                                             lst_of_values_tuples=())
 
     @repeat_cluster(cluster_name='ITEM BUFFS')
     def create_item_buffs(self):
@@ -4653,7 +4692,8 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
                                                              pprint_description_func=self.print_mastery_description,
                                                              mastery_or_item_name=self.mastery_name,
                                                              buffs_dct=self.mastery_buffs,
-                                                             available_stat_names=self.possible_stats_names())
+                                                             available_stat_names=self.possible_stats_names(),
+                                                             lst_of_values_tuples=self.possible_stat_values())
 
     def create_single_mastery_buffs(self):
 
