@@ -2154,3 +2154,4 @@ if __name__ == '__main__':
 # MAJOR CHANGES
 # dps: 320.3, 2631 movement, 2.8sec / 100 rotations
 # dps: 336.8, 2463 movement, 2.9sec / 100 rotations (fixed inn buff)
+# dps: 331.2, 2463 movement, 2.9sec / 100 rotations (changed base and bonus stat methods)
