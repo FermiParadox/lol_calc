@@ -268,7 +268,8 @@ def chosen_val_to_literal(given_val):
 
     try:
         return ast.literal_eval(given_val)
-    except ValueError:
+    # Handles formulas and empty strings.
+    except (ValueError, SyntaxError):
         # (if conversion was not successful..)
         return given_val
 
@@ -2381,7 +2382,7 @@ class ItemAndMasteriesBase(object):
 
         available_stat_names = available_stat_names + ['']
 
-        pp.pprint(delimiter(40))
+        print(delimiter(40))
         pprint_description_func()
         # Asks if buff affects stats.
         if _y_n_question(question_str='Buff {} affects stats?'.format(buff_name.upper())) is True:
@@ -2390,13 +2391,13 @@ class ItemAndMasteriesBase(object):
             buffs_dct[buff_name]['stats'] = {}
 
             while 1:
-                pp.pprint(delimiter(40))
+                print(delimiter(40))
                 pprint_description_func()
 
                 # STAT NAME
                 stat_name_msg = '{}: {}, '.format(str_item_or_mastery.upper(), mastery_or_item_name)
                 stat_name_msg += 'BUFF: {}.'.format(buff_name)
-                stat_name_msg += '\nStat name? (empty string to exit)'
+                stat_name_msg += '\nStat name? (empty string to exit)\n'
 
                 stat_name = enumerated_question(question_str=stat_name_msg,
                                                 # (enter added as a choice by '')
@@ -2410,7 +2411,7 @@ class ItemAndMasteriesBase(object):
                 stat_type_msg = '{}: {}, '.format(str_item_or_mastery.upper(), mastery_or_item_name)
                 stat_type_msg += 'BUFF: {}, '.format(buff_name)
                 stat_type_msg += 'STAT NAME: {}.'.format(stat_name)
-                stat_type_msg += '\nStat type?'
+                stat_type_msg += '\nStat type?\n'
 
                 stat_type = enumerated_question(question_str=stat_type_msg,
                                                 choices_seq=BuffsBase.BUFF_STAT_TYPES,
@@ -2421,7 +2422,7 @@ class ItemAndMasteriesBase(object):
                 stat_val_msg += 'BUFF: {}, '.format(buff_name)
                 stat_val_msg += 'TYPE: {}, '.format(stat_type)
                 stat_val_msg += 'STAT NAME: {}.'.format(stat_name)
-                stat_val_msg += '\nStat value?'
+                stat_val_msg += '\nStat value?\n'
 
                 stat_vals = enumerated_question(question_str=stat_val_msg, choices_seq=lst_of_values_tuples)
 
@@ -2441,19 +2442,32 @@ class ItemAndMasteriesBase(object):
                 while 1:
 
                     # MOD NAME
-                    mod_name_msg = '\nMod names?'
+                    mod_name_msg = '{}: {}, '.format(str_item_or_mastery.upper(), mastery_or_item_name)
+                    mod_name_msg += 'BUFF: {}, '.format(buff_name)
+                    mod_name_msg += 'TYPE: {}, '.format(stat_type)
+                    mod_name_msg += 'STAT NAME: {}.'.format(stat_name)
+                    mod_name_msg += '\nMod names?\n'
 
                     mod_name = enumerated_question(question_str=mod_name_msg,
                                                    # (enter added as a choice by '')
                                                    choices_seq=available_stat_names,
                                                    restrict_choices=True)
 
-                    buff_stats_dct[stat_name]['stat_mods'].update({mod_name: None})
+                    if mod_name == '':
+                        break
+
+                    buff_stats_dct[stat_name][stat_type]['stat_mods'].update({mod_name: None})
 
                     # MOD VALUE
-                    mod_vals = enumerated_question(question_str=stat_val_msg, choices_seq=lst_of_values_tuples)
+                    mod_val_msg = '{}: {}, '.format(str_item_or_mastery.upper(), mastery_or_item_name)
+                    mod_val_msg += 'BUFF: {}, '.format(buff_name)
+                    mod_val_msg += 'TYPE: {}, '.format(stat_type)
+                    mod_val_msg += 'STAT NAME: {}, '.format(stat_name)
+                    mod_val_msg += 'MOD NAME: {}.'.format(mod_name)
+                    mod_val_msg += '\nMod values?\n'
+                    mod_vals = enumerated_question(question_str=mod_val_msg, choices_seq=lst_of_values_tuples)
 
-                    buff_stats_dct[stat_name]['stat_mods'][mod_name] = mod_vals
+                    buff_stats_dct[stat_name][stat_type]['stat_mods'][mod_name] = mod_vals
 
         pp.pprint(buffs_dct[buff_name]['stats'])
 
@@ -4698,7 +4712,7 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
     def create_single_mastery_buffs(self):
 
         print(fat_delimiter(40))
-        print('MASTERY: {}'.format(self.mastery_name))
+        print('MASTERY: {}\n'.format(self.mastery_name))
         self.print_mastery_description()
 
         self.mastery_buffs = {}
@@ -5199,6 +5213,5 @@ if __name__ == '__main__':
 
     # MASTERIES CREATION
     if 1:
-        inst = MasteryCreation(mastery_name='devastating_strikes')
+        inst = MasteryCreation(mastery_name='enchanted_armor')
         inst.create_single_mastery_buffs()
-        print(inst.mastery_buffs)
