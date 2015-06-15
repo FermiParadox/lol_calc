@@ -38,7 +38,13 @@ DEFAULT_ACTIONS_PRIORITY_NAME = 'DEFAULT_ACTIONS_PRIORITY'
 CHAMPION_MODULE_OBJECT_NAMES = (ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME,
                                 ABILITIES_CONDITIONALS_DCT_NAME, CHAMPION_EXTERNAL_VAR_DCT_NAME, CHAMP_CLASS_NAME,
                                 DEFAULT_ACTIONS_PRIORITY_NAME)
+
+
 API_STORED_MASTERIES_MODULE = 'api_masteries_database.py'
+MASTERIES_MODULES_FOLDER_NAME = 'masteries_dir'
+MASTERIES_DATA_MODULE_NAME = 'masteries_data'
+MASTERIES_ATTRS_DCT_NAME = 'MASTERIES_ATTRIBUTES'
+MASTERIES_MODULE_PATH = '.'.join((MASTERIES_MODULES_FOLDER_NAME, MASTERIES_DATA_MODULE_NAME))
 
 
 child_class_as_str = """class ChampionAttributes(object):
@@ -88,6 +94,9 @@ class Fetch(object):
         """
 
         return self._imported_module(path_str=ITEMS_DATA_MODULE_PATH)
+
+    def imported_masteries_module(self):
+        return self._imported_module(path_str=MASTERIES_MODULE_PATH)
 
     def champ_abilities_attrs_dct(self, champ_name):
         """
@@ -4644,7 +4653,7 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
     """
     Responsible for creation of a mastery's stats, buffs and dmgs.
 
-    Dmgs are to be created manually, since there is only a single dmg in masteries.
+    Dmgs and on-hit effects are to be created manually, since there is only a single dmg in masteries.
     """
 
     BASE_MASTERY_DCT = dict(
@@ -4685,6 +4694,8 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         return self.inst.stats_values_detected(mastery_name=self.mastery_name)
 
     def create_and_return_mastery_stats(self):
+
+        self.print_mastery_description()
 
         print('Select empty string if mastery doesnt modify stats.')
 
@@ -4737,6 +4748,7 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
             self.mastery_buffs['buff_source'] = self.mastery_name
 
         pp.pprint(self.mastery_buffs)
+        print(delimiter(80))
 
     def create_and_return_mastery(self, print_mode=False):
         dct = copy.deepcopy(self.BASE_MASTERY_DCT)
@@ -4745,6 +4757,8 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         print('MASTERY: {}\n'.format(self.mastery_name))
 
         dct['stats'] = self.create_and_return_mastery_stats()
+        pp.pprint(dct['stats'])
+        print(delimiter(80))
 
         self.create_mastery_buffs()
         dct['buffs'] = self.mastery_buffs
@@ -4816,6 +4830,35 @@ class ModuleCreatorBase(object):
         # If no match has been found, returns False.
         else:
             return False
+
+    @staticmethod
+    def insert_object_in_dct(obj_name, modified_dct, auto_replace, property_name, data_creation_func):
+        """
+        Checks if given object name has an existing data dict.
+        If replacement is confirmed, creates and inserts data in given dict.
+
+        :param obj_name:
+        :param modified_dct: Contains existing data.
+        :param auto_replace:
+        :param property_name:
+        :param data_creation_func:
+        :return: (None)
+        """
+
+        if obj_name in modified_dct:
+            # (if auto replace true, skips asking)
+            if auto_replace or _y_n_question('{} {} exists. Replace?'.format(
+                    obj_name.capitalize(), property_name.upper())):
+
+                # Creates and inserts item dict into items dict.
+                modified_dct[obj_name] = data_creation_func()
+
+            else:
+                print('\nAborting insertion.')
+                return
+
+        else:
+            modified_dct[obj_name] = data_creation_func()
 
     def _insert_object_in_module(self, obj_name, targeted_module_path_str, new_obj_as_dct_or_str,
                                  replacement_question_msg='', width=None, verify_replacement=True):
@@ -4988,7 +5031,6 @@ class ItemsModuleCreator(ModuleCreatorBase):
         self.used_items = ExploreApiItems().usable_items_by_name_dct
         # (the same instance of item creation is needed, so it's stored in a var)
         self.temporary_item_attr_creation_instance = None
-        self.temporary_item_attr_creation_instance = None
 
     def create_and_return_item_attrs_dct(self):
         """
@@ -5064,13 +5106,13 @@ class ItemsModuleCreator(ModuleCreatorBase):
 
         if effects_or_attrs_or_conds == 'attrs':
             property_name = ITEMS_ATTRS_DCT_NAME
-            func = self.create_and_return_item_attrs_dct
+            creation_func = self.create_and_return_item_attrs_dct
         elif effects_or_attrs_or_conds == 'effects':
             property_name = ITEMS_EFFECTS_DCT_NAME
-            func = self.create_and_return_current_item_effects_dct
+            creation_func = self.create_and_return_current_item_effects_dct
         else:
             property_name = ITEMS_CONDITIONS_DCT_NAME
-            func = self.create_and_return_current_item_conditions_dct
+            creation_func = self.create_and_return_current_item_conditions_dct
 
         # Gets existing stored dict.
         try:
@@ -5079,22 +5121,9 @@ class ItemsModuleCreator(ModuleCreatorBase):
         except AttributeError:
             existing_data_dct = {}
 
-        # Checks if object is inside dict.
-        if self.item_name in existing_data_dct:
-            # (if auto replace true, skips question)
-            if auto_replace or _y_n_question('{} {} exists. Replace?'.format(
-                    self.item_name.capitalize(), property_name.upper())):
-
-                # Creates and inserts item dict into items dict.
-                existing_data_dct[self.item_name] = func()
-
-            else:
-                print('\nAborting insertion.')
-                return
-
-        else:
-            # Creates and inserts item dict into items dict.
-            existing_data_dct[self.item_name] = func()
+        self.insert_object_in_dct(obj_name=self.item_name, modified_dct=existing_data_dct,
+                                  auto_replace=auto_replace, property_name=property_name,
+                                  data_creation_func=creation_func)
 
         self._insert_object_in_module(obj_name=property_name, new_obj_as_dct_or_str=existing_data_dct,
                                       replacement_question_msg='', width=1,
@@ -5123,21 +5152,34 @@ class ItemsModuleCreator(ModuleCreatorBase):
 
 class MasteryModuleCreator(ModuleCreatorBase):
 
-    def __init__(self):
-        self.masteries_dct = ExploreApiMasteries().masteries_dct
-
-    def create_and_insert_single_mastery(self, mastery_name):
-        pass
-
     def create_all_mastery_dcts(self):
+
+        masteries_names = ExploreApiMasteries().masteries_names()
+
         print(fat_delimiter(80))
+        print('\nMASTERIES CREATION\n')
 
-        for mastery_name in self.raw_masteries_dct:
-            print(fat_delimiter(40))
+        for mastery_name in masteries_names:
             print('\nMASTERY: {}\n'.format(mastery_name))
-            self.final_masteries_dct.update({mastery_name: {}})
 
-            self.create_single_mastery_stats_dct()
+            if _y_n_question(question_str='Mastery contains data?'):
+                existing_data_dct = Fetch().imported_masteries_module().MASTERIES_ATTRIBUTES
+                mastery_creation_func = MasteryCreation(mastery_name).create_and_return_mastery
+            else:
+                existing_data_dct = {}
+                mastery_creation_func = lambda: {}
+
+            property_name = MASTERIES_ATTRS_DCT_NAME
+
+            self.insert_object_in_dct(obj_name=mastery_name, modified_dct=existing_data_dct,
+                                      auto_replace=False, property_name=property_name,
+                                      data_creation_func=mastery_creation_func)
+
+            self._insert_object_in_module(obj_name=property_name, new_obj_as_dct_or_str=existing_data_dct,
+                                          replacement_question_msg='', width=1,
+                                          targeted_module_path_str='/'.join((MASTERIES_MODULES_FOLDER_NAME,
+                                                                             MASTERIES_DATA_MODULE_NAME)) + '.py',
+                                          verify_replacement=False)
 
 
 # ===============================================================
@@ -5231,6 +5273,10 @@ if __name__ == '__main__':
         print(l)
 
     # MASTERIES CREATION
-    if 1:
+    if 0:
         inst = MasteryCreation(mastery_name='enchanted_armor')
         inst.create_and_return_mastery(print_mode=True)
+
+    if 1:
+        inst = MasteryModuleCreator()
+        inst.create_all_mastery_dcts()
