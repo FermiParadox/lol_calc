@@ -2128,12 +2128,10 @@ if __name__ == '__main__':
     itemLst1 = ['hextech_gunblade']
     itemLst2 = ['hextech_gunblade', 'hextech_gunblade']
 
-    run_graph_test = True
-    if run_graph_test:
+    if 1:
         TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst2)
 
-    run_time_test = True
-    if run_time_test:
+    if 1:
         # Crude time testing.
         import cProfile
         test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*100

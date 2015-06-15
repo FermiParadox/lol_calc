@@ -2436,7 +2436,7 @@ class ItemAndMasteriesBase(object):
                     buff_stats_dct[stat_name].update(
                         {stat_type: {'stat_mods': {}, 'stat_values': None}})
 
-                buff_stats_dct[stat_name]['stat_values'] = stat_vals
+                buff_stats_dct[stat_name][stat_type]['stat_values'] = stat_vals
 
                 # MODS
                 while 1:
@@ -2444,8 +2444,8 @@ class ItemAndMasteriesBase(object):
                     # MOD NAME
                     mod_name_msg = '{}: {}, '.format(str_item_or_mastery.upper(), mastery_or_item_name)
                     mod_name_msg += 'BUFF: {}, '.format(buff_name)
-                    mod_name_msg += 'TYPE: {}, '.format(stat_type)
-                    mod_name_msg += 'STAT NAME: {}.'.format(stat_name)
+                    mod_name_msg += 'STAT NAME: {}, '.format(stat_name)
+                    mod_name_msg += 'TYPE: {}.'.format(stat_type)
                     mod_name_msg += '\nMod names?\n'
 
                     mod_name = enumerated_question(question_str=mod_name_msg,
@@ -2461,8 +2461,8 @@ class ItemAndMasteriesBase(object):
                     # MOD VALUE
                     mod_val_msg = '{}: {}, '.format(str_item_or_mastery.upper(), mastery_or_item_name)
                     mod_val_msg += 'BUFF: {}, '.format(buff_name)
-                    mod_val_msg += 'TYPE: {}, '.format(stat_type)
                     mod_val_msg += 'STAT NAME: {}, '.format(stat_name)
+                    mod_val_msg += 'TYPE: {}, '.format(stat_type)
                     mod_val_msg += 'MOD NAME: {}.'.format(mod_name)
                     mod_val_msg += '\nMod values?\n'
                     mod_vals = enumerated_question(question_str=mod_val_msg, choices_seq=lst_of_values_tuples)
@@ -4686,17 +4686,23 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
 
     def create_and_return_mastery_stats(self):
 
-        possible_stat_names = self.possible_stats_names()
+        print('Select empty string if mastery doesnt modify stats.')
+
+        possible_stat_names = [''] + self.possible_stats_names()
         possible_stat_values = self.possible_stat_values()
 
         selected_names_lst = []
         suggest_lst_of_attr_values(suggested_values_lst=possible_stat_names,
                                    modified_lst=selected_names_lst,
                                    sort_suggested_lst=False)
+        dct = {}
+
+        if selected_names_lst == ['']:
+            print('Mastery modifies 0 stats.')
+            return dct
+
         dct = {k: None for k in selected_names_lst}
-
         suggested_values_dct = {k: possible_stat_values for k in selected_names_lst}
-
         suggest_attr_values(suggested_values_dct=suggested_values_dct, modified_dct=dct, )
 
         return dct
@@ -4709,7 +4715,7 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
                                                              available_stat_names=self.possible_stats_names(),
                                                              lst_of_values_tuples=self.possible_stat_values())
 
-    def create_single_mastery_buffs(self):
+    def create_mastery_buffs(self):
 
         print(fat_delimiter(40))
         print('MASTERY: {}\n'.format(self.mastery_name))
@@ -4727,12 +4733,23 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
             # Rest of buff attrs.
             suggest_attr_values(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
                                 modified_dct=self.mastery_buffs[buff_name], extra_start_msg=buff_msg)
+            # Buff source
+            self.mastery_buffs['buff_source'] = self.mastery_name
 
         pp.pprint(self.mastery_buffs)
 
-    def create_and_return_mastery(self):
-        pass
+    def create_and_return_mastery(self, print_mode=False):
+        dct = copy.deepcopy(self.BASE_MASTERY_DCT)
 
+        print(fat_delimiter(80))
+        print('MASTERY: {}\n'.format(self.mastery_name))
+
+        dct['stats'] = self.create_and_return_mastery_stats()
+
+        self.create_mastery_buffs()
+        dct['buffs'] = self.mastery_buffs
+
+        return _return_or_pprint_complex_obj(dct=dct, print_mode=print_mode)
 
 
 # ===============================================================
@@ -5109,6 +5126,8 @@ class MasteryModuleCreator(ModuleCreatorBase):
     def __init__(self):
         self.masteries_dct = ExploreApiMasteries().masteries_dct
 
+    def create_and_insert_single_mastery(self, mastery_name):
+        pass
 
     def create_all_mastery_dcts(self):
         print(fat_delimiter(80))
@@ -5197,7 +5216,7 @@ if __name__ == '__main__':
     # PRETTY FORMAT OBJECT IN MODULE
     if 0:
         inst = ModuleCreatorBase()
-        inst.pformat_obj_in_module(obj_name=ABILITIES_ATTRS_DCT_NAME, items_or_a_champ_name='jax')
+        inst.pformat_obj_in_module(obj_name=ITEMS_ATTRS_DCT_NAME, items_or_a_champ_name='items')
 
     # MASTERIES EXPLORATION
     # Tuple of values detection.
@@ -5214,4 +5233,4 @@ if __name__ == '__main__':
     # MASTERIES CREATION
     if 1:
         inst = MasteryCreation(mastery_name='enchanted_armor')
-        inst.create_single_mastery_buffs()
+        inst.create_and_return_mastery(print_mode=True)
