@@ -52,7 +52,7 @@ for _champ_name in app_champions_base_stats.CHAMPION_BASE_STATS:
 
 
 # Stats by items or buffs that are not calculated by their own (special) method.
-NORMAL_STAT_NAMES = {'healing_reduction'}
+NORMAL_STAT_NAMES = {'healing_reduction', 'flat_AA_reduction'}
 
 # Extracted from rune_stat_names_map with: re.findall(r'\'(\w+)\'', s)
 RUNE_STAT_NAMES = frozenset({'ap', 'mr', 'mr_per_lvl', 'armor_per_lvl', 'crit_chance', 'ap_per_lvl', 'hp_per_lvl',

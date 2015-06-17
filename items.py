@@ -243,18 +243,15 @@ if __name__ == '__main__':
 
     from pprint import pprint as pp
 
-    testBuildCost = False
-    if testBuildCost:
+    if 0:
         g = ItemsProperties(['hextech_gunblade', 'dorans_blade']).build_price()
         print(g)
 
-    testUniqueLeafsUniqueStats = False
-    if testUniqueLeafsUniqueStats:
+    if 0:
         g = ItemsProperties(['hextech_gunblade', 'dorans_blade']).unique_stats_in_leafs_of_item(item_name='dorans_blade')
         print(g)
 
-    testAllItemPropertyCreation = True
-    if testAllItemPropertyCreation:
+    if 0:
         g = ItemsProperties(['hextech_gunblade', 'dorans_blade'])
         pp(g.items_effects_dct)
         print('-'*10)

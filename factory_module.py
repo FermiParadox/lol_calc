@@ -202,7 +202,6 @@ class Fetch(object):
             return self.items_attrs_dct()[item_name]['general_attributes']['castable']
 
 
-
 # ---------------------------------------------------------------
 def delimiter(num_of_lines, line_type='-'):
     """
@@ -1959,7 +1958,7 @@ class ExploreApiMasteries(ExploreBase):
             mastery_name = self.refined_mastery_name_from_id(id_num=id_num)
             lst_returned.append(mastery_name)
 
-        return lst_returned
+        return sorted(lst_returned)
 
     def __create_masteries_dct(self):
 
@@ -4712,6 +4711,8 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
             print('Mastery modifies 0 stats.')
             return dct
 
+        self.print_mastery_description()
+
         dct = {k: None for k in selected_names_lst}
         suggested_values_dct = {k: possible_stat_values for k in selected_names_lst}
         suggest_attr_values(suggested_values_dct=suggested_values_dct, modified_dct=dct, )
@@ -4735,7 +4736,7 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         self.mastery_buffs = {}
         self._ask_amount_of_buffs_and_change_names(modified_dct=self.mastery_buffs, obj_name=self.mastery_name)
 
-        for buff_name in self.mastery_buffs:
+        for buff_name in sorted(self.mastery_buffs):
             self.mastery_buffs.update({buff_name: self.mastery_buff_attributes()})
 
             buff_msg = '\nMASTERY: {}, BUFF: {}'.format(self.mastery_name, buff_name)
@@ -5152,24 +5153,35 @@ class ItemsModuleCreator(ModuleCreatorBase):
 
 class MasteryModuleCreator(ModuleCreatorBase):
 
-    def create_all_mastery_dcts(self):
+    def create_all_mastery_dcts(self, skip_existing=True):
 
-        masteries_names = ExploreApiMasteries().masteries_names()
+        all_masteries_names = ExploreApiMasteries().masteries_names()
 
+        # START MSG
         print(fat_delimiter(80))
-        print('\nMASTERIES CREATION\n')
+        print('\nMASTERIES CREATION')
+        if skip_existing:
+            print('(auto skipping existing)\n')
+        else:
+            print('(existing will be replaced)\n')
 
-        for mastery_name in masteries_names:
+        # CREATION
+        for mastery_name in all_masteries_names:
+
+            property_name = MASTERIES_ATTRS_DCT_NAME
+            existing_data_dct = Fetch().imported_masteries_module().MASTERIES_ATTRIBUTES
+
+            # Skips existing if required.
+            if skip_existing and (mastery_name in existing_data_dct):
+                continue
+
+            ExploreApiMasteries().mastery_description(mastery_name=mastery_name, print_mode=True)
             print('\nMASTERY: {}\n'.format(mastery_name))
 
             if _y_n_question(question_str='Mastery contains data?'):
-                existing_data_dct = Fetch().imported_masteries_module().MASTERIES_ATTRIBUTES
                 mastery_creation_func = MasteryCreation(mastery_name).create_and_return_mastery
             else:
-                existing_data_dct = {}
                 mastery_creation_func = lambda: {}
-
-            property_name = MASTERIES_ATTRS_DCT_NAME
 
             self.insert_object_in_dct(obj_name=mastery_name, modified_dct=existing_data_dct,
                                       auto_replace=False, property_name=property_name,

@@ -111,8 +111,8 @@ ITEMS_CONDITIONALS = {
     'dorans_blade': {}}
 
 
-ITEMS_BUFFS_NAMES = palette.items_buffs_or_dmgs_names_dct(str_buffs_or_dmgs='buffs', attrs_dct=ITEMS_ATTRIBUTES)
-ITEMS_DMGS_NAMES = palette.items_buffs_or_dmgs_names_dct(str_buffs_or_dmgs='dmgs', attrs_dct=ITEMS_ATTRIBUTES)
+ITEMS_BUFFS_NAMES = palette.items_or_masteries_buffs_or_dmgs_names_dct(str_buffs_or_dmgs='buffs', attrs_dct=ITEMS_ATTRIBUTES)
+ITEMS_DMGS_NAMES = palette.items_or_masteries_buffs_or_dmgs_names_dct(str_buffs_or_dmgs='dmgs', attrs_dct=ITEMS_ATTRIBUTES)
 
 
 if __name__ == '__main__':
