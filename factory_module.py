@@ -2197,6 +2197,56 @@ class BuffsBase(object):
         self._change_buff_names(modified_dct=modified_dct)
 
 
+class StatsCreation(object):
+
+    @staticmethod
+    def _suggest_stats(stats_dct, stat_name, suggested_values_lst, suggest_mods_func):
+        chosen_types_lst = []
+        suggest_lst_of_attr_values(suggested_values_lst=('additive', 'multiplicative'),
+                                   modified_lst=chosen_types_lst)
+
+        for type_name in chosen_types_lst:
+            stats_dct[stat_name].update({type_name: {}})
+
+            # (dict form effects for parameter below)
+            eff_values_dct = {'stat_values': suggested_values_lst}
+
+            suggest_attr_values(suggested_values_dct=eff_values_dct,
+                                modified_dct=stats_dct[stat_name][type_name],
+                                extra_start_msg='AFFECTED STAT: {}'.format(stat_name))
+
+            # STAT MODS
+            suggest_mods_func(stats_dct=stats_dct, affected_stat=stat_name)
+
+    def _suggest_single_affected_stats_and_its_attrs(self, buff_name, stat_name, stats_dct, suggest_mods_func,
+                                                     suggested_values_lst):
+        """
+        Suggests stats that may be affected by a buff,
+        and each stat's mods.
+
+        Returns:
+            (None)
+        """
+        msg = delimiter(40)
+        msg += '\nDoes %s affect %s?\n' % (buff_name, stat_name.upper())
+
+        while 1:
+            buff_affects_stat = input(msg)
+            if buff_affects_stat == 'y':
+
+                stats_dct.update({stat_name: {}})
+
+                self._suggest_stats(stats_dct=stats_dct, stat_name=stat_name,
+                                    suggest_mods_func=suggest_mods_func,
+                                    suggested_values_lst=suggested_values_lst)
+
+                break
+            elif buff_affects_stat == 'n':
+                break
+            else:
+                print_invalid_answer()
+
+
 class GenAttrsBase(object):
     COST_CATEGORIES = ('normal', 'per_hit', 'per_second', 'per_hit_or_single_tar_spell')
 
@@ -3129,7 +3179,7 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
         pp.pprint(self.dmgs_dct)
 
 
-class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
+class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation):
     """
     Each instance of this class is used for a single ability.
 
@@ -3161,7 +3211,7 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
 
         return stats_lst
 
-    def suggest_stat_mods(self, buff_name, affected_stat):
+    def suggest_stat_mods(self, stats_dct, affected_stat):
         """
         Checks if affected stat has any possible mod-stats,
         and suggests them.
@@ -3195,9 +3245,9 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
                     if stat_mods_answer == 'y':
 
                         # Creates new mod dict for affected stat.
-                        self.buffs_dct[buff_name]['stats'][affected_stat_app_form].update({'stat_mods': {}})
+                        stats_dct[affected_stat_app_form].update({'stat_mods': {}})
                         # Inserts new mod name.
-                        self.buffs_dct[buff_name]['stats'][affected_stat_app_form]['stat_mods'].update(
+                        stats_dct[affected_stat_app_form]['stat_mods'].update(
                             {stat_mod_app_form: None})
 
                         pp.pprint(self.ability_vars_dct)
@@ -3205,7 +3255,7 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
                         # (params for method below)
                         mod_vals_lst = [var_dct['coeff'] for var_dct in self.ability_vars_dct]
                         suggested_vals_dct = {stat_mod_app_form: mod_vals_lst}
-                        modified_dct = self.buffs_dct[buff_name]['stats'][affected_stat_app_form]['stat_mods']
+                        modified_dct = stats_dct[affected_stat_app_form]['stat_mods']
                         extra_msg = '\nmod value:'
 
                         suggest_attr_values(suggested_values_dct=suggested_vals_dct,
@@ -3213,7 +3263,7 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
                                             extra_start_msg=extra_msg)
                         break
                     elif stat_mods_answer == 'n':
-                        self.buffs_dct[buff_name]['stats'][affected_stat_app_form]['stat_mods'] = None
+                        stats_dct[affected_stat_app_form]['stat_mods'] = None
                         break
                     else:
                         print_invalid_answer()
@@ -3228,42 +3278,14 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase):
         """
 
         for affected_stat in self._stat_names_in_tooltip():
-            # Asks if buff affects given stat.
-            msg = delimiter(40)
-            msg += '\nDoes %s affect %s?\n' % (buff_name, affected_stat.upper())
+            stat_name = self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP[affected_stat]
+            stats_dct = self.buffs_dct[buff_name]['stats']
+            stats_dct.update({stat_name: {}})
 
-            while True:
-                buff_affects_stat = input(msg)
-                if buff_affects_stat == 'y':
-
-                    stat_name = self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP[affected_stat]
-
-                    msg = 'AFFECTED STAT: %s' % stat_name
-
-                    self.buffs_dct[buff_name]['stats'].update({stat_name: {}})
-
-                    chosen_types_lst = []
-                    suggest_lst_of_attr_values(suggested_values_lst=('additive', 'multiplicative'),
-                                               modified_lst=chosen_types_lst)
-
-                    for type_name in chosen_types_lst:
-                        self.buffs_dct[buff_name]['stats'][stat_name].update({type_name: {}})
-
-                        # (dict form effects for parameter below)
-                        eff_values_dct = {'stat_values': self.ability_effect_lst}
-
-                        suggest_attr_values(suggested_values_dct=eff_values_dct,
-                                            modified_dct=self.buffs_dct[buff_name]['stats'][stat_name][type_name],
-                                            extra_start_msg=msg)
-
-                        # STAT MODS
-                        self.suggest_stat_mods(buff_name=buff_name, affected_stat=affected_stat)
-
-                    break
-                elif buff_affects_stat == 'n':
-                    break
-                else:
-                    print_invalid_answer()
+            self._suggest_single_affected_stats_and_its_attrs(buff_name=buff_name, stat_name=stat_name,
+                                                              stats_dct=stats_dct,
+                                                              suggest_mods_func=self.suggest_stat_mods,
+                                                              suggested_values_lst=self.ability_effect_lst)
 
     def suggest_buff_affected_stats_attributes(self, buff_name):
         """
@@ -4705,19 +4727,32 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         suggest_lst_of_attr_values(suggested_values_lst=possible_stat_names,
                                    modified_lst=selected_names_lst,
                                    sort_suggested_lst=False)
-        dct = {}
+        stats_dct = {}
 
         if selected_names_lst == ['']:
             print('Mastery modifies 0 stats.')
-            return dct
+            return stats_dct
 
         self.print_mastery_description()
 
-        dct = {k: None for k in selected_names_lst}
-        suggested_values_dct = {k: possible_stat_values for k in selected_names_lst}
-        suggest_attr_values(suggested_values_dct=suggested_values_dct, modified_dct=dct, )
+        stats_dct = {k: {} for k in selected_names_lst}
 
-        return dct
+        for stat_name in stats_dct:
+            chosen_types_lst = []
+            suggest_lst_of_attr_values(suggested_values_lst=('additive', 'percent', 'multiplicative'),
+                                       modified_lst=chosen_types_lst)
+
+            for type_name in chosen_types_lst:
+                stats_dct[stat_name].update({type_name: {}})
+
+                # (dict form effects for parameter below)
+                eff_values_dct = {'stat_values': possible_stat_values}
+
+                suggest_attr_values(suggested_values_dct=eff_values_dct,
+                                    modified_dct=stats_dct[stat_name][type_name],
+                                    extra_start_msg='')
+
+        return stats_dct
 
     def suggest_buff_affected_stats_of_mastery(self, buff_name):
         self._suggest_buff_affected_stats_of_item_or_mastery(buff_name=buff_name, str_item_or_mastery='mastery',
