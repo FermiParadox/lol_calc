@@ -539,6 +539,47 @@ def _y_n_question(question_str, disallow_enter=True):
             print_invalid_answer()
 
 
+def _enumerated_question_msg(choices_couples, max_rows=20, max_columns=4):
+
+    choices_couples_lst = list(choices_couples)
+    total_choices = len(choices_couples_lst)
+
+    # CREATES EACH CHOICE STRING
+    choices_strings_lst = []
+
+    for couple in choices_couples_lst:
+        num = couple[0]
+        val = couple[1]
+        choice_str = '{}: {}'.format(num, val)
+
+        # Fills with spaces
+        missing_spaces = 40 - len(choice_str)
+        choice_str += ' ' * missing_spaces
+
+        choices_strings_lst.append(choice_str)
+
+    for _ in range(200):
+        choices_strings_lst.append('')
+
+    # FINAL MERGED STRING
+    msg = ''
+
+    # (fills with empty strings so that fix list size is reached)
+    lst = [i for i in choices_strings_lst] + ['']*200
+
+    for i in range(max_rows+1):
+        # (adds 1st, 31st, 61st etc in one line)
+        for k in range(max_columns):
+            msg += '{}'.format(lst[i + max_rows * k])
+
+        msg += '\n'
+
+        if i == total_choices:
+            break
+
+    return msg
+
+
 def enumerated_question(question_str, choices_seq, restrict_choices=False):
     """
     Asks dev to choose one of the enumerated choices.
@@ -556,8 +597,8 @@ def enumerated_question(question_str, choices_seq, restrict_choices=False):
 
     print(delimiter(10))
     msg = '\n' + question_str
-    for num, val in enum_choices:
-        msg += '\n{}: {}'.format(num, val)
+
+    msg += _enumerated_question_msg(choices_couples=enum_choices)
 
     answer = None
     while True:
@@ -917,8 +958,9 @@ def suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_m
     else:
         suggested_lst = suggested_values_lst
 
-    for num, val in enumerate(suggested_lst, 1):
-        print('%s: %s' % (num, val))
+    enum_choices = enumerate(suggested_lst, 1)
+
+    print(_enumerated_question_msg(enum_choices))
 
     # Asks dev.
     while True:
@@ -939,13 +981,20 @@ def suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_m
                 pattern = re.compile(r'\d+')
                 matches = re.findall(pattern, dev_choice)
 
+                corresponding_vals_lst = []
                 for match in matches:
                     index_num = int(match)
-                    modified_lst.append(suggested_lst[index_num - 1])
+                    corresponding_value = suggested_lst[index_num - 1]
+                    corresponding_vals_lst.append(corresponding_value)
+                    modified_lst.append(corresponding_value)
+
+                print(', '.join(corresponding_vals_lst))
                 break
 
             except IndexError:
                 print_invalid_answer(extra_msg='Indexes out of range.')
+
+
 
 
 # ---------------------------------------------------------------
@@ -2455,7 +2504,7 @@ class ItemAndMasteriesBase(object):
                 # STAT NAME
                 stat_name_msg = '{}: {}, '.format(str_item_or_mastery.upper(), mastery_or_item_name)
                 stat_name_msg += 'BUFF: {}.'.format(buff_name)
-                stat_name_msg += '\nStat name? (empty string to exit)\n'
+                stat_name_msg += '\nStat name? ("1" to exit)\n'
 
                 stat_name = enumerated_question(question_str=stat_name_msg,
                                                 # (enter added as a choice by '')
@@ -2522,7 +2571,7 @@ class ItemAndMasteriesBase(object):
                     mod_val_msg += 'STAT NAME: {}, '.format(stat_name)
                     mod_val_msg += 'TYPE: {}, '.format(stat_type)
                     mod_val_msg += 'MOD NAME: {}.'.format(mod_name)
-                    mod_val_msg += '\nMod values?\n'
+                    mod_val_msg += '\nMod values? \n'
                     mod_vals = enumerated_question(question_str=mod_val_msg, choices_seq=lst_of_values_tuples)
 
                     buff_stats_dct[stat_name][stat_type]['stat_mods'][mod_name] = mod_vals
@@ -4432,7 +4481,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                     while 1:
                         # Stat name
                         stat_name_msg = 'ITEM: {}, MOD STAT OWNER: {}.'.format(self.item_name, tar_type)
-                        stat_name_msg += '\nMod stat name?(empty string to exit)'
+                        stat_name_msg += '\nMod stat name?("1" to exit)'
                         stat_name = enumerated_question(question_str=stat_name_msg,
                                                         # (enter added as a choice by '')
                                                         choices_seq=self.items_stat_names() + [''],
@@ -4781,7 +4830,7 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
             suggest_attr_values(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
                                 modified_dct=self.mastery_buffs[buff_name], extra_start_msg=buff_msg)
             # Buff source
-            self.mastery_buffs['buff_source'] = self.mastery_name
+            self.mastery_buffs[buff_name]['buff_source'] = self.mastery_name
 
         pp.pprint(self.mastery_buffs)
         print(delimiter(80))
@@ -5210,8 +5259,9 @@ class MasteryModuleCreator(ModuleCreatorBase):
             if skip_existing and (mastery_name in existing_data_dct):
                 continue
 
+            print(fat_delimiter(80))
+            print('\nMASTERY: {}'.format(mastery_name))
             ExploreApiMasteries().mastery_description(mastery_name=mastery_name, print_mode=True)
-            print('\nMASTERY: {}\n'.format(mastery_name))
 
             if _y_n_question(question_str='Mastery contains data?'):
                 mastery_creation_func = MasteryCreation(mastery_name).create_and_return_mastery

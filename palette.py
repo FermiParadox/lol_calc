@@ -90,7 +90,7 @@ def items_or_masteries_buffs_or_dmgs_names_dct(str_buffs_or_dmgs, attrs_dct):
 
                 # Checks if obj already exists.
                 if attr_name in dct:
-                    raise DuplicateNameError
+                    raise DuplicateNameError(attr_name)
                 # Adds obj name to list
                 else:
                     dct.update({attr_name: obj_name})
