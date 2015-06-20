@@ -30,7 +30,7 @@ class ItemsProperties(object):
         self.chosen_items_lst = chosen_items_lst
 
         self.non_unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
-        self.unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
+        self.used_items_unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
 
         self.items_effects_dct = {}
         self.items_conditions_dct = {}
@@ -133,7 +133,7 @@ class ItemsProperties(object):
         additive_stats_dct = collections.Counter()
         percent_stats_dct = collections.Counter()
 
-        for dct in (self.non_unique_stats_dct, self.unique_stats_dct):
+        for dct in (self.non_unique_stats_dct, self.used_items_unique_stats_dct):
 
             additive_stats_dct += dct['additive']
             percent_stats_dct += dct['percent']
@@ -152,11 +152,13 @@ class ItemsProperties(object):
                 stat_val = stats_of_given_type_dct[stat_name]
 
                 # If stat name doesn't exist in final dict, it creates it.
-                if stat_name not in final_dct:
-                    final_dct.update({stat_name: {'additive': 0,
-                                                  'percent': 0}})
+                final_dct.setdefault(stat_name, {})
 
-                final_dct[stat_name][stat_type] += stat_val
+                # If type doesnt exist, it creates it.
+                stat_final_dct = final_dct[stat_name]
+                stat_final_dct.setdefault(stat_type, 0)
+
+                stat_final_dct[stat_type] += stat_val
 
         return final_dct
 
@@ -203,14 +205,18 @@ class ItemsProperties(object):
 
             # UNIQUE STATS
             # If item A (leaf) builds from item B, then unique stats from B that are included in A are ignored.
-            unique_stats_dct = item_attrs['unique_stats']
+            item_unique_stats_dct = item_attrs['unique_stats']
             leafs_stats = self.unique_stats_in_leafs_of_item(item_name=item_name)
 
-            for stat_type in unique_stats_dct:
-                for stat_name in unique_stats_dct[stat_type]:
-                    # If stat is no inside leafs' stats.
+            for stat_type in item_unique_stats_dct:
+                for stat_name in item_unique_stats_dct[stat_type]:
+                    item_unique_stats_type_dct = item_unique_stats_dct[stat_type]
+
+                    # If stat is not inside leafs' stats.
                     if stat_name not in leafs_stats[stat_type]:
-                        self.unique_stats_dct[stat_type].update({stat_name: unique_stats_dct[stat_type][stat_name]})
+                        # (creates stat name first, if it doesn't exist)
+                        self.used_items_unique_stats_dct[stat_type].setdefault(stat_name, 0)
+                        self.used_items_unique_stats_dct[stat_type][stat_name] += item_unique_stats_type_dct[stat_name]
 
             # ITEMS BUFF
             self._set_chosen_items_static_stats_buff()

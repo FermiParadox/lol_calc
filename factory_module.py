@@ -984,7 +984,9 @@ def suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_m
                 corresponding_vals_lst = []
                 for match in matches:
                     index_num = int(match)
+
                     corresponding_value = suggested_lst[index_num - 1]
+
                     corresponding_vals_lst.append(corresponding_value)
                     modified_lst.append(corresponding_value)
 
@@ -993,6 +995,8 @@ def suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_m
 
             except IndexError:
                 print_invalid_answer(extra_msg='Indexes out of range.')
+
+    print()
 
 
 
@@ -4787,9 +4791,11 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         stats_dct = {k: {} for k in selected_names_lst}
 
         for stat_name in stats_dct:
+            msg = '\nSTAT NAME: {}\n'.format(stat_name)
             chosen_types_lst = []
             suggest_lst_of_attr_values(suggested_values_lst=('additive', 'percent', 'multiplicative'),
-                                       modified_lst=chosen_types_lst)
+                                       modified_lst=chosen_types_lst,
+                                       extra_start_msg=msg)
 
             for type_name in chosen_types_lst:
                 stats_dct[stat_name].update({type_name: {}})
@@ -4799,7 +4805,7 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
 
                 suggest_attr_values(suggested_values_dct=eff_values_dct,
                                     modified_dct=stats_dct[stat_name][type_name],
-                                    extra_start_msg='')
+                                    extra_start_msg=msg)
 
         return stats_dct
 
@@ -4830,7 +4836,7 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
             suggest_attr_values(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
                                 modified_dct=self.mastery_buffs[buff_name], extra_start_msg=buff_msg)
             # Buff source
-            self.mastery_buffs[buff_name]['buff_source'] = self.mastery_name
+            self.mastery_buffs[buff_name]['buff_source'] = 'masteries'
 
         pp.pprint(self.mastery_buffs)
         print(delimiter(80))
