@@ -370,18 +370,29 @@ class StatCalculation(StatFilters):
         tar_bonuses = self.bonuses_dct[tar_name]
         if stat_name in tar_bonuses:
 
+            tar_bonuses_stat_dct = tar_bonuses[stat_name]
+
             # .. if there are additive bonuses..
-            if 'additive' in tar_bonuses[stat_name]:
+            if 'additive' in tar_bonuses_stat_dct:
                 # .. adds each bonus.
-                for bonus_name in tar_bonuses[stat_name]['additive']:
-                    value += tar_bonuses[stat_name]['additive'][bonus_name]
+                for bonus_name in tar_bonuses_stat_dct['additive']:
+                    value += tar_bonuses_stat_dct['additive'][bonus_name]
 
             # if there are percent bonuses..
-            if 'percent' in tar_bonuses[stat_name]:
+            if 'percent' in tar_bonuses_stat_dct:
                 multiplication_mod = 1
                 # .. adds each bonus modifier..
-                for bonus_name in tar_bonuses[stat_name]['percent']:
-                    multiplication_mod += tar_bonuses[stat_name]['percent'][bonus_name]
+                for bonus_name in tar_bonuses_stat_dct['percent']:
+                    multiplication_mod += tar_bonuses_stat_dct['percent'][bonus_name]
+
+                # .. and applies the modifier to the value.
+                value *= multiplication_mod
+
+            if 'multiplicative' in tar_bonuses_stat_dct:
+                multiplication_mod = 1
+                # .. adds each bonus modifier..
+                for bonus_name in tar_bonuses_stat_dct['multiplicative']:
+                    multiplication_mod *= 1 + tar_bonuses_stat_dct['multiplicative'][bonus_name]
 
                 # .. and applies the modifier to the value.
                 value *= multiplication_mod

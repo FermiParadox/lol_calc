@@ -4,16 +4,16 @@ import palette
 import collections
 
 
-_CHOSEN_ITEMS_BUFF_BASE = palette.buff_dct_base_deepcopy()
-_CHOSEN_ITEMS_BUFF_BASE['target_type'] = 'player'
-_CHOSEN_ITEMS_BUFF_BASE['duration'] = 'permanent'
-_CHOSEN_ITEMS_BUFF_BASE['max_stacks'] = 1
-_CHOSEN_ITEMS_BUFF_BASE['on_hit'] = None
-_CHOSEN_ITEMS_BUFF_BASE['prohibit_cd_start'] = None
-_CHOSEN_ITEMS_BUFF_BASE['buff_source'] = 'items'
-_CHOSEN_ITEMS_BUFF_BASE['dot'] = None
+CHOSEN_ITEMS_BUFF_BASE = palette.buff_dct_base_deepcopy()
+CHOSEN_ITEMS_BUFF_BASE['target_type'] = 'player'
+CHOSEN_ITEMS_BUFF_BASE['duration'] = 'permanent'
+CHOSEN_ITEMS_BUFF_BASE['max_stacks'] = 1
+CHOSEN_ITEMS_BUFF_BASE['on_hit'] = None
+CHOSEN_ITEMS_BUFF_BASE['prohibit_cd_start'] = None
+CHOSEN_ITEMS_BUFF_BASE['buff_source'] = 'items'
+CHOSEN_ITEMS_BUFF_BASE['dot'] = None
 # (deleted so that a dict can be created later on that will have this dict updated in it as a reference)
-del _CHOSEN_ITEMS_BUFF_BASE['stats']
+del CHOSEN_ITEMS_BUFF_BASE['stats']
 
 
 class ItemsProperties(object):
@@ -24,7 +24,7 @@ class ItemsProperties(object):
     ITEMS_EFFECTS = items_data_module.ITEMS_EFFECTS
     ITEMS_CONDITIONALS = items_data_module.ITEMS_CONDITIONALS
 
-    CHOSEN_ITEMS_BUFF_BASE = _CHOSEN_ITEMS_BUFF_BASE
+    _CHOSEN_ITEMS_BUFF_BASE = CHOSEN_ITEMS_BUFF_BASE
 
     def __init__(self, chosen_items_lst):
         self.chosen_items_lst = chosen_items_lst
@@ -169,7 +169,7 @@ class ItemsProperties(object):
         :return: (None)
         """
         returned_dct = {'stats': self.total_items_stats()}
-        returned_dct.update(self.CHOSEN_ITEMS_BUFF_BASE)
+        returned_dct.update(self._CHOSEN_ITEMS_BUFF_BASE)
 
         self.items_static_stats_buff_dct = returned_dct
 

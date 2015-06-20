@@ -3,16 +3,20 @@ import targeting
 import items
 import palette
 import dmgs_buffs_categories
+import masteries
+
 import copy
 import abc
 
 
-class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProperties, metaclass=abc.ABCMeta):
+class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProperties,
+                   masteries.MasteriesProperties, metaclass=abc.ABCMeta):
 
     def __init__(self,
                  selected_champions_dct,
                  champion_lvls_dct,
                  req_buff_dct_func,
+                 selected_masteries_dct,
                  initial_current_stats=None,
                  initial_active_buffs=None,
                  chosen_items_lst=None):
@@ -28,6 +32,10 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
 
         items.ItemsProperties.__init__(self,
                                        chosen_items_lst=chosen_items_lst)
+
+        masteries.MasteriesProperties.__init__(self,
+                                               selected_masteries_dct=selected_masteries_dct,
+                                               player_lvl=self.player_lvl)
 
         self.set_stat_dependencies()
         self.set_current_stats()
@@ -232,6 +240,7 @@ class Counters(BuffsGeneral):
                  selected_champions_dct,
                  champion_lvls_dct,
                  req_buff_dct_func,
+                 selected_masteries_dct,
                  max_combat_time=20,
                  initial_current_stats=None,
                  initial_active_buffs=None,
@@ -243,7 +252,8 @@ class Counters(BuffsGeneral):
                               initial_current_stats=initial_current_stats,
                               initial_active_buffs=initial_active_buffs,
                               chosen_items_lst=chosen_items_lst,
-                              req_buff_dct_func=req_buff_dct_func)
+                              req_buff_dct_func=req_buff_dct_func,
+                              selected_masteries_dct=selected_masteries_dct)
 
         self.max_combat_time = max_combat_time
 
@@ -690,6 +700,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                  req_dmg_dct_func,
                  req_buff_dct_func,
                  ability_lvls_dct,
+                 selected_masteries_dct,
                  ):
 
         Counters.__init__(self,
@@ -699,7 +710,8 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                           initial_current_stats=initial_current_stats,
                           initial_active_buffs=initial_active_buffs,
                           chosen_items_lst=chosen_items_lst,
-                          req_buff_dct_func=req_buff_dct_func)
+                          req_buff_dct_func=req_buff_dct_func,
+                          selected_masteries_dct=selected_masteries_dct)
 
         dmgs_buffs_categories.DmgCategories.__init__(self,
                                                      req_stats_func=self.request_stat,

@@ -31,7 +31,8 @@ class EventsGeneral(buffs.DeathAndRegen):
                  req_buff_dct_func,
                  chosen_items_lst,
                  req_dmg_dct_func,
-                 ability_lvls_dct,):
+                 ability_lvls_dct,
+                 selected_masteries_dct,):
 
         # (User defined dict containing number of targets affected by abilities.)
         self.max_targets_dct = max_targets_dct
@@ -49,7 +50,8 @@ class EventsGeneral(buffs.DeathAndRegen):
                                      chosen_items_lst=chosen_items_lst,
                                      req_dmg_dct_func=req_dmg_dct_func,
                                      ability_lvls_dct=ability_lvls_dct,
-                                     req_buff_dct_func=req_buff_dct_func)
+                                     req_buff_dct_func=req_buff_dct_func,
+                                     selected_masteries_dct=selected_masteries_dct)
 
         self.resource_used = app_champions_base_stats.CHAMPION_BASE_STATS[selected_champions_dct['player']][
             'resource_used']
@@ -281,7 +283,8 @@ class AttributeBase(EventsGeneral):
                  max_combat_time,
                  initial_active_buffs,
                  initial_current_stats,
-                 chosen_items_lst
+                 chosen_items_lst,
+                 selected_masteries_dct
                  ):
 
         self.ability_lvls_dct = ability_lvls_dct
@@ -300,7 +303,8 @@ class AttributeBase(EventsGeneral):
                                chosen_items_lst=chosen_items_lst,
                                ability_lvls_dct=ability_lvls_dct,
                                req_dmg_dct_func=self.request_dmg,
-                               req_buff_dct_func=self.request_buff)
+                               req_buff_dct_func=self.request_buff,
+                               selected_masteries_dct=selected_masteries_dct)
 
     def _x_value(self, x_name, x_type, x_owner):
         """
@@ -773,6 +777,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                  champion_lvls_dct,
                  ability_lvls_dct,
                  max_combat_time,
+                 selected_masteries_dct,
                  chosen_items_lst=None,
                  initial_active_buffs=None,
                  initial_current_stats=None,
@@ -796,7 +801,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                initial_active_buffs=initial_active_buffs,
                                initial_current_stats=initial_current_stats,
                                chosen_items_lst=chosen_items_lst,
-                               )
+                               selected_masteries_dct=selected_masteries_dct)
 
         timers.Timers.__init__(self,
                                ability_lvls_dct=ability_lvls_dct,
@@ -1562,6 +1567,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # Adds items stats buff.
         self.add_buff(buff_name='items_static_stats_buff', tar_name='player')
 
+        # Masteries stats buff
+        self.add_buff(buff_name='masteries_static_stats_buff', tar_name='player')
+
         # Adds hp5 and mp5.
         self.add_regenerations()
 
@@ -1594,6 +1602,7 @@ class VisualRepresentation(Actions):
                  champion_lvls_dct,
                  ability_lvls_dct,
                  max_combat_time,
+                 selected_masteries_dct,
                  chosen_items_lst=None,
                  initial_active_buffs=None,
                  initial_current_stats=None,
@@ -1609,7 +1618,8 @@ class VisualRepresentation(Actions):
                          chosen_items_lst=chosen_items_lst,
                          initial_active_buffs=initial_active_buffs,
                          initial_current_stats=initial_current_stats,
-                         selected_runes=selected_runes)
+                         selected_runes=selected_runes,
+                         selected_masteries_dct=selected_masteries_dct)
 
     def subplot_pie_chart_dmg_types(self, subplot_name):
 
@@ -1912,6 +1922,7 @@ if __name__ == '__main__':
             self.chosen_items_lst = ['hextech_gunblade', 'hextech_gunblade']
             self.selected_runes = None
             self.max_combat_time = None
+            self.selected_masteries_dct = None
 
         def set_up(self):
 
@@ -1936,6 +1947,8 @@ if __name__ == '__main__':
 
             self.max_targets_dct = {}
 
+            self.selected_masteries_dct = dict(archmage=3)
+
         def subclass_jax_actions(self):
 
             player_champ_name = self.selected_champions_dct['player']
@@ -1951,6 +1964,7 @@ if __name__ == '__main__':
                              champion_lvls_dct,
                              ability_lvls_dct,
                              max_combat_time,
+                             selected_masteries_dct,
                              initial_active_buffs=None,
                              initial_current_stats=None,
                              items_lst=self.chosen_items_lst,
@@ -1966,7 +1980,8 @@ if __name__ == '__main__':
                                                   initial_active_buffs=initial_active_buffs,
                                                   initial_current_stats=initial_current_stats,
                                                   chosen_items_lst=items_lst,
-                                                  selected_runes=selected_runes)
+                                                  selected_runes=selected_runes,
+                                                  selected_masteries_dct=selected_masteries_dct)
 
                     player_champ_module.ChampionAttributes.__init__(self)
 
@@ -1994,7 +2009,8 @@ if __name__ == '__main__':
                                                initial_active_buffs=self.initial_active_buffs,
                                                initial_current_stats=self.initial_current_stats,
                                                selected_runes=self.selected_runes,
-                                               max_combat_time=self.max_combat_time)
+                                               max_combat_time=self.max_combat_time,
+                                               selected_masteries_dct=self.selected_masteries_dct,)
 
             msg += '\nTesting method: combat_loop\n'
             msg += '\nrotation: %s\n' % inst.rotation_lst
@@ -2040,7 +2056,8 @@ if __name__ == '__main__':
                                                max_combat_time=self.max_combat_time,
                                                ability_lvls_dct=self.ability_lvls_dct,
                                                initial_active_buffs=self.initial_active_buffs,
-                                               initial_current_stats=self.initial_current_stats)
+                                               initial_current_stats=self.initial_current_stats,
+                                               selected_masteries_dct=self.selected_masteries_dct)
 
             inst.combat_loop()
             inst.add_dmg_tot_history()
@@ -2134,7 +2151,7 @@ if __name__ == '__main__':
     if 1:
         # Crude time testing.
         import cProfile
-        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*100
+        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*10
         cProfile.run(test_text, 'cprof_results', sort='cumtime')
 
         import pstats
