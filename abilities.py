@@ -2151,7 +2151,7 @@ if __name__ == '__main__':
     if 1:
         # Crude time testing.
         import cProfile
-        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*10
+        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*100
         cProfile.run(test_text, 'cprof_results', sort='cumtime')
 
         import pstats
@@ -2163,10 +2163,10 @@ if __name__ == '__main__':
 # rot1, itemLst2
 # dps: 331.07415420245394 (after changing dps method)
 # dps: 338.4234113818222 (unexpected change, after changing bonus_ad method to get stats by 'evaluate' instead of direct)
-# dps: 406.06856388086914 (rotation and targets changed)
 # dps: 414.08610981856975 (rotation and targets changed) 1.1sec / 100 rotations
 # dps: 414.1, 2434 movement, 1.1sec / 100 rotations
 # MAJOR CHANGES
 # dps: 320.3, 2631 movement, 2.8sec / 100 rotations
 # dps: 336.8, 2463 movement, 2.9sec / 100 rotations (fixed inn buff)
 # dps: 331.2, 2463 movement, 2.9sec / 100 rotations (changed base and bonus stat methods)
+# dps: 333.7, 2463 movement, 2.9sec / 100 rotations (masteries used)

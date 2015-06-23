@@ -9,7 +9,7 @@ class UserSession(object):
         self.test_mode = test_mode
         self.instances_results = {}
 
-    def combat_instance(self, input_dct):
+    def combat_class(self, input_dct):
 
         player_champ_name = input_dct['selected_champions_dct']['player']
         player_champ_module = __import__(player_champ_name)
@@ -57,4 +57,3 @@ class UserSession(object):
                                             current_target_num=self.current_target_num)
 
         return CombinerClass(**input_dct)
-
