@@ -9,6 +9,9 @@ import matplotlib.gridspec as gridspec
 import operator
 import copy
 
+# Sets font size on all plt graphs.
+plt.rcParams['font.size'] = 12
+
 
 class EnemyTargetsDeadError(Exception):
     """
@@ -1625,11 +1628,11 @@ class VisualRepresentation(Actions):
                          selected_masteries_dct=selected_masteries_dct)
 
     @staticmethod
-    def __set_table_font_size(table_obj, font_size):
+    def __set_table_font_size(table_obj, font_size=8):
         table_obj.auto_set_font_size(False)
         table_obj.set_fontsize(font_size)
 
-    def subplot_pie_chart_dmg_types(self, subplot_name):
+    def subplot_pie_chart_dmg_types(self, subplot_obj):
 
         dmg_values = []
         slice_names = []
@@ -1642,9 +1645,10 @@ class VisualRepresentation(Actions):
                 slice_names.append(dmg_total_name.replace('total_', ''))
                 dmg_values.append(self.combat_results['player'][dmg_total_name])
 
-        subplot_name.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%', colors=('r', 'b', 'w'))
+        _, texts, _ = subplot_obj.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%', colors=('r', 'b', 'w'))
 
-    def subplot_pie_chart_sources(self, subplot_name):
+
+    def subplot_pie_chart_sources(self, subplot_obj):
 
         dmg_values = []
         slice_names = []
@@ -1657,9 +1661,9 @@ class VisualRepresentation(Actions):
                 slice_names.append(source_name)
                 dmg_values.append(self.combat_results['player']['source'][source_name])
 
-        subplot_name.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
+        subplot_obj.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
 
-    def add_actions_on_plot(self, subplot_name, annotated=True):
+    def add_actions_on_plot(self, subplot_obj, annotated=True):
         # ACTIONS IN PLOT
         x_actions = []
         y_actions = []
@@ -1690,16 +1694,17 @@ class VisualRepresentation(Actions):
 
             # ANNOTATE
             if annotated is True:
-                subplot_name.annotate(self.actions_dct[x_var]['action_name'], xy=(x_var, -70 + higher_y), color='grey')
+                subplot_obj.annotate(self.actions_dct[x_var]['action_name'], xy=(x_var, -70 + higher_y), color='grey',
+                                     size=8, rotation=45)
 
             previous_action_name_x = x_var
 
             # Action vertical lines
             plt.axvline(x=x_var, color='grey', linestyle='dashed', alpha=0.6)
 
-    def subplot_dmg_graph(self, subplot_name):
+    def subplot_dmg_graph(self, subplot_obj):
 
-        subplot_name.grid(b=True)
+        subplot_obj.grid(b=True)
 
         # Line at y=0, and at x=0.
         plt.axhline(y=0, color='black')
@@ -1717,7 +1722,7 @@ class VisualRepresentation(Actions):
             max_hp = self.request_stat(target_name=tar_name, stat_name='hp')
 
             # Inserts initial point.
-            subplot_name.plot([0], max_hp, color=color_lst[color_counter_var], alpha=0.8,
+            subplot_obj.plot([0], max_hp, color=color_lst[color_counter_var], alpha=0.8,
                               label=tar_name)
 
             # Left boundary is initially set to max hp.
@@ -1744,14 +1749,14 @@ class VisualRepresentation(Actions):
                 x_values.append(hp_change_times[-1])
                 y_values.append(current_hp)
 
-            subplot_name.plot(x_values, y_values, color=color_lst[color_counter_var], alpha=0.7)
+            subplot_obj.plot(x_values, y_values, color=color_lst[color_counter_var], alpha=0.7)
             color_counter_var += 1
 
-        self.add_actions_on_plot(subplot_name=subplot_name, annotated=True)
+        self.add_actions_on_plot(subplot_obj=subplot_obj, annotated=True)
 
-    def subplot_resource_vamp_lifesteal_graph(self, subplot_name):
+    def subplot_resource_vamp_lifesteal_graph(self, subplot_obj):
 
-        subplot_name.grid(b=True)
+        subplot_obj.grid(b=True)
 
         # Line at y=0.
         plt.axhline(y=0, color='black')
@@ -1765,7 +1770,7 @@ class VisualRepresentation(Actions):
         stat_color = {'lifesteal': 'orange', 'spellvamp': 'g', 'resource': 'b'}
 
         # Places initial resource.
-        subplot_name.plot([0], self.request_stat(target_name='player', stat_name=self.resource_used),
+        subplot_obj.plot([0], self.request_stat(target_name='player', stat_name=self.resource_used),
                           color=stat_color['resource'], marker='.')
 
         for examined in stat_color:
@@ -1783,11 +1788,11 @@ class VisualRepresentation(Actions):
                 x_val.append(event_time)
                 y_val.append(self.combat_history['player'][examined][event_time])
 
-            subplot_name.plot(x_val, y_val, color=stat_color[examined], marker='.', label=examined)
+            subplot_obj.plot(x_val, y_val, color=stat_color[examined], marker='.', label=examined)
 
-        self.add_actions_on_plot(subplot_name=subplot_name, annotated=False)
+        self.add_actions_on_plot(subplot_obj=subplot_obj, annotated=False)
 
-    def subplot_player_stats_table(self, subplot_name):
+    def subplot_player_stats_table(self, subplot_obj):
         """
         Subplots player's pre and post combat stats.
 
@@ -1813,15 +1818,15 @@ class VisualRepresentation(Actions):
             # Inserts in data to be displayed
             table_lst.append(line_tpl)
 
-        subplot_name.axis('off')
-        table_obj = subplot_name.table(
+        subplot_obj.axis('off')
+        table_obj = subplot_obj.table(
             cellText=table_lst,
             cellLoc='left',
             loc='center')
 
-        self.__set_table_font_size(table_obj=table_obj, font_size=8)
+        self.__set_table_font_size(table_obj=table_obj)
 
-    def subplot_enemy_stats_table(self, subplot_name):
+    def subplot_enemy_stats_table(self, subplot_obj):
         """
         Subplots player's pre combat stats.
 
@@ -1850,16 +1855,16 @@ class VisualRepresentation(Actions):
                 # Inserts in data to be displayed
                 table_lst.append(line_tpl)
 
-        subplot_name.axis('off')
+        subplot_obj.axis('off')
 
-        table_obj = subplot_name.table(
+        table_obj = subplot_obj.table(
             cellText=table_lst,
             cellLoc='left',
             loc='center')
 
-        self.__set_table_font_size(table_obj=table_obj, font_size=8)
+        self.__set_table_font_size(table_obj=table_obj)
 
-    def subplot_preset_and_results_table(self, subplot_name):
+    def subplot_preset_and_results_table(self, subplot_obj):
 
         # Rotation
         table_lst = [('ROTATION',), (self.rotation_lst,), ('DPS',)]
@@ -1875,31 +1880,33 @@ class VisualRepresentation(Actions):
         table_lst.append(('MOVEMENT',))
         table_lst.append((int(self.total_movement),))
 
-        subplot_name.axis('off')
-        table_obj = subplot_name.table(
+        subplot_obj.axis('off')
+        table_obj = subplot_obj.table(
             cellText=table_lst,
             cellLoc='left',
             loc='center')
 
-        self.__set_table_font_size(table_obj=table_obj, font_size=8)
+        self.__set_table_font_size(table_obj=table_obj)
 
     def represent_results_visually(self):
 
-        gs = gridspec.GridSpec(3, 3)
+        gs_main = gridspec.GridSpec(6, 6)
 
         # Graphs
-        self.subplot_dmg_graph(subplot_name=plt.figure(1).add_subplot(gs[:1, :1]))
-        self.subplot_resource_vamp_lifesteal_graph(subplot_name=plt.figure(1).add_subplot(gs[1:2, :1]))
+        self.subplot_dmg_graph(subplot_obj=plt.figure(1).add_subplot(gs_main[:2, :4]))
+        self.subplot_resource_vamp_lifesteal_graph(subplot_obj=plt.figure(1).add_subplot(gs_main[2:4, :4]))
 
         # Pies
-        self.subplot_pie_chart_dmg_types(subplot_name=plt.figure(1).add_subplot(gs[:1, 1:2]))
-        self.subplot_pie_chart_sources(subplot_name=plt.figure(1).add_subplot(gs[:1, 2:3]))
+        self.subplot_pie_chart_dmg_types(subplot_obj=plt.figure(1).add_subplot(gs_main[5, :1]))
+        self.subplot_pie_chart_sources(subplot_obj=plt.figure(1).add_subplot(gs_main[5, 1:2]))
 
         # Tables
-        self.subplot_player_stats_table(subplot_name=plt.figure(1).add_subplot(gs[2, :1]))
-        self.subplot_enemy_stats_table(subplot_name=plt.figure(1).add_subplot(gs[2, 1:2]))
-        self.subplot_preset_and_results_table(subplot_name=plt.figure(1).add_subplot(gs[2, 2:3]))
+        self.subplot_player_stats_table(subplot_obj=plt.figure(1).add_subplot(gs_main[5, 2:4]))
+        self.subplot_enemy_stats_table(subplot_obj=plt.figure(1).add_subplot(gs_main[2:4, 4:6]))
+        self.subplot_preset_and_results_table(subplot_obj=plt.figure(1).add_subplot(gs_main[5, 4:6]))
 
+        plt.figure(1).set_size_inches(11, 8, forward=True)
+        plt.show()
 
 if __name__ == '__main__':
     import importlib
@@ -2090,7 +2097,6 @@ if __name__ == '__main__':
             print(msg)
 
             inst.represent_results_visually()
-            plt.show()
 
             del inst.combat_results['player']['pre_combat_stats']
             del inst.combat_results['player']['post_combat_stats']
