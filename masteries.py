@@ -125,7 +125,7 @@ class MasteriesProperties(MasteriesValidation):
         MasteriesValidation.__init__(self,
                                      selected_masteries_dct=selected_masteries_dct)
 
-        None
+        # TODO: Decide if validation from previous class is needed in runtime.
         # self.validate_masteries()
 
         self.player_lvl = player_lvl

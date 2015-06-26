@@ -50,6 +50,7 @@ _RUNE_BUFF_DCT_BASE['on_hit'] = None
 _RUNE_BUFF_DCT_BASE['prohibit_cd_start'] = False
 _RUNE_BUFF_DCT_BASE['dot'] = False
 _RUNE_BUFF_DCT_BASE['buff_source'] = 'runes'
+_RUNE_BUFF_DCT_BASE['stats'] = {}
 
 
 class ApiToAppRunesData(object):
@@ -171,19 +172,11 @@ class RunesFinal(object):
                             stat_name = stat_name.replace('_per_lvl', '')
 
                         # Creates keyword if stat doesnt exist
-                        runes_buff_stats = self.runes_buff_store['stats']
-                        if runes_buff_stats:
-                            if stat_name not in runes_buff_stats:
-                                runes_buff_stats.update({stat_name: {}})
+                        all_runes_buff_stats = self.runes_buff_store['stats']
 
-                            if bonus_type not in runes_buff_stats[stat_name]:
-                                runes_buff_stats[stat_name].update({bonus_type: total_stat})
-
-                            # ..otherwise adds total stat value.
-                            else:
-                                runes_buff_stats[stat_name][bonus_type] += total_stat
-
-        return  # TODO
+                        all_runes_buff_stats.setdefault(stat_name, {})
+                        all_runes_buff_stats[stat_name].setdefault(bonus_type, 0)
+                        all_runes_buff_stats[stat_name][bonus_type] += total_stat
 
     def runes_buff(self):
         """

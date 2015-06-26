@@ -778,10 +778,10 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                  ability_lvls_dct,
                  max_combat_time,
                  selected_masteries_dct,
-                 chosen_items_lst=None,
-                 initial_active_buffs=None,
-                 initial_current_stats=None,
-                 selected_runes=None):
+                 chosen_items_lst,
+                 initial_active_buffs,
+                 initial_current_stats,
+                 selected_runes):
 
         self.rotation_lst = rotation_lst
         self.everyone_dead = None
@@ -1149,16 +1149,16 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        # Checks if dot already applied.
-        new_periodic_event = True
+        # Checks if (dot) event already applied.
+        new_event = True
         if buff_name in self.active_buffs[tar_name]:
-            new_periodic_event = False
+            new_event = False
 
         super().add_buff(buff_name=buff_name, tar_name=tar_name,
                          stack_increment=stack_increment, initial_stacks_increment=initial_stacks_increment)
 
         # If it's a new dot..
-        if new_periodic_event:
+        if new_event:
             # If the buff is a dot, applies event as well.
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
             buff_dot_dct = buff_dct['dot']
@@ -1562,13 +1562,16 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.current_time = 0
 
         # Adds runes buff.
-        self.add_buff(buff_name='runes_buff', tar_name='player')
+        if self.selected_runes:
+            self.add_buff(buff_name='runes_buff', tar_name='player')
 
         # Adds items stats buff.
-        self.add_buff(buff_name='items_static_stats_buff', tar_name='player')
+        if self.chosen_items_lst:
+            self.add_buff(buff_name='items_static_stats_buff', tar_name='player')
 
         # Masteries stats buff
-        self.add_buff(buff_name='masteries_static_stats_buff', tar_name='player')
+        if self.selected_masteries_dct:
+            self.add_buff(buff_name='masteries_static_stats_buff', tar_name='player')
 
         # Adds hp5 and mp5.
         self.add_regenerations()
@@ -1603,10 +1606,10 @@ class VisualRepresentation(Actions):
                  ability_lvls_dct,
                  max_combat_time,
                  selected_masteries_dct,
-                 chosen_items_lst=None,
-                 initial_active_buffs=None,
-                 initial_current_stats=None,
-                 selected_runes=None):
+                 chosen_items_lst,
+                 initial_active_buffs,
+                 initial_current_stats,
+                 selected_runes):
 
         Actions.__init__(self,
                          rotation_lst=rotation_lst,
@@ -1621,6 +1624,11 @@ class VisualRepresentation(Actions):
                          selected_runes=selected_runes,
                          selected_masteries_dct=selected_masteries_dct)
 
+    @staticmethod
+    def __set_table_font_size(table_obj, font_size):
+        table_obj.auto_set_font_size(False)
+        table_obj.set_fontsize(font_size)
+
     def subplot_pie_chart_dmg_types(self, subplot_name):
 
         dmg_values = []
@@ -1631,10 +1639,10 @@ class VisualRepresentation(Actions):
             # Filters out 0 value dmg.
             if self.combat_results['player'][dmg_total_name] > 0:
 
-                slice_names.append(dmg_total_name)
+                slice_names.append(dmg_total_name.replace('total_', ''))
                 dmg_values.append(self.combat_results['player'][dmg_total_name])
 
-        subplot_name.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
+        subplot_name.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%', colors=('r', 'b', 'w'))
 
     def subplot_pie_chart_sources(self, subplot_name):
 
@@ -1700,7 +1708,7 @@ class VisualRepresentation(Actions):
         plt.ylabel('hp')
 
         color_counter_var = 0
-        color_lst = ('b', 'g', 'y', 'r')
+        color_lst = ('b', 'g', 'y', 'orange', 'red')
 
         # Creates graph for each target.
         for tar_name in self.enemy_target_names:
@@ -1739,10 +1747,6 @@ class VisualRepresentation(Actions):
             subplot_name.plot(x_values, y_values, color=color_lst[color_counter_var], alpha=0.7)
             color_counter_var += 1
 
-        plt.legend(prop={'size': 10},
-                   bbox_to_anchor=(1.0, 1),
-                   loc=2,)
-
         self.add_actions_on_plot(subplot_name=subplot_name, annotated=True)
 
     def subplot_resource_vamp_lifesteal_graph(self, subplot_name):
@@ -1758,7 +1762,7 @@ class VisualRepresentation(Actions):
         plt.ylabel('value')
 
         # LIFESTEAL, SPELLVAMP, RESOURCE
-        stat_color = {'lifesteal': 'y', 'spellvamp': 'g', 'resource': 'b'}
+        stat_color = {'lifesteal': 'orange', 'spellvamp': 'g', 'resource': 'b'}
 
         # Places initial resource.
         subplot_name.plot([0], self.request_stat(target_name='player', stat_name=self.resource_used),
@@ -1780,10 +1784,6 @@ class VisualRepresentation(Actions):
                 y_val.append(self.combat_history['player'][examined][event_time])
 
             subplot_name.plot(x_val, y_val, color=stat_color[examined], marker='.', label=examined)
-
-        plt.legend(prop={'size': 10},
-                   bbox_to_anchor=(1.01, 1),
-                   loc=2,)
 
         self.add_actions_on_plot(subplot_name=subplot_name, annotated=False)
 
@@ -1814,10 +1814,12 @@ class VisualRepresentation(Actions):
             table_lst.append(line_tpl)
 
         subplot_name.axis('off')
-        subplot_name.table(
+        table_obj = subplot_name.table(
             cellText=table_lst,
             cellLoc='left',
-            loc='center').auto_set_font_size(False)
+            loc='center')
+
+        self.__set_table_font_size(table_obj=table_obj, font_size=8)
 
     def subplot_enemy_stats_table(self, subplot_name):
         """
@@ -1849,10 +1851,13 @@ class VisualRepresentation(Actions):
                 table_lst.append(line_tpl)
 
         subplot_name.axis('off')
-        subplot_name.table(
+
+        table_obj = subplot_name.table(
             cellText=table_lst,
             cellLoc='left',
-            loc='center').auto_set_font_size(False)
+            loc='center')
+
+        self.__set_table_font_size(table_obj=table_obj, font_size=8)
 
     def subplot_preset_and_results_table(self, subplot_name):
 
@@ -1871,10 +1876,12 @@ class VisualRepresentation(Actions):
         table_lst.append((int(self.total_movement),))
 
         subplot_name.axis('off')
-        subplot_name.table(
+        table_obj = subplot_name.table(
             cellText=table_lst,
             cellLoc='left',
-            loc='center').auto_set_font_size(False)
+            loc='center')
+
+        self.__set_table_font_size(table_obj=table_obj, font_size=8)
 
     def represent_results_visually(self):
 
@@ -1965,10 +1972,10 @@ if __name__ == '__main__':
                              ability_lvls_dct,
                              max_combat_time,
                              selected_masteries_dct,
-                             initial_active_buffs=None,
-                             initial_current_stats=None,
+                             initial_active_buffs,
+                             initial_current_stats,
                              items_lst=self.chosen_items_lst,
-                             selected_runes=None):
+                             selected_runes=self.selected_runes):
 
                     VisualRepresentation.__init__(self,
                                                   rotation_lst=rotation_lst,
@@ -1987,7 +1994,7 @@ if __name__ == '__main__':
 
             return CombinerClass
 
-        def test_loop(self, rotation, use_runes=False):
+        def test_loop(self, rotation, use_runes=True):
 
             self.set_up()
 
@@ -2057,12 +2064,11 @@ if __name__ == '__main__':
                                                ability_lvls_dct=self.ability_lvls_dct,
                                                initial_active_buffs=self.initial_active_buffs,
                                                initial_current_stats=self.initial_current_stats,
+                                               selected_runes=self.selected_runes,
                                                selected_masteries_dct=self.selected_masteries_dct)
 
             inst.combat_loop()
             inst.add_dmg_tot_history()
-
-            inst.represent_results_visually()
 
             msg = '\nrotation: %s\n' % inst.rotation_lst
             msg += '\ntotal dmg types: %s' % inst.refined_combat_history()
@@ -2079,13 +2085,15 @@ if __name__ == '__main__':
 
             msg += '\ntotal movement distance: %s' % str(inst.total_movement)
 
-            del inst.combat_results['player']['pre_combat_stats']
-            del inst.combat_results['player']['post_combat_stats']
             msg += '\nhistory: %s' % inst.combat_history['enemy_1']['current_hp']
 
             print(msg)
 
+            inst.represent_results_visually()
             plt.show()
+
+            del inst.combat_results['player']['pre_combat_stats']
+            del inst.combat_results['player']['post_combat_stats']
 
         def __repr__(self):
 
@@ -2148,7 +2156,7 @@ if __name__ == '__main__':
     if 1:
         TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst2)
 
-    if 1:
+    if 0:
         # Crude time testing.
         import cProfile
         test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*100

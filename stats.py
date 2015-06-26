@@ -220,7 +220,7 @@ class StatCalculation(StatFilters):
 
         self.all_target_names = self.selected_champions_dct.keys()   # e.g. ['player', 'enemy_1', ]
 
-        self.enemy_target_names = tuple(tar for tar in self.all_target_names if tar != 'player')
+        self.enemy_target_names = tuple(tar for tar in sorted(self.all_target_names) if tar != 'player')
 
         self.initial_active_buffs = initial_active_buffs    # Can contain 0 to all targets and their buffs.
         self.bonuses_dct = {}   # e.g. {target: {stat: {bonus type: {bonus name: }, }, }, }
