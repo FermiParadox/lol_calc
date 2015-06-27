@@ -55,7 +55,6 @@ def _combat_loop_instance(data_dct):
     user_instance = user_instance_settings.UserSession(test_and_display_mode=True)
 
     combat_instance = user_instance.instance_after_combat(data_dct)
-    combat_instance.run_combat()
 
     return combat_instance
 
@@ -67,14 +66,12 @@ def __test_time(repetitions):
     :param repetitions: (int)
     :return: (None)
     """
-    user_instance = user_instance_settings.UserSession(test_and_display_mode=True)
+    lst = []
 
-    combat_instance = user_instance.instance_after_combat(ALL_DATA)
-    combat_instance.run_combat()
+    user_instance = user_instance_settings.UserSession(test_and_display_mode=False)
 
-    for i in range(repetitions - 1):
-        temp_inst = user_instance.instance_after_combat(ALL_DATA)
-        temp_inst.run_combat()
+    for i in range(repetitions):
+        lst.append(user_instance.instance_after_combat(ALL_DATA))
 
 
 def test_time(repetitions):
@@ -125,7 +122,7 @@ class TestCases(object):
         print(instance.selected_runes)
 
 
-if 0:
+if 1:
     dct = all_data_deepcopy()
     inst = TestCases().run_combat_and_represent_results(data_dct=dct)
 
@@ -134,4 +131,4 @@ if 1:
     test_time(100)
 
 
-# dps: 333.7, 2463 movement, 2.9sec / 100 rotations (masteries used)
+# dps: 333.7, 2463 movement, 2.2sec / 100 rotations (masteries used)
