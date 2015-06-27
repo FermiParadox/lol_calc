@@ -11,7 +11,7 @@ class UserSession(object):
         self.test_and_display_mode = test_and_display_mode
         self.instances_results = {}
 
-    def combat_class(self, input_dct):
+    def combiner_class(self, input_dct):
 
         player_champ_name = input_dct['selected_champions_dct']['player']
         player_champ_module = importlib.import_module('champions.'+player_champ_name)
@@ -54,3 +54,23 @@ class UserSession(object):
                 player_champ_tot_attr_class.__init__(self,)
 
         return CombinerClass(**input_dct)
+
+    def instance_after_combat(self, input_dct):
+        """
+        Returns instance after running combat.
+
+        :param input_dct:
+        :return:
+        """
+        instance = self.combiner_class(input_dct)
+        instance.run_combat()
+
+        return instance
+
+    def create_instance_and_represent_results(self, input_dct):
+        instance = self.instance_after_combat(input_dct=input_dct)
+        instance.represent_results_visually()
+
+        return instance
+
+

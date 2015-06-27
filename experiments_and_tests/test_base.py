@@ -46,7 +46,7 @@ class Setups(unittest.TestCase):
             selected_runes=None)
 
     def set_champ_instance(self):
-        self.inst = user_instance_settings.UserSession(self.kwargs).combat_class()
+        self.inst = user_instance_settings.UserSession(self.kwargs).instance_after_combat()
 
     def set_ability_lvls(self, lvls_tpl=None, same_lvl=None):
         """
@@ -132,7 +132,7 @@ class GeneralTest(Setups):
             self.kwargs['rotation_lst'] = ['AA' for num in range(aa_number)]
 
             self.set_champ_instance()
-            self.inst.combat_loop()
+            self.inst.run_combat()
 
             final_att_speed = self.inst.request_stat(target_name='player', stat_name='att_speed')
 
@@ -153,14 +153,14 @@ class GeneralTest(Setups):
         # WITH ITEM
         self.kwargs['items_lst'] = ['gunblade']
         self.set_champ_instance()
-        self.inst.combat_loop()
+        self.inst.run_combat()
 
         player_total_stat = self.inst.request_stat(target_name='player', stat_name='ad')
 
         # NO ITEM
         self.setUp()
         self.set_champ_instance()
-        self.inst.combat_loop()
+        self.inst.run_combat()
 
         stat_sum = self.inst.request_stat(target_name='player', stat_name='ad')
         stat_sum += self.inst.gunblade_stats_buff()['stats']['ad']['additive']
@@ -176,13 +176,13 @@ class GeneralTest(Setups):
         for count_var in range(gunblade_count):
             self.kwargs['items_lst'].append('gunblade')
         self.set_champ_instance()
-        self.inst.combat_loop()
+        self.inst.run_combat()
         dps_with_item = self.inst.dps()
 
         # NO ITEM
         self.setUp()
         self.set_champ_instance()
-        self.inst.combat_loop()
+        self.inst.run_combat()
 
         dps_without_item = self.inst.dps()
 

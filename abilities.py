@@ -1556,7 +1556,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         for tar_name in self.enemy_target_names:
             self.apply_death(tar_name=tar_name)
 
-    def combat_loop(self):
+    def run_combat(self):
         """
         Returns:
             (None)
@@ -1632,6 +1632,15 @@ class VisualRepresentation(Actions):
         table_obj.auto_set_font_size(False)
         table_obj.set_fontsize(font_size)
 
+    @staticmethod
+    def __set_pie_font_size(pie_obj, font_size=8):
+        # (pie object is a list, second item are the labels, 3rd item are the values)
+        for i in pie_obj[1]:
+            i.set_fontsize(font_size)
+
+        for i in pie_obj[2]:
+            i.set_fontsize(font_size)
+
     def subplot_pie_chart_dmg_types(self, subplot_obj):
 
         dmg_values = []
@@ -1645,8 +1654,9 @@ class VisualRepresentation(Actions):
                 slice_names.append(dmg_total_name.replace('total_', ''))
                 dmg_values.append(self.combat_results['player'][dmg_total_name])
 
-        _, texts, _ = subplot_obj.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%', colors=('r', 'b', 'w'))
+        pie_obj = subplot_obj.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%', colors=('r', 'b', 'w'))
 
+        self.__set_pie_font_size(pie_obj=pie_obj)
 
     def subplot_pie_chart_sources(self, subplot_obj):
 
@@ -1661,7 +1671,9 @@ class VisualRepresentation(Actions):
                 slice_names.append(source_name)
                 dmg_values.append(self.combat_results['player']['source'][source_name])
 
-        subplot_obj.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
+        pie_obj = subplot_obj.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%')
+
+        self.__set_pie_font_size(pie_obj=pie_obj)
 
     def add_actions_on_plot(self, subplot_obj, annotated=True):
         # ACTIONS IN PLOT
@@ -1908,279 +1920,3 @@ class VisualRepresentation(Actions):
         plt.figure(1).set_size_inches(11, 8, forward=True)
         plt.show()
 
-if __name__ == '__main__':
-    import importlib
-
-    class TestCounters(object):
-
-        def __init__(self,
-                     player_champ='jax'):
-
-            """
-            Values must NOT be assigned here.
-            """
-
-            self.player_champ = player_champ
-
-            self.DELIMITER = '\n' + '-'*100
-            self.filtered_stats_max = {'crit_chance': 1., 'speed': None, 'att_speed': 2.5, 'cdr': 0.4}
-
-            self.rotation_lst = None
-            self.max_targets_dct = None
-            self.selected_champions_dct = None
-            self.champion_lvls_dct = None
-            self.ability_lvls_dct = None
-            self.initial_active_buffs = None
-            self.initial_current_stats = None
-            self.current_target_num = None
-            self.chosen_items_lst = ['hextech_gunblade', 'hextech_gunblade']
-            self.selected_runes = None
-            self.max_combat_time = None
-            self.selected_masteries_dct = None
-
-        def set_up(self):
-
-            self.selected_champions_dct = dict(
-                player=self.player_champ,
-                enemy_1='jax',
-                enemy_2='jax',
-                enemy_3='jax')
-
-            self.champion_lvls_dct = dict(
-                player=18,
-                enemy_1=18,
-                enemy_2=17,
-                enemy_3=16
-            )
-
-            self.ability_lvls_dct = dict(
-                q=5,
-                w=5,
-                e=5,
-                r=3)
-
-            self.max_targets_dct = {}
-
-            self.selected_masteries_dct = dict(archmage=3)
-
-        def subclass_jax_actions(self):
-
-            player_champ_name = self.selected_champions_dct['player']
-            player_champ_module = importlib.import_module('champions.'+player_champ_name)
-            player_champ_tot_attr_class = getattr(player_champ_module, 'ChampionAttributes')
-
-            class CombinerClass(player_champ_tot_attr_class, VisualRepresentation):
-
-                def __init__(self,
-                             rotation_lst,
-                             max_targets_dct,
-                             selected_champions_dct,
-                             champion_lvls_dct,
-                             ability_lvls_dct,
-                             max_combat_time,
-                             selected_masteries_dct,
-                             initial_active_buffs,
-                             initial_current_stats,
-                             items_lst=self.chosen_items_lst,
-                             selected_runes=self.selected_runes):
-
-                    VisualRepresentation.__init__(self,
-                                                  rotation_lst=rotation_lst,
-                                                  max_targets_dct=max_targets_dct,
-                                                  selected_champions_dct=selected_champions_dct,
-                                                  champion_lvls_dct=champion_lvls_dct,
-                                                  ability_lvls_dct=ability_lvls_dct,
-                                                  max_combat_time=max_combat_time,
-                                                  initial_active_buffs=initial_active_buffs,
-                                                  initial_current_stats=initial_current_stats,
-                                                  chosen_items_lst=items_lst,
-                                                  selected_runes=selected_runes,
-                                                  selected_masteries_dct=selected_masteries_dct)
-
-                    player_champ_module.ChampionAttributes.__init__(self)
-
-            return CombinerClass
-
-        def test_loop(self, rotation, use_runes=True):
-
-            self.set_up()
-
-            msg = self.DELIMITER
-
-            self.rotation_lst = rotation
-
-            if use_runes:
-                self.selected_runes = dict(
-                    red=dict(
-                        ad_per_lvl=dict(
-                            additive=2)))
-
-            inst = self.subclass_jax_actions()(rotation_lst=self.rotation_lst,
-                                               max_targets_dct=self.max_targets_dct,
-                                               selected_champions_dct=self.selected_champions_dct,
-                                               champion_lvls_dct=self.champion_lvls_dct,
-                                               ability_lvls_dct=self.ability_lvls_dct,
-                                               initial_active_buffs=self.initial_active_buffs,
-                                               initial_current_stats=self.initial_current_stats,
-                                               selected_runes=self.selected_runes,
-                                               max_combat_time=self.max_combat_time,
-                                               selected_masteries_dct=self.selected_masteries_dct,)
-
-            msg += '\nTesting method: combat_loop\n'
-            msg += '\nrotation: %s\n' % inst.rotation_lst
-
-            # Runs loop.
-            inst.combat_loop()
-
-            msg += 'actions dict: %s\n' % sorted(inst.actions_dct)
-            msg += 'actions dict: %s\n\n' % inst.actions_dct
-
-            msg += 'active_buffs: %s\n' % inst.active_buffs
-            msg += 'player active_buffs: %s\n\n' % inst.active_buffs['player']
-
-            msg += 'player att_speed: %s\n' % inst.request_stat(target_name='player', stat_name='att_speed')
-
-            if use_runes:
-                msg += 'used runes: %s\n' % inst.runes_buff()
-                msg += 'player ad: %s\n' % inst.request_stat(target_name='player', stat_name='ad')
-
-            msg += 'enemy_1: \nmax hp: %s, ' % inst.request_stat(target_name='enemy_1', stat_name='hp')
-            msg += ('enemy_1 current_stats: %s \n'
-                    'all current_stats: %s\n') % (inst.current_stats['enemy_1'], inst.current_stats)
-
-            msg += '\ncombat_history: %s' % inst.combat_history
-
-            msg += '\ntotal dmg types: %s' % inst.refined_combat_history()
-
-            msg += '\ntimes of death: %s' % inst.times_of_death()
-
-            msg += '\ntotal movement distance: %s' % str(inst.total_movement)
-
-            return msg
-
-        def test_dmg_graphs(self, rotation_lst, item_lst):
-            self.set_up()
-
-            self.chosen_items_lst = item_lst
-
-            inst = self.subclass_jax_actions()(rotation_lst=rotation_lst,
-                                               max_targets_dct=self.max_targets_dct,
-                                               selected_champions_dct=self.selected_champions_dct,
-                                               champion_lvls_dct=self.champion_lvls_dct,
-                                               max_combat_time=self.max_combat_time,
-                                               ability_lvls_dct=self.ability_lvls_dct,
-                                               initial_active_buffs=self.initial_active_buffs,
-                                               initial_current_stats=self.initial_current_stats,
-                                               selected_runes=self.selected_runes,
-                                               selected_masteries_dct=self.selected_masteries_dct)
-
-            inst.combat_loop()
-            inst.add_dmg_tot_history()
-
-            msg = '\nrotation: %s\n' % inst.rotation_lst
-            msg += '\ntotal dmg types: %s' % inst.refined_combat_history()
-            msg += '\ntimes of death: %s' % inst.times_of_death()
-            msg += '\nactions: %s' % sorted(inst.actions_dct)
-            msg += '\ndps: %s' % inst.dps()
-            msg += '\nmax mp: %s, current_mp: %s' % (inst.request_stat('player', 'mp'),
-                                                     inst.current_stats['player']['current_mp'])
-
-            msg += '\nlifesteal: %s, spellvamp: %s' % (inst.request_stat('player', 'lifesteal'),
-                                                       inst.request_stat('player', 'spellvamp'))
-
-            msg += '\nlifesteal history: %s' % inst.combat_history['player']['lifesteal']
-
-            msg += '\ntotal movement distance: %s' % str(inst.total_movement)
-
-            msg += '\nhistory: %s' % inst.combat_history['enemy_1']['current_hp']
-
-            print(msg)
-
-            inst.represent_results_visually()
-
-            del inst.combat_results['player']['pre_combat_stats']
-            del inst.combat_results['player']['post_combat_stats']
-
-        def __repr__(self):
-
-            msg = self.DELIMITER
-
-            msg += self.test_loop(['q'])
-            msg += self.DELIMITER
-
-            # At 3 AAs there should be more dmg from passive R.
-            msg += self.test_loop(['AA', 'AA', 'AA'])
-            msg += self.DELIMITER
-
-            # Time between AAs should become progressively shorter up to 6 AAs because of att_speed increase.
-            msg += self.test_loop(['AA', 'AA', 'AA', 'AA', 'AA', 'AA'])
-            msg += self.DELIMITER
-
-            # Action 'w' on its own does not cause dmg.
-            msg += self.test_loop(['w', 'w'])
-            msg += self.DELIMITER
-
-            # AA after 'w' causes aa_dmg plus w_dmg.
-            msg += self.test_loop(['w', 'AA'])
-            msg += self.DELIMITER
-
-            msg += self.test_loop(['w', 'AA', 'q', 'w', 'AA'])
-            msg += self.DELIMITER
-
-            msg += self.test_loop(['AA', 'AA', 'e'])
-            msg += self.DELIMITER
-
-            # Since Jax's E is AoE it causes dmg to other targets as well.
-            # Also, its total dmg is 3 times greater than single.
-            msg += self.test_loop(['e'])
-            msg += self.DELIMITER
-
-            msg += self.test_loop(['e'], use_runes=True)
-            msg += self.DELIMITER
-
-            # When a target dies it switches to next target until all targets are dead.
-            msg += self.test_loop(['AA', 'w', 'AA', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA', 'AA', 'AA'])
-            msg += self.DELIMITER
-
-            return msg
-
-    print(TestCounters())
-
-    rot1 = ['e', 'r', 'q', 'AA', 'w', 'AA', 'AA', 'hextech_gunblade', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA', 'AA',
-            'AA', 'AA', 'w', 'AA', 'q']
-    rot2 = ['w', 'AA', 'e', 'AA', 'AA', 'AA']
-    rot3 = ['AA', 'AA', 'AA']
-    rot4 = ['AA']
-    rot5 = ['e', 'e']
-    rot6 = ['q', 'AA']
-    rot7 = ['q', 'q']
-
-    itemLst0 = []
-    itemLst1 = ['hextech_gunblade']
-    itemLst2 = ['hextech_gunblade', 'hextech_gunblade']
-
-    if 1:
-        TestCounters().test_dmg_graphs(rotation_lst=rot1, item_lst=itemLst2)
-
-    if 0:
-        # Crude time testing.
-        import cProfile
-        test_text = 'TestCounters().test_loop(rotation=rot1, use_runes=True)\n'*100
-        cProfile.run(test_text, 'cprof_results', sort='cumtime')
-
-        import pstats
-        results_run = pstats.Stats('cprof_results').sort_stats('cumtime')
-        results_run.strip_dirs().sort_stats('cumtime').print_stats(5)
-        # print(results_run.strip_dirs().sort_stats('cumtime').stats)
-
-
-# rot1, itemLst2
-# dps: 331.07415420245394 (after changing dps method)
-# dps: 338.4234113818222 (unexpected change, after changing bonus_ad method to get stats by 'evaluate' instead of direct)
-# dps: 414.08610981856975 (rotation and targets changed) 1.1sec / 100 rotations
-# dps: 414.1, 2434 movement, 1.1sec / 100 rotations
-# MAJOR CHANGES
-# dps: 320.3, 2631 movement, 2.8sec / 100 rotations
-# dps: 336.8, 2463 movement, 2.9sec / 100 rotations (fixed inn buff)
-# dps: 331.2, 2463 movement, 2.9sec / 100 rotations (changed base and bonus stat methods)
-# dps: 333.7, 2463 movement, 2.9sec / 100 rotations (masteries used)
