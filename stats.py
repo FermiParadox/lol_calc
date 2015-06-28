@@ -350,7 +350,7 @@ class StatCalculation(StatFilters):
         base_stat_per_lvl_name = stat_name + '_per_lvl'
         if base_stat_per_lvl_name in tar_base_stats_dct:
             # .. it adds it to the value.
-            value += self.champion_lvls_dct[tar_name] * tar_base_stats_dct[base_stat_per_lvl_name]
+            value += (self.champion_lvls_dct[tar_name]-1) * tar_base_stats_dct[base_stat_per_lvl_name]
 
         return value
 

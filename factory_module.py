@@ -39,6 +39,9 @@ CHAMPION_MODULE_OBJECT_NAMES = (ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_N
                                 ABILITIES_CONDITIONALS_DCT_NAME, CHAMPION_EXTERNAL_VAR_DCT_NAME, CHAMP_CLASS_NAME,
                                 DEFAULT_ACTIONS_PRIORITY_NAME)
 
+CHAMPION_BASE_STATS_DCT_NAME = 'CHAMPION_BASE_STATS'
+CHAMPION_BASE_STATS_MODULE = 'app_champions_base_stats.py'
+
 
 API_STORED_MASTERIES_MODULE = 'api_masteries_database.py'
 MASTERIES_MODULES_FOLDER_NAME = 'masteries_dir'
@@ -377,7 +380,7 @@ def _file_after_replacing_module_var(file_as_lines_lst, object_name, obj_as_dct_
 
 
 # ---------------------------------------------------------------
-def _return_or_pprint_complex_obj(print_mode, dct):
+def _return_or_pprint_complex_obj(print_mode, given_dct):
     """
     Used for pretty printing a dict or returning it.
 
@@ -389,10 +392,10 @@ def _return_or_pprint_complex_obj(print_mode, dct):
     """
 
     if print_mode is True:
-        pp.pprint(dct)
+        pp.pprint(given_dct)
 
     else:
-        return dct
+        return given_dct
 
 
 def _return_or_pprint_lst(print_mode, lst):
@@ -1132,7 +1135,7 @@ class RequestAbortedError(Exception):
 
 class RequestDataFromAPI(object):
     """
-    Base class of RequestClasses.
+    Base class of RequestClasses(?).
 
     Champion data do not derive from the final method of this class,
     since multiple individual page requests must be combined.
@@ -1216,7 +1219,7 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
         Requests all data for a champion from api.
 
         Each champion's full data is a page request of its own,
-        therefor
+        therefor (?)..
 
         Return:
             (dct)
@@ -1251,6 +1254,7 @@ class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
                     break
 
             champ_name = champion_ids.CHAMPION_IDS[champ_id]
+            champ_name = champ_name.lower()
             page_as_dct = self._request_single_champ_from_api(champion_id=champ_id)
 
             all_champs_dct.update({champ_name: page_as_dct})
@@ -1478,7 +1482,7 @@ class ExploreApiAbilities(ExploreBase):
                     if in_tooltip:
                         final_dct[label]['in_tooltip'] += 1
 
-        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=final_dct)
+        return _return_or_pprint_complex_obj(print_mode=print_mode, given_dct=final_dct)
 
     def mod_link_names(self):
         """
@@ -1518,7 +1522,7 @@ class ExploreApiAbilities(ExploreBase):
 
         champ_stats = self.all_champions_data_dct[champion_name]['stats']
 
-        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=champ_stats)
+        return _return_or_pprint_complex_obj(print_mode=print_mode, given_dct=champ_stats)
 
     def champion_abilities(self, champion_name, ability_name=None, print_mode=False):
         """
@@ -1539,7 +1543,7 @@ class ExploreApiAbilities(ExploreBase):
             else:
                 result = champ_dct['spells']['qwer'.index(ability_name)]
 
-        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=result)
+        return _return_or_pprint_complex_obj(print_mode=print_mode, given_dct=result)
 
     def champion_innates(self, champion_name=None, print_mode=False):
         """
@@ -1626,7 +1630,7 @@ class ExploreApiAbilities(ExploreBase):
                                                modified_dct=cost_categories_dct,
                                                name=champ)
 
-        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=cost_categories_dct)
+        return _return_or_pprint_complex_obj(print_mode=print_mode, given_dct=cost_categories_dct)
 
     def resource_names(self, print_mode=False):
         """
@@ -1652,7 +1656,7 @@ class ExploreApiAbilities(ExploreBase):
                 except KeyError:
                     pass
 
-        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=cost_categories_dct)
+        return _return_or_pprint_complex_obj(print_mode=print_mode, given_dct=cost_categories_dct)
 
 
 class ExploreApiItems(ExploreBase):
@@ -1778,7 +1782,7 @@ class ExploreApiItems(ExploreBase):
         matched_name = full_or_partial_match_in_iterable(searched_name=given_name,
                                                          iterable=self.usable_items_by_name_dct)
 
-        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=self.usable_items_by_name_dct[matched_name])
+        return _return_or_pprint_complex_obj(print_mode=print_mode, given_dct=self.usable_items_by_name_dct[matched_name])
 
     def _item_elements(self, element_name, item=None, raw_str=None, print_mode=False):
         """
@@ -1885,7 +1889,7 @@ class ExploreApiItems(ExploreBase):
             if match:
                 counter += collections.Counter(match)
 
-        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=counter)
+        return _return_or_pprint_complex_obj(print_mode=print_mode, given_dct=counter)
 
     def item_tags(self, only_freq=False, print_mode=False):
         """
@@ -1905,7 +1909,7 @@ class ExploreApiItems(ExploreBase):
             except KeyError:
                 print("\n'%s' has no element '%s'" % (item_name, 'tags'))
 
-        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=item_occurrence_dct)
+        return _return_or_pprint_complex_obj(print_mode=print_mode, given_dct=item_occurrence_dct)
 
     def item_uniques_passives_names(self, item_name):
         """
@@ -1929,7 +1933,7 @@ class ExploreApiItems(ExploreBase):
         for item_name in self.usable_items_by_name_dct:
             counter += collections.Counter(self.item_uniques_passives_names(item_name=item_name))
 
-        return _return_or_pprint_complex_obj(print_mode=print_mode, dct=counter)
+        return _return_or_pprint_complex_obj(print_mode=print_mode, given_dct=counter)
 
     def _item_cost_base(self, item_name, cost_name):
 
@@ -2046,7 +2050,7 @@ class ExploreApiMasteries(ExploreBase):
         :return: (list)
         """
 
-        return _return_or_pprint_complex_obj(dct=self.masteries_dct[mastery_name]['description'], print_mode=print_mode)
+        return _return_or_pprint_complex_obj(given_dct=self.masteries_dct[mastery_name]['description'], print_mode=print_mode)
 
     @staticmethod
     def _extracted_numbers_from_single_description_str(single_description_str):
@@ -2133,6 +2137,23 @@ class ExploreApiMasteries(ExploreBase):
 
         return lst_returned
 
+
+class ExploreChampionsBaseStats(ExploreBase):
+
+    @staticmethod
+    def champion_base_stats(champ_name):
+        """
+        Returns dict containing a champion's base stats.
+
+        :param champ_name: (str) Partial or full champion name.
+        :return:
+        """
+        data_dct = api_champions_database.ALL_CHAMPIONS_ATTR
+
+        name = full_or_partial_match_in_iterable(searched_name=champ_name, iterable=data_dct)
+        base_stats_dct = data_dct[name]['stats']
+
+        return base_stats_dct
 
 # ===============================================================
 #       ATTRIBUTE CREATION
@@ -4854,7 +4875,7 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         self.create_mastery_buffs()
         dct['buffs'] = self.mastery_buffs
 
-        return _return_or_pprint_complex_obj(dct=dct, print_mode=print_mode)
+        return _return_or_pprint_complex_obj(given_dct=dct, print_mode=print_mode)
 
 
 # ===============================================================
@@ -5004,6 +5025,90 @@ class ModuleCreatorBase(object):
                                     targeted_module_path_str=path, width=1)
 
         print("\n{} in '{}' pretty formatted.".format(obj_name, path))
+
+
+class ChampionsBaseStats(ModuleCreatorBase):
+
+    BASE_STATS_API_TO_APP_NAME_MAP = dict(
+        hp='hp',
+        hpregenperlevel='hp5',
+        mpperlevel='mp_per_lvl',
+        spellblock='mr',
+        attackdamageperlevel='ad_per_lvl',
+        critperlevel='crit_chance_per_lvl',
+        crit='crit_chance',
+        attackdamage='ad',
+        mpregen='mp5',
+        movespeed='move_speed',
+        hpperlevel='hp_per_lvl',
+        attackspeedoffset='att_speed_offset',
+        hpregen='hp5',
+        mp='mp',
+        attackspeedperlevel='att_speed_per_lvl',
+        mpregenperlevel='mp5_per_lvl',
+        attackrange='range',
+        armor='armor',
+        armorperlevel='armor_per_lvl',
+        spellblockperlevel='mr_per_lvl',
+    )
+
+    @staticmethod
+    def att_speed_by_att_speed_offset(att_speed_offset):
+        """
+        Calculates attack speed from attack speed offset.
+
+        :param att_speed_offset: (float)
+        :return: (float)
+        """
+
+        att_speed = 0.625 / (1 + att_speed_offset)
+
+        return att_speed
+
+    def _app_compatible_champ_base_stats_dct(self, champ_name):
+        """
+        Returns a dict with names compatible with app expectations.
+
+        WARNING: 'resource_used' is set to everyone as 'mp'.
+
+        :return: (dict)
+        """
+
+        raw_dct = ExploreChampionsBaseStats().champion_base_stats(champ_name=champ_name)
+
+        new_dct = {}
+
+        # Converts stat names to app used names.
+        for key, val in raw_dct.items():
+            new_key = self.BASE_STATS_API_TO_APP_NAME_MAP[key]
+            new_dct.update({new_key: val})
+
+        # Creates and inserts base attack speed.
+        att_speed_val = self.att_speed_by_att_speed_offset(att_speed_offset=new_dct['att_speed_offset'])
+        new_dct.update({'base_att_speed': att_speed_val})
+
+        # Resource used.
+        new_dct.update({'resource_used': 'mp'})
+
+        return new_dct
+
+    def _all_champions_base_stats(self):
+        all_champs_base_stats_dct = {}
+
+        for champ_name in api_champions_database.ALL_CHAMPIONS_ATTR:
+            champ_dct = self._app_compatible_champ_base_stats_dct(champ_name=champ_name)
+
+            all_champs_base_stats_dct.update({champ_name: champ_dct})
+
+        return all_champs_base_stats_dct
+
+    def store_champions_base_stats(self):
+
+        dct = self._all_champions_base_stats()
+
+        self._insert_object_in_module(obj_name=CHAMPION_BASE_STATS_DCT_NAME,
+                                      targeted_module_path_str=CHAMPION_BASE_STATS_MODULE,
+                                      new_obj_as_dct_or_str=dct)
 
 
 class ChampionModuleCreator(ModuleCreatorBase):
@@ -5380,6 +5485,14 @@ if __name__ == '__main__':
         inst = MasteryCreation(mastery_name='enchanted_armor')
         inst.create_and_return_mastery(print_mode=True)
 
-    if 1:
+    if 0:
         inst = MasteryModuleCreator()
         inst.create_all_mastery_dcts()
+
+    # CHAMPION BASE STATS CALCULATION
+    if 0:
+        d = ChampionsBaseStats()._app_compatible_champ_base_stats_dct(champ_name='alistar')
+        pp.pprint(d)
+    # Creates and stores base stats.
+    if 1:
+        ChampionsBaseStats().store_champions_base_stats()

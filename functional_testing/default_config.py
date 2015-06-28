@@ -127,14 +127,14 @@ class TestCases(object):
 
         return post_combat_instance
 
-    def naked_lvl_1_combat_and_results(self, rotation_lst):
+    def naked_combat_and_results(self, rotation_lst, all_champs_lvls):
 
         data_dct = self.__data_deepcopy
         data_dct['rotation_lst'] = rotation_lst
         data_dct['selected_runes'] = None
         data_dct['selected_masteries_dct'] = None
         data_dct['items_lst'] = None
-        self.__set_all_initial_lvls_to(initial_lvls_val=1, given_data_dct=data_dct)
+        self.__set_all_initial_lvls_to(initial_lvls_val=all_champs_lvls, given_data_dct=data_dct)
 
         post_combat_instance = self.run_combat_and_represent_results(data_dct=data_dct)
 
@@ -146,7 +146,7 @@ if 1:
     inst = TestCases().run_combat_and_represent_results(data_dct=dct)
 
 if 1:
-    TestCases().naked_lvl_1_combat_and_results(rotation_lst=['AA'])
+    TestCases().naked_combat_and_results(rotation_lst=['AA'], all_champs_lvls=1)
 
 # TIME
 if 0:
