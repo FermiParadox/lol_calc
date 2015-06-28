@@ -105,29 +105,51 @@ class TestCases(object):
 
         return given_dct
 
+    @staticmethod
+    def __set_all_initial_lvls_to(initial_lvls_val, given_data_dct):
+        """
+        Modifies given dict by setting all lvls to chosen value.
+
+        :param initial_lvls_val: (int) 1-18
+        :param given_data_dct:
+        :return: (None)
+        """
+
+        for i in given_data_dct['champion_lvls_dct']:
+            given_data_dct['champion_lvls_dct'][i] = initial_lvls_val
+
     def run_combat_and_represent_results(self, data_dct=None):
 
         data_dct = self.__data_dct(given_dct=data_dct)
 
         user_instance = user_instance_settings.UserSession(test_and_display_mode=True)
-        combat_instance = user_instance.create_instance_and_represent_results(input_dct=data_dct)
+        post_combat_instance = user_instance.create_instance_and_represent_results(input_dct=data_dct)
 
-        return combat_instance
+        return post_combat_instance
 
-    def naked_lvl_1(self, rotation):
+    def naked_lvl_1_combat_and_results(self, rotation_lst):
 
-        data_dct = self.__data_dct(given_dct=rotation)
+        data_dct = self.__data_deepcopy
+        data_dct['rotation_lst'] = rotation_lst
+        data_dct['selected_runes'] = None
+        data_dct['selected_masteries_dct'] = None
+        data_dct['items_lst'] = None
+        self.__set_all_initial_lvls_to(initial_lvls_val=1, given_data_dct=data_dct)
 
-        instance = self.run_combat_and_represent_results(data_dct=data_dct)
-        print(instance.selected_runes)
+        post_combat_instance = self.run_combat_and_represent_results(data_dct=data_dct)
+
+        return post_combat_instance
 
 
 if 1:
     dct = all_data_deepcopy()
     inst = TestCases().run_combat_and_represent_results(data_dct=dct)
 
-# TIME
 if 1:
+    TestCases().naked_lvl_1_combat_and_results(rotation_lst=['AA'])
+
+# TIME
+if 0:
     test_time(100)
 
 

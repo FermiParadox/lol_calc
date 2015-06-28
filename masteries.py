@@ -164,6 +164,9 @@ class MasteriesProperties(MasteriesValidation):
         """
 
         final_stats_dct = {}
+        # Ends if empty.
+        if not self.selected_masteries_dct:
+            return final_stats_dct
 
         for mastery_name in self.selected_masteries_dct:
             mastery_attrs_dct = self.MASTERIES_ATTRIBUTES[mastery_name]

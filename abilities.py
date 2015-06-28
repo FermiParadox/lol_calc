@@ -1879,18 +1879,28 @@ class VisualRepresentation(Actions):
     def subplot_preset_and_results_table(self, subplot_obj):
 
         # Rotation
-        table_lst = [('ROTATION',), (self.rotation_lst,), ('DPS',)]
+        table_lst = [('ROTATION',), (self.rotation_lst,)]
 
         # Dps
         dps_value = self.combat_results['player']['dps']
-        # (too short combat time results in string dps)
-        if type(dps_value) is not str:
-            dps_value = round(dps_value, 1)
-        table_lst.append((dps_value,))
+        try:
+            dps_value = round(dps_value, 2)
+        # (val can be string when time too short)
+        except TypeError:
+            pass
+        dps_str = 'DPS: {}'.format(dps_value)
+        table_lst.append((dps_str,))
+
+        # Dmg
+        total_dmg_done_val = self.combat_results['player']['total_dmg_done']
+        total_dmg_done_val = round(total_dmg_done_val, 2)
+        dmg_str = 'DMG: {}'.format(total_dmg_done_val)
+        table_lst.append((dmg_str,))
 
         # Movement
-        table_lst.append(('MOVEMENT',))
-        table_lst.append((int(self.total_movement),))
+        # (rounds value)
+        movement_str = 'MOVEMENT: {}'.format(round(self.total_movement))
+        table_lst.append((movement_str,))
 
         subplot_obj.axis('off')
         table_obj = subplot_obj.table(
