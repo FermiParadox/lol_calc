@@ -154,3 +154,4 @@ if 0:
 
 
 # dps: 333.7, 2463 movement, 2.2sec / 100 rotations (masteries used)
+# dps: 336.3, dmg: 3132, 2464 movement, 2.2sec / 100 rotations (rounding changed)

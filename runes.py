@@ -186,16 +186,3 @@ class RunesFinal(object):
         """
 
         return self.runes_buff_store
-
-
-if __name__ == '__main__':
-
-    ask_mod_rune_file = input('\nInsert all runes to module?')
-
-    if ask_mod_rune_file.lower() in ('y', 'yes'):
-        # Appends in api data.
-        print('\nModifying stored api data...')
-        ApiToAppRunesData().modify_rune_file()
-        print('\nModification complete.')
-    else:
-        print('\nFinished without modifications.')

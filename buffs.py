@@ -797,13 +797,14 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         """
 
         # Applies heal_reduction.
-        heal_value *= 1 - self.request_stat(target_name=tar_name, stat_name='healing_reduction')
+        heal_value *= 1 - self.request_stat(target_name=tar_name, stat_name='percent_healing_reduction')
 
         # Ensures target is not overhealed.
         # If current_hp is going to become less than max hp..
-        if ((self.current_stats[tar_name]['current_hp'] + heal_value) <
-                self.request_stat(target_name=tar_name,
-                                  stat_name='hp')):
+        if (
+            (self.current_stats[tar_name]['current_hp'] + heal_value) < self.request_stat(target_name=tar_name,
+                                                                                          stat_name='hp')
+        ):
 
             # .. applies heal.
             self.current_stats[tar_name]['current_hp'] += heal_value
@@ -870,12 +871,12 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             dmg_value *= self.request_stat(target_name=target, stat_name='magic_dmg_taken')
 
             # Checks if there is flat magic reduction
-            if 'flat_magic_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target_name=target, stat_name='flat_magic_reduction')
+            if 'flat_magic_dmg_reduction' in tar_bonuses:
+                dmg_value -= self.request_stat(target_name=target, stat_name='flat_magic_dmg_reduction')
 
             # Checks if there is flat reduction
-            if 'flat_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target_name=target, stat_name='flat_reduction')
+            if 'flat_dmg_reduction' in tar_bonuses:
+                dmg_value -= self.request_stat(target_name=target, stat_name='flat_dmg_reduction')
 
         # Physical (AA or non-AA)..
         else:
@@ -883,12 +884,12 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             dmg_value *= self.request_stat(target_name=target, stat_name='physical_dmg_taken')
 
             # Checks if there is flat physical reduction
-            if 'flat_physical_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target_name=target, stat_name='flat_physical_reduction')
+            if 'flat_physical_dmg_reduction' in tar_bonuses:
+                dmg_value -= self.request_stat(target_name=target, stat_name='flat_physical_dmg_reduction')
 
             # Checks if there is flat reduction
-            if 'flat_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target_name=target, stat_name='flat_reduction')
+            if 'flat_dmg_reduction' in tar_bonuses:
+                dmg_value -= self.request_stat(target_name=target, stat_name='flat_dmg_reduction')
 
             # AA reduction.
             if dmg_type == 'AA':

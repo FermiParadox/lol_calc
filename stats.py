@@ -38,7 +38,10 @@ _DEFENSE_REDUCING_MR_AND_ARMOR_MAP = dict(
 
 # Defensive stats that normally exist without need of special function to create
 # (contains deepest dict values from DEFENSE_REDUCING_STATS)
-DEFENSIVE_NORMAL_STATS = {'percent_dmg_reduction', 'flat_dmg_reduction'}
+# Dmg reductions and extra dmg dealt modifiers are both expressed by the same stats, and are always multiplicative.
+DEFENSIVE_NORMAL_STATS = {'percent_dmg_reduction', 'flat_AA_reduction',
+                          'flat_dmg_reduction', 'flat_physical_dmg_reduction', 'flat_magic_dmg_reduction',
+                          'percent_physical_dmg_reduction', 'percent_magic_dmg_reduction'}
 for armor_or_mr in _DEFENSE_REDUCING_MR_AND_ARMOR_MAP:
     for _key in _DEFENSE_REDUCING_MR_AND_ARMOR_MAP[armor_or_mr]:
         DEFENSIVE_NORMAL_STATS.update({_DEFENSE_REDUCING_MR_AND_ARMOR_MAP[armor_or_mr][_key]})
@@ -52,7 +55,7 @@ for _champ_name in app_champions_base_stats.CHAMPION_BASE_STATS:
 
 
 # Stats by items or buffs that are not calculated by their own (special) method.
-NORMAL_STAT_NAMES = {'healing_reduction', 'flat_AA_reduction'}
+NORMAL_STAT_NAMES = {'percent_healing_reduction', 'dmg_taken'}
 
 # Extracted from rune_stat_names_map with: re.findall(r'\'(\w+)\'', s)
 RUNE_STAT_NAMES = frozenset({'ap', 'mr', 'mr_per_lvl', 'armor_per_lvl', 'crit_chance', 'ap_per_lvl', 'hp_per_lvl',
@@ -982,7 +985,7 @@ class DmgReductionStats(StatRequest):
         return self.reduced_armor(target, stat='mr')
 
     @staticmethod
-    def percent_dmg_reduction_by_defensive_stat(stat_value):
+    def _percent_dmg_reduction_by_defensive_stat(stat_value):
         """
         Calculates percent dmg reduction caused by armor or mr.
 
@@ -1001,7 +1004,7 @@ class DmgReductionStats(StatRequest):
 
         stat_val = self.request_stat(target_name=target, stat_name=stat)
 
-        return self.percent_dmg_reduction_by_defensive_stat(stat_value=stat_val)
+        return self._percent_dmg_reduction_by_defensive_stat(stat_value=stat_val)
 
     def percent_magic_reduction_by_mr(self, target):
         """
@@ -1024,8 +1027,8 @@ class DmgReductionStats(StatRequest):
         value = 1 - self.percent_physical_reduction_by_armor(tar_name)
 
         # If there are any bonuses to physical reduction..
-        if 'percent_physical_reduction' in self.bonuses_dct[tar_name]:
-            tar_percent_red_bonuses = self.bonuses_dct[tar_name]['percent_physical_reduction']['percent']
+        if 'percent_physical_dmg_reduction' in self.bonuses_dct[tar_name]:
+            tar_percent_red_bonuses = self.bonuses_dct[tar_name]['percent_physical_dmg_reduction']['percent']
 
             for bonus_name in tar_percent_red_bonuses:
                 # .. they are multiplied.
@@ -1047,16 +1050,11 @@ class DmgReductionStats(StatRequest):
         value = 1 - self.percent_magic_reduction_by_mr(tar_name)
 
         # If there are any bonuses to magic dmg reduction..
-        if 'percent_magic_reduction' in self.bonuses_dct[tar_name]:
-            tar_percent_red_bonuses = self.bonuses_dct[tar_name]['percent_magic_reduction']['percent']
+        if 'percent_magic_dmg_reduction' in self.bonuses_dct[tar_name]:
+            tar_percent_red_bonuses = self.bonuses_dct[tar_name]['percent_magic_dmg_reduction']['percent']
 
             for bonus_name in tar_percent_red_bonuses:
                 # .. they are multiplied.
                 value *= 1 - tar_percent_red_bonuses[bonus_name]
 
         return value
-
-
-if __name__ == '__main__':
-
-    pass
