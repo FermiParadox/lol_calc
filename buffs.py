@@ -287,7 +287,7 @@ class Counters(BuffsGeneral):
             (list)
         """
 
-        lst = ['armor', 'mr', 'ap', ]
+        lst = ['armor', 'mr', 'ap', 'current_hp']
 
         lst += self.DEFENSIVE_SPECIAL_STATS
 
@@ -671,8 +671,15 @@ class Counters(BuffsGeneral):
 
             else:
                 for stat_name in self.internally_displayed_enemy_stat_names():
-                    self.combat_results[tar_name][stats_category_name].update(
-                        {stat_name: self.request_stat(target_name=tar_name, stat_name=stat_name)})
+
+                    if stat_name not in self.RESOURCE_CURRENT_STAT_NAMES:
+                        self.combat_results[tar_name][stats_category_name].update(
+                            {stat_name: self.request_stat(target_name=tar_name, stat_name=stat_name)})
+
+                    else:
+                        stat_val = self.current_stats[tar_name][stat_name]
+                        self.combat_results[tar_name][stats_category_name].update(
+                            {stat_name: stat_val})
 
     def note_post_combat_stats_in_results(self):
         """
@@ -1097,10 +1104,8 @@ class DeathAndRegen(DmgApplication):
 
     def apply_death(self, tar_name):
         """
-        Checks if the target is dead. If dead, removes its other buffs and marks it as dead.
+        If target is dead, he is marked in buffs.
 
-        Modifies:
-            active_buffs
         Returns:
             (None)
         """
@@ -1109,9 +1114,6 @@ class DeathAndRegen(DmgApplication):
         if 'dead_buff' not in self.active_buffs[tar_name]:
             # Checks if target died.
             if self.current_stats[tar_name]['current_hp'] <= 0:
-
-                # Clears buffs
-                self.active_buffs[tar_name] = {}
 
                 # Adds 'dead_buff'.
                 self.add_buff(buff_name='dead_buff', tar_name=tar_name)
@@ -1160,8 +1162,3 @@ class DeathAndRegen(DmgApplication):
 
     def mp5_dmg_value(self):
         return self._per5_dmg_value_base(tar_name='player', per_5_stat_name='mp5')
-
-
-if __name__ == '__main__':
-
-    print('\nNo tests.')

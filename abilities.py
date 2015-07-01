@@ -789,6 +789,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.rotation_lst = rotation_lst
         self.everyone_dead = None
         self.total_movement = 0
+        self.__all_available_events_after_single_action_applied = False
 
         runes.RunesFinal.__init__(self,
                                   player_lvl=champion_lvls_dct['player'],
@@ -1461,7 +1462,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         if not self.cost_sufficiency(action_name=new_action):
             # If the cost is too high, action is skipped.
             # TODO: Make it a new method (ignore mode, wait mode)
-            return False
+
+            self.__all_available_events_after_single_action_applied = False
+            return
 
         self.apply_action_cost(action_name=new_action)
 
@@ -1474,7 +1477,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         # If everyone died, stops applying actions as well.
         if self.everyone_dead:
-            return True
+            self.__all_available_events_after_single_action_applied = True
+            return
 
         # Sets current_time to current action's cast end.
         self.current_time = self.actions_dct[max(self.actions_dct)]['cast_end']
@@ -1482,10 +1486,47 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # If max time exceeded, exits loop.
         if self.max_combat_time:
             if self.current_time > self.max_combat_time:
-                return True
+                self.__all_available_events_after_single_action_applied = True
+                return
 
         # After previous events are applied, applies action effects.
         self.apply_action_effects(action_name=self.actions_dct[max(self.actions_dct)]['action_name'])
+
+    def _apply_all_actions_by_rotation(self):
+        """
+        Applies all actions when a rotation (instead of priorities) is used.
+
+        :return: (None)
+        """
+        for new_action in self.rotation_lst:
+
+            # (used for champions that action application is affected by existing buffs)
+            self.remove_expired_buffs()
+
+            self.apply_single_action(new_action=new_action)
+
+            if self.__all_available_events_after_single_action_applied:
+                break
+
+    def _highest_priority_action(self):
+        """
+        Determines next action based on priority rules.
+
+        :return: (str) Action name.
+        """
+
+        self.s
+
+
+    def _apply_all_actions_by_priority(self):
+        """
+        Applies all actions when no rotation is given, meaning priorities are to be used.
+
+        :return: (None)
+        """
+
+        while self.current_time <= self.max_combat_time:
+            next_action = self._highest_priority_action()
 
     def apply_all_actions(self):
         """
@@ -1498,13 +1539,10 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        for new_action in self.rotation_lst:
-
-            # (used for champions that action application is affected by existing buffs)
-            self.remove_expired_buffs()
-
-            if self.apply_single_action(new_action=new_action):
-                break
+        if self.rotation_lst:
+            self._apply_all_actions_by_rotation()
+        else:
+            self._apply_all_actions_by_priority()
 
     def apply_events_after_actions(self, fully_apply_dots=False):
         """
@@ -1599,7 +1637,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 class VisualRepresentation(Actions):
 
     PLAYER_STATS_DISPLAYED = ('ap', 'ad', 'armor', 'mr', 'hp', 'mp', 'att_speed')
-    ENEMY_STATS_DISPLAYED = ('armor', 'mr', 'physical_dmg_taken', 'magic_dmg_taken',)
+    ENEMY_STATS_DISPLAYED = ('armor', 'mr', 'physical_dmg_taken', 'magic_dmg_taken', 'current_hp')
 
     def __init__(self,
                  rotation_lst,
@@ -1859,7 +1897,7 @@ class VisualRepresentation(Actions):
             # Creates lines.
             for stat_name in self.ENEMY_STATS_DISPLAYED:
 
-                precombat_value = self.combat_results[tar_name]['pre_combat_stats'][stat_name]
+                precombat_value = self.combat_results[tar_name]['post_combat_stats'][stat_name]
                 precombat_value = round(precombat_value, 4)
 
                 line_tpl = (stat_name+': ', precombat_value)
@@ -1924,7 +1962,7 @@ class VisualRepresentation(Actions):
 
         # Tables
         self.subplot_player_stats_table(subplot_obj=plt.figure(1).add_subplot(gs_main[5, 2:4]))
-        self.subplot_enemy_stats_table(subplot_obj=plt.figure(1).add_subplot(gs_main[2:4, 4:6]))
+        self.subplot_enemy_stats_table(subplot_obj=plt.figure(1).add_subplot(gs_main[:4, 4:6]))
         self.subplot_preset_and_results_table(subplot_obj=plt.figure(1).add_subplot(gs_main[5, 4:6]))
 
         plt.figure(1).set_size_inches(11, 8, forward=True)

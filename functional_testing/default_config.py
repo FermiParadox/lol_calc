@@ -145,13 +145,14 @@ if 1:
     dct = all_data_deepcopy()
     inst = TestCases().run_combat_and_represent_results(data_dct=dct)
 
-if 1:
+if 0:
     TestCases().naked_combat_and_results(rotation_lst=['AA'], all_champs_lvls=1)
 
 # TIME
-if 0:
+if 1:
     test_time(100)
 
 
 # dps: 333.7, 2463 movement, 2.2sec / 100 rotations (masteries used)
 # dps: 336.3, dmg: 3132, 2464 movement, 2.2sec / 100 rotations (rounding changed)
+# dps: 336.3, dmg: 3132, 2464 movement, 2.4sec / 100 rotations (death application doesnt remove other buffs)

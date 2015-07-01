@@ -2,7 +2,7 @@ import app_champions_base_stats
 import copy
 
 
-ALL_RESOURCE_NAMES = frozenset({'mp', 'energy', 'rage', None, 'flow'})
+ALL_RESOURCE_NAMES = frozenset({'mp', 'energy', 'rage', None, 'flow', 'hp'})
 
 
 RESOURCE_CURRENT_STAT_NAMES = frozenset({'current_'+i for i in ALL_RESOURCE_NAMES if i is not None})
@@ -98,6 +98,7 @@ SPECIAL_STATS_SET = frozenset({'base_ad',
 ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_BONUS_STATS | (ALL_RESOURCE_NAMES
                                                                                                - {None})
 
+ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE = {i for i in ALL_POSSIBLE_STAT_NAMES if not i.startswith('current_')}
 
 class NonExistingNormalStatError(Exception):
     """
