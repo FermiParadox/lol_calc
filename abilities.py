@@ -1515,7 +1515,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         :return: (str) Action name.
         """
 
-        self.s
+        self.ss
 
 
     def _apply_all_actions_by_priority(self):
@@ -1621,7 +1621,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.add_passive_buffs(abilities_effects_dct_func=self.abilities_effects, abilities_lvls=self.ability_lvls_dct)
 
         # Stores precombat stats.
-        self.note_pre_combat_stats_in_results()
+        self._note_stats_pre_or_post_combat_in_results()
 
         # Applies actions or events based on which occurs first.
         self.apply_all_actions()
@@ -1897,10 +1897,10 @@ class VisualRepresentation(Actions):
             # Creates lines.
             for stat_name in self.ENEMY_STATS_DISPLAYED:
 
-                precombat_value = self.combat_results[tar_name]['post_combat_stats'][stat_name]
-                precombat_value = round(precombat_value, 4)
+                postcombat_value = self.combat_results[tar_name]['post_combat_stats'][stat_name]
+                postcombat_value = round(postcombat_value, 4)
 
-                line_tpl = (stat_name+': ', precombat_value)
+                line_tpl = (stat_name+': ', postcombat_value)
 
                 # Inserts in data to be displayed
                 table_lst.append(line_tpl)

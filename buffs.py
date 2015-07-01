@@ -647,7 +647,7 @@ class Counters(BuffsGeneral):
         else:
             self.combat_results['player']['source'][source_name] = final_dmg_value
 
-    def note_pre_combat_stats_in_results(self, stats_category_name='pre_combat_stats'):
+    def _note_stats_pre_or_post_combat_in_results(self, stats_category_name='pre_combat_stats'):
         """
         Stores all precombat stats for all targets.
 
@@ -681,6 +681,9 @@ class Counters(BuffsGeneral):
                         self.combat_results[tar_name][stats_category_name].update(
                             {stat_name: stat_val})
 
+    def note_pre_combat_stats_in_results(self):
+        return self._note_stats_pre_or_post_combat_in_results(stats_category_name='pre_combat_stats')
+
     def note_post_combat_stats_in_results(self):
         """
         Stores all postcombat stats for all targets.
@@ -691,7 +694,7 @@ class Counters(BuffsGeneral):
             (None)
         """
 
-        self.note_pre_combat_stats_in_results(stats_category_name='post_combat_stats')
+        self._note_stats_pre_or_post_combat_in_results(stats_category_name='post_combat_stats')
         self.note_lifesteal_spellvamp_totals_in_results()
         self.note_dps_in_results()
 

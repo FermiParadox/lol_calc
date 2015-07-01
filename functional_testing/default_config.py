@@ -149,7 +149,7 @@ if 0:
     TestCases().naked_combat_and_results(rotation_lst=['AA'], all_champs_lvls=1)
 
 # TIME
-if 1:
+if 0:
     test_time(100)
 
 

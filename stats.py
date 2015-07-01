@@ -420,7 +420,7 @@ class StatCalculation(StatFilters):
             (float) unfiltered stat value after bonuses
         """
 
-        if requested_stat not in ALL_POSSIBLE_STAT_NAMES:
+        if requested_stat not in ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE:
             raise NotImplementedError(requested_stat)
 
         # BASE VALUE PLUS BASE PER LVL
