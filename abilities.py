@@ -898,8 +898,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         for cost_name in self.non_toggled_action_cost_dct(action_name):
             cost_value = self.non_toggled_action_cost_dct(action_name)[cost_name]
 
-            if cost_name in ('mp', 'energy', 'hp'):
-                if self.current_stats['player']['current_'+cost_name] < cost_value:
+            if cost_name in self.RESOURCE_TO_CURRENT_RESOURCE_MAP:
+                resource_name = self.RESOURCE_TO_CURRENT_RESOURCE_MAP[cost_name]
+                if self.current_stats['player'][resource_name] < cost_value:
                     sufficiency = False
 
             else:
@@ -923,8 +924,11 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             cost_value = self.non_toggled_action_cost_dct(action_name)[cost_name]
 
             # RESOURCE COST
-            if cost_name in ('hp', 'mp', 'energy', 'rage'):
-                self.current_stats['player']['current_' + cost_name] -= cost_value
+            if cost_name in self.RESOURCE_TO_CURRENT_RESOURCE_MAP:
+                resource_name = self.RESOURCE_TO_CURRENT_RESOURCE_MAP[cost_name]
+                self.current_stats['player'][resource_name] -= cost_value
+
+                self.note_non_hp_resource_in_history(resource_name)
 
             # STACK COST
             else:
@@ -1621,7 +1625,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.add_passive_buffs(abilities_effects_dct_func=self.abilities_effects, abilities_lvls=self.ability_lvls_dct)
 
         # Stores precombat stats.
-        self._note_stats_pre_or_post_combat_in_results()
+        self.note_pre_combat_stats_in_results()
 
         # Applies actions or events based on which occurs first.
         self.apply_all_actions()
@@ -1772,8 +1776,7 @@ class VisualRepresentation(Actions):
             max_hp = self.request_stat(target_name=tar_name, stat_name='hp')
 
             # Inserts initial point.
-            subplot_obj.plot([0], max_hp, color=color_lst[color_counter_var], alpha=0.8,
-                              label=tar_name)
+            subplot_obj.plot([0], max_hp, color=color_lst[color_counter_var], alpha=0.8, label=tar_name)
 
             # Left boundary is initially set to max hp.
             x_1 = 0
@@ -1817,28 +1820,28 @@ class VisualRepresentation(Actions):
         plt.ylabel('value')
 
         # LIFESTEAL, SPELLVAMP, RESOURCE
-        stat_color = {'lifesteal': 'orange', 'spellvamp': 'g', 'resource': 'b'}
+        stat_color_map = {'lifesteal': 'orange', 'spellvamp': 'g', 'resource': 'b'}
 
-        # Places initial resource.
+        # Places initial value of resource.
         subplot_obj.plot([0], self.request_stat(target_name='player', stat_name=self.resource_used),
-                          color=stat_color['resource'], marker='.')
+                         color=stat_color_map['resource'], marker='.')
 
-        for examined in stat_color:
-            # Inserts each time and value into graph.
+        for examined in stat_color_map:
+
             if examined == 'resource':
                 # (Sets initial value of resource)
                 x_val = [0, ]
                 y_val = [self.request_stat(target_name='player', stat_name=self.resource_used), ]
-
             else:
                 x_val = []
                 y_val = []
 
+            # Inserts each time and value into graph.
             for event_time in sorted(self.combat_history['player'][examined]):
                 x_val.append(event_time)
                 y_val.append(self.combat_history['player'][examined][event_time])
 
-            subplot_obj.plot(x_val, y_val, color=stat_color[examined], marker='.', label=examined)
+            subplot_obj.plot(x_val, y_val, color=stat_color_map[examined], marker='.', label=examined)
 
         self.add_actions_on_plot(subplot_obj=subplot_obj, annotated=False)
 

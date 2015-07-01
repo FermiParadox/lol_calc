@@ -328,6 +328,8 @@ CHAMPION_EXTERNAL_VARIABLES = {
 
 DEFAULT_ACTIONS_PRIORITY = ('AA', 'r', 'e', 'w', 'q')
 
+RESOURCE_USED = 'mp'
+
 
 class ChampionAttributes(object):
 
@@ -335,6 +337,7 @@ class ChampionAttributes(object):
     ABILITIES_EFFECTS = ABILITIES_EFFECTS
     ABILITIES_CONDITIONALS = ABILITIES_CONDITIONALS
     DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
+    RESOURCE_USED = RESOURCE_USED
 
     def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
         for i in external_vars_dct:

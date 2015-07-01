@@ -504,11 +504,9 @@ class Counters(BuffsGeneral):
         self.combat_history[target_name]['current_hp'].update(
             {self.current_time: self.current_stats[target_name]['current_hp']})
 
-    def note_resource_in_history(self, curr_resource_str):
+    def note_non_hp_resource_in_history(self, curr_resource_str):
         """
         Stores player's 'current_'resource value in history.
-
-        Replaces previous value, if one exists.
 
         Args:
             current_resource_name: (str) e.g. "current_rage"
@@ -516,8 +514,20 @@ class Counters(BuffsGeneral):
             (None)
         """
 
-        # Adds time and current resource value
-        self.combat_history['player']['resource'][self.current_time] = self.current_stats['player'][curr_resource_str]
+        if curr_resource_str == 'current_hp':
+            return
+
+        resource_history_dct = self.combat_history['player']['resource']
+        new_val = self.current_stats['player'][curr_resource_str]
+
+        if self.current_time in resource_history_dct:
+            old_val = self.combat_history['player']['resource'][self.current_time]
+
+            if old_val > new_val:
+                self.combat_history['player']['resource'][self.current_time] = new_val
+
+        else:
+            self.combat_history['player']['resource'].update({self.current_time: new_val})
 
     def note_dmg_in_history(self, dmg_type, final_dmg_value, target_name):
         """
@@ -647,16 +657,14 @@ class Counters(BuffsGeneral):
         else:
             self.combat_results['player']['source'][source_name] = final_dmg_value
 
-    def _note_stats_pre_or_post_combat_in_results(self, stats_category_name='pre_combat_stats'):
+    def __note_stats_pre_or_post_combat_in_results(self, stats_category_name):
         """
         Stores all precombat stats for all targets.
 
         Stats must be stored after application of passive effects.
 
         Args:
-            stats_category_name: (str) Used for similar method below.
-                'pre_combat_stats'
-                'post_combat_stats'
+            stats_category_name: (str) 'pre_combat_stats', 'post_combat_stats'
         Returns:
             (None)
         """
@@ -682,7 +690,7 @@ class Counters(BuffsGeneral):
                             {stat_name: stat_val})
 
     def note_pre_combat_stats_in_results(self):
-        return self._note_stats_pre_or_post_combat_in_results(stats_category_name='pre_combat_stats')
+        return self.__note_stats_pre_or_post_combat_in_results(stats_category_name='pre_combat_stats')
 
     def note_post_combat_stats_in_results(self):
         """
@@ -694,7 +702,7 @@ class Counters(BuffsGeneral):
             (None)
         """
 
-        self._note_stats_pre_or_post_combat_in_results(stats_category_name='post_combat_stats')
+        self.__note_stats_pre_or_post_combat_in_results(stats_category_name='post_combat_stats')
         self.note_lifesteal_spellvamp_totals_in_results()
         self.note_dps_in_results()
 
@@ -842,9 +850,11 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         dmg_value = self.request_dmg_value(dmg_name=dmg_name)
         resource_type = self.req_dmg_dct_func(dmg_name=dmg_name)['resource_type']
 
+        # DMG
         if dmg_value >= 0:
             self.current_stats['player'][self.player_current_resource_name] -= dmg_value
 
+        # HEAL
         # (If the value is negative it's a resource replenish effect.)
         else:
             # Checks if resource heal exceeds max possible value.
@@ -856,7 +866,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                 self.current_stats['player'][self.player_current_resource_name] -= dmg_value
 
         # RESOURCE HISTORY
-        self.note_resource_in_history(curr_resource_str=self.player_current_resource_name)
+        self.note_non_hp_resource_in_history(curr_resource_str=self.player_current_resource_name)
 
     def mitigated_dmg(self, dmg_value, dmg_type, target):
         """
@@ -960,12 +970,12 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
 
         # Checks if the effect is affecting a resource or hp.
-        if dmg_dct['resource_type'] != 'hp':
-            self.apply_resource_dmg_or_heal(dmg_name=dmg_name)
-
-        else:
+        if dmg_dct['resource_type'] == 'hp':
             self.apply_hp_dmg_or_heal(dmg_name=dmg_name,
                                       target_name=target_name)
+
+        else:
+            self.apply_resource_dmg_or_heal(dmg_name=dmg_name)
 
     def times_of_death(self):
         """

@@ -7,6 +7,7 @@ ALL_RESOURCE_NAMES = frozenset({'mp', 'energy', 'rage', None, 'flow', 'hp'})
 
 RESOURCE_CURRENT_STAT_NAMES = frozenset({'current_'+i for i in ALL_RESOURCE_NAMES if i is not None})
 
+RESOURCE_TO_CURRENT_RESOURCE_MAP = {i: 'current_'+i for i in ALL_RESOURCE_NAMES if i is not None}
 
 DEFENSIVE_SPECIAL_STATS = frozenset({'percent_physical_reduction_by_armor',
                                      'percent_magic_reduction_by_mr',
@@ -204,6 +205,7 @@ class StatCalculation(StatFilters):
     DEFENSIVE_SPECIAL_STATS = DEFENSIVE_SPECIAL_STATS
     RUNE_STAT_NAMES = RUNE_STAT_NAMES
     ALL_STANDARD_STAT_NAMES = ALL_STANDARD_STAT_NAMES
+    RESOURCE_TO_CURRENT_RESOURCE_MAP = RESOURCE_TO_CURRENT_RESOURCE_MAP
 
     # Modifier
     _MINIMUM_MOVEMENT_REDUCTION_MODIFIER = 0.35
@@ -219,7 +221,6 @@ class StatCalculation(StatFilters):
 
         self.selected_champions_dct = selected_champions_dct
 
-        self.player_resource_name = ''
         self.player_current_resource_name = ''
 
         self.all_target_names = self.selected_champions_dct.keys()   # e.g. ['player', 'enemy_1', ]
@@ -248,21 +249,7 @@ class StatCalculation(StatFilters):
         self.place_tar_and_empty_dct_in_dct(self.stored_buffs)
 
         self.set_active_buffs()
-        self.set_player_resource_name()
         self.set_player_current_resource_name()
-
-    def set_player_resource_name(self):
-        """
-        Creates player's resource name and stores it.
-
-        Returns:
-            (None)
-        """
-        player_champ_stats = app_champions_base_stats.CHAMPION_BASE_STATS[self.selected_champions_dct['player']]
-
-        for res_name in self.ALL_RESOURCE_NAMES:
-            if res_name in player_champ_stats:
-                self.player_resource_name = res_name
 
     def set_player_current_resource_name(self):
         """
@@ -272,7 +259,7 @@ class StatCalculation(StatFilters):
             (None)
         """
 
-        self.player_current_resource_name = 'current_' + self.player_resource_name
+        self.player_current_resource_name = 'current_' + self.RESOURCE_USED
 
     def set_base_stats_dct(self):
         """
