@@ -326,7 +326,7 @@ ABILITIES_CONDITIONALS = {
 CHAMPION_EXTERNAL_VARIABLES = {
     'hits_dodged_during_e': 5}
 
-DEFAULT_ACTIONS_PRIORITY = ('AA', 'r', 'e', 'w', 'q')
+DEFAULT_ACTIONS_PRIORITY = ('r', 'e', 'w', 'q', 'AA')
 
 RESOURCE_USED = 'mp'
 

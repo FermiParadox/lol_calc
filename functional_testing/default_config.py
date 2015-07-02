@@ -30,8 +30,7 @@ ALL_DATA = dict(
 
     max_combat_time=10,
 
-    rotation_lst=['e', 'r', 'q', 'AA', 'w', 'AA', 'AA', 'hextech_gunblade', 'AA', 'AA', 'AA', 'AA', 'AA', 'w', 'AA',
-                  'AA', 'AA', 'AA', 'w', 'AA', 'q'],
+    rotation_lst=None,
     items_lst=['hextech_gunblade', 'hextech_gunblade'],
 
     selected_runes=dict(
@@ -149,7 +148,7 @@ if 0:
     TestCases().naked_combat_and_results(rotation_lst=['AA'], all_champs_lvls=1)
 
 # TIME
-if 0:
+if 1:
     test_time(100)
 
 

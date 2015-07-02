@@ -789,7 +789,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.rotation_lst = rotation_lst
         self.everyone_dead = None
         self.total_movement = 0
-        self.__all_available_events_after_single_action_applied = False
+        self.__all_available_actions_after_single_action_applied = False
 
         runes.RunesFinal.__init__(self,
                                   player_lvl=champion_lvls_dct['player'],
@@ -1029,7 +1029,37 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                     self.actions_dct[action_time]['cd_end'] = self.current_time
                     break
 
-    def action_cast_start(self, action_name):
+    @staticmethod
+    def __end_name_function(action_dct):
+        """
+        :return: (str)
+        """
+        if 'channel_end' in action_dct:
+            string = 'channel_end'
+        else:
+            string = 'cast_end'
+        return string
+
+    def _action_cd_end(self, action_name):
+        """
+        Calculates action's cd end, or returns 0 if action hasn't been casted.
+
+        :return:
+            (float)
+        """
+
+        cd_end = 0
+
+        for action_time in sorted(self.actions_dct, reverse=True):
+
+            # If the examined action has been casted earlier...
+            if action_name == self.actions_dct[action_time]['action_name']:
+                cd_end = self.actions_dct[action_time]['cd_end']
+                break
+
+        return cd_end
+
+    def action_cast_start(self, given_action_name):
         """
         Calculates cast_start of an action, based on other actions' cast_end and this action's cd.
 
@@ -1037,48 +1067,22 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (float)
         """
 
-        def end_name(action_dct):
-            """
-            Returns:
-                (str)
-            """
-            if 'channel_end' in action_dct:
-                string = 'channel_end'
-            else:
-                string = 'cast_end'
-            return string
-
         cast_start = self.current_time
 
         # If a previous action exists...
         if self.actions_dct:
+            # (If the examined action has not been casted earlier it's 0)
+            given_action_cd_end = self._action_cd_end(action_name=given_action_name)
 
-            casted_earlier = None
+            last_action_cast_start = max(self.actions_dct)
 
-            # ..checks all actions inside dict from last to first.
-            for action_time in sorted(self.actions_dct, reverse=True):
+            end_name = self.__end_name_function(action_dct=self.actions_dct[last_action_cast_start])
+            last_action_cast_end = self.actions_dct[max(self.actions_dct)][end_name]
 
-                name = end_name(action_dct=self.actions_dct[action_time])
-
-                # If the examined action has been casted earlier...
-                if action_name == self.actions_dct[action_time]['action_name']:
-
-                    # ..compare which ends last;
-                    # the examined action's cd or or the last action's cast end.
-                    cast_start = max(
-                        self.actions_dct[action_time]['cd_end'],
-                        # (tiny amount added to avoid action overwriting)
-                        self.actions_dct[max(self.actions_dct)][name]) + 0.00000001
-
-                    casted_earlier = True
-                    break
-
-            # If it hasn't been casted earlier, it starts when last action's cast ends.
-            if not casted_earlier:
-                last_action_time = max(self.actions_dct)
-                name = end_name(action_dct=self.actions_dct[last_action_time])
-                # (tiny amount added to avoid action overwriting)
-                cast_start = self.actions_dct[last_action_time][name] + 0.00000001
+            # ..compare which ends last
+            cast_start = max(given_action_cd_end, last_action_cast_end)
+            # (tiny amount added to avoid action overwriting)
+            cast_start += 0.00000001
 
         return cast_start
 
@@ -1099,7 +1103,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         """
 
         # (cast_start is the moment the action is 'clicked')
-        cast_start = self.action_cast_start(action_name=action_name)
+        cast_start = self.action_cast_start(given_action_name=action_name)
 
         # CHAMPION ABILITIES
         if action_name in palette.ALL_POSSIBLE_SPELL_SHORTCUTS:
@@ -1462,12 +1466,13 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         :param new_action: (str)
         :return: (bool)
         """
+
+        # (used for champions that action application is affected by existing buffs)
+        self.remove_expired_buffs()
+
         # Checks if action meets the cost requirements.
         if not self.cost_sufficiency(action_name=new_action):
             # If the cost is too high, action is skipped.
-            # TODO: Make it a new method (ignore mode, wait mode)
-
-            self.__all_available_events_after_single_action_applied = False
             return
 
         self.apply_action_cost(action_name=new_action)
@@ -1481,7 +1486,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         # If everyone died, stops applying actions as well.
         if self.everyone_dead:
-            self.__all_available_events_after_single_action_applied = True
+            self.__all_available_actions_after_single_action_applied = True
             return
 
         # Sets current_time to current action's cast end.
@@ -1490,7 +1495,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # If max time exceeded, exits loop.
         if self.max_combat_time:
             if self.current_time > self.max_combat_time:
-                self.__all_available_events_after_single_action_applied = True
+                self.__all_available_actions_after_single_action_applied = True
                 return
 
         # After previous events are applied, applies action effects.
@@ -1504,23 +1509,19 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         """
         for new_action in self.rotation_lst:
 
-            # (used for champions that action application is affected by existing buffs)
-            self.remove_expired_buffs()
-
             self.apply_single_action(new_action=new_action)
 
-            if self.__all_available_events_after_single_action_applied:
-                break
+            if self.__all_available_actions_after_single_action_applied:
+                return
 
-    def _highest_priority_action(self):
+    def calculated_priority(self):
         """
         Determines next action based on priority rules.
 
         :return: (str) Action name.
         """
 
-        self.ss
-
+        return self.DEFAULT_ACTIONS_PRIORITY
 
     def _apply_all_actions_by_priority(self):
         """
@@ -1530,7 +1531,31 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         """
 
         while self.current_time <= self.max_combat_time:
-            next_action = self._highest_priority_action()
+            # After each action application, priority is recalculated.
+            current_priority_sequence = self.calculated_priority()
+
+            # Tries all actions until it manages to apply one (then recalculates priority).
+            for action_name in current_priority_sequence:
+
+                # CD
+                if self._action_cd_end(action_name=action_name) > self.current_time:
+                    continue
+
+                # COST REQUIREMENTS
+                # (more costly to run this before cd check)
+                if not self.cost_sufficiency(action_name=action_name):
+                    # If the cost is too high, action is skipped.
+                    continue
+
+                # If its not on cd and it's cost is met.
+                self.apply_single_action(new_action=action_name)
+
+                if self.__all_available_actions_after_single_action_applied:
+                    return
+
+            # If no action was available, adds a set amount of time and retries.
+            else:
+                self.current_time += 0.5
 
     def apply_all_actions(self):
         """
@@ -1637,6 +1662,14 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.note_dmg_totals_in_results()
         self.note_post_combat_stats_in_results()
 
+    def rotation_followed(self):
+        rot = []
+
+        for action_time in sorted(self.actions_dct):
+            action_name = self.actions_dct[action_time]['action_name']
+            rot.append(action_name)
+
+        return rot
 
 class VisualRepresentation(Actions):
 
@@ -1920,7 +1953,7 @@ class VisualRepresentation(Actions):
     def subplot_preset_and_results_table(self, subplot_obj):
 
         # Rotation
-        table_lst = [('ROTATION',), (self.rotation_lst,)]
+        table_lst = [('ROTATION',), (self.rotation_followed(),)]
 
         # Dps
         dps_value = self.combat_results['player']['dps']
