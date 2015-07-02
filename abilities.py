@@ -1716,6 +1716,9 @@ class VisualRepresentation(Actions):
         for i in pie_obj[2]:
             i.set_fontsize(font_size)
 
+    def __set_plot_x_lim(self, x_start=-0.2):
+        plt.xlim([x_start, self.max_combat_time])
+
     def subplot_pie_chart_dmg_types(self, subplot_obj):
 
         dmg_values = []
@@ -1730,7 +1733,6 @@ class VisualRepresentation(Actions):
                 dmg_values.append(self.combat_results['player'][dmg_total_name])
 
         pie_obj = subplot_obj.pie(x=dmg_values, labels=slice_names, autopct='%1.1f%%', colors=('r', 'b', 'w'))
-
         self.__set_pie_font_size(pie_obj=pie_obj)
 
     def subplot_pie_chart_sources(self, subplot_obj):
@@ -1795,7 +1797,7 @@ class VisualRepresentation(Actions):
 
         # Line at y=0, and at x=0.
         plt.axhline(y=0, color='black')
-        plt.axvline(x=0, color='black')
+        self.__set_plot_x_lim()
 
         plt.ylabel('hp')
 
@@ -1846,8 +1848,7 @@ class VisualRepresentation(Actions):
 
         # Line at y=0.
         plt.axhline(y=0, color='black')
-        # Line at x=0.
-        plt.axvline(x=0, color='black')
+        self.__set_plot_x_lim()
 
         plt.xlabel('time')
         plt.ylabel('value')
