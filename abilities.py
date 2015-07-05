@@ -1671,6 +1671,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         return rot
 
+
 class VisualRepresentation(Actions):
 
     PLAYER_STATS_DISPLAYED = ('ap', 'ad', 'armor', 'mr', 'hp', 'mp', 'att_speed')

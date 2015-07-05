@@ -13,6 +13,7 @@ import json
 import pprint as pp
 import copy
 import importlib
+import abc
 import ast
 import collections
 
@@ -599,7 +600,7 @@ def enumerated_question(question_str, choices_seq, restrict_choices=False):
     enum_choices = enumerate(choices, 1)
 
     print(delimiter(10))
-    msg = '\n' + question_str
+    msg = '\n' + question_str + '\n'
 
     msg += _enumerated_question_msg(choices_couples=enum_choices)
 
@@ -2610,6 +2611,160 @@ class ItemAndMasteriesBase(object):
         return {k: v for k, v in BuffsBase().USUAL_BUFF_ATTR_VALUES.items() if k not in disallowed}
 
 
+class _ConditionalsBase(metaclass=abc.ABCMeta):
+
+    def __init__(self):
+        self.conditions_dct = None
+
+    @abc.abstractproperty
+    def trigger_setup_dct(self):
+        pass
+
+    @abc.abstractproperty
+    def effect_setup_dct(self):
+        pass
+
+    def _create_and_insert_new_trigger(self, con_name):
+        """
+        Creates new trigger, and inserts it in given condition's dict.
+
+        Returns:
+            (None)
+        """
+
+        # Creates trig name.
+        trig_name = _auto_new_name_or_ask_name(first_synthetic='trigger',
+                                               existing_names=self.conditions_dct[con_name]['triggers'])
+
+        # Inserts trig name.
+        self.conditions_dct[con_name]['triggers'].update({trig_name: {}})
+
+        # Inserts trig types.
+        trig_type = enumerated_question(question_str='Trigger TYPE?', choices_seq=self.trigger_setup_dct,
+                                        restrict_choices=True)
+
+        self.conditions_dct[con_name]['triggers'][trig_name].update({'trigger_type': trig_type})
+
+        # Inserts trig contents.
+        suggest_attr_values(suggested_values_dct=self.trigger_setup_dct[trig_type],
+                            modified_dct=self.conditions_dct[con_name]['triggers'][trig_name])
+
+        print(delimiter(40))
+        print('\nTRIGGER: {}'.format(trig_name))
+        pp.pprint(self.conditions_dct[con_name]['triggers'][trig_name])
+
+    def _create_and_insert_new_effect_base(self, con_name):
+        """
+        Creates new effect, and inserts it in given condition's dict.
+
+        Returns:
+            (None)
+        """
+
+        # Creates effect name.
+        eff_name = _auto_new_name_or_ask_name(first_synthetic='effect',
+                                              existing_names=self.conditions_dct[con_name]['effects'],)
+
+        # Inserts effect name.
+        self.conditions_dct[con_name]['effects'].update({eff_name: {}})
+
+        # Inserts effect types.
+        eff_type = enumerated_question(question_str='Effect TYPE?', choices_seq=self.effect_setup_dct,
+                                       restrict_choices=True)
+
+        self.conditions_dct[con_name]['effects'][eff_name].update({'effect_type': eff_type})
+
+        # Inserts effect contents.
+        suggest_attr_values(suggested_values_dct=self.effect_setup_dct[eff_type],
+                            modified_dct=self.conditions_dct[con_name]['effects'][eff_name])
+
+        print(delimiter(40))
+        print('\nEFFECT: {}'.format(eff_name))
+        pp.pprint(self.conditions_dct[con_name]['effects'][eff_name])
+
+        return eff_name
+
+    def __add_triggers_or_effects(self, con_name, trig_or_eff_creation_func, trig_or_eff_str):
+        """
+        Adds all triggers or effects for given condition name.
+
+        :param con_name:
+        :param trig_or_eff_creation_func: (function)
+        :param trig_or_eff_str: (str) 'trigger', 'effect'
+        :return:
+        """
+
+        # (e.g. 'effect'->'effects')
+        plural_str = trig_or_eff_str + 's'
+
+        self.conditions_dct[con_name].update({plural_str: {}})
+
+        print(fat_delimiter(20))
+        print('\nCONDITION: {}'.format(con_name))
+
+        while True:
+            end_eff_answer = _y_n_question(question_str='\nAdd {}?'.format(plural_str))
+
+            if not end_eff_answer:
+                return
+            else:
+                trig_or_eff_creation_func(con_name=con_name)
+
+        print(fat_delimiter(40))
+        print('\nCONDITION: {}'.format(con_name))
+        pp.pprint(self.conditions_dct[con_name][plural_str])
+
+    @repeat_cluster(cluster_name='CONDITION TRIGGERS')
+    def _add_triggers(self, con_name):
+        return self.__add_triggers_or_effects(con_name=con_name,
+                                              trig_or_eff_creation_func=self._create_and_insert_new_trigger,
+                                              trig_or_eff_str='trigger')
+
+    @repeat_cluster(cluster_name='CONDITION EFFECTS')
+    def _add_effects(self, con_name):
+        return self.__add_triggers_or_effects(con_name=con_name,
+                                              trig_or_eff_creation_func=self._create_and_insert_new_effect_base,
+                                              trig_or_eff_str='effect')
+
+    def _create_single_condition(self, con_name):
+
+        # TRIGGERS
+        self._add_effects(con_name=con_name)
+        # EFFECTS
+        self._add_triggers(con_name=con_name)
+
+    @outer_loop_exit_handler
+    @repeat_cluster(cluster_name='ALL CONDITIONS')
+    def run_conditions_creation(self, extra_msg=''):
+        self.conditions_dct = {}
+        print(fat_delimiter(100))
+        msg = '\nCONDITIONALS CREATION:'
+        msg += ('\n(triggers in a condition are checked with AND, never with OR. '
+                'When OR needed, a new condition has to be created.)')
+        print(msg)
+
+        while True:
+            print(fat_delimiter(40))
+
+            # Ends method if no name is provided.
+            if not _y_n_question('New condition?'):
+                break
+            else:
+                # CONDITION NAME
+                new_con_name = _auto_new_name_or_ask_name(first_synthetic='conditional',
+                                                          existing_names=self.conditions_dct)
+                self.conditions_dct.update({new_con_name: {}})
+
+                self._create_single_condition(con_name=new_con_name)
+
+        print(fat_delimiter(40))
+        print('\nCONDITIONALS')
+        if extra_msg:
+            print(extra_msg)
+        pp.pprint(self.conditions_dct)
+
+
+
 # ---------------------------------------------------------------
 # ABILITIES
 
@@ -3928,20 +4083,20 @@ class AbilitiesEffects(EffectsBase):
             self._single_spell_effects_creation(spell_name=spell_name)
 
 
-class ConditionalsBase(object):
+class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
 
     def __init__(self, obj_name, obj_type, attributes_dct, effects_dct):
+        _ConditionalsBase.__init__(self)
         self.obj_name = obj_name
         # 'champion' or 'item'
         self.obj_type = obj_type
         self.attributes_dct = attributes_dct
         self.abilities_effects_dct = effects_dct
-        self.conditions_dct = {}
 
-    TARGET_TYPES = ('player', 'enemy')
+    TARGET_TYPES = palette.TARGET_TYPES
     # (Used to determine what to insert next.)
     FORMULA_TYPE = ('constant_value', 'x_function')
-    OPERATOR_TYPES = ('>', '<', '==', '<=', '>=')
+    COMPARISON_OPERATOR_STRINGS = palette.COMPARISON_OPERATOR_STRINGS
     NON_PER_LVL_STAT_NAMES = sorted(i for i in stats.ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
 
     def available_buff_names(self):
@@ -3974,30 +4129,32 @@ class ConditionalsBase(object):
 
         return s
 
+    @property
     def trigger_setup_dct(self,):
 
         return dict(
             buff=dict(
                 buff_name=self.available_buff_names(),
                 owner_type=self.TARGET_TYPES,
-                operator=self.OPERATOR_TYPES,
+                operator=self.COMPARISON_OPERATOR_STRINGS,
                 stacks=[str(i) for i in range(1, 10)],
             ),
             stat=dict(
                 stat_name=self.NON_PER_LVL_STAT_NAMES,
                 owner_type=self.TARGET_TYPES,
-                operator=self.OPERATOR_TYPES,
+                operator=self.COMPARISON_OPERATOR_STRINGS,
                 value=()
             ),
             spell_lvl=dict(
                 spell_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
-                operator=self.OPERATOR_TYPES,
+                operator=self.COMPARISON_OPERATOR_STRINGS,
                 lvl=ALLOWED_ABILITY_LVLS
             ),
             on_cd=dict(
                 spell_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS
             ))
 
+    @property
     def effect_setup_dct(self):
 
         dct = dict(
@@ -4064,89 +4221,11 @@ class ConditionalsBase(object):
             if k in self.conditions_dct[con_name]['effects'][eff_name]:
                 del self.conditions_dct[con_name]['effects'][eff_name][k]
 
-    def _create_and_insert_new_trigger(self, con_name):
-        """
-        Creates new trigger, and inserts it in given condition's dict.
-
-        Returns:
-            (None)
-        """
-
-        # Creates trig name.
-        trig_name = _auto_new_name_or_ask_name(first_synthetic='trigger',
-                                               existing_names=self.conditions_dct[con_name]['triggers'],
-                                               disallow_enter=True)
-
-        # Inserts trig name.
-        self.conditions_dct[con_name]['triggers'].update({trig_name: {}})
-
-        # Inserts trig types.
-        trig_type = enumerated_question(question_str='Trigger TYPE?', choices_seq=self.trigger_setup_dct(),
-                                        restrict_choices=True)
-
-        self.conditions_dct[con_name]['triggers'][trig_name].update({'trigger_type': trig_type})
-
-        # Inserts trig contents.
-        suggest_attr_values(suggested_values_dct=self.trigger_setup_dct()[trig_type],
-                            modified_dct=self.conditions_dct[con_name]['triggers'][trig_name],
-                            restrict_choices=True)
-
-        print(delimiter(40))
-        print('\nTRIGGER: {}'.format(trig_name))
-        pp.pprint(self.conditions_dct[con_name]['triggers'][trig_name])
-
-    @repeat_cluster(cluster_name='CONDITION TRIGGERS')
-    def _add_triggers(self, con_name):
-        """
-        Adds all triggers for given condition name.
-
-        Returns:
-            (None)
-        """
-
-        self.conditions_dct[con_name].update({'triggers': {}})
-
-        print(delimiter(20))
-        # ADDS TRIGGER OR EXITS
-        while True:
-            end_trig_answer = _y_n_question(question_str='\nAdd trigger?')
-            if not end_trig_answer:
-                return
-            else:
-                self._create_and_insert_new_trigger(con_name)
-
-        print(fat_delimiter(40))
-        print('\nCONDITION: {}'.format(con_name))
-        pp.pprint(self.conditions_dct[con_name]['triggers'])
-
     def _create_and_insert_new_effect(self, con_name):
-        """
-        Creates new effect, and inserts it in given condition's dict.
 
-        Returns:
-            (None)
-        """
+        eff_name = self._create_and_insert_new_effect_base(con_name=con_name)
 
-        # Creates effect name.
-        eff_name = _auto_new_name_or_ask_name(first_synthetic='effect',
-                                              existing_names=self.conditions_dct[con_name]['effects'],
-                                              disallow_enter=False)
-
-        # Inserts effect name.
-        self.conditions_dct[con_name]['effects'].update({eff_name: {}})
-
-        # Inserts effect types.
-        eff_type = enumerated_question(question_str='Effect TYPE?', choices_seq=self.effect_setup_dct(),
-                                       restrict_choices=True)
-
-        self.conditions_dct[con_name]['effects'][eff_name].update({'effect_type': eff_type})
-
-        # Inserts effect contents.
-        suggest_attr_values(suggested_values_dct=self.effect_setup_dct()[eff_type],
-                            modified_dct=self.conditions_dct[con_name]['effects'][eff_name],
-                            restrict_choices=True)
-
-        # Inserts effect formula.
+        # EFFECT FORMULA
         # (formula type is used for non buffs/dmgs)
         if 'formula_type' in self.conditions_dct[con_name]['effects'][eff_name]:
             if self.conditions_dct[con_name]['effects'][eff_name]['formula_type'] == 'x_formula':
@@ -4187,68 +4266,20 @@ class ConditionalsBase(object):
         print('\nEFFECT: {}'.format(eff_name))
         pp.pprint(self.conditions_dct[con_name]['effects'][eff_name])
 
-    @repeat_cluster(cluster_name='CONDITION EFFECTS')
-    def _add_effects(self, con_name):
+    def _extra_msg_during_condition_run(self):
+        return '\n{}: {}'.format(self.obj_type.upper(), self.obj_name)
+
+    def run_conditions_creation(self, extra_msg=None):
         """
-        Adds all triggers for given condition name.
+        Creates all conditions.
 
-        Returns:
-            (None)
+        :param extra_msg: (None) No actual need for it; used to match signature of overridden method.
+        :return: (None)
         """
-
-        self.conditions_dct[con_name].update({'effects': {}})
-
-        print(fat_delimiter(20))
-        print('\nCONDITION: {}'.format(con_name))
-
-        while True:
-            end_eff_answer = _y_n_question(question_str='\nAdd effect?')
-
-            if not end_eff_answer:
-                return
-            else:
-                self._create_and_insert_new_effect(con_name=con_name)
-
-        print(fat_delimiter(40))
-        print('\nCONDITION: {}'.format(con_name))
-        pp.pprint(self.conditions_dct[con_name]['effects'])
-
-    def _create_single_condition(self, con_name):
-
-        # TRIGGERS
-        self._add_effects(con_name=con_name)
-        # EFFECTS
-        self._add_triggers(con_name=con_name)
-
-    @outer_loop_exit_handler
-    @repeat_cluster(cluster_name='ALL CONDITIONS')
-    def run_conditions_creation(self):
-        print(fat_delimiter(100))
-        msg = '\nCONDITIONALS CREATION:'
-        msg += ('\n(triggers in a condition are checked with AND, never with OR. '
-                'When OR needed, a new condition has to be created.)')
-        print(msg)
-
-        while True:
-            print(fat_delimiter(40))
-
-            # Ends method if no name is provided.
-            if not _y_n_question('New condition?'):
-                break
-            else:
-                # CONDITION NAME
-                new_con_name = _auto_new_name_or_ask_name(first_synthetic='conditional', existing_names=self.conditions_dct)
-                self.conditions_dct.update({new_con_name: {}})
-
-                self._create_single_condition(con_name=new_con_name)
-
-        print(fat_delimiter(40))
-        print('\nCONDITIONALS')
-        print('\n{}: {}'.format(self.obj_type.upper(), self.obj_name))
-        pp.pprint(self.conditions_dct)
+        return super().run_conditions_creation(extra_msg=self._extra_msg_during_condition_run())
 
 
-class AbilitiesConditionals(ConditionalsBase):
+class AbilitiesConditionals(_ItemsAndAbilitiesConditionalsBase):
 
     def __init__(self, champion_name):
         super().__init__(obj_name=champion_name,
@@ -4308,7 +4339,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         self.non_unique_item_stats = {}
         self.unique_item_stats = {}
         self.item_dmgs = None
-        self.item_buffs = None
+        self.item_buffs = {}
         self.item_effects = None
         self.item_tree = None
         self.item_api_data_dct = self.explore_items_module_inst.item_dct(given_name=self.item_name)
@@ -4732,7 +4763,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         return dct
 
 
-class ItemsConditionals(ConditionalsBase):
+class ItemsConditionals(_ItemsAndAbilitiesConditionalsBase):
 
     def __init__(self, item_name):
         super().__init__(obj_name=item_name,
@@ -4876,6 +4907,50 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         dct['buffs'] = self.mastery_buffs
 
         return _return_or_pprint_complex_obj(given_dct=dct, print_mode=print_mode)
+
+
+# ROTATIONS CONDITIONALS
+class RotationPriorityConditional(_ConditionalsBase):
+
+    TARGET_TYPES = palette.TARGET_TYPES
+    COMPARISON_OPERATOR_STRINGS = palette.COMPARISON_OPERATOR_STRINGS
+    EFFECTS_SETUP_TYPES = ('prioritized', 'priority_fragment')
+
+    def __init__(self, champion_name):
+        _ConditionalsBase.__init__(self)
+
+        self.champion_name = champion_name
+
+    @property
+    def trigger_setup_dct(self):
+
+        return dict(
+            active_buffs=dict(
+                obj_name=(),
+                owner_type=self.TARGET_TYPES,
+                stacks=(1, 2, 3, 4, 5,),
+            ),
+
+            previous_action=dict(
+                obj_name=(),
+            ),
+        )
+
+    @property
+    def effect_setup_dct(self):
+        return dict(
+            top_priority=dict(
+                obj_name=()
+            ),
+            priority_fragment=dict(
+                lst=()
+            ),
+            preceed_fragment=dict(
+                preceding_action=(),
+                succeeding_action=()
+            )
+        )
+
 
 
 # ===============================================================
@@ -5494,5 +5569,9 @@ if __name__ == '__main__':
         d = ChampionsBaseStats()._app_compatible_champ_base_stats_dct(champ_name='alistar')
         pp.pprint(d)
     # Creates and stores base stats.
-    if 1:
+    if 0:
         ChampionsBaseStats().store_champions_base_stats()
+
+    # PRIORITY CONDITIONALS
+    if 1:
+        RotationPriorityConditional('jax').run_conditions_creation()
