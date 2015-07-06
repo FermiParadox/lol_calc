@@ -114,9 +114,13 @@ ITEMS_CONDITIONALS = {
 ITEMS_BUFFS_NAMES = palette.items_or_masteries_buffs_or_dmgs_names_dct(str_buffs_or_dmgs='buffs', attrs_dct=ITEMS_ATTRIBUTES)
 ITEMS_DMGS_NAMES = palette.items_or_masteries_buffs_or_dmgs_names_dct(str_buffs_or_dmgs='dmgs', attrs_dct=ITEMS_ATTRIBUTES)
 
+CASTABLE_ITEMS = [item_name for item_name in ITEMS_ATTRIBUTES if ITEMS_ATTRIBUTES[item_name]['general_attributes']['castable']]
+CASTABLE_ITEMS = tuple(sorted(CASTABLE_ITEMS))
+
 
 if __name__ == '__main__':
 
     # All buffs and dmgs names of all items.
     print("Item buffs' names: {}".format(ITEMS_BUFFS_NAMES))
     print("Item buffs' names: {}".format(ITEMS_DMGS_NAMES))
+    print("Castable items: {}".format(CASTABLE_ITEMS))

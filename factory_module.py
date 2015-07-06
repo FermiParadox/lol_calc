@@ -5,6 +5,7 @@ import api_key
 import palette
 import stats
 import api_items_database
+import items_folder.items_data
 
 import re
 import time
@@ -59,6 +60,9 @@ child_class_as_str = """class ChampionAttributes(object):
     def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])"""
+
+
+ALL_POSSIBLE_ACTIONS = palette.ALL_POSSIBLE_SPELL_SHORTCUTS + items_folder.items_data.CASTABLE_ITEMS + ('summoner_spell', )
 
 
 # ===============================================================
@@ -799,16 +803,13 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, re
 
 
 def suggest_attr_values(suggested_values_dct, modified_dct, restrict_choices=False, mute_exit_key_msgs=False,
-                        extra_start_msg='',):
+                        extra_start_msg='', attrs_with_lst_val=None):
     """
-    CHECK: single suggestion method for more details.
+    READ: single suggestion method for more details.
 
     Stores each chosen attribute value or repeats a choice.
 
-        stop_key: (str) When given as answer, exits this loop.
-        error_key: (str) When given as answer, raises error to exit outer loop.
-    Returns:
-        (None)
+    :param attrs_with_lst_val: (None), (list) When given, attr names in this list will get a list-value selection.
     """
 
     start_msg = '\n' + delimiter(40)
@@ -826,11 +827,24 @@ def suggest_attr_values(suggested_values_dct, modified_dct, restrict_choices=Fal
             curr_attr_name = num_name_couples[attr_num]
 
             try:
-                # (current)
-                _suggest_single_attr_value(attr_name=curr_attr_name,
-                                           suggested_values_dct=suggested_values_dct,
-                                           modified_dct=modified_dct,
-                                           restrict_choices=restrict_choices)
+                # List-value.
+                if attrs_with_lst_val and (curr_attr_name in attrs_with_lst_val):
+                    suggested_values_lst = suggested_values_dct[curr_attr_name]
+
+                    # Sets attr equal to a list so that it can be modified.
+                    modified_dct[curr_attr_name] = []
+                    modified_lst = modified_dct[curr_attr_name]
+
+                    suggest_lst_of_attr_values(suggested_values_lst=suggested_values_lst,
+                                               modified_lst=modified_lst,
+                                               sort_suggested_lst=False)
+
+                else:
+                    # Single value.
+                    _suggest_single_attr_value(attr_name=curr_attr_name,
+                                               suggested_values_dct=suggested_values_dct,
+                                               modified_dct=modified_dct,
+                                               restrict_choices=restrict_choices)
                 break
 
             except RepeatChoiceErrorError:
@@ -1001,8 +1015,6 @@ def suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_m
                 print_invalid_answer(extra_msg='Indexes out of range.')
 
     print()
-
-
 
 
 # ---------------------------------------------------------------
@@ -2624,6 +2636,10 @@ class _ConditionalsBase(metaclass=abc.ABCMeta):
     def effect_setup_dct(self):
         pass
 
+    @abc.abstractproperty
+    def attrs_with_lst_val(self):
+        pass
+
     def _create_and_insert_new_trigger(self, con_name):
         """
         Creates new trigger, and inserts it in given condition's dict.
@@ -2647,7 +2663,9 @@ class _ConditionalsBase(metaclass=abc.ABCMeta):
 
         # Inserts trig contents.
         suggest_attr_values(suggested_values_dct=self.trigger_setup_dct[trig_type],
-                            modified_dct=self.conditions_dct[con_name]['triggers'][trig_name])
+                            modified_dct=self.conditions_dct[con_name]['triggers'][trig_name],
+                            restrict_choices=True,
+                            attrs_with_lst_val=self.attrs_with_lst_val)
 
         print(delimiter(40))
         print('\nTRIGGER: {}'.format(trig_name))
@@ -2658,7 +2676,7 @@ class _ConditionalsBase(metaclass=abc.ABCMeta):
         Creates new effect, and inserts it in given condition's dict.
 
         Returns:
-            (None)
+            (str) Mostly not used; needed in only few classes.
         """
 
         # Creates effect name.
@@ -2676,7 +2694,9 @@ class _ConditionalsBase(metaclass=abc.ABCMeta):
 
         # Inserts effect contents.
         suggest_attr_values(suggested_values_dct=self.effect_setup_dct[eff_type],
-                            modified_dct=self.conditions_dct[con_name]['effects'][eff_name])
+                            modified_dct=self.conditions_dct[con_name]['effects'][eff_name],
+                            restrict_choices=True,
+                            attrs_with_lst_val=self.attrs_with_lst_val)
 
         print(delimiter(40))
         print('\nEFFECT: {}'.format(eff_name))
@@ -2762,7 +2782,6 @@ class _ConditionalsBase(metaclass=abc.ABCMeta):
         if extra_msg:
             print(extra_msg)
         pp.pprint(self.conditions_dct)
-
 
 
 # ---------------------------------------------------------------
@@ -4093,6 +4112,10 @@ class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
         self.attributes_dct = attributes_dct
         self.abilities_effects_dct = effects_dct
 
+    @property
+    def attrs_with_lst_val(self):
+        return []
+
     TARGET_TYPES = palette.TARGET_TYPES
     # (Used to determine what to insert next.)
     FORMULA_TYPE = ('constant_value', 'x_function')
@@ -4909,6 +4932,7 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         return _return_or_pprint_complex_obj(given_dct=dct, print_mode=print_mode)
 
 
+# ---------------------------------------------------------------
 # ROTATIONS CONDITIONALS
 class RotationPriorityConditional(_ConditionalsBase):
 
@@ -4921,18 +4945,25 @@ class RotationPriorityConditional(_ConditionalsBase):
 
         self.champion_name = champion_name
 
+    def _priority_trigger_buffs(self):
+        items_buffs = list(items_folder.items_data.ITEMS_BUFFS_NAMES)
+        champions_buffs = palette.champion_buffs_or_dmgs_names_lst(champion_name=self.champion_name, str_buffs_or_dmgs='buffs')
+
+        lst = items_buffs + champions_buffs
+        return sorted(lst)
+
     @property
     def trigger_setup_dct(self):
 
         return dict(
             active_buffs=dict(
-                obj_name=(),
+                buff_names=self._priority_trigger_buffs(),
                 owner_type=self.TARGET_TYPES,
                 stacks=(1, 2, 3, 4, 5,),
             ),
 
             previous_action=dict(
-                obj_name=(),
+                obj_name=ALL_POSSIBLE_ACTIONS,
             ),
         )
 
@@ -4940,18 +4971,20 @@ class RotationPriorityConditional(_ConditionalsBase):
     def effect_setup_dct(self):
         return dict(
             top_priority=dict(
-                obj_name=()
+                obj_name=ALL_POSSIBLE_ACTIONS
             ),
             priority_fragment=dict(
-                lst=()
+                priority_fragment_lst=ALL_POSSIBLE_ACTIONS
             ),
-            preceed_fragment=dict(
-                preceding_action=(),
-                succeeding_action=()
+            consecutive_action=dict(
+                preceding_action=ALL_POSSIBLE_ACTIONS,
+                succeeding_action=ALL_POSSIBLE_ACTIONS
             )
         )
 
-
+    @property
+    def attrs_with_lst_val(self):
+        return ['priority_fragment_lst', 'buff_names']
 
 # ===============================================================
 #       MODULE CREATION

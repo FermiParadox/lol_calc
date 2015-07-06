@@ -1,4 +1,5 @@
 import copy
+import importlib
 
 
 TARGET_TYPES = ('player', 'enemy')
@@ -12,9 +13,6 @@ ABILITY_SHORTCUTS = ('inn', ) + SPELL_SHORTCUTS
 EXTRA_SPELL_SHORTCUTS = ('q2', 'w2', 'e2', 'r2')
 ALL_POSSIBLE_SPELL_SHORTCUTS = SPELL_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
 ALL_POSSIBLE_ABILITIES_SHORTCUTS = ABILITY_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
-
-
-ALL_POSSIBLE_ACTIONS = ALL_POSSIBLE_SPELL_SHORTCUTS
 
 
 BUFF_DCT_BASE = dict(
@@ -105,6 +103,21 @@ def items_or_masteries_buffs_or_dmgs_names_dct(str_buffs_or_dmgs, attrs_dct):
     return dct
 
 
+def champion_buffs_or_dmgs_names_lst(champion_name, str_buffs_or_dmgs):
+    """
+
+    :param champion_name: (str)
+    :param str_buffs_or_dmgs: (str) 'dmgs', 'buffs'
+    :return: (list)
+    """
+    path_str = 'champions' + '.' + champion_name
+    module = importlib.import_module(path_str)
+
+    lst = sorted(module.ABILITIES_ATTRIBUTES[str_buffs_or_dmgs])
+
+    return lst
+
+
 class ChampionsStats(object):
 
     @staticmethod
@@ -166,44 +179,3 @@ class ChampionsStats(object):
         del dct['player']['actives']['cds_modified']
 
         return dct
-
-
-class BaseStatsWithMana(object):
-
-    CHAMPION_BASE_STATS = dict(
-        hp=0,
-        hp_per_lvl=0,
-
-        hp5=0,
-        hp5_per_lvl=0,
-
-        mp=0,
-        mp_per_lvl=0,
-
-        mp5=0,
-        mp5_per_lvl=0,
-
-        resource_used='mp',
-
-        attack_range=0,
-
-        ad=0,
-        ad_per_lvl=0,
-
-        attack_speed_offset=0,
-        base_att_speed=0,
-        att_speed_per_lvl=0/100.,
-
-        armor=0,
-        armor_per_lvl=0,
-
-        mr=0,
-        mr_per_lvl=0,
-
-        move_speed=0,
-
-        # Set always to 2.
-        crit_modifier=2,
-        )
-
-

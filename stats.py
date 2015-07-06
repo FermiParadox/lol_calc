@@ -1,6 +1,6 @@
-import app_champions_base_stats
 import copy
 
+from champions import app_champions_base_stats
 
 ALL_RESOURCE_NAMES = frozenset({'mp', 'energy', 'rage', None, 'flow', 'hp'})
 

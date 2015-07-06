@@ -1,13 +1,15 @@
-import buffs
-import timers
-import runes
-import app_champions_base_stats
-import palette
+import operator
+import copy
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import operator
-import copy
+
+import buffs
+import timers
+import runes
+from champions import app_champions_base_stats
+import palette
+
 
 # Sets font size on all plt graphs.
 plt.rcParams['font.size'] = 12
