@@ -1651,8 +1651,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # Adds passive buffs from abilities.
         self.add_passive_buffs(abilities_effects_dct_func=self.abilities_effects, abilities_lvls=self.ability_lvls_dct)
 
-        # Stores precombat stats.
+        # Precombat
         self.note_pre_combat_stats_in_results()
+        self.note_precombat_active_buffs()
 
         # Applies actions or events based on which occurs first.
         self.apply_all_actions()
@@ -1660,9 +1661,10 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # Applies events after all actions have finished.
         self.apply_events_after_actions()
 
-        # Stores postcombat stats.
+        # Postcombat
         self.note_dmg_totals_in_results()
         self.note_post_combat_stats_in_results()
+        self.note_postcombat_active_buffs()
 
     def rotation_followed(self):
         rot = []

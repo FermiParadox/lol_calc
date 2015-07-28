@@ -706,6 +706,22 @@ class Counters(BuffsGeneral):
         self.note_lifesteal_spellvamp_totals_in_results()
         self.note_dps_in_results()
 
+    def __note_active_buffs(self, str_pre_or_post):
+        """
+        Notes active buffs in results.
+
+        :param str_pre_or_post: (str) 'precombat_active_buffs' or 'postcombat_active_buffs'
+        :return: (None)
+        """
+
+        self.combat_results.update({str_pre_or_post: self.active_buffs})
+
+    def note_precombat_active_buffs(self):
+        return self.__note_active_buffs(str_pre_or_post='precombat_active_buffs')
+
+    def note_postcombat_active_buffs(self):
+        return self.__note_active_buffs(str_pre_or_post='postcombat_active_buffs')
+
 
 class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 

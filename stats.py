@@ -101,6 +101,7 @@ ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_
 
 ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE = {i for i in ALL_POSSIBLE_STAT_NAMES if not i.startswith('current_')}
 
+
 class NonExistingNormalStatError(Exception):
     """
     Used to indicate stat was not found when searched by request stat function

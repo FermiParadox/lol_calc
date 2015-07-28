@@ -50,7 +50,7 @@ _RUNE_BUFF_DCT_BASE['on_hit'] = None
 _RUNE_BUFF_DCT_BASE['prohibit_cd_start'] = False
 _RUNE_BUFF_DCT_BASE['dot'] = False
 _RUNE_BUFF_DCT_BASE['buff_source'] = 'runes'
-_RUNE_BUFF_DCT_BASE['stats'] = {}
+del _RUNE_BUFF_DCT_BASE['stats']
 
 
 class ApiToAppRunesData(object):
@@ -127,7 +127,8 @@ class ApiToAppRunesData(object):
 
         return dct_string
 
-    def insert_runes_to_module(self, module='runes'):
+    @staticmethod
+    def insert_runes_to_module(module='runes'):
         """
         Inserts runes dict to module or replaces it if already existing.
         """
@@ -141,7 +142,9 @@ class RunesFinal(object):
 
         self.player_lvl = player_lvl
         self.selected_runes = selected_runes        # e.g. {'red': {'ad': 5, 'ad_per_lvl': {'additive: 4},}, }
-        self.runes_buff_store = _RUNE_BUFF_DCT_BASE     # e.g. {'stats': 'att_speed': {'percent': },}
+
+        self.runes_buff_store = {'stats': {}}     # e.g. {'stats': 'att_speed': {'percent': },}
+        self.runes_buff_store.update(_RUNE_BUFF_DCT_BASE)
 
         self.set_runes_buff_store()
 
