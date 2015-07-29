@@ -1,5 +1,6 @@
 import user_instance_settings
 import functional_testing.default_config as default_config
+import factory_module
 
 import cProfile
 import pstats
@@ -103,24 +104,26 @@ class TestCases(object):
 
         return post_combat_instance
 
-    def combats_consistency_test(self, repetitions):
+    # CONSISTENCY
+    @staticmethod
+    def __different_object_results_count(combat_instances_lst, compared_object_name):
         """
-        Runs multiple combat tests for a single user instance.
+        Runs multiple combat tests for a single user instance, and returns the count of different results.
 
-        :param repetitions:
-        :return:
+        :param repetitions: (int)
+        :param compared_object_name: (str) Object of the combat instances that is being compared,
+            eg. 'combat_results', 'combat_history'
+        :return: (int)
         """
-
-        combat_instances_lst = _multiple_combat_instances_lst(repetitions=repetitions)
 
         enumerated_histories_dct = {}
 
-        first_combat_instance_data = combat_instances_lst[0].combat_results['player']['pre_combat_stats']
+        first_combat_instance_data = getattr(combat_instances_lst[0], compared_object_name)
         different_histories_dct = {0: first_combat_instance_data}
 
         for num, combat_instance in enumerate(combat_instances_lst):
 
-            examined_history_dct = combat_instance.combat_results['player']['pre_combat_stats']
+            examined_history_dct = getattr(combat_instance, compared_object_name)
             enumerated_histories_dct.update({num: examined_history_dct})
 
             # Checks if history is different that existing histories.
@@ -133,17 +136,27 @@ class TestCases(object):
             else:
                 different_histories_dct.update({num: examined_history_dct})
 
-        total_different_histories = len(different_histories_dct)
+        # Total different histories
+        return len(different_histories_dct)
 
-        print(total_different_histories)
+    def different_combat_results_count(self, combat_instances_lst):
+        return self.__different_object_results_count(combat_instances_lst=combat_instances_lst,
+                                                     compared_object_name='combat_results')
+
+    def different_combat_history_count(self, combat_instances_lst):
+        return self.__different_object_results_count(combat_instances_lst=combat_instances_lst,
+                                                     compared_object_name='combat_history')
 
     @staticmethod
-    def compared_tar_pre_combat_stats(combat_instances_lst, tar_name):
+    def __compared_tar_pre_or_post_combat_stats(combat_instances_lst, tar_name, str_pre_or_post_combat_stats):
         """
+        Compares pre or post combat stats for given instances.
+
         Prints only stats that differ in instances.
 
         :param combat_instances_lst: (list)
-        :return: (DataFrame)
+        :param str_pre_or_post_combat_stats: 'pre_combat_stats' or 'post_combat_stats'
+        :return: (DataFrame) or (None)
         """
 
         all_stats_names = set()
@@ -151,7 +164,7 @@ class TestCases(object):
         # Inserts all possible stats in dict, since some instances might not have that stat.
         for combat_instance in combat_instances_lst:
             combat_results_dct = combat_instance.combat_results
-            tar_pre_combat_stats_dct = combat_results_dct[tar_name]['pre_combat_stats']
+            tar_pre_combat_stats_dct = combat_results_dct[tar_name][str_pre_or_post_combat_stats]
 
             all_stats_names |= set(tar_pre_combat_stats_dct.keys())
 
@@ -162,7 +175,7 @@ class TestCases(object):
         for combat_instance in combat_instances_lst:
             combat_results_dct = combat_instance.combat_results
 
-            tar_pre_combat_stats_dct = combat_results_dct[tar_name]['pre_combat_stats']
+            tar_pre_combat_stats_dct = combat_results_dct[tar_name][str_pre_or_post_combat_stats]
 
             for stat_name in diff_pre_combat_stats:
                 if stat_name in tar_pre_combat_stats_dct:
@@ -178,15 +191,79 @@ class TestCases(object):
             for stat_val in stat_vals_lst:
                 if stat_val != first_val:
                     break
-            # (If loop doesn't break, then all values are equal and there is not point in displaying them.)
+            # (If loop doesn't break, then all values are equal and there is no point in displaying them.)
             else:
                 del diff_pre_combat_stats[stat_name]
 
-        return pandas.DataFrame(diff_pre_combat_stats).transpose()
+        # If no differences are found, dataframe is empty.
+        stats_df = pandas.DataFrame(diff_pre_combat_stats)
+        if stats_df.empty is True:
+            return None
+        else:
+            return stats_df.transpose()
 
-    @staticmethod
-    def compared_tar_pre_combat_bonuses(combat_instances_lst, tar_name):
-        None
+    def compared_tar_pre_combat_stats(self, combat_instances_lst, tar_name):
+        return self.__compared_tar_pre_or_post_combat_stats(combat_instances_lst=combat_instances_lst,
+                                                            tar_name=tar_name,
+                                                            str_pre_or_post_combat_stats='pre_combat_stats')
+
+    def compared_tar_post_combat_stats(self, combat_instances_lst, tar_name):
+        return self.__compared_tar_pre_or_post_combat_stats(combat_instances_lst=combat_instances_lst,
+                                                            tar_name=tar_name,
+                                                            str_pre_or_post_combat_stats='post_combat_stats')
+
+    def compare_pre_and_post_combat_stats(self, combat_instances_lst):
+        """
+        Compares and prints pre and post combat stats for all targets.
+
+        :return: (None)
+        """
+
+        print(factory_module.fat_delimiter(40))
+        print('PRE and POST COMBAT STATS COMPARISON.')
+
+        data_dct = self.__data_deepcopy
+
+        for tar in data_dct['selected_champions_dct']:
+            pre_combat_comparison = self.compared_tar_pre_combat_stats(combat_instances_lst=combat_instances_lst,
+                                                                       tar_name=tar)
+            post_combat_comparison = self.compared_tar_post_combat_stats(combat_instances_lst=combat_instances_lst,
+                                                                         tar_name=tar)
+
+            print('\nTarget: {}'.format(tar))
+            for comparison in (pre_combat_comparison, post_combat_comparison):
+
+                if comparison:
+                    print(comparison)
+
+            else:
+                print('No differences.')
+
+    def display_differences(self, combat_instances_lst):
+        """
+        Compares given instances searching for any differences and displays them.
+
+        :param combat_instances_lst: (list) List of instances
+        :return: (None)
+        """
+
+        total_instances = len(combat_instances_lst)
+
+        print(factory_module.fat_delimiter(80))
+        print('Comparing {} combat instances.'.format(total_instances))
+
+        diff_combat_results = self.different_combat_results_count(combat_instances_lst=combat_instances_lst)
+        diff_combat_histories = self.different_combat_history_count(combat_instances_lst=combat_instances_lst)
+
+        # If more than a single (different) instance is found, it displays all data.
+        if diff_combat_results > 1 or diff_combat_histories > 1:
+            print('Different combat results: {}'.format(diff_combat_results))
+            print('Different combat histories: {}'.format(diff_combat_histories))
+            print(self.compare_pre_and_post_combat_stats(combat_instances_lst=combat_instances_lst))
+
+        else:
+            print('No differences detected.')
+
 
 if __name__ == '__main__':
     if 0:
@@ -201,8 +278,7 @@ if __name__ == '__main__':
 
     if 1:
         inst_lst = _multiple_combat_instances_lst(repetitions=7)
-        df = TestCases().compared_tar_pre_combat_stats(combat_instances_lst=inst_lst, tar_name='player')
-        print(df)
+        TestCases().display_differences(combat_instances_lst=inst_lst)
 
     # dps: 333.7, 2463 movement, 2.2sec / 100 rotations (masteries used)
     # dps: 336.3, dmg: 3132, 2464 movement, 2.2sec / 100 rotations (rounding changed)
