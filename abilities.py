@@ -1518,12 +1518,14 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
     def calculated_priority(self):
         """
-        Determines next action based on priority rules.
+        Determines actions' priority.
 
-        :return: (str) Action name.
+        :return: (list)
         """
 
-        return self.DEFAULT_ACTIONS_PRIORITY
+        return self.actions_priorities_default
+
+
 
     def _apply_all_actions_by_priority(self):
         """
@@ -1555,7 +1557,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 if self.__all_available_actions_after_single_action_applied:
                     return
 
-            # If no action was available, adds a set amount of time and retries.
+            # If no action was available, adds a set amount of time before retrying.
             else:
                 self.current_time += 0.5
 

@@ -53,11 +53,11 @@ MASTERIES_MODULE_PATH = '.'.join((MASTERIES_MODULES_FOLDER_NAME, MASTERIES_DATA_
 
 
 child_class_as_str = """class ChampionAttributes(object):
-    DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
     ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES
     ABILITIES_EFFECTS = ABILITIES_EFFECTS
     ABILITIES_CONDITIONALS = ABILITIES_CONDITIONALS
     def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
+        self.actions_priorities_default = DEFAULT_ACTIONS_PRIORITY
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])"""
 

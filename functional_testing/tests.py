@@ -28,19 +28,21 @@ def _multiple_combat_instances_lst(repetitions):
     :return: (list) List of instances.
     """
 
+    data = default_config.ALL_DATA
+
     combat_instances_lst = []
 
     user_instance = user_instance_settings.UserSession(test_and_display_mode=False)
 
     for i in range(repetitions):
-        combat_instances_lst.append(user_instance.instance_after_combat(default_config.ALL_DATA))
+        combat_instances_lst.append(user_instance.instance_after_combat(data))
 
     return combat_instances_lst
 
 
 def test_run_duration(repetitions):
 
-    executed_str = '_multiple_user_instances_lst({})'.format(repetitions)
+    executed_str = '_multiple_combat_instances_lst({})'.format(repetitions)
 
     cProfile.run(executed_str, 'cprof_results', sort='cumtime')
 
@@ -110,7 +112,6 @@ class TestCases(object):
         """
         Runs multiple combat tests for a single user instance, and returns the count of different results.
 
-        :param repetitions: (int)
         :param compared_object_name: (str) Object of the combat instances that is being compared,
             eg. 'combat_results', 'combat_history'
         :return: (int)
@@ -239,6 +240,8 @@ class TestCases(object):
             else:
                 print('No differences.')
 
+    # TODO: If more inconsistencies appear that can't be tracked down, create noting of active_buffs, bonuses etc.
+
     def display_differences(self, combat_instances_lst):
         """
         Compares given instances searching for any differences and displays them.
@@ -273,14 +276,15 @@ if __name__ == '__main__':
         inst = TestCases().naked_combat_and_results(rotation_lst=['AA'], all_champs_lvls=1)
 
     # RUN DURATION
-    if 0:
+    if 1:
         test_run_duration(100)
 
-    if 1:
+    # CONSISTENCY
+    if 0:
         inst_lst = _multiple_combat_instances_lst(repetitions=7)
         TestCases().display_differences(combat_instances_lst=inst_lst)
 
     # dps: 333.7, 2463 movement, 2.2sec / 100 rotations (masteries used)
     # dps: 336.3, dmg: 3132, 2464 movement, 2.2sec / 100 rotations (rounding changed)
     # dps: 336.3, dmg: 3132, 2464 movement, 2.4sec / 100 rotations (death application doesnt remove other buffs)
-
+    # dps: 305.52, dmg: 3039.5, 2827 movement, 3.1sec / 100 rotations (rotation=None, automatic rotation)
