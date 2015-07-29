@@ -72,7 +72,7 @@ class Fetch(object):
     """
 
     @staticmethod
-    def _imported_module(path_str):
+    def imported_module(path_str):
         """
         Returns module, ensuring it is reloaded.
         :return: (module)
@@ -93,7 +93,7 @@ class Fetch(object):
         :return: (module)
         """
 
-        return self._imported_module(path_str=self.champion_module_path(champ_name=champ_name))
+        return self.imported_module(path_str=self.champion_module_path(champ_name=champ_name))
 
     def imported_items_module(self):
         """
@@ -101,10 +101,10 @@ class Fetch(object):
         :return: (module)
         """
 
-        return self._imported_module(path_str=ITEMS_DATA_MODULE_PATH)
+        return self.imported_module(path_str=ITEMS_DATA_MODULE_PATH)
 
     def imported_masteries_module(self):
-        return self._imported_module(path_str=MASTERIES_MODULE_PATH)
+        return self.imported_module(path_str=MASTERIES_MODULE_PATH)
 
     def champ_abilities_attrs_dct(self, champ_name):
         """
@@ -4986,6 +4986,7 @@ class RotationPriorityConditional(_ConditionalsBase):
     def attrs_with_lst_val(self):
         return ['priority_fragment_lst', 'buff_names']
 
+
 # ===============================================================
 #       MODULE CREATION
 # ===============================================================
@@ -5110,7 +5111,7 @@ class ModuleCreatorBase(object):
                                        new_object_as_dct_or_str=new_obj_as_dct_or_str,
                                        targeted_module=targeted_module_path_str, width=width)
 
-    def pformat_obj_in_module(self, obj_name, items_or_a_champ_name):
+    def pformat_obj_in_champ_or_items_module(self, obj_name, items_or_a_champ_name):
         """
         Edits a module by formatting a dict inside of it.
 
@@ -5133,6 +5134,24 @@ class ModuleCreatorBase(object):
                                     targeted_module_path_str=path, width=1)
 
         print("\n{} in '{}' pretty formatted.".format(obj_name, path))
+
+    def pformat_obj_in_path(self, obj_name, obj_module_path):
+        """
+        Edits a module by formatting a dict inside of it.
+
+        :param obj_name: (str) Dict name
+        :param obj_module_path: (str) Path of module with '/' instead of '.' .
+        :return: (None)
+        """
+        path_str = obj_module_path.replace('/', '.')
+        path_str = path_str.rstrip('.py')
+        module = Fetch().imported_module(path_str=path_str)
+        existing_obj = getattr(module, obj_name)
+
+        self._replace_obj_in_module(obj_name=obj_name, new_object_as_dct_or_str=existing_obj,
+                                    targeted_module_path_str=obj_module_path, width=1)
+
+        print("\n{} in '{}' pretty formatted.".format(obj_name, obj_module_path))
 
 
 class ChampionsBaseStats(ModuleCreatorBase):
@@ -5574,7 +5593,7 @@ if __name__ == '__main__':
     # PRETTY FORMAT OBJECT IN MODULE
     if 0:
         inst = ModuleCreatorBase()
-        inst.pformat_obj_in_module(obj_name=ITEMS_ATTRS_DCT_NAME, items_or_a_champ_name='items')
+        inst.pformat_obj_in_path('APP_RUNES_DCT', 'app_runes_database.py')
 
     # MASTERIES EXPLORATION
     # Tuple of values detection.
@@ -5606,5 +5625,5 @@ if __name__ == '__main__':
         ChampionsBaseStats().store_champions_base_stats()
 
     # PRIORITY CONDITIONALS
-    if 1:
+    if 0:
         RotationPriorityConditional('jax').run_conditions_creation()

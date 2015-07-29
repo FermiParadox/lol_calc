@@ -1,6 +1,5 @@
-import app_runes_database as api_module
+import app_runes_database
 import palette
-import copy
 
 # Matched rune names.
 API_TO_APP_STAT_NAME_MAP = dict(
@@ -42,7 +41,7 @@ API_TO_APP_STAT_NAME_MAP = dict(
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-_RUNE_BUFF_DCT_BASE = copy.deepcopy(palette.BUFF_DCT_BASE)
+_RUNE_BUFF_DCT_BASE = palette.buff_dct_base_deepcopy()
 _RUNE_BUFF_DCT_BASE['duration'] = 'permanent'
 _RUNE_BUFF_DCT_BASE['target_type'] = 'player'
 _RUNE_BUFF_DCT_BASE['max_stacks'] = 1
@@ -75,7 +74,7 @@ class ApiToAppRunesData(object):
         for available_colors in self.RUNES_COLORS:
             final_dct.update({available_colors: {}})
 
-        api_dct = api_module.API_RUNES_DATA['data']
+        api_dct = app_runes_database.API_RUNES_DATA['data']
 
         # Checks each rune.
         for rune_id in api_dct:
@@ -143,7 +142,7 @@ class RunesFinal(object):
         self.player_lvl = player_lvl
         self.selected_runes = selected_runes        # e.g. {'red': {'ad': 5, 'ad_per_lvl': {'additive: 4},}, }
 
-        self.runes_buff_store = {'stats': {}}     # e.g. {'stats': 'att_speed': {'percent': },}
+        self.runes_buff_store = {'stats': {}, }     # e.g. {'stats': 'att_speed': {'percent': },}
         self.runes_buff_store.update(_RUNE_BUFF_DCT_BASE)
 
         self.set_runes_buff_store()
@@ -166,7 +165,7 @@ class RunesFinal(object):
 
                         # Total stat from all same type runes.
                         total_stat = (self.selected_runes[rune_color][stat_name][bonus_type] *
-                                      api_module.APP_RUNES_DCT[rune_color][stat_name][bonus_type][rune_tier])
+                                      app_runes_database.APP_RUNES_DCT[rune_color][stat_name][bonus_type][rune_tier])
 
                         # If it's a 'per_lvl' stat, calculates total value..
                         if 'per_lvl' in stat_name:
