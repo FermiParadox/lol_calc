@@ -1124,8 +1124,6 @@ class DeathAndRegen(DmgApplication):
     ENEMY_HP5_DMG_DCT_BASE = _ENEMY_HP5_DMG_DCT_BASE
     PLAYER_HP5_DMG_DCT = _PLAYER_HP5_DMG_DCT
     PLAYER_MP_DMG_DCT_BASE = _PLAYER_MP_DMG_DCT_BASE
-    NATURAL_REGEN_PERIOD = NATURAL_REGEN_PERIOD
-    PER_5_DIVISOR = PER_5_DIVISOR
 
     @staticmethod
     def dead_buff():
@@ -1155,21 +1153,6 @@ class DeathAndRegen(DmgApplication):
     def enemy_hp5_buff(self):
         return self.REGEN_BUFF_DCT_BASE_ENEMY
 
-    # TODO check if value methods below are completely unused and useless
-    def _per5_dmg_value_base(self, tar_name, per_5_stat_name):
-        """
-        Calculates healing per tick by regeneration.
-
-        Dmg value returned is NEGATIVE since it is a healing effect.
-
-        :return: (float)
-        """
-
-        return -self.request_stat(target_name=tar_name, stat_name=per_5_stat_name) / self.PER_5_DIVISOR
-
-    def enemy_hp5_dmg_value(self):
-        return self._per5_dmg_value_base(tar_name=self.current_target, per_5_stat_name='hp5')
-
     def player_hp5_dmg(self):
 
         return self.PLAYER_HP5_DMG_DCT
@@ -1177,17 +1160,9 @@ class DeathAndRegen(DmgApplication):
     def player_hp5_buff(self):
         return self.REGEN_BUFF_DCT_BASE_PLAYER
 
-    def player_hp5_dmg_value(self):
-        """
-        Returns healing per 0.5 seconds by regeneration.
-        """
-        return self._per5_dmg_value_base(tar_name='player', per_5_stat_name='hp5')
-
     def mp5_buff(self):
         return self.REGEN_BUFF_DCT_BASE_PLAYER
 
     def mp5_dmg(self):
         return self.PLAYER_MP_DMG_DCT_BASE
 
-    def mp5_dmg_value(self):
-        return self._per5_dmg_value_base(tar_name='player', per_5_stat_name='mp5')

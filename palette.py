@@ -179,3 +179,24 @@ class ChampionsStats(object):
         del dct['player']['actives']['cds_modified']
 
         return dct
+
+
+# ---------------------------------------------------------------
+def delimiter(num_of_lines, line_type='-'):
+    """
+    Creates a newline and then a long line string.
+
+    Args:
+        line_type: (str) Smallest element used for the creation of the line.
+    Returns:
+        (str)
+    """
+
+    string = '\n'
+    string += line_type * num_of_lines
+
+    return string
+
+
+def fat_delimiter(num_of_lines):
+    return delimiter(num_of_lines=num_of_lines, line_type='=')

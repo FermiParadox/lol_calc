@@ -1,6 +1,7 @@
+import palette
 import user_instance_settings
 import functional_testing.default_config as default_config
-import factory_module
+from palette import delimiter, fat_delimiter
 
 import cProfile
 import pstats
@@ -20,7 +21,7 @@ def _combat_loop_instance(data_dct):
     return combat_instance
 
 
-def _multiple_combat_instances_lst(repetitions):
+def _single_user_multiple_combats_instances_lst(repetitions):
     """
     Creates a user instance and then lots of combat instances so that module and class variables are reused.
 
@@ -40,15 +41,52 @@ def _multiple_combat_instances_lst(repetitions):
     return combat_instances_lst
 
 
+def _single_combat_multiple_users_instances_lst(repetitions):
+    """
+    Creates multiple user instances and then a single combat instance for each.
+
+    :param repetitions: (int)
+    :return: (list) List of instances.
+    """
+
+    data = default_config.ALL_DATA
+
+    combat_instances_lst = []
+
+    for i in range(repetitions):
+        user_instance = user_instance_settings.UserSession(test_and_display_mode=False)
+        combat_instances_lst.append(user_instance.instance_after_combat(data))
+
+    return combat_instances_lst
+
+
 def test_run_duration(repetitions):
+    """
+    Tests run duration of program in two ways:
+        -Single user and multiple combat instances.
+        -Multiple users and a single combat instance for each.
 
-    executed_str = '_multiple_combat_instances_lst({})'.format(repetitions)
+    :param repetitions: (int)
+    :return:
+    """
 
-    cProfile.run(executed_str, 'cprof_results', sort='cumtime')
+    print(fat_delimiter(80))
 
-    results_run = pstats.Stats('cprof_results').sort_stats('cumtime')
-    results_run.strip_dirs().sort_stats('cumtime').print_stats(5)
-    # print(results_run.strip_dirs().sort_stats('cumtime').stats)
+    function_dcts = {'multiple users': _single_combat_multiple_users_instances_lst.__name__,
+                     'multiple combats': _single_user_multiple_combats_instances_lst.__name__}
+
+    for instances_type, func in sorted(function_dcts.items()):
+
+        print(delimiter(40))
+        print('Reps: {}'.format(repetitions))
+        print('Instances type: {}\n'.format(instances_type))
+        executed_str = '{}({})'.format(func, repetitions)
+
+        cProfile.run(executed_str, 'cprof_results', sort='cumtime')
+
+        results_run = pstats.Stats('cprof_results').sort_stats('cumtime')
+        results_run.strip_dirs().sort_stats('cumtime').print_stats(0)
+        # print(results_run.strip_dirs().sort_stats('cumtime').stats)
 
 
 class TestCases(object):
@@ -220,7 +258,7 @@ class TestCases(object):
         :return: (None)
         """
 
-        print(factory_module.fat_delimiter(40))
+        print(palette.fat_delimiter(40))
         print('PRE and POST COMBAT STATS COMPARISON.')
 
         data_dct = self.__data_deepcopy
@@ -252,7 +290,7 @@ class TestCases(object):
 
         total_instances = len(combat_instances_lst)
 
-        print(factory_module.fat_delimiter(80))
+        print(palette.fat_delimiter(80))
         print('Comparing {} combat instances.'.format(total_instances))
 
         diff_combat_results = self.different_combat_results_count(combat_instances_lst=combat_instances_lst)
@@ -269,7 +307,7 @@ class TestCases(object):
 
 
 if __name__ == '__main__':
-    if 0:
+    if 1:
         inst = TestCases().run_combat_and_show_results()
 
     if 0:
@@ -280,11 +318,9 @@ if __name__ == '__main__':
         test_run_duration(100)
 
     # CONSISTENCY
-    if 0:
-        inst_lst = _multiple_combat_instances_lst(repetitions=7)
+    if 1:
+        inst_lst = _single_user_multiple_combats_instances_lst(repetitions=7)
         TestCases().display_differences(combat_instances_lst=inst_lst)
 
-    # dps: 333.7, 2463 movement, 2.2sec / 100 rotations (masteries used)
-    # dps: 336.3, dmg: 3132, 2464 movement, 2.2sec / 100 rotations (rounding changed)
     # dps: 336.3, dmg: 3132, 2464 movement, 2.4sec / 100 rotations (death application doesnt remove other buffs)
     # dps: 305.52, dmg: 3039.5, 2827 movement, 3.1sec / 100 rotations (rotation=None, automatic rotation)

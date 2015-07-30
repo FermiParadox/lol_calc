@@ -1,12 +1,3 @@
-import api_champions_database
-import api_masteries_database
-import champion_ids
-import api_key
-import palette
-import stats
-import api_items_database
-import items_folder.items_data
-
 import re
 import time
 import urllib.request
@@ -17,6 +8,18 @@ import importlib
 import abc
 import ast
 import collections
+
+import api_champions_database
+import api_masteries_database
+import champion_ids
+import api_key
+import palette
+from palette import delimiter, fat_delimiter
+import stats
+import api_items_database
+import items_folder.items_data
+
+
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
@@ -208,27 +211,6 @@ class Fetch(object):
         else:
             item_name = spell_or_item_name
             return self.items_attrs_dct()[item_name]['general_attributes']['castable']
-
-
-# ---------------------------------------------------------------
-def delimiter(num_of_lines, line_type='-'):
-    """
-    Creates a newline and then a long line string.
-
-    Args:
-        line_type: (str) Smallest element used for the creation of the line.
-    Returns:
-        (str)
-    """
-
-    string = '\n'
-    string += line_type * num_of_lines
-
-    return string
-
-
-def fat_delimiter(num_of_lines):
-    return delimiter(num_of_lines=num_of_lines, line_type='=')
 
 
 # ---------------------------------------------------------------
@@ -5140,9 +5122,10 @@ class ModuleCreatorBase(object):
         Edits a module by formatting a dict inside of it.
 
         :param obj_name: (str) Dict name
-        :param obj_module_path: (str) Path of module with '/' instead of '.' .
+        :param obj_module_path: (str) Path of module with '/' instead of '.' , e.g. 'items/items_data.py'.
         :return: (None)
         """
+
         path_str = obj_module_path.replace('/', '.')
         path_str = path_str.rstrip('.py')
         module = Fetch().imported_module(path_str=path_str)
