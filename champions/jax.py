@@ -339,7 +339,7 @@ class ChampionAttributes(object):
     RESOURCE_USED = RESOURCE_USED
 
     def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
-        self.actions_priorities_default = DEFAULT_ACTIONS_PRIORITY
+        self.actions_priorities_default_copy = DEFAULT_ACTIONS_PRIORITY[:]
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])
 

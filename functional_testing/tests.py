@@ -60,7 +60,7 @@ def _single_combat_multiple_users_instances_lst(repetitions):
     return combat_instances_lst
 
 
-def test_run_duration(repetitions):
+def test_run_time(repetitions):
     """
     Tests run duration of program in two ways:
         -Single user and multiple combat instances.
@@ -86,7 +86,6 @@ def test_run_duration(repetitions):
 
         results_run = pstats.Stats('cprof_results').sort_stats('cumtime')
         results_run.strip_dirs().sort_stats('cumtime').print_stats(0)
-        # print(results_run.strip_dirs().sort_stats('cumtime').stats)
 
 
 class TestCases(object):
@@ -315,7 +314,7 @@ if __name__ == '__main__':
 
     # RUN DURATION
     if 1:
-        test_run_duration(100)
+        test_run_time(100)
 
     # CONSISTENCY
     if 1:

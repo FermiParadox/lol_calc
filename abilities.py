@@ -1503,7 +1503,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # After previous events are applied, applies action effects.
         self.apply_action_effects(action_name=self.actions_dct[max(self.actions_dct)]['action_name'])
 
-    def _apply_all_actions_by_rotation(self):
+    def __apply_all_actions_by_rotation(self):
         """
         Applies all actions when a rotation (instead of priorities) is used.
 
@@ -1516,18 +1516,78 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             if self.__all_available_actions_after_single_action_applied:
                 return
 
-    def calculated_priority(self):
+    def __calculated_priorities(self):
+        """
+        Creates action priorities lst after applying all priorities' effects.
+
+        'proceed' and 'succeed' are applied first.
+        'top' is applied last.
+
+        :return:
+        """
+
+        old_priorities_lst = self.actions_priorities_default_copy[:]
+        new_priorities_lst = []
+
+        for eff_name in self.priorities_effects:
+            eff_dct = self.priorities_effects[eff_name]
+            eff_type = eff_dct['type']
+
+            # SUCCEED TYPE
+            if eff_type == 'succeed':
+                first_action = eff_dct['first']
+                second_action = eff_dct['second']
+
+                for action_name in old_priorities_lst:
+                    # Preceding action is added followed by succeeding action.
+                    if action_name == first_action:
+                        new_priorities_lst += [first_action, second_action]
+
+                    # Succeeding action found in old priorities is not appended (on its own) in new priorities.
+                    elif action_name == second_action:
+                        continue
+
+                    # The rest of the actions are appended normally.
+                    else:
+                        new_priorities_lst.append(action_name)
+
+            elif eff_type == 'precede':
+                first_action = eff_dct['first']
+                second_action = eff_dct['second']
+
+                for action_name in old_priorities_lst:
+                    # Preceding action is added followed by succeeding action.
+                    if action_name == second_action:
+                        new_priorities_lst += [first_action, second_action]
+
+                    # Preceding action found in old priorities is not appended (on its own) in new priorities.
+                    elif action_name == first_action:
+                        continue
+
+                    # The rest of the actions are appended normally.
+                    else:
+                        new_priorities_lst.append(action_name)
+
+            elif eff_type == 'top':
+                top_action = eff_dct['top_action']
+                new_priorities_lst = top_action
+
+            old_priorities_lst = new_priorities_lst[:]
+
+        return new_priorities_lst
+
+    def calculated_priorities(self):
         """
         Determines actions' priority.
 
         :return: (list)
         """
 
-        return self.actions_priorities_default
+        return self.DEFAULT_ACTIONS_PRIORITY
 
 
 
-    def _apply_all_actions_by_priority(self):
+    def __apply_all_actions_by_priority(self):
         """
         Applies all actions when no rotation is given, meaning priorities are to be used.
 
@@ -1561,7 +1621,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             else:
                 self.current_time += 0.5
 
-    def apply_all_actions(self):
+    def __apply_all_actions(self):
         """
         Applies all actions, and events in between,
         until everyone is dead or the max_time is exceeded.
@@ -1573,9 +1633,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         """
 
         if self.rotation_lst:
-            self._apply_all_actions_by_rotation()
+            self.__apply_all_actions_by_rotation()
         else:
-            self._apply_all_actions_by_priority()
+            self.__apply_all_actions_by_priority()
 
     def apply_events_after_actions(self, fully_apply_dots=False):
         """
@@ -1658,7 +1718,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.note_precombat_active_buffs()
 
         # Applies actions or events based on which occurs first.
-        self.apply_all_actions()
+        self.__apply_all_actions()
 
         # Applies events after all actions have finished.
         self.apply_events_after_actions()
