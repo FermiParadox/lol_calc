@@ -519,8 +519,8 @@ class Counters(BuffsGeneral):
         Returns:
             (None)
         """
-        self.place_tar_and_empty_dct_in_dct(self.combat_results)
 
+        self.place_tar_and_empty_dct_in_dct(self.combat_results)
         self.combat_results['player'].update({'source': {}, 'total_physical': 0, 'total_magic': 0, 'total_true': 0})
 
     def note_dmg_totals_in_results(self):

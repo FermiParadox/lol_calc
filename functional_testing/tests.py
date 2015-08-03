@@ -317,7 +317,7 @@ class TestCases(object):
             print(self.compare_pre_and_post_combat_stats(combat_instances_lst=combat_instances_lst))
 
         else:
-            print('\nNo differences detected.')
+            print('-No differences detected.')
 
     def display_single_user_multi_combats_differences(self, repetitions):
         instances_type_msg = 'SINGLE USER'

@@ -1228,15 +1228,17 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             for buff_name in sorted(tar_act_buffs):
                 tar_buff_dct_in_act_buffs = tar_act_buffs[buff_name]
 
-                if tar_buff_dct_in_act_buffs['ending_time'] != 'permanent':
-                    if tar_buff_dct_in_act_buffs['ending_time'] < self.current_time:
+                if tar_buff_dct_in_act_buffs['ending_time'] == 'permanent':
+                    continue
 
-                        # Applies cd before removing.
-                        buff_dct = self.request_buff(buff_name=buff_name)
-                        self.change_cd_before_buff_removal(buff_dct=buff_dct)
+                elif tar_buff_dct_in_act_buffs['ending_time'] < self.current_time:
 
-                        # Removes the buff.
-                        del tar_buff_dct_in_act_buffs
+                    # Applies cd before removing.
+                    buff_dct = self.request_buff(buff_name=buff_name)
+                    self.change_cd_before_buff_removal(buff_dct=buff_dct)
+
+                    # Removes the buff.
+                    del tar_act_buffs[buff_name]
 
     def remove_expired_buffs_and_refresh_bonuses(self):
         self._remove_expired_buffs()
