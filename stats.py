@@ -229,7 +229,7 @@ class StatCalculation(StatFilters):
         self.enemy_target_names = tuple(tar for tar in sorted(self.all_target_names) if tar != 'player')
 
         self.initial_active_buffs = initial_active_buffs    # Can contain 0 to all targets and their buffs.
-        self.bonuses_dct = {}   # e.g. {target: {stat: {bonus type: {bonus name: }, }, }, }
+        self.bonuses_dct = {}   # e.g. {target: {stat: {stat type: {buff name: stat val}, }, }, }
 
         self.initial_current_stats = initial_current_stats  # Can contain 0 to all targets and their stats.
 
@@ -239,15 +239,8 @@ class StatCalculation(StatFilters):
         self.set_base_stats_dct()
 
         self.current_stats = {}
-        self.stat_dependencies = {}     # e.g. {tar_name: {stat_1: [controller_stat_1, controller_stat_2,], }, }
-        self.stored_stats = {}
-        self.stat_changes = {}
-        self.stored_buffs = {}  # Used for storing buff (that affects stats) and its stacks, of a target.
 
-        self.place_tar_and_empty_dct_in_dct(self.stored_stats)
-        self.place_tar_and_empty_dct_in_dct(self.stat_changes)
         self.place_tar_and_empty_dct_in_dct(self.bonuses_dct)
-        self.place_tar_and_empty_dct_in_dct(self.stored_buffs)
 
         self.set_active_buffs()
         self.set_player_current_resource_name()
@@ -280,21 +273,19 @@ class StatCalculation(StatFilters):
 
         self.base_stats_dct = dct
 
-    def place_tar_and_empty_dct_in_dct(self, dct):
+    def place_tar_and_empty_dct_in_dct(self, dct, ensure_empty_dct=True):
         """
         Inserts into a dct target names as keywords, and empty dict as value for each targets.
         To be used for empty dicts only.
 
-        Modifies:
-            dct
         Returns:
             (None)
         Raises:
-            (ValueError) If dict is not empty.
+            (ValueError)
         """
 
-        if dct:
-            raise ValueError('Target will be replaced.')
+        if ensure_empty_dct and dct:
+            raise ValueError('Dict is not empty.')
 
         for tar in self.all_target_names:
             dct.update({tar: {}})
@@ -611,108 +602,24 @@ class StatRequest(StatCalculation):
 
     SPECIAL_STATS_SET = SPECIAL_STATS_SET
 
-    def _evaluate_stat(self, target_name, stat_name):
+    def request_stat(self, target_name, stat_name):
         """
         Calculates a target's final stat value and stores it.
         Then notes that it has not changed since last calculation.
 
-        Modifies:
-            stored_stats: stores new value of a target's stat
-            stat_changes: sets to False for target's stat
         Returns:
             (None)
         """
 
         # Special stats have their own methods.
         if stat_name in ALLOWED_BONUS_STATS:
-            self.stored_stats[target_name][stat_name] = self._bonus_stat(stat_name=stat_name, tar_name=target_name)
+            return self._bonus_stat(stat_name=stat_name, tar_name=target_name)
         elif stat_name in self.SPECIAL_STATS_SET:
-            self.stored_stats[target_name][stat_name] = getattr(self, stat_name)(target_name)
+            return getattr(self, stat_name)(target_name)
 
         # Most stats can be calculated using the 'standard_stat' method.
         else:
-            self.stored_stats[target_name][stat_name] = self.standard_stat(requested_stat=stat_name,
-                                                                           tar_name=target_name)
-
-        # Sets stat_changes for given target's stat to false.
-        # (if not created yet, it creates it)
-        self.stat_changes[target_name][stat_name] = False
-
-    def _check_and_update_stored_buff(self, tar_name, buff_name):
-        """
-        Adds a buff which affects stats (if not already added).
-
-        Modifies:
-            stored_buffs
-        Returns:
-            (None)
-        """
-
-        # Checks if buff exists in targets dict.
-        try:
-            self.stored_buffs[tar_name][buff_name]
-
-        except KeyError:
-            buff_dct = self.req_buff_dct_func(buff_name=buff_name)
-
-            # Checks if buff modifies stats.
-            if buff_dct['stats']:
-
-                # If so stores each stat that gets modified by it.
-                self.stored_buffs[tar_name][buff_name] = {'stats_it_mods': []}
-
-                for stat_name in buff_dct['stats']:
-                    self.stored_buffs[tar_name][buff_name]['stats_it_mods'].append(stat_name)
-                    self.stat_changes[tar_name][stat_name] = True
-
-                # Marks its current stacks.
-                self.stored_buffs[tar_name][buff_name].update(
-                    {'stacks': self.active_buffs[tar_name][buff_name]['current_stacks']})
-
-    def _compare_and_update_stored_buffs(self, tar_name, stat_name):
-        """
-        Marks modified stats when a buff that affects them has been removed
-        or its stacks changed, and then updates stored_buffs.
-
-        Modifies:
-            stat_changes
-            stored_buffs
-        Returns:
-            (None)
-        """
-
-        tar_stored_buffs = self.stored_buffs[tar_name]
-        tar_act_buffs = self.active_buffs[tar_name]
-
-        # Checks each buff for changes.
-        for buff_name in sorted(tar_stored_buffs):
-            # If there are buffs that modify the given stat..
-            if stat_name in tar_stored_buffs[buff_name]['stats_it_mods']:
-
-                # .. and if buff has been removed ..
-                if buff_name not in tar_act_buffs:
-
-                    # .. marks stat affect by the buff as changed,
-                    self.stored_stats[tar_name][stat_name] = True
-                    # .. and updates the stored_buffs dict.
-                    del tar_stored_buffs[buff_name]
-
-                # If its stacks changed..
-                else:
-                    if tar_act_buffs[buff_name]['current_stacks'] != tar_stored_buffs[buff_name]['stacks']:
-
-                        # .. marks stats the buff affects as changed.
-                        self.stat_changes[tar_name][stat_name] = True
-                        # .. and updates the stacks in the stored_buffs dict.
-                        tar_stored_buffs[buff_name]['stacks'] = tar_act_buffs[buff_name]['current_stacks']
-
-        # Checks if there is a new active buff (that modifies stats).
-        for buff in tar_act_buffs:
-            if buff not in tar_stored_buffs:
-                buff_dct = self.req_buff_dct_func(buff_name=buff)
-                if buff_dct['stats'] and (stat_name in buff_dct['stats']):
-
-                    self._check_and_update_stored_buff(tar_name=tar_name, buff_name=buff)
+            return self.standard_stat(requested_stat=stat_name, tar_name=target_name)
 
     def _insert_bonus_to_tar_bonuses(self, stat_name, bonus_type, buff_dct, tar_name, buff_name, buff_stats_dct):
         """
@@ -761,7 +668,7 @@ class StatRequest(StatCalculation):
         # Inserts bonus_name and its value in bonuses_dct.
         self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: stat_val})
 
-    def _buffs_to_bonuses(self, stat_name, tar_name):
+    def buffs_to_single_stat_bonuses(self, tar_name):
         """
         Stores a stat's bonuses caused by buffs.
 
@@ -776,15 +683,14 @@ class StatRequest(StatCalculation):
         """
 
         for buff_name in self.active_buffs[tar_name]:
-            self._check_and_update_stored_buff(tar_name=tar_name, buff_name=buff_name)
 
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
             # (All buff stats dict)
             buff_stats_dct = buff_dct['stats']
             # Checks if the buff has stat bonuses.
             if buff_stats_dct:
-                # Checks if examined stat exists in this buff dict.
-                if stat_name in buff_stats_dct:
+
+                for stat_name in buff_stats_dct:
                     # (single stat dict)
                     stat_dct = buff_stats_dct[stat_name]
 
@@ -806,50 +712,10 @@ class StatRequest(StatCalculation):
                                                           buff_dct=buff_dct, tar_name=tar_name,
                                                           buff_name=buff_name, buff_stats_dct=buff_stats_dct)
 
-    def request_stat(self, target_name, stat_name, _return_value=True):
-        """
-        Calculates the final value of a stat, and modifies bonuses_dct and stat_dct.
-
-        A stat (dependent) might depend on the value of other stats (controllers).
-        If a dependent stat is requested,
-        changes to its controllers are applied and then it is evaluated, and finally returned.
-
-        If the stat or its controllers have not been modified, its stored value is returned.
-
-        Modifies:
-
-        Args:
-            _return_value: Set to false when function used only for refreshing a stat value.
-        Returns:
-            (float) final value of stat
-            (None)
-        """
-
-        # If the stat is being controlled by other stat..
-        if stat_name in self.stat_dependencies[target_name]:
-
-            # ..for each controller..
-            for controller in self.stat_dependencies[target_name][stat_name]:
-
-                # .. requests its value (that is, refreshes its value or fetches the stored value).
-                # Recursive calls force controllers to refresh if needed.
-                # (controllers' buffs to bonuses are refreshed first)
-                self.request_stat(target_name=target_name, stat_name=controller, _return_value=False)
-
-        # Check if target's buff affecting given stat have changed.
-        self._compare_and_update_stored_buffs(tar_name=target_name, stat_name=stat_name)
-
-        # Evaluates the stat if it hasn't been evaluated before or if it has changed.
-        if stat_name not in self.stat_changes[target_name] or self.stat_changes[target_name][stat_name] is True:
-
-            # Since earlier controllers have been refreshed (including their bonuses from buffs),
-            # it can safely create buff bonuses for selected stat,
-            # and then evaluate the stat.
-            self._buffs_to_bonuses(stat_name=stat_name, tar_name=target_name)
-            self._evaluate_stat(target_name=target_name, stat_name=stat_name)
-
-        if _return_value:
-            return self.stored_stats[target_name][stat_name]
+    def buffs_to_all_stats_bonuses(self):
+        self.place_tar_and_empty_dct_in_dct(self.bonuses_dct, ensure_empty_dct=False)
+        for tar_name in self.all_target_names:
+            self.buffs_to_single_stat_bonuses(tar_name=tar_name)
 
     def set_current_stats(self):
         """

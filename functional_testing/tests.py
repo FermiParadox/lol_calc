@@ -6,6 +6,7 @@ from palette import delimiter, fat_delimiter
 import cProfile
 import pstats
 import pandas
+import memory_profiler
 
 
 def _combat_loop_instance(data_dct):
@@ -120,6 +121,20 @@ class TestCases(object):
 
         for i in given_data_dct['champion_lvls_dct']:
             given_data_dct['champion_lvls_dct'][i] = initial_lvls_val
+
+    def run_combat_without_showing_results(self, data_dct=None):
+        data_dct = self.__data_dct(given_dct=data_dct)
+
+        user_instance = user_instance_settings.UserSession(test_and_display_mode=True)
+        post_combat_instance = user_instance.instance_after_combat(input_dct=data_dct)
+
+        return post_combat_instance
+
+    # MEMORY
+    # TODO: Check if below method actually works.
+    @memory_profiler.profile
+    def test_memory_usage(self, data_dct=None):
+        return self.run_combat_without_showing_results(data_dct=data_dct)
 
     def run_combat_and_show_results(self, data_dct=None):
 
@@ -277,9 +292,9 @@ class TestCases(object):
             else:
                 print('No differences.')
 
-    # TODO: If more inconsistencies appear that can't be tracked down, create noting of active_buffs, bonuses etc.
+    # TODO: If more inconsistencies appear that can't be tracked down, create noting of active_buffs, bonuses, dps, etc.
 
-    def display_differences(self, combat_instances_lst):
+    def _display_differences(self, combat_instances_lst, instances_type_msg):
         """
         Compares given instances searching for any differences and displays them.
 
@@ -290,7 +305,7 @@ class TestCases(object):
         total_instances = len(combat_instances_lst)
 
         print(palette.fat_delimiter(80))
-        print('Comparing {} combat instances.'.format(total_instances))
+        print('Comparing {} combat instances. ({})'.format(total_instances, instances_type_msg))
 
         diff_combat_results = self.different_combat_results_count(combat_instances_lst=combat_instances_lst)
         diff_combat_histories = self.different_combat_history_count(combat_instances_lst=combat_instances_lst)
@@ -302,8 +317,17 @@ class TestCases(object):
             print(self.compare_pre_and_post_combat_stats(combat_instances_lst=combat_instances_lst))
 
         else:
-            print('No differences detected.')
+            print('\nNo differences detected.')
 
+    def display_single_user_multi_combats_differences(self, repetitions):
+        instances_type_msg = 'SINGLE USER'
+        instances_lst = _single_user_multiple_combats_instances_lst(repetitions=repetitions)
+        self._display_differences(combat_instances_lst=instances_lst, instances_type_msg=instances_type_msg)
+
+    def display_multi_users_differences(self, repetitions):
+        instances_type_msg = 'MULTIPLE USERS'
+        instances_lst = _single_combat_multiple_users_instances_lst(repetitions=repetitions)
+        self._display_differences(combat_instances_lst=instances_lst, instances_type_msg=instances_type_msg)
 
 if __name__ == '__main__':
     if 1:
@@ -313,13 +337,19 @@ if __name__ == '__main__':
         inst = TestCases().naked_combat_and_results(rotation_lst=['AA'], all_champs_lvls=1)
 
     # RUN DURATION
-    if 1:
+    if 0:
         test_run_time(100)
 
     # CONSISTENCY
     if 1:
-        inst_lst = _single_user_multiple_combats_instances_lst(repetitions=7)
-        TestCases().display_differences(combat_instances_lst=inst_lst)
+        reps = 10
+        TestCases().display_single_user_multi_combats_differences(repetitions=reps)
+        TestCases().display_multi_users_differences(repetitions=reps)
+
+    # MEMORY
+    if 0:
+        inst = TestCases().test_memory_usage()
 
     # dps: 336.3, dmg: 3132, 2464 movement, 2.4sec / 100 rotations (death application doesnt remove other buffs)
     # dps: 305.52, dmg: 3039.5, 2827 movement, 3.1sec / 100 rotations (rotation=None, automatic rotation)
+    # dps: 305.52, dmg: 3039.5, 2827 movement, 2.7sec / 100 rotations

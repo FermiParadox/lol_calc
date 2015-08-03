@@ -1212,7 +1212,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
                         break
 
-    def remove_expired_buffs(self):
+    def _remove_expired_buffs(self):
         """
         Removes all expired buffs.
 
@@ -1237,6 +1237,10 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
                         # Removes the buff.
                         del tar_buff_dct_in_act_buffs
+
+    def remove_expired_buffs_and_refresh_bonuses(self):
+        self._remove_expired_buffs()
+        self.buffs_to_all_stats_bonuses()
 
     def apply_on_hit_effects(self):
         """
@@ -1419,7 +1423,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                     # (must change to ensure buffs are checked)
                     self.current_time = event
 
-                    self.remove_expired_buffs()
+                    self.remove_expired_buffs_and_refresh_bonuses()
 
                     # Applies all dmg effects for all targets.
                     for self.current_target in self.event_times[self.current_time]:
@@ -1466,7 +1470,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         """
 
         # (used for champions that action application is affected by existing buffs)
-        self.remove_expired_buffs()
+        self.remove_expired_buffs_and_refresh_bonuses()
 
         # Checks if action meets the cost requirements.
         if not self.cost_sufficiency(action_name=new_action):
@@ -1669,7 +1673,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 # (must change to ensure buffs are checked)
                 self.current_time = event
 
-                self.remove_expired_buffs()
+                self.remove_expired_buffs_and_refresh_bonuses()
 
                 # Applies all dmg effects to alive targets.
                 for self.current_target in self.event_times[self.current_time]:

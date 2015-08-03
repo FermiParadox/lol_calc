@@ -37,7 +37,6 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
                                                selected_masteries_dct=selected_masteries_dct,
                                                player_lvl=self.player_lvl)
 
-        self.set_stat_dependencies()
         self.set_current_stats()
 
     @abc.abstractproperty
@@ -50,43 +49,6 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
         :return: seq
         """
         pass
-
-    def apply_stat_dependency_to_tar(self, tar, dependent_stat_dct):
-        """
-        Applies dependency to target.
-        """
-        for controlled_stat in dependent_stat_dct:
-
-            # Creates controller stat keyword if not present.
-            if controlled_stat not in self.stat_dependencies[tar]:
-                self.stat_dependencies[tar].update({controlled_stat: []})
-
-            # Appends all controllers.
-            for controller in dependent_stat_dct[controlled_stat]:
-                # Skips appending if controller already exists.
-                if controller not in self.stat_dependencies[tar][controlled_stat]:
-                    self.stat_dependencies[tar][controlled_stat].append(controller)
-
-    def set_stat_dependencies(self):
-        """
-        Returns:
-            (None)
-        """
-
-        self.place_tar_and_empty_dct_in_dct(self.stat_dependencies)
-
-        for target_name in self.DMG_REDUCTION_STAT_DEPENDENCIES:
-
-            if target_name == 'all_targets':
-                # Applies dependency to all targets.
-                for tar_name in self.all_target_names:
-                    self.apply_stat_dependency_to_tar(tar=tar_name,
-                                                      dependent_stat_dct=self.DMG_REDUCTION_STAT_DEPENDENCIES[
-                                                          target_name])
-
-            else:
-                self.apply_stat_dependency_to_tar(tar=target_name,
-                                                  dependent_stat_dct=self.DMG_REDUCTION_STAT_DEPENDENCIES[target_name])
 
     def add_new_buff(self, buff_name, tar_name, initial_stacks_increment=1):
         """
