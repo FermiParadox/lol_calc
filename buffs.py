@@ -1071,6 +1071,7 @@ _PLAYER_HP5_DMG_DCT['dot']['buff_name'] = 'player_hp5_buff'
 _ENEMY_HP5_DMG_DCT_BASE = copy.deepcopy(_HP5_DMG_DCT_BASE)
 _ENEMY_HP5_DMG_DCT_BASE['target_type'] = 'enemy'
 _ENEMY_HP5_DMG_DCT_BASE['dot']['buff_name'] = 'enemy_hp5_buff'
+_ENEMY_HP5_DMG_DCT_BASE['mods'] = {'enemy': {'hp5': {'multiplicative': 1}}}
 
 # MP
 _PLAYER_MP_DMG_DCT_BASE = copy.deepcopy(_PLAYER_HP5_DMG_DCT)
@@ -1108,9 +1109,7 @@ class DeathAndRegen(DmgApplication):
                 self.add_buff(buff_name='dead_buff', tar_name=tar_name)
 
     def enemy_hp5_dmg(self):
-        dct = copy.deepcopy(self.ENEMY_HP5_DMG_DCT_BASE)
-        dct['mods'] = {'enemy': {'hp5': {'multiplicative': 1}}}
-        return dct
+        return self.ENEMY_HP5_DMG_DCT_BASE
 
     def enemy_hp5_buff(self):
         return self.REGEN_BUFF_DCT_BASE_ENEMY

@@ -653,12 +653,13 @@ class StatRequest(StatCalculation):
             # (all stat mods are additive)
             stat_mods_dct = value_num_or_dct['stat_mods']
             if stat_mods_dct:
+                _req_stat_func = self.request_stat
                 for mod_name in stat_mods_dct:
                     mod_vals = stat_mods_dct[mod_name]
 
                     if mod_vals:
                         if len(mod_vals) == 1:
-                            stat_val += mod_vals[0] * self.request_stat(target_name='player', stat_name=mod_name)
+                            stat_val += mod_vals[0] * _req_stat_func(target_name='player', stat_name=mod_name)
                         else:
                             stat_val += mod_vals[lvl_index]
 
@@ -760,12 +761,6 @@ class DmgReductionStats(StatRequest):
     """
 
     DEFENSE_REDUCING_MR_AND_ARMOR_MAP = _DEFENSE_REDUCING_MR_AND_ARMOR_MAP
-
-    # structure: {tar_name: {stat_1: [controller_stat_1, controller_stat_2,], }, }
-    DMG_REDUCTION_STAT_DEPENDENCIES = {
-        'all_targets': dict(
-            reduced_armor=list(DEFENSE_REDUCING_MR_AND_ARMOR_MAP['armor'].values()),
-            reduced_mr=list(DEFENSE_REDUCING_MR_AND_ARMOR_MAP['mr'].values())), }
 
     def reduced_armor(self, target, stat='armor'):
         """

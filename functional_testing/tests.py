@@ -61,7 +61,7 @@ def _single_combat_multiple_users_instances_lst(repetitions):
     return combat_instances_lst
 
 
-def test_run_time(repetitions):
+def test_run_time(repetitions, sort_by='tottime', count_of_shown_functions=5):
     """
     Tests run duration of program in two ways:
         -Single user and multiple combat instances.
@@ -83,10 +83,10 @@ def test_run_time(repetitions):
         print('Instances type: {}\n'.format(instances_type))
         executed_str = '{}({})'.format(func, repetitions)
 
-        cProfile.run(executed_str, 'cprof_results', sort='cumtime')
+        cProfile.run(executed_str, 'cprof_results', sort=sort_by)
 
-        results_run = pstats.Stats('cprof_results').sort_stats('cumtime')
-        results_run.strip_dirs().sort_stats('cumtime').print_stats(0)
+        results_run = pstats.Stats('cprof_results').sort_stats(sort_by)
+        results_run.strip_dirs().sort_stats(sort_by).print_stats(count_of_shown_functions)
 
 
 class TestCases(object):
@@ -337,8 +337,8 @@ if __name__ == '__main__':
         inst = TestCases().naked_combat_and_results(rotation_lst=['AA'], all_champs_lvls=1)
 
     # RUN DURATION
-    if 0:
-        test_run_time(100)
+    if 1:
+        test_run_time(repetitions=100, sort_by='tottime', count_of_shown_functions=20)
 
     # CONSISTENCY
     if 1:
@@ -352,4 +352,5 @@ if __name__ == '__main__':
 
     # dps: 336.3, dmg: 3132, 2464 movement, 2.4sec / 100 rotations (death application doesnt remove other buffs)
     # dps: 305.52, dmg: 3039.5, 2827 movement, 3.1sec / 100 rotations (rotation=None, automatic rotation)
-    # dps: 305.52, dmg: 3039.5, 2827 movement, 2.7sec / 100 rotations
+    # dps: 305.52, dmg: 3039.5, 2827 movement, 2.5sec / 100 rotations (stat dependencies removed)
+    # dps: 305.52, dmg: 3039.5, 2827 movement, 1.5sec / 100 rotations (deepcopy replacement)
