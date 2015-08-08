@@ -1718,6 +1718,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # Adds passive buffs from abilities.
         self.add_passive_buffs(abilities_effects_dct_func=self.abilities_effects, abilities_lvls=self.ability_lvls_dct)
 
+        # (Bonuses have to be applied here instead of in their normal methods for noting reasons)
+        self.buffs_to_all_stats_bonuses()
+
         # Precombat
         self.note_pre_combat_stats_in_results()
         self.note_precombat_active_buffs()

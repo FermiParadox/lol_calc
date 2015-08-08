@@ -329,6 +329,7 @@ class TestCases(object):
         instances_lst = _single_combat_multiple_users_instances_lst(repetitions=repetitions)
         self._display_differences(combat_instances_lst=instances_lst, instances_type_msg=instances_type_msg)
 
+
 if __name__ == '__main__':
     if 1:
         inst = TestCases().run_combat_and_show_results()
@@ -338,7 +339,7 @@ if __name__ == '__main__':
 
     # RUN DURATION
     if 1:
-        test_run_time(repetitions=100, sort_by='tottime', count_of_shown_functions=20)
+        test_run_time(repetitions=100, sort_by='tottime', count_of_shown_functions=0)
 
     # CONSISTENCY
     if 1:
