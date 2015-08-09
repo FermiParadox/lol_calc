@@ -378,7 +378,7 @@ class AttributeBase(EventsGeneral):
         else:
             return self.current_target
 
-    def _check_triggers_state(self, cond_name):
+    def _check_abilities_cond_triggers_state(self, cond_name):
         """
         Checks if ALL triggers for given condition are present.
 
@@ -636,7 +636,7 @@ class AttributeBase(EventsGeneral):
                     # Trigger check is done ONCE on ALL triggers,
                     # right after a single effect affecting given object is detected.
                     if trig_state is None:
-                        trig_state = self._check_triggers_state(cond_name=cond)
+                        trig_state = self._check_abilities_cond_triggers_state(cond_name=cond)
                         # (if triggers are false, ends current condition checks)
                         if trig_state is False:
                             break
@@ -790,7 +790,6 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         self.rotation_lst = rotation_lst
         self.everyone_dead = None
-        self.total_movement = 0
         self.__all_available_actions_after_single_action_applied = False
 
         runes.RunesFinal.__init__(self,
@@ -1518,21 +1517,22 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             if self.__all_available_actions_after_single_action_applied:
                 return
 
-    def _calculated_priorities(self):
+    def _actions_priorities_triggers_state(self, triggers_dct):
+
+
+    @staticmethod
+    def _apply_effects_to_action_priorities(effects_dct, old_priorities_lst, new_priorities_lst):
         """
-        Creates action priorities lst after applying all priorities' effects.
+        Applies all effects of a condition to action priority list.
 
-        'proceed' and 'succeed' are applied first.
-        'top' is applied last.
-
-        :return:
+        :param effects_dct:
+        :param old_priorities_lst:
+        :param new_priorities_lst:
+        :return: (None)
         """
 
-        old_priorities_lst = self.actions_priorities_default_copy[:]
-        new_priorities_lst = []
-
-        for eff_name in self.priorities_effects:
-            eff_dct = self.priorities_effects[eff_name]
+        for eff_name in effects_dct:
+            eff_dct = effects_dct[eff_name]
             eff_type = eff_dct['type']
 
             # SUCCEED TYPE
@@ -1578,6 +1578,30 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 raise palette.UnexpectedValueError(eff_type)
 
             old_priorities_lst = new_priorities_lst[:]
+
+    def _action_priorities_after_effects(self):
+        """
+        Creates action priorities lst after applying all priorities' effects.
+
+        'proceed' and 'succeed' are applied first.
+        'top' is applied last.
+
+        :return:
+        """
+
+        old_priorities_lst = self.actions_priorities_default_copy[:]
+        new_priorities_lst = []
+
+        for cond_name in self.ACTION_PRIORITIES_CONDITIONALS:
+            conditional_dct = self.ACTION_PRIORITIES_CONDITIONALS[cond_name]
+            triggers_dct = conditional_dct['triggers']
+
+            if self._actions_priorities_triggers_state(triggers_dct=triggers_dct) is True:
+                effects_dct = conditional_dct['effects']
+
+                self._apply_effects_to_action_priorities(effects_dct=effects_dct,
+                                                         old_priorities_lst=old_priorities_lst,
+                                                         new_priorities_lst=new_priorities_lst)
 
         return new_priorities_lst
 
@@ -1642,6 +1666,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         else:
             self._apply_all_actions_by_priority()
 
+        self.combat_end_time = self.current_time
+
     def apply_events_after_actions(self, fully_apply_dots=False):
         """
         Applies events after all actions have finished.
@@ -1692,12 +1718,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         for tar_name in self.enemy_target_names:
             self.apply_death(tar_name=tar_name)
 
-    def run_combat(self):
-        """
-        Returns:
-            (None)
-        """
-
+    def run_combat_preparation(self):
         self.current_time = 0
 
         # Adds runes buff.
@@ -1724,6 +1745,14 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # Precombat
         self.note_pre_combat_stats_in_results()
         self.note_precombat_active_buffs()
+
+    def run_combat(self):
+        """
+        Returns:
+            (None)
+        """
+
+        self.run_combat_preparation()
 
         # Applies actions or events based on which occurs first.
         self._apply_all_actions()
@@ -2047,10 +2076,18 @@ class VisualRepresentation(Actions):
         dmg_str = 'DMG: {}'.format(total_dmg_done_val)
         table_lst.append((dmg_str,))
 
-        # Movement
+        # Total movement
+        total_movement_val = self.combat_results['player']['total_movement']
+        total_movement_val = round(total_movement_val)
+        total_movement_str = 'TOTAL MOVEMENT: {}'.format(total_movement_val)
+        table_lst.append((total_movement_str,))
+
+        # Total movement
         # (rounds value)
-        movement_str = 'MOVEMENT: {}'.format(round(self.total_movement))
-        table_lst.append((movement_str,))
+        movement_per_sec_val = self.combat_results['player']['movement_per_sec']
+        movement_per_sec_val = round(movement_per_sec_val)
+        movement_per_sec_str = 'MOVEMENT PER SEC: {}'.format(movement_per_sec_val)
+        table_lst.append((movement_per_sec_str,))
 
         subplot_obj.axis('off')
         table_obj = subplot_obj.table(

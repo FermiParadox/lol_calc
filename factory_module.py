@@ -20,7 +20,6 @@ import api_items_database
 import items_folder.items_data
 
 
-
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
 
@@ -59,13 +58,14 @@ child_class_as_str = """class ChampionAttributes(object):
     ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES
     ABILITIES_EFFECTS = ABILITIES_EFFECTS
     ABILITIES_CONDITIONALS = ABILITIES_CONDITIONALS
+    ACTION_PRIORITIES_CONDITIONALS = ACTION_PRIORITIES_CONDITIONALS
     def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
         self.actions_priorities_default = DEFAULT_ACTIONS_PRIORITY
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])"""
 
 
-ALL_POSSIBLE_ACTIONS = palette.ALL_POSSIBLE_SPELL_SHORTCUTS + items_folder.items_data.CASTABLE_ITEMS + ('summoner_spell', )
+ALL_POSSIBLE_ACTIONS = ('AA', ) + palette.ALL_POSSIBLE_SPELL_SHORTCUTS + items_folder.items_data.CASTABLE_ITEMS + ('summoner_spell', )
 
 
 # ===============================================================
@@ -1401,7 +1401,7 @@ class ExploreBase(object):
             ' ': '_',
             "'": '',
             '-': '_'
-            }
+        }
 
         for character in replacement_dct:
             name = name.replace(character, replacement_dct[character])
@@ -2149,6 +2149,7 @@ class ExploreChampionsBaseStats(ExploreBase):
         base_stats_dct = data_dct[name]['stats']
 
         return base_stats_dct
+
 
 # ===============================================================
 #       ATTRIBUTE CREATION
@@ -4472,7 +4473,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                     dct[stat_type].update({stat_name: stat_val})
 
         modified_dct.update(dct)
-        
+
     def create_non_unique_stats_names_and_values(self):
         """
         Creates a dict with stat names as values and stat value as key.
@@ -5063,8 +5064,8 @@ class ModuleCreatorBase(object):
         else:
             modified_dct[obj_name] = data_creation_func()
 
-    def _insert_object_in_module(self, obj_name, targeted_module_path_str, new_obj_as_dct_or_str,
-                                 replacement_question_msg='', width=None, verify_replacement=True):
+    def insert_object_in_module(self, obj_name, targeted_module_path_str, new_obj_as_dct_or_str,
+                                replacement_question_msg='', width=None, verify_replacement=True):
         """
         Inserts object in module after verifying replacement if needed.
         If object doesn't exist, it is appended.
@@ -5216,9 +5217,9 @@ class ChampionsBaseStats(ModuleCreatorBase):
 
         dct = self._all_champions_base_stats()
 
-        self._insert_object_in_module(obj_name=CHAMPION_BASE_STATS_DCT_NAME,
-                                      targeted_module_path_str=CHAMPION_BASE_STATS_MODULE,
-                                      new_obj_as_dct_or_str=dct)
+        self.insert_object_in_module(obj_name=CHAMPION_BASE_STATS_DCT_NAME,
+                                     targeted_module_path_str=CHAMPION_BASE_STATS_MODULE,
+                                     new_obj_as_dct_or_str=dct)
 
 
 class ChampionModuleCreator(ModuleCreatorBase):
@@ -5321,10 +5322,10 @@ class ChampionModuleCreator(ModuleCreatorBase):
         for obj_name in CHAMPION_MODULE_OBJECT_NAMES:
             replacement_question_msg = '\nCHAMPION: {}, OBJECT NAME: {}'.format(self.champion_name, obj_name)
 
-            self._insert_object_in_module(obj_name=obj_name,
-                                          new_obj_as_dct_or_str=self._champ_obj_as_dct_or_str(obj_name),
-                                          replacement_question_msg=replacement_question_msg,
-                                          targeted_module_path_str=self.champion_module_path_str, width=None)
+            self.insert_object_in_module(obj_name=obj_name,
+                                         new_obj_as_dct_or_str=self._champ_obj_as_dct_or_str(obj_name),
+                                         replacement_question_msg=replacement_question_msg,
+                                         targeted_module_path_str=self.champion_module_path_str, width=None)
             # Delay used to ensure file is "refreshed" after being writen on. (might be redundant)
             time.sleep(0.2)
 
@@ -5431,11 +5432,11 @@ class ItemsModuleCreator(ModuleCreatorBase):
                                   auto_replace=auto_replace, property_name=property_name,
                                   data_creation_func=creation_func)
 
-        self._insert_object_in_module(obj_name=property_name, new_obj_as_dct_or_str=existing_data_dct,
-                                      replacement_question_msg='', width=1,
-                                      targeted_module_path_str='/'.join((ITEMS_MODULES_FOLDER_NAME,
-                                                                         ITEMS_DATA_MODULE_NAME)) + '.py',
-                                      verify_replacement=False)
+        self.insert_object_in_module(obj_name=property_name, new_obj_as_dct_or_str=existing_data_dct,
+                                     replacement_question_msg='', width=1,
+                                     targeted_module_path_str='/'.join((ITEMS_MODULES_FOLDER_NAME,
+                                                                        ITEMS_DATA_MODULE_NAME)) + '.py',
+                                     verify_replacement=False)
 
     def create_and_insert_item_attrs(self, auto_replace=False):
         self._insert_item_created_attrs_or_effects_or_conds(effects_or_attrs_or_conds='attrs',
@@ -5493,11 +5494,11 @@ class MasteryModuleCreator(ModuleCreatorBase):
                                       auto_replace=False, property_name=property_name,
                                       data_creation_func=mastery_creation_func)
 
-            self._insert_object_in_module(obj_name=property_name, new_obj_as_dct_or_str=existing_data_dct,
-                                          replacement_question_msg='', width=1,
-                                          targeted_module_path_str='/'.join((MASTERIES_MODULES_FOLDER_NAME,
-                                                                             MASTERIES_DATA_MODULE_NAME)) + '.py',
-                                          verify_replacement=False)
+            self.insert_object_in_module(obj_name=property_name, new_obj_as_dct_or_str=existing_data_dct,
+                                         replacement_question_msg='', width=1,
+                                         targeted_module_path_str='/'.join((MASTERIES_MODULES_FOLDER_NAME,
+                                                                            MASTERIES_DATA_MODULE_NAME)) + '.py',
+                                         verify_replacement=False)
 
 
 # ===============================================================
@@ -5608,5 +5609,5 @@ if __name__ == '__main__':
         ChampionsBaseStats().store_champions_base_stats()
 
     # PRIORITY CONDITIONALS
-    if 0:
-        RotationPriorityConditional('jax').run_conditions_creation()
+    if 1:
+        RotationPriorityConditional('jax')

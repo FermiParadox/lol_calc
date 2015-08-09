@@ -222,6 +222,7 @@ class EnemyItemsAutoSelection(object):
 
         return items_lst
 
+
 if __name__ == '__main__':
     print('\nNon support gold: {}'.format(_NON_SUPPORT_GOLD_VS_LVL_MAP))
     print('Support gold: {}\n'.format(_SUPPORT_GOLD_VS_LVL_MAP))

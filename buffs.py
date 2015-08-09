@@ -219,6 +219,8 @@ class Counters(BuffsGeneral):
                               selected_masteries_dct=selected_masteries_dct)
 
         self.max_combat_time = max_combat_time
+        self.total_movement = 0
+        self.combat_end_time = 0
 
         self.actions_dct = {}
         self.combat_history = {}
@@ -604,6 +606,22 @@ class Counters(BuffsGeneral):
 
         self.combat_results['player']['dps'] = self.dps_result()
 
+    def note_movement_in_results(self):
+        """
+        Stores player's dps.
+
+        Returns:
+            (None)
+        """
+
+        self.combat_results['player']['total_movement'] = self.total_movement
+
+    def movement_per_sec(self):
+        return self.total_movement / self.combat_end_time
+
+    def note_movement_per_sec_in_results(self):
+        self.combat_results['player']['movement_per_sec'] = self.movement_per_sec()
+
     def note_source_dmg_in_results(self, dmg_dct, final_dmg_value):
         """
         Stores a source's total dmg.
@@ -667,6 +685,8 @@ class Counters(BuffsGeneral):
         self.__note_stats_pre_or_post_combat_in_results(stats_category_name='post_combat_stats')
         self.note_lifesteal_spellvamp_totals_in_results()
         self.note_dps_in_results()
+        self.note_movement_in_results()
+        self.note_movement_per_sec_in_results()
 
     def __note_active_buffs(self, str_pre_or_post):
         """

@@ -328,6 +328,11 @@ CHAMPION_EXTERNAL_VARIABLES = {
 
 DEFAULT_ACTIONS_PRIORITY = ('r', 'e', 'w', 'q', 'AA')
 
+ACTION_PRIORITIES_CONDITIONALS = {'w_after_AA': {'effects': {'effect_0': {'effect_type': 'top_priority',
+                                                                          'obj_name': 'w'}},
+                                                 'triggers': {'trigger_0': {'obj_name': 'AA',
+                                                                            'trigger_type': 'previous_action'}}}}
+
 RESOURCE_USED = 'mp'
 
 
@@ -337,6 +342,7 @@ class ChampionAttributes(object):
     ABILITIES_EFFECTS = ABILITIES_EFFECTS
     ABILITIES_CONDITIONALS = ABILITIES_CONDITIONALS
     RESOURCE_USED = RESOURCE_USED
+    ACTION_PRIORITIES_CONDITIONALS = ACTION_PRIORITIES_CONDITIONALS
 
     def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
         self.actions_priorities_default_copy = DEFAULT_ACTIONS_PRIORITY[:]
