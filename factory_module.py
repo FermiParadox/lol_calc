@@ -59,8 +59,8 @@ child_class_as_str = """class ChampionAttributes(object):
     ABILITIES_EFFECTS = ABILITIES_EFFECTS
     ABILITIES_CONDITIONALS = ABILITIES_CONDITIONALS
     ACTION_PRIORITIES_CONDITIONALS = ACTION_PRIORITIES_CONDITIONALS
+    DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
     def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
-        self.actions_priorities_default = DEFAULT_ACTIONS_PRIORITY
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])"""
 
@@ -4942,7 +4942,7 @@ class RotationPriorityConditional(_ConditionalsBase):
             active_buffs=dict(
                 buff_names=self._priority_trigger_buffs(),
                 owner_type=self.TARGET_TYPES,
-                stacks=(1, 2, 3, 4, 5,),
+                stacks_at_least=(1, 2, 3, 4, 5,),
             ),
 
             previous_action=dict(

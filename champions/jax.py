@@ -326,7 +326,7 @@ ABILITIES_CONDITIONALS = {
 CHAMPION_EXTERNAL_VARIABLES = {
     'hits_dodged_during_e': 5}
 
-DEFAULT_ACTIONS_PRIORITY = ('r', 'e', 'w', 'q', 'AA')
+DEFAULT_ACTIONS_PRIORITY = ('r', 'e', 'q', 'AA', 'w')
 
 ACTION_PRIORITIES_CONDITIONALS = {'w_after_AA': {'effects': {'effect_0': {'effect_type': 'top_priority',
                                                                           'obj_name': 'w'}},
@@ -343,9 +343,9 @@ class ChampionAttributes(object):
     ABILITIES_CONDITIONALS = ABILITIES_CONDITIONALS
     RESOURCE_USED = RESOURCE_USED
     ACTION_PRIORITIES_CONDITIONALS = ACTION_PRIORITIES_CONDITIONALS
+    DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
 
     def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
-        self.actions_priorities_default_copy = DEFAULT_ACTIONS_PRIORITY[:]
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])
 

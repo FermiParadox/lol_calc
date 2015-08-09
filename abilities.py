@@ -937,6 +937,23 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 # TODO make it remove only one stack
                 raise NotImplementedError
 
+    def _last_action_name(self):
+        """
+        Returns name of last action casted. If no action has been casted yet, it returns None.
+
+        :return: (str) (None)
+        """
+
+        if self.actions_dct:
+
+            last_action_time = max(self.actions_dct)
+            last_action_name = self.actions_dct[last_action_time]['action_name']
+
+            return last_action_name
+
+        else:
+            return None
+
     # MOVEMENT
     def between_action_walking(self):
         """
@@ -1518,66 +1535,52 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 return
 
     def _actions_priorities_triggers_state(self, triggers_dct):
-
-
-    @staticmethod
-    def _apply_effects_to_action_priorities(effects_dct, old_priorities_lst, new_priorities_lst):
         """
-        Applies all effects of a condition to action priority list.
+        Checks all triggers in given triggers' dict.
 
-        :param effects_dct:
-        :param old_priorities_lst:
-        :param new_priorities_lst:
-        :return: (None)
+        WARNING: If owner type of a buff is enemy, it targets self.current_target.
+
+        :param triggers_dct:
+        :return: (bool)
         """
 
-        for eff_name in effects_dct:
-            eff_dct = effects_dct[eff_name]
-            eff_type = eff_dct['type']
+        for trig_name in triggers_dct:
+            trig_dct = triggers_dct[trig_name]
+            trig_type = trig_dct['trigger_type']
 
-            # SUCCEED TYPE
-            if eff_type == 'succeed':
-                first_action = eff_dct['first']
-                second_action = eff_dct['second']
+            # PREVIOUS ACTION
+            if trig_type == 'previous_action':
+                prev_action_required = trig_dct['obj_name']
 
-                for action_name in old_priorities_lst:
-                    # Preceding action is added followed by succeeding action.
-                    if action_name == first_action:
-                        new_priorities_lst += [first_action, second_action]
+                if prev_action_required == self._last_action_name():
+                    pass
+                else:
+                    return False
 
-                    # Succeeding action found in old priorities is not appended (on its own) in new priorities.
-                    elif action_name == second_action:
-                        continue
+            # BUFFS
+            elif trig_type == 'active_buffs':
+                buff_name = trig_dct['obj_name']
+                required_stacks = trig_dct['stacks_at_least']
 
-                    # The rest of the actions are appended normally.
-                    else:
-                        new_priorities_lst.append(action_name)
+                # Owner
+                owner_type = trig_dct['owner_type']
+                if owner_type == 'enemy':
+                    owner_name = self.current_target
+                else:
+                    owner_name = owner_type
 
-            elif eff_type == 'precede':
-                first_action = eff_dct['first']
-                second_action = eff_dct['second']
-
-                for action_name in old_priorities_lst:
-                    # Preceding action is added followed by succeeding action.
-                    if action_name == second_action:
-                        new_priorities_lst += [first_action, second_action]
-
-                    # Preceding action found in old priorities is not appended (on its own) in new priorities.
-                    elif action_name == first_action:
-                        continue
-
-                    # The rest of the actions are appended normally.
-                    else:
-                        new_priorities_lst.append(action_name)
-
-            elif eff_type == 'top':
-                top_action = eff_dct['top_action']
-                new_priorities_lst = top_action
+                # Checks active buffs.
+                owner_buffs = self.active_buffs[owner_name]
+                if buff_name in owner_buffs:
+                    buff_stacks = owner_buffs[buff_name]
+                    if buff_stacks < required_stacks:
+                        return False
 
             else:
-                raise palette.UnexpectedValueError(eff_type)
-
-            old_priorities_lst = new_priorities_lst[:]
+                raise palette.UnexpectedValueError(trig_type)
+        # If loop hasn't ended prematurely then all triggers are active.
+        else:
+            return True
 
     def _action_priorities_after_effects(self):
         """
@@ -1589,32 +1592,65 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         :return:
         """
 
-        old_priorities_lst = self.actions_priorities_default_copy[:]
-        new_priorities_lst = []
+        old_priorities_lst = list(self.DEFAULT_ACTIONS_PRIORITY)
+        new_priorities_lst = old_priorities_lst[:]
 
         for cond_name in self.ACTION_PRIORITIES_CONDITIONALS:
+            old_priorities_lst = new_priorities_lst[:]
+
             conditional_dct = self.ACTION_PRIORITIES_CONDITIONALS[cond_name]
             triggers_dct = conditional_dct['triggers']
 
             if self._actions_priorities_triggers_state(triggers_dct=triggers_dct) is True:
                 effects_dct = conditional_dct['effects']
 
-                self._apply_effects_to_action_priorities(effects_dct=effects_dct,
-                                                         old_priorities_lst=old_priorities_lst,
-                                                         new_priorities_lst=new_priorities_lst)
+                for eff_name in effects_dct:
+                    eff_dct = effects_dct[eff_name]
+                    eff_type = eff_dct['effect_type']
+
+                    # SUCCEED TYPE
+                    if eff_type == 'succeed':
+                        first_action = eff_dct['first']
+                        second_action = eff_dct['second']
+
+                        for action_name in old_priorities_lst:
+                            # Preceding action is added followed by succeeding action.
+                            if action_name == first_action:
+                                new_priorities_lst += [first_action, second_action]
+
+                            # Succeeding action found in old priorities is not appended (on its own) in new priorities.
+                            elif action_name == second_action:
+                                continue
+
+                            # The rest of the actions are appended normally.
+                            else:
+                                new_priorities_lst.append(action_name)
+
+                    elif eff_type == 'precede':
+                        first_action = eff_dct['first']
+                        second_action = eff_dct['second']
+
+                        for action_name in old_priorities_lst:
+                            # Preceding action is added followed by succeeding action.
+                            if action_name == second_action:
+                                new_priorities_lst += [first_action, second_action]
+
+                            # Preceding action found in old priorities is not appended (on its own) in new priorities.
+                            elif action_name == first_action:
+                                continue
+
+                            # The rest of the actions are appended normally.
+                            else:
+                                new_priorities_lst.append(action_name)
+
+                    elif eff_type == 'top_priority':
+                        top_action = eff_dct['obj_name']
+                        new_priorities_lst = [top_action] + [i for i in old_priorities_lst if i != top_action]
+
+                    else:
+                        raise palette.UnexpectedValueError(eff_type)
 
         return new_priorities_lst
-
-    def calculated_priorities(self):
-        """
-        Determines actions' priority.
-
-        :return: (list)
-        """
-
-        return self.actions_priorities_default_copy
-
-
 
     def _apply_all_actions_by_priority(self):
         """
@@ -1625,7 +1661,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         while self.current_time <= self.max_combat_time:
             # After each action application, priority is recalculated.
-            current_priority_sequence = self.calculated_priorities()
+            current_priority_sequence = self._action_priorities_after_effects()
 
             # Tries all actions until it manages to apply one (then recalculates priority).
             for action_name in current_priority_sequence:
@@ -1648,7 +1684,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
             # If no action was available, adds a set amount of time before retrying.
             else:
-                self.current_time += 0.5
+                self.current_time += 0.1
 
     def _apply_all_actions(self):
         """
