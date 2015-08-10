@@ -7,6 +7,7 @@ import cProfile
 import pstats
 import pandas
 import memory_profiler
+import multiprocessing
 
 
 def _combat_loop_instance(data_dct):
@@ -37,9 +38,41 @@ def _single_user_multiple_combats_instances_lst(repetitions):
     user_instance = user_instance_settings.UserSession(test_and_display_mode=False)
 
     for i in range(repetitions):
-        combat_instances_lst.append(user_instance.instance_after_combat(data))
+        combat_instance = user_instance.instance_after_combat(data)
+        combat_instances_lst.append(combat_instance)
 
     return combat_instances_lst
+
+
+# TODO: Check if it actually works.
+def _multiprocessed_single_user_multiple_combats(repetitions):
+    """
+    Creates a user instance and then lots of combat instances so that module and class variables are reused.
+
+    NOTE: Multiprocessing used.
+
+    :param repetitions: (int)
+    :return: (list) List of instances.
+    """
+
+    data = default_config.ALL_DATA
+
+    processes_lst = []
+
+    user_instance = user_instance_settings.UserSession(test_and_display_mode=False)
+
+    for i in range(repetitions):
+
+        mc_target = user_instance.instance_after_combat
+        mc_args = (data, )
+
+        process = multiprocessing.Process(target=mc_target, args=mc_args)
+
+        processes_lst.append(process)
+        process.start()
+
+    for i in processes_lst:
+        i.join()
 
 
 def _single_combat_multiple_users_instances_lst(repetitions):
@@ -56,7 +89,8 @@ def _single_combat_multiple_users_instances_lst(repetitions):
 
     for i in range(repetitions):
         user_instance = user_instance_settings.UserSession(test_and_display_mode=False)
-        combat_instances_lst.append(user_instance.instance_after_combat(data))
+        combat_instance = user_instance.instance_after_combat(data)
+        combat_instances_lst.append(combat_instance)
 
     return combat_instances_lst
 
@@ -74,7 +108,8 @@ def test_run_time(repetitions, sort_by='tottime', count_of_shown_functions=5):
     print(fat_delimiter(80))
 
     function_dcts = {'multiple users': _single_combat_multiple_users_instances_lst.__name__,
-                     'multiple combats': _single_user_multiple_combats_instances_lst.__name__}
+                     'multiple combats': _single_user_multiple_combats_instances_lst.__name__,
+                     'multiple combats (MULTIPROCESSING)': _multiprocessed_single_user_multiple_combats.__name__}
 
     for instances_type, func in sorted(function_dcts.items()):
 
@@ -351,7 +386,5 @@ if __name__ == '__main__':
     if 0:
         inst = TestCases().test_memory_usage()
 
-    # dps: 336.3, dmg: 3132, 2464 movement, 2.4sec / 100 rotations (death application doesnt remove other buffs)
-    # dps: 305.52, dmg: 3039.5, 2827 movement, 3.1sec / 100 rotations (rotation=None, automatic rotation)
-    # dps: 305.52, dmg: 3039.5, 2827 movement, 2.5sec / 100 rotations (stat dependencies removed)
     # dps: 305.52, dmg: 3039.5, 2827 movement, 1.5sec / 100 rotations (deepcopy replacement)
+    # dps: 363.03, dmg: 3628.11, 2423 movement, 240 movement/sec, 1.5sec / 100 rotations (action priorities used)

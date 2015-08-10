@@ -69,7 +69,7 @@ _ITEMS_QUEUES_DCT = {'shen': __SHEN_ITEMS_QUEUE}
 _SUPPORTS_SET = {'thresh'}
 
 
-class EnemyItemsAutoSelection(object):
+class ItemsAutoSelection(object):
 
     NON_SUPPORT_GOLD_VS_LVL_MAP = _NON_SUPPORT_GOLD_VS_LVL_MAP
     SUPPORT_GOLD_VS_LVL_MAP = _SUPPORT_GOLD_VS_LVL_MAP
@@ -228,5 +228,5 @@ if __name__ == '__main__':
     print('Support gold: {}\n'.format(_SUPPORT_GOLD_VS_LVL_MAP))
 
     item = 'hextech_gunblade'
-    stats_lst = EnemyItemsAutoSelection()._item_stats_set(item_name=item)
+    stats_lst = ItemsAutoSelection()._item_stats_set(item_name=item)
     print('\nStats in {}: {}\n'.format(item, stats_lst))
