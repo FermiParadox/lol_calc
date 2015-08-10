@@ -1320,7 +1320,7 @@ class RequestAllMasteriesFromAPI(RequestDataFromAPI):
 # ===============================================================
 #       API EXPLORATION
 # ===============================================================
-class ExploreBase(object):
+class _ExploreBase(object):
 
     @staticmethod
     def champion_id(searched_name):
@@ -1412,11 +1412,14 @@ class ExploreBase(object):
         return name
 
 
-class ExploreApiAbilities(ExploreBase):
+class _ExploreApiAbilitiesAndRecommendedItemsBase(_ExploreBase):
     def __init__(self):
         self.data_module = __import__('api_champions_database')
         self.all_champions_data_dct = self.data_module.ALL_CHAMPIONS_ATTR
         self.champions_lst = sorted(self.all_champions_data_dct)
+
+
+class ExploreApiAbilities(_ExploreApiAbilitiesAndRecommendedItemsBase):
 
     @staticmethod
     def _label_in_tooltip(label, ability_dct):
@@ -1654,7 +1657,7 @@ class ExploreApiAbilities(ExploreBase):
         return _return_or_pprint_complex_obj(print_mode=print_mode, given_dct=cost_categories_dct)
 
 
-class ExploreApiItems(ExploreBase):
+class ExploreApiItems(_ExploreBase):
 
     def __init__(self):
         self.item_related_api_data = api_items_database.ALL_ITEMS
@@ -1952,7 +1955,75 @@ class ExploreApiItems(ExploreBase):
         return self._item_cost_base(item_name=item_name, cost_name='sell')
 
 
-class ExploreApiMasteries(ExploreBase):
+class ExploreRecommendedItems(_ExploreApiAbilitiesAndRecommendedItemsBase):
+
+    def __init__(self, champion_name):
+        _ExploreApiAbilitiesAndRecommendedItemsBase.__init__(self)
+        self.champion_name = champion_name
+
+    @staticmethod
+    def item_name_from_id(id_num):
+        return ExploreApiItems().item_name_from_id(id_num)
+
+    def _recommended_items_data(self):
+        """
+        Returns a list of dicts. Each dict is for specific maps and game modes (e.g. 'ASCENSION')
+
+        :return: (list)
+        """
+        return self.all_champions_data_dct[self.champion_name]['recommended']
+
+    def _summoner_rift_items_data_dct(self):
+        """
+        Returns recommended items' data for 'SR' map and 'CLASSIC' mode.
+
+        If no match or more than 1 matches are found, raises exception.
+
+        :return: (list)
+        """
+
+        all_data_lst = self._recommended_items_data()
+
+        match = None
+        matches_detected = 0
+        for dct_block in all_data_lst:
+            if (dct_block['map'] == 'SR') and (dct_block['mode'] == 'CLASSIC'):
+                matches_detected += 1
+                match = dct_block
+
+        if matches_detected != 1:
+            raise palette.UnexpectedValueError('{} matches detected. Expected 1.'.format(matches_detected))
+        else:
+            return match['blocks']
+
+    def type_to_item_names_map(self):
+        """
+        Returns items' names for each item group "type".
+
+        :return: (dict)
+        """
+
+        dct = {}
+
+        for data_block in self._summoner_rift_items_data_dct():
+            items_type = data_block['type']
+            items_block = data_block['items']
+
+            items_names = []
+            for single_item_block in items_block:
+                item_id = single_item_block['id']
+                items_names.append(self.item_name_from_id(id_num=item_id))
+
+            # Ensure nothing is overwritten silently.
+            if items_type in dct:
+                raise palette.UnexpectedValueError("'{}' already exists.".format(items_type))
+
+            dct.update({items_type: items_names})
+
+        return dct
+
+
+class ExploreApiMasteries(_ExploreBase):
 
     STAT_NAMES_IN_MASTERIES_MAP = {
         'cooldown reduction': {'app_name': 'cdr', 'stat_type': 'percent'},
@@ -2133,7 +2204,7 @@ class ExploreApiMasteries(ExploreBase):
         return lst_returned
 
 
-class ExploreChampionsBaseStats(ExploreBase):
+class ExploreChampionsBaseStats(_ExploreBase):
 
     @staticmethod
     def champion_base_stats(champ_name):
