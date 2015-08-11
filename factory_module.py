@@ -1977,8 +1977,6 @@ class ExploreRecommendedItems(_ExploreApiAbilitiesAndRecommendedItemsBase):
         """
         Returns recommended items' data for 'SR' map and 'CLASSIC' mode.
 
-        If no match or more than 1 matches are found, raises exception.
-
         :return: (list)
         """
 
@@ -1987,12 +1985,14 @@ class ExploreRecommendedItems(_ExploreApiAbilitiesAndRecommendedItemsBase):
         match = None
         matches_detected = 0
         for dct_block in all_data_lst:
-            if (dct_block['map'] == 'SR') and (dct_block['mode'] == 'CLASSIC'):
-                matches_detected += 1
-                match = dct_block
+            if dct_block['map'] in ('SR', '1', '11'):
+                if dct_block['mode'] == 'CLASSIC':
+                    matches_detected += 1
+                    match = dct_block
 
         if matches_detected != 1:
-            raise palette.UnexpectedValueError('{} matches detected. Expected 1.'.format(matches_detected))
+            print('{} matches detected. Expected 1.'.format(matches_detected))
+            return {}
         else:
             return match['blocks']
 
@@ -2014,9 +2014,16 @@ class ExploreRecommendedItems(_ExploreApiAbilitiesAndRecommendedItemsBase):
                 item_id = single_item_block['id']
                 items_names.append(self.item_name_from_id(id_num=item_id))
 
-            # Ensure nothing is overwritten silently.
-            if items_type in dct:
-                raise palette.UnexpectedValueError("'{}' already exists.".format(items_type))
+            # Ensures nothing is overwritten.
+            _temp_type_name = items_type
+            counter = 1
+            while 1:
+                if _temp_type_name in dct:
+                    _temp_type_name = '{}_{}'.format(items_type, counter)
+                    counter += 1
+                else:
+                    items_type = _temp_type_name
+                    break
 
             dct.update({items_type: items_names})
 
