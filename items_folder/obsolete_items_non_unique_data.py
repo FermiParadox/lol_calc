@@ -1,3 +1,5 @@
+# TODO: Remove?
+
 ITEMS_NON_UNIQUE_STATS_DCT = {
     'abyssal_scepter': {'ap': 70,
                         'mr': 50},

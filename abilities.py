@@ -1813,7 +1813,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
 class VisualRepresentation(Actions):
 
-    PLAYER_STATS_DISPLAYED = ('ap', 'ad', 'armor', 'mr', 'hp', 'mp', 'att_speed')
+    PLAYER_STATS_DISPLAYED = ('ap', 'ad', 'armor', 'mr', 'hp', 'mp', 'att_speed', 'cdr')
     ENEMY_STATS_DISPLAYED = ('armor', 'mr', 'physical_dmg_taken', 'magic_dmg_taken', 'current_hp')
 
     def __init__(self,

@@ -127,10 +127,11 @@ class StatFilters(object):
         Returns:
             (float) final stat value
 
-        >>>StatFilters().filtered_crit_chance(1.2)
-        1.
-        >>>StatFilters().filtered_crit_chance(0.1)
+        >>> StatFilters().filtered_crit_chance(1.2)
+        1.0
+        >>> StatFilters().filtered_crit_chance(0.1)
         0.1
+
         """
 
         return min(1., unfiltered_stat)
@@ -145,10 +146,11 @@ class StatFilters(object):
         Returns:
             (float) final stat value
 
-        >>>StatFilters().filtered_att_speed(3.2)
+        >>> StatFilters().filtered_att_speed(3.2)
         2.5
-        >>>StatFilters().filtered_att_speed(0.1)
+        >>> StatFilters().filtered_att_speed(0.1)
         0.1
+
         """
 
         return min(2.5, unfiltered_stat)
@@ -163,8 +165,9 @@ class StatFilters(object):
         Returns:
             (float) final stat value
 
-        >>>StatFilters().filtered_move_speed(300)
+        >>> StatFilters().filtered_move_speed(300)
         300
+
         """
         # TODO avoid copyrighted formula
         if (415 < unfiltered_stat) and (unfiltered_stat < 490):
@@ -186,10 +189,11 @@ class StatFilters(object):
         Returns:
             (float) final stat value
 
-        >>>StatFilters().filtered_cdr(0.1)
+        >>> StatFilters().filtered_cdr(0.1)
         0.1
-        >>>StatFilters().filtered_cdr(0.7)
+        >>> StatFilters().filtered_cdr(0.7)
         0.4
+
         """
 
         return min(0.4, unfiltered_stat)

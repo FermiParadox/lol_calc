@@ -626,7 +626,7 @@ def restricted_input(question_msg, input_type, characteristic=None, disallow_ent
     WARNING: Plain "enter" precedes any type requirements.
 
     :param question_msg: (str)
-    :param input_type: (str) 'str', 'bool', 'int', 'float', tuple, list,
+    :param input_type: (str) 'str', 'bool', 'num', 'int', 'float', 'tuple', 'list'
     :param characteristic: (str) 'non_negative', 'non_zero', 'non_positive'
     :param disallow_enter: (bool) Allows or disallows giving an empty string as input for question.
     :returns: (literal)
@@ -710,6 +710,9 @@ def restricted_input(question_msg, input_type, characteristic=None, disallow_ent
 
             else:
                 raise palette.UnexpectedValueError
+
+        else:
+            return answer_as_literal
 
 
 # ---------------------------------------------------------------
@@ -1992,7 +1995,7 @@ class ExploreRecommendedItems(_ExploreApiAbilitiesAndRecommendedItemsBase):
 
         if matches_detected != 1:
             print('{} matches detected. Expected 1.'.format(matches_detected))
-            return {}
+            return []
         else:
             return match['blocks']
 
@@ -2019,6 +2022,7 @@ class ExploreRecommendedItems(_ExploreApiAbilitiesAndRecommendedItemsBase):
             counter = 1
             while 1:
                 if _temp_type_name in dct:
+                    # (If name already exists, creates a name with a number appended to it.)
                     _temp_type_name = '{}_{}'.format(items_type, counter)
                     counter += 1
                 else:
@@ -2817,6 +2821,10 @@ class _ConditionalsBase(metaclass=abc.ABCMeta):
     @outer_loop_exit_handler
     @repeat_cluster(cluster_name='ALL CONDITIONS')
     def run_conditions_creation(self, extra_msg=''):
+        """
+
+        :return: (None)
+        """
         self.conditions_dct = {}
         print(fat_delimiter(100))
         msg = '\nCONDITIONALS CREATION:'
@@ -5048,6 +5056,93 @@ class RotationPriorityConditional(_ConditionalsBase):
         return ['priority_fragment_lst', 'buff_names']
 
 
+# SKILLS LVLS
+class SkillsLvlUps(object):
+
+    def __init__(self, champion_lvl):
+        self.champion_lvl = champion_lvl
+
+    @staticmethod
+    def lvl_priorities_dct_base():
+        return dict(
+            spells_lvl_up_priorities='list_placeholder',
+            at_least_one_lvl_in_each=(True, False),
+            total_spells_lvl_ups='placeholder',
+            max_spells_lvl_ups='varying_placeholder',
+            automatically_lvled_up='varying_placeholder'
+        )
+
+    @staticmethod
+    def _automatically_lvled_up_value():
+        """
+        Returns a dict with spells and champion lvls at which these spells get automatically a lvl up.
+
+        :return: (dict)
+        """
+
+        dct = {}
+
+        auto_lvled_up_spells_exist = _y_n_question(question_str='Does any spell get automatically lvled up?')
+
+        if auto_lvled_up_spells_exist:
+            spell_names_lst = []
+            suggest_lst_of_attr_values(suggested_values_lst=palette.SPELL_SHORTCUTS, modified_lst=spell_names_lst)
+
+            for spell_name in spell_names_lst:
+                q_msg = 'Give champ lvls (tuple) at which {} is auto lvled up.'.format(spell_name.upper())
+                lvls_lst = restricted_input(question_msg=q_msg, input_type='tuple', disallow_enter=True)
+
+                dct.update({spell_name: lvls_lst})
+
+        return dct
+
+    @staticmethod
+    def _max_spells_lvls():
+        """
+        If spells have the usual max lvl returns string,
+        otherwise returns a dict with each spell's max lvl.
+
+        :return: (dict) (str)
+        """
+
+        all_spells_usual_max_lvl = _y_n_question(question_str='All spells have the usual max lvl?')
+
+        if all_spells_usual_max_lvl:
+            return 'standard_max_lvl'
+
+        else:
+            suggested_values_dct = {i: () for i in palette.SPELL_SHORTCUTS}
+            dct = {}
+
+            suggest_attr_values(suggested_values_dct=suggested_values_dct, modified_dct=dct)
+
+            return dct
+
+    def lvl_up_priorities(self):
+        """
+
+        :return: (dict)
+        """
+        dct = self.lvl_priorities_dct_base()
+
+        spells_lvl_up_priorities_lst = []
+        suggest_lst_of_attr_values(suggested_values_lst=palette.SPELL_SHORTCUTS,
+                                   modified_lst=spells_lvl_up_priorities_lst)
+
+        dct['spells_lvl_up_priorities'] = spells_lvl_up_priorities_lst
+
+        dct['at_least_one_lvl_in_each'] = _y_n_question('Lvl up each ability at least once?')
+
+        dct['total_spells_lvl_ups'] = restricted_input(question_msg='Lvl up each ability at least once?',
+                                                       input_type='int')
+
+        dct['max_spells_lvl_ups'] = self._max_spells_lvls()
+
+        dct['automatically_lvled_up'] = self._automatically_lvled_up_value()
+
+        return dct
+
+
 # ===============================================================
 #       MODULE CREATION
 # ===============================================================
@@ -5686,6 +5781,10 @@ if __name__ == '__main__':
     if 0:
         ChampionsBaseStats().store_champions_base_stats()
 
-    # PRIORITY CONDITIONALS
+    # PRIORITY CONDITIONALS (creation, not insertion)
+    if 0:
+        RotationPriorityConditional('jax').run_conditions_creation()
+
     if 1:
-        RotationPriorityConditional('jax')
+        d=SkillsLvlUps(18)._max_spells_lvls()
+        print(d)
