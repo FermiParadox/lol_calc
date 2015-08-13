@@ -12,6 +12,12 @@ class SkillsLvlUp(object):
     TOTAL_SKILLS_POINTS = 18
     MAX_CHAMPION_LVL = TOTAL_SKILLS_POINTS
 
+    def __init__(self, skill_lvl_up_data_dct):
+        self.priorities_seq = skill_lvl_up_data_dct['spells_lvl_up_queue']
+        self.all_at_least_one_point_on_each = skill_lvl_up_data_dct['at_least_one_lvl_in_each']
+        self.max_spells_lvls = skill_lvl_up_data_dct['max_spells_lvl_ups']
+        self.automatically_lvled_up = skill_lvl_up_data_dct['automatically_lvled_up']
+
     def _allowed_points_of_spell(self, spell_name, max_spells_lvls, champ_lvl):
         """
         Returns the maximum points that can be spent on given spell, based on current champion lvl.
@@ -41,32 +47,31 @@ class SkillsLvlUp(object):
 
         return min(max_points_allowed_by_spell, max_allowed_by_champ_lvl)
 
-    def _skill_lvling_order_queue(self, priorities_seq, all_at_least_one_point_on_each, max_spells_lvls):
+    def _skill_lvling_order_queue(self):
         """
         Returns a tuple of spell names in lvling up order.
 
         NOTE: Automatically lvled up spells aren't included.
 
-        :param priorities_seq: (sequence)
-        :param all_at_least_one_point_on_each: (bool)
         :return: (tuple)
         """
 
         lvl_up_queue = []
         total_spent_points = 0
 
-        if all_at_least_one_point_on_each:
+        if self.all_at_least_one_point_on_each:
             # Adds 1 point in all non ultimate spells.
-            for spell in priorities_seq:
+            for spell in self.priorities_seq:
                 if spell != 'r':
                     lvl_up_queue.append(spell)
                     total_spent_points += 1
 
         while total_spent_points < self.TOTAL_SKILLS_POINTS:
             # Tries adding points to spells from highest to lowest priority.
-            for spell_name in priorities_seq:
+            for spell_name in self.priorities_seq:
 
-                allowed_points = self._allowed_points_of_spell(spell_name=spell_name, max_spells_lvls=max_spells_lvls,
+                allowed_points = self._allowed_points_of_spell(spell_name=spell_name,
+                                                               max_spells_lvls=self.max_spells_lvls,
                                                                champ_lvl=total_spent_points+1)
 
                 _spent_points = lvl_up_queue.count(spell_name)
@@ -78,22 +83,16 @@ class SkillsLvlUp(object):
 
         return tuple(lvl_up_queue)
 
-    def skills_points_on_all_lvls(self, priorities_seq, all_at_least_one_point_on_each, max_spells_lvls,
-                                  automatically_lvled_up):
+    def skills_points_on_all_lvls(self):
         """
         Returns points on each ability for every champion lvl.
 
-        :param priorities_seq:
-        :param all_at_least_one_point_on_each:
-        :param max_spells_lvls:
         :return: (dict)
         """
 
         dct = {}
 
-        skill_lvling_queue = self._skill_lvling_order_queue(priorities_seq=priorities_seq,
-                                                            all_at_least_one_point_on_each=all_at_least_one_point_on_each,
-                                                            max_spells_lvls=max_spells_lvls)
+        skill_lvling_queue = self._skill_lvling_order_queue()
 
         for champ_lvl in range(1, self.MAX_CHAMPION_LVL+1):
             dct.update({champ_lvl: {}})
@@ -104,27 +103,13 @@ class SkillsLvlUp(object):
                 spell_points = queue_slice.count(spell_name)
 
                 # Automatically assigned points.
-                if automatically_lvled_up:
-                    if spell_name in automatically_lvled_up:
+                if self.automatically_lvled_up:
+                    if spell_name in self.automatically_lvled_up:
                         # Adds 1 point for each champ lvl (up to current champ lvl) at which the ability is lvled up.
-                        for champ_lvl_spell_lvled_up in automatically_lvled_up[spell_name]:
+                        for champ_lvl_spell_lvled_up in self.automatically_lvled_up[spell_name]:
                             if champ_lvl_spell_lvled_up <= champ_lvl:
                                 spell_points += 1
 
                 dct[champ_lvl].update({spell_name: spell_points})
 
         return dct
-
-
-if __name__ == '__main__':
-
-    if 1:
-        # Example below: Karma (starts with 1 point in R)
-        points_dct = SkillsLvlUp().skills_points_on_all_lvls(['r', 'q', 'w', 'e'], True, 'standard', {'r': [1,]})
-        for lvl in points_dct:
-            print('lvl: {}\n{}\n'.format(lvl, points_dct[lvl]))
-
-
-
-
-

@@ -218,8 +218,8 @@ class StatCalculation(StatFilters):
     def __init__(self,
                  champion_lvls_dct,
                  selected_champions_dct,
-                 initial_active_buffs=None,
-                 initial_current_stats=None):
+                 initial_active_buffs,
+                 initial_current_stats):
 
         self.champion_lvls_dct = champion_lvls_dct
         self.player_lvl = self.champion_lvls_dct['player']
@@ -593,8 +593,8 @@ class StatRequest(StatCalculation):
                  champion_lvls_dct,
                  selected_champions_dct,
                  req_buff_dct_func,
-                 initial_active_buffs=None,
-                 initial_current_stats=None):
+                 initial_active_buffs,
+                 initial_current_stats):
 
         self.req_buff_dct_func = req_buff_dct_func
 

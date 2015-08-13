@@ -336,6 +336,13 @@ ACTION_PRIORITIES_CONDITIONALS = {'w_after_AA': {'effects': {'effect_0': {'effec
 RESOURCE_USED = 'mp'
 
 
+SPELL_LVL_UP_PRIORITIES = {
+    'at_least_one_lvl_in_each': True,
+    'automatically_lvled_up': {},
+    'max_spells_lvl_ups': 'standard',
+    'spells_lvl_up_queue': ['r', 'w', 'q', 'e']}
+
+
 class ChampionAttributes(object):
 
     ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES
@@ -344,6 +351,7 @@ class ChampionAttributes(object):
     RESOURCE_USED = RESOURCE_USED
     ACTION_PRIORITIES_CONDITIONALS = ACTION_PRIORITIES_CONDITIONALS
     DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
+    SPELL_LVL_UP_PRIORITIES = SPELL_LVL_UP_PRIORITIES
 
     def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
         for i in external_vars_dct:

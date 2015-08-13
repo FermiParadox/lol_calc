@@ -21,7 +21,7 @@ class UserSession(object):
         if self.test_and_display_mode:
             main_loop_class = abilities.VisualRepresentation
         else:
-            main_loop_class = abilities.Actions
+            main_loop_class = abilities.Presets
 
         class CombinerClass(player_champ_tot_attr_class, main_loop_class):
 

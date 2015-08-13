@@ -39,9 +39,10 @@ ABILITIES_CONDITIONALS_DCT_NAME = 'ABILITIES_CONDITIONALS'
 CHAMPION_EXTERNAL_VAR_DCT_NAME = 'CHAMPION_EXTERNAL_VARIABLES'
 CHAMP_CLASS_NAME = 'class ChampionAttributes'
 DEFAULT_ACTIONS_PRIORITY_NAME = 'DEFAULT_ACTIONS_PRIORITY'
+SPELL_LVL_UP_PRIORITIES_NAME = 'SPELL_LVL_UP_PRIORITIES'
 CHAMPION_MODULE_OBJECT_NAMES = (ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME,
                                 ABILITIES_CONDITIONALS_DCT_NAME, CHAMPION_EXTERNAL_VAR_DCT_NAME, CHAMP_CLASS_NAME,
-                                DEFAULT_ACTIONS_PRIORITY_NAME)
+                                DEFAULT_ACTIONS_PRIORITY_NAME, SPELL_LVL_UP_PRIORITIES_NAME)
 
 CHAMPION_BASE_STATS_DCT_NAME = 'CHAMPION_BASE_STATS'
 CHAMPION_BASE_STATS_MODULE = 'app_champions_base_stats.py'
@@ -60,6 +61,7 @@ child_class_as_str = """class ChampionAttributes(object):
     ABILITIES_CONDITIONALS = ABILITIES_CONDITIONALS
     ACTION_PRIORITIES_CONDITIONALS = ACTION_PRIORITIES_CONDITIONALS
     DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
+    SPELL_LVL_UP_PRIORITIES = SPELL_LVL_UP_PRIORITIES
     def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])"""
@@ -5059,15 +5061,11 @@ class RotationPriorityConditional(_ConditionalsBase):
 # SKILLS LVLS
 class SkillsLvlUps(object):
 
-    def __init__(self, champion_lvl):
-        self.champion_lvl = champion_lvl
-
     @staticmethod
     def lvl_priorities_dct_base():
         return dict(
-            spells_lvl_up_priorities='list_placeholder',
+            spells_lvl_up_queue='list_placeholder',
             at_least_one_lvl_in_each=(True, False),
-            total_spells_lvl_ups='placeholder',
             max_spells_lvl_ups='varying_placeholder',
             automatically_lvled_up='varying_placeholder'
         )
@@ -5108,7 +5106,7 @@ class SkillsLvlUps(object):
         all_spells_usual_max_lvl = _y_n_question(question_str='All spells have the usual max lvl?')
 
         if all_spells_usual_max_lvl:
-            return 'standard_max_lvl'
+            return 'standard'
 
         else:
             suggested_values_dct = {i: () for i in palette.SPELL_SHORTCUTS}
@@ -5125,16 +5123,14 @@ class SkillsLvlUps(object):
         """
         dct = self.lvl_priorities_dct_base()
 
-        spells_lvl_up_priorities_lst = []
+        msg = 'Highest to lowest priority spell lvling up?'
+        spells_lvl_up_queue_lst = []
         suggest_lst_of_attr_values(suggested_values_lst=palette.SPELL_SHORTCUTS,
-                                   modified_lst=spells_lvl_up_priorities_lst)
+                                   modified_lst=spells_lvl_up_queue_lst, extra_start_msg=msg)
 
-        dct['spells_lvl_up_priorities'] = spells_lvl_up_priorities_lst
+        dct['spells_lvl_up_queue'] = spells_lvl_up_queue_lst
 
         dct['at_least_one_lvl_in_each'] = _y_n_question('Lvl up each ability at least once?')
-
-        dct['total_spells_lvl_ups'] = restricted_input(question_msg='Lvl up each ability at least once?',
-                                                       input_type='int')
 
         dct['max_spells_lvl_ups'] = self._max_spells_lvls()
 
@@ -5481,8 +5477,21 @@ class ChampionModuleCreator(ModuleCreatorBase):
         elif obj_name == DEFAULT_ACTIONS_PRIORITY_NAME:
             return self._priority_tpl_as_str()
 
+        elif obj_name == SPELL_LVL_UP_PRIORITIES_NAME:
+            return SkillsLvlUps().lvl_up_priorities()
+
         else:
             palette.UnexpectedValueError(obj_name)
+
+    def run_single_element_creation(self, obj_name):
+        replacement_question_msg = '\nCHAMPION: {}, OBJECT NAME: {}'.format(self.champion_name, obj_name)
+
+        self.insert_object_in_module(obj_name=obj_name,
+                                     new_obj_as_dct_or_str=self._champ_obj_as_dct_or_str(obj_name),
+                                     replacement_question_msg=replacement_question_msg,
+                                     targeted_module_path_str=self.champion_module_path_str, width=None)
+        # Delay used to ensure file is "refreshed" after being writen on. (might be redundant)
+        time.sleep(0.2)
 
     def run_champ_module_creation(self):
         """
@@ -5493,14 +5502,7 @@ class ChampionModuleCreator(ModuleCreatorBase):
         """
 
         for obj_name in CHAMPION_MODULE_OBJECT_NAMES:
-            replacement_question_msg = '\nCHAMPION: {}, OBJECT NAME: {}'.format(self.champion_name, obj_name)
-
-            self.insert_object_in_module(obj_name=obj_name,
-                                         new_obj_as_dct_or_str=self._champ_obj_as_dct_or_str(obj_name),
-                                         replacement_question_msg=replacement_question_msg,
-                                         targeted_module_path_str=self.champion_module_path_str, width=None)
-            # Delay used to ensure file is "refreshed" after being writen on. (might be redundant)
-            time.sleep(0.2)
+            self.run_single_element_creation(obj_name=obj_name)
 
 
 class ItemsModuleCreator(ModuleCreatorBase):
@@ -5785,6 +5787,6 @@ if __name__ == '__main__':
     if 0:
         RotationPriorityConditional('jax').run_conditions_creation()
 
+    # SKILL LVL UP PRIORITIES.
     if 1:
-        d=SkillsLvlUps(18)._max_spells_lvls()
-        print(d)
+        ChampionModuleCreator('jax').run_single_element_creation(SPELL_LVL_UP_PRIORITIES_NAME)

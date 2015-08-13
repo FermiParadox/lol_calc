@@ -194,6 +194,8 @@ class TestCases(object):
         return post_combat_instance
 
     # CONSISTENCY
+    # TODO: Create tests that switch between champions and check their consistency.
+
     @staticmethod
     def __different_object_results_count(combat_instances_lst, compared_object_name):
         """
@@ -352,7 +354,7 @@ class TestCases(object):
             print(self.compare_pre_and_post_combat_stats(combat_instances_lst=combat_instances_lst))
 
         else:
-            print('-No differences detected.')
+            print('-No differences.')
 
     def display_single_user_multi_combats_differences(self, repetitions):
         instances_type_msg = 'SINGLE USER'

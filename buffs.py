@@ -17,9 +17,9 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
                  champion_lvls_dct,
                  req_buff_dct_func,
                  selected_masteries_dct,
-                 initial_current_stats=None,
-                 initial_active_buffs=None,
-                 chosen_items_lst=None):
+                 initial_current_stats,
+                 initial_active_buffs,
+                 chosen_items_lst):
 
         self.current_time = 0
 
@@ -204,10 +204,10 @@ class Counters(BuffsGeneral):
                  champion_lvls_dct,
                  req_buff_dct_func,
                  selected_masteries_dct,
-                 max_combat_time=20,
-                 initial_current_stats=None,
-                 initial_active_buffs=None,
-                 chosen_items_lst=None):
+                 initial_current_stats,
+                 initial_active_buffs,
+                 chosen_items_lst,
+                 max_combat_time):
 
         BuffsGeneral.__init__(self,
                               selected_champions_dct=selected_champions_dct,

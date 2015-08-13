@@ -9,6 +9,7 @@ import timers
 import runes
 from champions import app_champions_base_stats
 import palette
+import skills_points
 
 
 # Sets font size on all plt graphs.
@@ -1811,7 +1812,52 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         return rot
 
 
-class VisualRepresentation(Actions):
+class Presets(Actions):
+
+    def __init__(self,
+                 rotation_lst,
+                 max_targets_dct,
+                 selected_champions_dct,
+                 champion_lvls_dct,
+                 ability_lvls_dct,
+                 max_combat_time,
+                 selected_masteries_dct,
+                 chosen_items_lst,
+                 initial_active_buffs,
+                 initial_current_stats,
+                 selected_runes):
+
+        Actions.__init__(self,
+                         rotation_lst=rotation_lst,
+                         max_targets_dct=max_targets_dct,
+                         selected_champions_dct=selected_champions_dct,
+                         champion_lvls_dct=champion_lvls_dct,
+                         ability_lvls_dct=ability_lvls_dct,
+                         max_combat_time=max_combat_time,
+                         selected_masteries_dct=selected_masteries_dct,
+                         chosen_items_lst=chosen_items_lst,
+                         initial_active_buffs=initial_active_buffs,
+                         initial_current_stats=initial_current_stats,
+                         selected_runes=selected_runes)
+
+        self._setup_ability_lvls()
+
+    def _setup_ability_lvls(self):
+        """
+        If no abilities' lvls are given, it automatically sets them.
+
+        :return: (None)
+        """
+        if not self.ability_lvls_dct:
+            skill_inst = skills_points.SkillsLvlUp(skill_lvl_up_data_dct=self.SPELL_LVL_UP_PRIORITIES)
+
+            ability_points_on_all_lvls = skill_inst.skills_points_on_all_lvls()
+
+            self.ability_lvls_dct = ability_points_on_all_lvls[self.champion_lvls_dct['player']]
+
+
+
+class VisualRepresentation(Presets):
 
     PLAYER_STATS_DISPLAYED = ('ap', 'ad', 'armor', 'mr', 'hp', 'mp', 'att_speed', 'cdr')
     ENEMY_STATS_DISPLAYED = ('armor', 'mr', 'physical_dmg_taken', 'magic_dmg_taken', 'current_hp')
@@ -1829,7 +1875,7 @@ class VisualRepresentation(Actions):
                  initial_current_stats,
                  selected_runes):
 
-        Actions.__init__(self,
+        Presets.__init__(self,
                          rotation_lst=rotation_lst,
                          max_targets_dct=max_targets_dct,
                          selected_champions_dct=selected_champions_dct,
