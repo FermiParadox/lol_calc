@@ -1,6 +1,8 @@
 import copy
+import palette
 
 from champions import app_champions_base_stats
+import items_folder.items_data as items_data
 
 ALL_RESOURCE_NAMES = frozenset({'mp', 'energy', 'rage', None, 'flow', 'hp'})
 
@@ -629,29 +631,37 @@ class StatRequest(StatCalculation):
         """
         Updates a target's bonuses_dct by adding the name and value of a bonus.
 
-        Modifies:
-            bonuses_dct
-        Returns:
-            (None)
+        :return: (None)
         """
 
+        buff_source = buff_dct['buff_source']
         value_num_or_dct = buff_stats_dct[stat_name][bonus_type]
+
         if type(value_num_or_dct) in (int, float):
             stat_val = value_num_or_dct
+
         else:
-            # VALUE INDEX
-            values_tpl = value_num_or_dct['stat_values']
-            ability_name = buff_dct['buff_source']
+            values_tpl_or_num = value_num_or_dct['stat_values']
 
-            if ability_name == 'inn':
-                ability_lvl = self.innate_special_lvl(values_tpl=values_tpl)
+            if type(values_tpl_or_num) in (int, float):
+                stat_val = values_tpl_or_num
+
             else:
-                ability_lvl = self.ability_lvls_dct[ability_name]
+                values_tpl = value_num_or_dct['stat_values']
 
-            lvl_index = ability_lvl - 1
+                if buff_source == 'inn':
+                    ability_lvl = self.innate_special_lvl(values_tpl=values_tpl)
+                    lvl_index = ability_lvl - 1
 
-            # STAT VALUE
-            stat_val = values_tpl[lvl_index]
+                elif buff_source in palette.SPELL_SHORTCUTS:
+                    ability_lvl = self.ability_lvls_dct[buff_source]
+                    lvl_index = ability_lvl - 1
+
+                else:
+                    lvl_index = 0
+
+                # STAT VALUE
+                stat_val = values_tpl[lvl_index]
 
             # STAT MODS
             # (all stat mods are additive)
@@ -719,6 +729,7 @@ class StatRequest(StatCalculation):
 
     def buffs_to_all_stats_bonuses(self):
         self.place_tar_and_empty_dct_in_dct(self.bonuses_dct, ensure_empty_dct=False)
+
         for tar_name in self.all_target_names:
             self.buffs_to_single_stat_bonuses(tar_name=tar_name)
 

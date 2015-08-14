@@ -388,5 +388,6 @@ if __name__ == '__main__':
     if 0:
         inst = TestCases().test_memory_usage()
 
-    # dps: 305.52, dmg: 3039.5, 2827 movement, 1.5sec / 100 rotations (deepcopy replacement)
     # dps: 363.03, dmg: 3628.11, 2423 movement, 240 movement/sec, 1.5sec / 100 rotations (action priorities used)
+    # dps: 377.36, dmg: 3771.25, 2423 movement, 240 movement/sec, 1.5sec / 100 rotations (item usage in priorities)
+

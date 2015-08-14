@@ -129,7 +129,7 @@ class ItemsProperties(object):
         :return: (dict)
         """
 
-        # COMBINES ALL STATS
+        # COMBINES UNIQUE AND NON-UNIQUE STATS
         additive_stats_dct = collections.Counter()
         percent_stats_dct = collections.Counter()
 
@@ -172,9 +172,6 @@ class ItemsProperties(object):
         returned_dct.update(self._CHOSEN_ITEMS_BUFF_BASE)
 
         self.items_static_stats_buff_dct = returned_dct
-
-    def items_static_stats_buff(self):
-        return self.items_static_stats_buff_dct
 
     def _create_items_properties_dcts(self):
         """
@@ -243,6 +240,10 @@ class ItemsProperties(object):
             cost += items_data_module.ITEMS_ATTRIBUTES[item_name]['secondary_data']['total_price']
 
         return cost
+
+    def items_static_stats_buff(self):
+        # Used for calling from apply_buff method.
+        return self.items_static_stats_buff_dct
 
 
 if __name__ == '__main__':

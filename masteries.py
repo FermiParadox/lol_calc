@@ -6,6 +6,7 @@ import collections
 
 
 CHOSEN_MASTERIES_BUFF_BASE = copy.deepcopy(items.CHOSEN_ITEMS_BUFF_BASE)
+CHOSEN_MASTERIES_BUFF_BASE['source'] = 'masteries'
 
 
 class InvalidMasteriesSetupError(Exception):

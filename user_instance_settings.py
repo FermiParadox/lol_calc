@@ -33,9 +33,10 @@ class UserSession(object):
                          ability_lvls_dct,
                          max_combat_time,
                          selected_masteries_dct,
+                         items_lst,
+                         selected_summoner_spells,
                          initial_active_buffs=None,
                          initial_current_stats=None,
-                         items_lst=None,
                          selected_runes=None):
 
                 main_loop_class.__init__(self,
@@ -45,6 +46,7 @@ class UserSession(object):
                                          champion_lvls_dct=champion_lvls_dct,
                                          ability_lvls_dct=ability_lvls_dct,
                                          max_combat_time=max_combat_time,
+                                         selected_summoner_spells=selected_summoner_spells,
                                          initial_active_buffs=initial_active_buffs,
                                          initial_current_stats=initial_current_stats,
                                          chosen_items_lst=items_lst,

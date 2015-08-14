@@ -10,6 +10,7 @@ import runes
 from champions import app_champions_base_stats
 import palette
 import skills_points
+import items_folder.items_data
 
 
 # Sets font size on all plt graphs.
@@ -785,11 +786,13 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                  max_combat_time,
                  selected_masteries_dct,
                  chosen_items_lst,
+                 selected_summoner_spells,
                  initial_active_buffs,
                  initial_current_stats,
                  selected_runes):
 
         self.rotation_lst = rotation_lst
+        self.selected_summoner_spells = selected_summoner_spells
         self.everyone_dead = None
         self.__all_available_actions_after_single_action_applied = False
 
@@ -1583,6 +1586,30 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         else:
             return True
 
+    def _items_and_summoner_spells_priorities_lst(self):
+        """
+        Creates a list with castable items and summoner spells
+        that "should" be cast always at the start of the combat.
+
+        :return: (list)
+        """
+
+        queue_set = set()
+        items_attrs_dct = items_folder.items_data.ITEMS_ATTRIBUTES
+
+        # SUMMONER'S SPELLS
+        for spell_name in self.selected_summoner_spells:
+            # TODO: Create 'castable_summoner_spells' and 'summoner_spells_at_combat_start' in a new class
+            if spell_name in self.summoner_spells_at_combat_start:
+                queue_set.add(spell_name)
+
+        # ITEMS
+        for item_name in self.chosen_items_lst:
+            if items_attrs_dct[item_name]['general_attributes']['castable']:
+                queue_set.add(item_name)
+
+        return list(queue_set)
+
     def _action_priorities_after_effects(self):
         """
         Creates action priorities lst after applying all priorities' effects.
@@ -1593,7 +1620,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         :return:
         """
 
-        old_priorities_lst = list(self.DEFAULT_ACTIONS_PRIORITY)
+        old_priorities_lst = self._items_and_summoner_spells_priorities_lst() + list(self.DEFAULT_ACTIONS_PRIORITY)
+
         new_priorities_lst = old_priorities_lst[:]
 
         for cond_name in self.ACTION_PRIORITIES_CONDITIONALS:
@@ -1774,7 +1802,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.add_regenerations()
 
         # Adds passive buffs from abilities.
-        self.add_passive_buffs(abilities_effects_dct_func=self.abilities_effects, abilities_lvls=self.ability_lvls_dct)
+        self.add_abilities_passive_buffs(abilities_effects_dct_func=self.abilities_effects,
+                                         abilities_lvls=self.ability_lvls_dct)
 
         # (Bonuses have to be applied here instead of in their normal methods for noting reasons)
         self.buffs_to_all_stats_bonuses()
@@ -1823,6 +1852,7 @@ class Presets(Actions):
                  max_combat_time,
                  selected_masteries_dct,
                  chosen_items_lst,
+                 selected_summoner_spells,
                  initial_active_buffs,
                  initial_current_stats,
                  selected_runes):
@@ -1836,6 +1866,7 @@ class Presets(Actions):
                          max_combat_time=max_combat_time,
                          selected_masteries_dct=selected_masteries_dct,
                          chosen_items_lst=chosen_items_lst,
+                         selected_summoner_spells=selected_summoner_spells,
                          initial_active_buffs=initial_active_buffs,
                          initial_current_stats=initial_current_stats,
                          selected_runes=selected_runes)
@@ -1871,6 +1902,7 @@ class VisualRepresentation(Presets):
                  max_combat_time,
                  selected_masteries_dct,
                  chosen_items_lst,
+                 selected_summoner_spells,
                  initial_active_buffs,
                  initial_current_stats,
                  selected_runes):
@@ -1883,6 +1915,7 @@ class VisualRepresentation(Presets):
                          ability_lvls_dct=ability_lvls_dct,
                          max_combat_time=max_combat_time,
                          chosen_items_lst=chosen_items_lst,
+                         selected_summoner_spells=selected_summoner_spells,
                          initial_active_buffs=initial_active_buffs,
                          initial_current_stats=initial_current_stats,
                          selected_runes=selected_runes,

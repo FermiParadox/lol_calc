@@ -4469,7 +4469,10 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         return dct
 
     def item_buff_attributes(self):
-        return self.item_or_buff_attributes()
+        dct = {k: v for k, v in self.item_or_buff_attributes().items() if k != 'buff_source'}
+        dct.update({'buff_source': self.item_name})
+
+        return dct
 
     # ------------------------------------------------------------
     def pprint_item_description(self):
@@ -5788,5 +5791,5 @@ if __name__ == '__main__':
         RotationPriorityConditional('jax').run_conditions_creation()
 
     # SKILL LVL UP PRIORITIES.
-    if 1:
+    if 0:
         ChampionModuleCreator('jax').run_single_element_creation(SPELL_LVL_UP_PRIORITIES_NAME)

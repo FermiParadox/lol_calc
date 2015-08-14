@@ -25,6 +25,8 @@ ALL_DATA = dict(
     rotation_lst=None,
     items_lst=['hextech_gunblade', 'hextech_gunblade'],
 
+    selected_summoner_spells=[],
+
     selected_runes=dict(
         red=dict(
             ad_per_lvl=dict(
