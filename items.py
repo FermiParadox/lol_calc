@@ -29,13 +29,10 @@ class ItemsProperties(object):
     def __init__(self, chosen_items_lst):
         self.chosen_items_lst = chosen_items_lst
 
-        self.non_unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
-        self.used_items_unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
-
         self.items_effects_dct = {}
         self.items_conditions_dct = {}
 
-        self.items_static_stats_buff_dct = {}
+        self._items_static_stats_buff_dct = {}
 
         self._create_items_properties_dcts()
 
@@ -122,7 +119,8 @@ class ItemsProperties(object):
                 for key_3 in new_merged_dct[key_1][key_2]:
                     existing_dct[key_1][key_2][key_3] += new_merged_dct[key_1][key_2][key_3]
 
-    def total_items_stats(self):
+    @staticmethod
+    def _total_items_stats(non_unique_stats_dct, used_items_unique_stats_dct):
         """
         Creates a dict with all unique and non-unique stats from chosen items.
 
@@ -133,7 +131,7 @@ class ItemsProperties(object):
         additive_stats_dct = collections.Counter()
         percent_stats_dct = collections.Counter()
 
-        for dct in (self.non_unique_stats_dct, self.used_items_unique_stats_dct):
+        for dct in (non_unique_stats_dct, used_items_unique_stats_dct):
 
             additive_stats_dct += dct['additive']
             percent_stats_dct += dct['percent']
@@ -162,16 +160,17 @@ class ItemsProperties(object):
 
         return final_dct
 
-    def _set_chosen_items_static_stats_buff(self):
+    def _set_chosen_items_static_stats_buff(self, non_unique_stats_dct, used_items_unique_stats_dct):
         """
         Creates a buff containing all passive stats of chosen items.
 
         :return: (None)
         """
-        returned_dct = {'stats': self.total_items_stats()}
+        returned_dct = {'stats': self._total_items_stats(non_unique_stats_dct=non_unique_stats_dct,
+                                                         used_items_unique_stats_dct=used_items_unique_stats_dct)}
         returned_dct.update(self._CHOSEN_ITEMS_BUFF_BASE)
 
-        self.items_static_stats_buff_dct = returned_dct
+        self._items_static_stats_buff_dct = returned_dct
 
     def _create_items_properties_dcts(self):
         """
@@ -179,6 +178,9 @@ class ItemsProperties(object):
 
         :return: (None)
         """
+
+        non_unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
+        used_items_unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
 
         # Counter of an item's occurrence, e.g. {'item_1': 2, ..}.
         items_counter = collections.Counter(self.chosen_items_lst)
@@ -198,7 +200,7 @@ class ItemsProperties(object):
                 for stat_name in item_non_unique_stats[stat_type]:
                     # (multiplies stat by item's count before adding it to existing stats)
                     stat_val = item_non_unique_stats[stat_type][stat_name] * item_count
-                    self.non_unique_stats_dct[stat_type] += collections.Counter({stat_name: stat_val})
+                    non_unique_stats_dct[stat_type] += collections.Counter({stat_name: stat_val})
 
             # UNIQUE STATS
             # If item A (leaf) builds from item B, then unique stats from B that are included in A are ignored.
@@ -212,11 +214,12 @@ class ItemsProperties(object):
                     # If stat is not inside leafs' stats.
                     if stat_name not in leafs_stats[stat_type]:
                         # (creates stat name first, if it doesn't exist)
-                        self.used_items_unique_stats_dct[stat_type].setdefault(stat_name, 0)
-                        self.used_items_unique_stats_dct[stat_type][stat_name] += item_unique_stats_type_dct[stat_name]
+                        used_items_unique_stats_dct[stat_type].setdefault(stat_name, 0)
+                        used_items_unique_stats_dct[stat_type][stat_name] += item_unique_stats_type_dct[stat_name]
 
             # ITEMS BUFF
-            self._set_chosen_items_static_stats_buff()
+            self._set_chosen_items_static_stats_buff(non_unique_stats_dct=non_unique_stats_dct,
+                                                     used_items_unique_stats_dct=used_items_unique_stats_dct)
 
             # EFFECTS AND CONDITIONS
             # Root effects (and conditions) are set to an empty dict, since leaf is (assumed to) override them.
@@ -243,7 +246,7 @@ class ItemsProperties(object):
 
     def items_static_stats_buff(self):
         # Used for calling from apply_buff method.
-        return self.items_static_stats_buff_dct
+        return self._items_static_stats_buff_dct
 
 
 if __name__ == '__main__':

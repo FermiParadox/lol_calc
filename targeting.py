@@ -58,17 +58,31 @@ class Targeting(object):
 
     def target_type(self, tar_name=None):
         """
-        Returns 'enemy' or 'player' based on the current_target.
+        Returns 'enemy' or 'player' based on the self.current_target.
 
-        Optional argument:
-            If given, it checks its type.
+        :param tar_name: If given, it checks its type instead of self.current_target.
+        :return: (str)
         """
+
         if tar_name:
             tar = tar_name
         else:
             tar = self.current_target
 
         if tar != 'player':
+            return 'enemy'
+        else:
+            return 'player'
+
+    def reverse_target_type(self, tar_name=None):
+        """
+        Returns the opposite of given target type.
+
+        :param tar_name:
+        :return: (str)
+        """
+
+        if self.target_type(tar_name=tar_name) == 'player':
             return 'enemy'
         else:
             return 'player'

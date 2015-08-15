@@ -1802,8 +1802,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.add_regenerations()
 
         # Adds passive buffs from abilities.
-        self.add_abilities_passive_buffs(abilities_effects_dct_func=self.abilities_effects,
-                                         abilities_lvls=self.ability_lvls_dct)
+        self.add_abilities_and_items_passive_buffs(abilities_effects_dct_func=self.abilities_effects,
+                                                   abilities_lvls=self.ability_lvls_dct)
 
         # (Bonuses have to be applied here instead of in their normal methods for noting reasons)
         self.buffs_to_all_stats_bonuses()

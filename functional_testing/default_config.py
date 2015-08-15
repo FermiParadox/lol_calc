@@ -16,7 +16,7 @@ ALL_DATA = dict(
         enemy_3=16
     ),
 
-    ability_lvls_dct=dict(),
+    ability_lvls_dct={},
 
     max_targets_dct={},
 

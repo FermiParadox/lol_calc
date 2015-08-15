@@ -121,10 +121,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
         """
         Inserts a new buff or refreshes an existing buff (duration and stacks).
 
-        Modifies:
-            active_buffs
-        Returns:
-            (None)
+        :return: (None)
         """
 
         # NEW BUFF
@@ -144,24 +141,33 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
         """
         Adds passive buffs of a single ability on a target.
 
-        Modifies:
-            active_buffs
-        Returns:
-            (None)
+        :return: (None)
         """
 
         # Applies all passive buffs.
         for buff_name in effects_dct[target_type]['passives']['buffs']:
             self.add_buff(buff_name, tar_name)
 
-    def add_abilities_passive_buffs(self, abilities_effects_dct_func, abilities_lvls):
+    def add_items_passive_buffs(self, target_type, tar_name):
+        """
+        Adds all items' passive buffs on given target.
+
+        (Enemy items don't apply any buffs here. They are to be applied in a separate method.)
+
+        :return: (None)
+        """
+        if self.chosen_items_lst:
+            for item_name in self.chosen_items_lst:
+                # (If item is bought multiple times, all stacks are applied)
+                self.add_single_ability_passive_buff(target_type=target_type,
+                                                     effects_dct=self.items_effects_dct[item_name],
+                                                     tar_name=tar_name)
+
+    def add_abilities_and_items_passive_buffs(self, abilities_effects_dct_func, abilities_lvls):
         """
         Adds passive buffs from champion abilities (that apply on ability lvling) on all targets.
 
-        Modifies:
-            active_buffs
-        Returns:
-            (None)
+        :returns: (None)
         """
 
         for tar_name in self.champion_lvls_dct:
@@ -185,12 +191,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
                                                  tar_name=tar_name)
 
             # Item passive buffs.
-            if self.chosen_items_lst:
-                for item_name in self.chosen_items_lst:
-                    # (If item is bought multiple times, all stacks are applied)
-                    self.add_single_ability_passive_buff(target_type=target_type,
-                                                         effects_dct=self.items_effects_dct[item_name],
-                                                         tar_name=tar_name)
+            self.add_items_passive_buffs(target_type=target_type, tar_name=tar_name)
 
 
 class Counters(BuffsGeneral):
