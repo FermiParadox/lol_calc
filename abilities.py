@@ -33,6 +33,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                  selected_champions_dct,
                  max_targets_dct,
                  max_combat_time,
+                 initial_enemies_total_stats,
                  initial_active_buffs,
                  initial_current_stats,
                  req_buff_dct_func,
@@ -58,7 +59,8 @@ class EventsGeneral(buffs.DeathAndRegen):
                                      req_dmg_dct_func=req_dmg_dct_func,
                                      ability_lvls_dct=ability_lvls_dct,
                                      req_buff_dct_func=req_buff_dct_func,
-                                     selected_masteries_dct=selected_masteries_dct)
+                                     selected_masteries_dct=selected_masteries_dct,
+                                     initial_enemies_total_stats=initial_enemies_total_stats)
 
         self.resource_used = app_champions_base_stats.CHAMPION_BASE_STATS[selected_champions_dct['player']][
             'resource_used']
@@ -288,6 +290,7 @@ class AttributeBase(EventsGeneral):
                  action_on_cd_func,
                  max_targets_dct,
                  max_combat_time,
+                 initial_enemies_total_stats,
                  initial_active_buffs,
                  initial_current_stats,
                  chosen_items_lst,
@@ -311,7 +314,8 @@ class AttributeBase(EventsGeneral):
                                ability_lvls_dct=ability_lvls_dct,
                                req_dmg_dct_func=self.request_dmg,
                                req_buff_dct_func=self.request_buff,
-                               selected_masteries_dct=selected_masteries_dct)
+                               selected_masteries_dct=selected_masteries_dct,
+                               initial_enemies_total_stats=initial_enemies_total_stats)
 
     def _x_value(self, x_name, x_type, x_owner):
         """
@@ -787,6 +791,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                  selected_masteries_dct,
                  chosen_items_lst,
                  selected_summoner_spells,
+                 initial_enemies_total_stats,
                  initial_active_buffs,
                  initial_current_stats,
                  selected_runes):
@@ -810,7 +815,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                initial_active_buffs=initial_active_buffs,
                                initial_current_stats=initial_current_stats,
                                chosen_items_lst=chosen_items_lst,
-                               selected_masteries_dct=selected_masteries_dct)
+                               selected_masteries_dct=selected_masteries_dct,
+                               initial_enemies_total_stats=initial_enemies_total_stats)
 
         timers.Timers.__init__(self,
                                ability_lvls_dct=ability_lvls_dct,
@@ -1826,6 +1832,21 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # (Bonuses have to be applied here instead of in their normal methods for noting reasons)
         self.buffs_to_all_stats_bonuses()
 
+    def reversed_precombat_player_stats_and_enemy_buffs(self):
+        """
+        Used when combat's sole purpose is determining reverted enemy's "base" stats and reverted player's buffs.
+
+        :return: (dict) Base stats of player and enemy's active buffs.
+        """
+
+        self.run_combat_preparation_without_regen()
+
+        stats_dct = {i: self.request_stat(target_name='player', stat_name=i) for i in self.ENEMY_BASE_STATS_NAMES}
+
+        active_buffs = self.active_buffs['enemy_1']
+
+        return {'stats': stats_dct, 'buffs': active_buffs}
+
     def run_combat_preparation(self):
         self.run_combat_preparation_without_regen()
 
@@ -1849,6 +1870,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         Returns:
             (None)
         """
+
+        self.set_current_stats()
 
         self.run_combat_preparation_and_note()
 
@@ -1885,6 +1908,7 @@ class Presets(Actions):
                  selected_masteries_dct,
                  chosen_items_lst,
                  selected_summoner_spells,
+                 initial_enemies_total_stats,
                  initial_active_buffs,
                  initial_current_stats,
                  selected_runes):
@@ -1901,7 +1925,8 @@ class Presets(Actions):
                          selected_summoner_spells=selected_summoner_spells,
                          initial_active_buffs=initial_active_buffs,
                          initial_current_stats=initial_current_stats,
-                         selected_runes=selected_runes)
+                         selected_runes=selected_runes,
+                         initial_enemies_total_stats=initial_enemies_total_stats)
 
         self._setup_ability_lvls()
 
@@ -1919,7 +1944,6 @@ class Presets(Actions):
             self.ability_lvls_dct = ability_points_on_all_lvls[self.champion_lvls_dct['player']]
 
 
-
 class VisualRepresentation(Presets):
 
     PLAYER_STATS_DISPLAYED = ('ap', 'ad', 'armor', 'mr', 'hp', 'mp', 'att_speed', 'cdr')
@@ -1935,6 +1959,7 @@ class VisualRepresentation(Presets):
                  selected_masteries_dct,
                  chosen_items_lst,
                  selected_summoner_spells,
+                 initial_enemies_total_stats,
                  initial_active_buffs,
                  initial_current_stats,
                  selected_runes):
@@ -1951,7 +1976,8 @@ class VisualRepresentation(Presets):
                          initial_active_buffs=initial_active_buffs,
                          initial_current_stats=initial_current_stats,
                          selected_runes=selected_runes,
-                         selected_masteries_dct=selected_masteries_dct)
+                         selected_masteries_dct=selected_masteries_dct,
+                         initial_enemies_total_stats=initial_enemies_total_stats)
 
     @staticmethod
     def __set_table_font_size(table_obj, font_size=8):

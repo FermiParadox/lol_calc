@@ -103,6 +103,13 @@ ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_
 
 ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE = {i for i in ALL_POSSIBLE_STAT_NAMES if not i.startswith('current_')}
 
+# Enemy base stats' names.
+_ENEMY_BASE_STATS_NAMES = {'hp', 'ap', 'armor', 'mr'}
+# (ensure they are allowed)
+if _ENEMY_BASE_STATS_NAMES - ALL_POSSIBLE_STAT_NAMES:
+    raise palette.UnexpectedValueError
+_ENEMY_BASE_STATS_NAMES |= DEFENSIVE_NORMAL_STATS
+
 
 class NonExistingNormalStatError(Exception):
     """
@@ -213,15 +220,14 @@ class StatCalculation(StatFilters):
     RUNE_STAT_NAMES = RUNE_STAT_NAMES
     ALL_STANDARD_STAT_NAMES = ALL_STANDARD_STAT_NAMES
     RESOURCE_TO_CURRENT_RESOURCE_MAP = RESOURCE_TO_CURRENT_RESOURCE_MAP
-
-    # Modifier
-    _MINIMUM_MOVEMENT_REDUCTION_MODIFIER = 0.35
+    ENEMY_BASE_STATS_NAMES = _ENEMY_BASE_STATS_NAMES
 
     def __init__(self,
                  champion_lvls_dct,
                  selected_champions_dct,
                  initial_active_buffs,
-                 initial_current_stats):
+                 initial_current_stats,
+                 initial_enemies_total_stats,):
 
         self.champion_lvls_dct = champion_lvls_dct
         self.player_lvl = self.champion_lvls_dct['player']
@@ -241,13 +247,17 @@ class StatCalculation(StatFilters):
 
         self.active_buffs = {}
 
+        self.initial_enemies_total_stats = initial_enemies_total_stats
+        # Contains player's base stats ..
+        # (e.g. ad at lvl1 without per lvl bonus, ad_per_lvl, etc.)
+        # .. and enemies TOTAL stats.
+        # (that is, after applying enemy items, enemy masteries, runes, abilities etc).
         self.base_stats_dct = {}
         self.set_base_stats_dct()
 
         self.current_stats = {}
 
-        self.place_tar_and_empty_dct_in_dct(self.bonuses_dct)
-
+        self.place_tars_and_empty_dct_in_dct(self.bonuses_dct)
         self.set_active_buffs()
         self.set_player_current_resource_name()
 
@@ -261,25 +271,7 @@ class StatCalculation(StatFilters):
 
         self.player_current_resource_name = 'current_' + self.RESOURCE_USED
 
-    def set_base_stats_dct(self):
-        """
-        Creates base stats dict. (e.g. ad at lvl1 without per lvl bonus, ad_per_lvl, etc.)
-
-        Returns:
-            (None)
-        """
-
-        dct = {}
-
-        # For each selected champion..
-        for tar_name in self.all_target_names:
-            # .. updates base_stats_dct with his base stats.
-            dct.update(
-                {tar_name: app_champions_base_stats.CHAMPION_BASE_STATS[self.selected_champions_dct[tar_name]]})
-
-        self.base_stats_dct = dct
-
-    def place_tar_and_empty_dct_in_dct(self, dct, ensure_empty_dct=True):
+    def place_tars_and_empty_dct_in_dct(self, dct, ensure_empty_dct=True):
         """
         Inserts into a dct target names as keywords, and empty dict as value for each targets.
         To be used for empty dicts only.
@@ -294,7 +286,24 @@ class StatCalculation(StatFilters):
             raise ValueError('Dict is not empty.')
 
         for tar in self.all_target_names:
-            dct.update({tar: {}})
+            if tar not in dct:
+                dct.update({tar: {}})
+
+    def set_base_stats_dct(self):
+        """
+        Creates base stats dict.
+
+        Returns:
+            (None)
+        """
+
+        player_base_stats = app_champions_base_stats.CHAMPION_BASE_STATS[self.selected_champions_dct['player']]
+        self.base_stats_dct.update({'player': player_base_stats})
+
+        if self.initial_enemies_total_stats:
+            self.base_stats_dct.update(self.initial_enemies_total_stats)
+        else:
+            self.place_tars_and_empty_dct_in_dct(dct=self.base_stats_dct,ensure_empty_dct=False)
 
     def set_active_buffs(self):
         """
@@ -438,29 +447,12 @@ class StatCalculation(StatFilters):
         :return: (float)
         """
 
-        value = 1
-
         tar_bonuses = self.bonuses_dct[tar_name]
 
-        if 'move_speed_reduction' in tar_bonuses:
-            # If move speed reductions exist.
-            max_to_min_values = sorted(tar_bonuses['move_speed_reduction']['percent'].values(), reverse=True)
-
-            # First move reduction is applied normally.
-            # Following have a
-            apply_mod = False
-            for val in max_to_min_values:
-                if apply_mod:
-                    value *= 1-val
-                    apply_mod = True
-                else:
-                    value *= (1-val) * self._MINIMUM_MOVEMENT_REDUCTION_MODIFIER
-
-            # Reverts value and returns it.
-            return 1 - value
-
-        # If they don't exist.
-        else:
+        try:
+            return min(tar_bonuses['move_speed_reduction']['multiplicative'])
+        # If no reductions are found.
+        except KeyError:
             return 0
 
     def att_speed(self, tar_name):
@@ -586,7 +578,8 @@ class StatRequest(StatCalculation):
                  selected_champions_dct,
                  req_buff_dct_func,
                  initial_active_buffs,
-                 initial_current_stats):
+                 initial_current_stats,
+                 initial_enemies_total_stats):
 
         self.req_buff_dct_func = req_buff_dct_func
 
@@ -594,7 +587,8 @@ class StatRequest(StatCalculation):
                                  champion_lvls_dct=champion_lvls_dct,
                                  selected_champions_dct=selected_champions_dct,
                                  initial_active_buffs=initial_active_buffs,
-                                 initial_current_stats=initial_current_stats)
+                                 initial_current_stats=initial_current_stats,
+                                 initial_enemies_total_stats=initial_enemies_total_stats)
 
     SPECIAL_STATS_SET = SPECIAL_STATS_SET
 
@@ -715,7 +709,7 @@ class StatRequest(StatCalculation):
                                                           buff_name=buff_name, buff_stats_dct=buff_stats_dct)
 
     def buffs_to_all_stats_bonuses(self):
-        self.place_tar_and_empty_dct_in_dct(self.bonuses_dct, ensure_empty_dct=False)
+        self.place_tars_and_empty_dct_in_dct(self.bonuses_dct, ensure_empty_dct=False)
 
         for tar_name in self.all_target_names:
             self.buffs_to_single_stat_bonuses(tar_name=tar_name)
@@ -725,10 +719,7 @@ class StatRequest(StatCalculation):
         Inserts current_hp in current_stats of each target and current resource (e.g. mp, rage, etc) for player.
         If the current_stats dict is empty, or if the value doesnt exist it creates the value.
 
-        Modifies:
-            current_stats
-        Returns:
-            (None)
+        :return: (None)
         """
 
         # Checks if there are any preset values for current_stats.

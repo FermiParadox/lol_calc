@@ -19,7 +19,8 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
                  selected_masteries_dct,
                  initial_current_stats,
                  initial_active_buffs,
-                 chosen_items_lst):
+                 chosen_items_lst,
+                 initial_enemies_total_stats):
 
         self.current_time = 0
 
@@ -28,7 +29,8 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
                                          selected_champions_dct=selected_champions_dct,
                                          req_buff_dct_func=req_buff_dct_func,
                                          initial_active_buffs=initial_active_buffs,
-                                         initial_current_stats=initial_current_stats)
+                                         initial_current_stats=initial_current_stats,
+                                         initial_enemies_total_stats=initial_enemies_total_stats)
 
         items.ItemsProperties.__init__(self,
                                        chosen_items_lst=chosen_items_lst)
@@ -36,8 +38,6 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
         masteries.MasteriesProperties.__init__(self,
                                                selected_masteries_dct=selected_masteries_dct,
                                                player_lvl=self.player_lvl)
-
-        self.set_current_stats()
 
     @abc.abstractproperty
     def castable_spells_shortcuts(self):
@@ -205,6 +205,7 @@ class Counters(BuffsGeneral):
                  champion_lvls_dct,
                  req_buff_dct_func,
                  selected_masteries_dct,
+                 initial_enemies_total_stats,
                  initial_current_stats,
                  initial_active_buffs,
                  chosen_items_lst,
@@ -217,7 +218,8 @@ class Counters(BuffsGeneral):
                               initial_active_buffs=initial_active_buffs,
                               chosen_items_lst=chosen_items_lst,
                               req_buff_dct_func=req_buff_dct_func,
-                              selected_masteries_dct=selected_masteries_dct)
+                              selected_masteries_dct=selected_masteries_dct,
+                              initial_enemies_total_stats=initial_enemies_total_stats)
 
         self.max_combat_time = max_combat_time
         self.total_movement = 0
@@ -523,7 +525,7 @@ class Counters(BuffsGeneral):
             (None)
         """
 
-        self.place_tar_and_empty_dct_in_dct(self.combat_results)
+        self.place_tars_and_empty_dct_in_dct(self.combat_results)
         self.combat_results['player'].update({'source': {}, 'total_physical': 0, 'total_magic': 0, 'total_true': 0})
 
     def note_dmg_totals_in_results(self):
@@ -719,6 +721,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                  selected_champions_dct,
                  champion_lvls_dct,
                  max_combat_time,
+                 initial_enemies_total_stats,
                  initial_current_stats,
                  initial_active_buffs,
                  chosen_items_lst,
@@ -736,7 +739,8 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                           initial_active_buffs=initial_active_buffs,
                           chosen_items_lst=chosen_items_lst,
                           req_buff_dct_func=req_buff_dct_func,
-                          selected_masteries_dct=selected_masteries_dct)
+                          selected_masteries_dct=selected_masteries_dct,
+                          initial_enemies_total_stats=initial_enemies_total_stats)
 
         dmgs_buffs_categories.DmgCategories.__init__(self,
                                                      req_stats_func=self.request_stat,

@@ -22,7 +22,7 @@ ALL_DATA = dict(
 
     max_combat_time=10,
 
-    rotation_lst=['r', 'r', 'q'],
+    rotation_lst=None,
     items_lst=['hextech_gunblade', 'hextech_gunblade'],
 
     selected_summoner_spells=[],
