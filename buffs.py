@@ -571,6 +571,21 @@ class Counters(BuffsGeneral):
             # Stores regen_type.
             self.combat_results['player'][regen_type] = tot_regen_val
 
+    def _last_action_end(self):
+
+        if not self.actions_dct:
+            return 0
+        else:
+            last_action_time = max(self.actions_dct)
+            last_action_dct = self.actions_dct[last_action_time]
+            if 'channel_end' in last_action_dct:
+                last_action_end = self.actions_dct[last_action_time]['channel_end']
+
+            else:
+                last_action_end = self.actions_dct[last_action_time]['cast_end']
+
+            return last_action_end
+
     def dps_result(self):
         """
         Calculates player's dps value if combat time is higher than threshold.
@@ -581,15 +596,7 @@ class Counters(BuffsGeneral):
         """
         # TODO change method name after other method is removed.
 
-        # COMBAT DURATION
-        last_action_time = max(self.actions_dct)
-        last_action_dct = self.actions_dct[last_action_time]
-        if 'channel_end' in last_action_dct:
-            last_action_end = self.actions_dct[last_action_time]['channel_end']
-
-        else:
-            last_action_end = self.actions_dct[last_action_time]['cast_end']
-
+        last_action_end = self._last_action_end()
         # DPS
         # (if time is too short for dps to be meaningful, returns message)
         if last_action_end >= self.LOWEST_MEANINGFUL_COMBAT_TIME:

@@ -794,7 +794,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.rotation_lst = rotation_lst
         self.selected_summoner_spells = selected_summoner_spells
         self.everyone_dead = None
-        self.__all_available_actions_after_single_action_applied = False
+        self.__all_dead_or_max_time_exceeded = False
 
         runes.RunesFinal.__init__(self,
                                   player_lvl=champion_lvls_dct['player'],
@@ -1126,6 +1126,12 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         # (cast_start is the moment the action is 'clicked')
         cast_start = self.action_cast_start(given_action_name=action_name)
+
+        # Skips action if exceeds max combat time.
+        if cast_start > self.max_combat_time:
+            return
+
+        self.apply_action_cost(action_name=action_name)
 
         # CHAMPION ABILITIES
         if action_name in palette.ALL_POSSIBLE_SPELL_SHORTCUTS:
@@ -1494,13 +1500,6 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # (used for champions that action application is affected by existing buffs)
         self.remove_expired_buffs_and_refresh_bonuses()
 
-        # Checks if action meets the cost requirements.
-        if not self.cost_sufficiency(action_name=new_action):
-            # If the cost is too high, action is skipped.
-            return
-
-        self.apply_action_cost(action_name=new_action)
-
         self.add_new_action(new_action)
 
         # (movement distance)
@@ -1510,16 +1509,17 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         # If everyone died, stops applying actions as well.
         if self.everyone_dead:
-            self.__all_available_actions_after_single_action_applied = True
+            self.__all_dead_or_max_time_exceeded = True
             return
 
         # Sets current_time to current action's cast end.
-        self.current_time = self.actions_dct[max(self.actions_dct)]['cast_end']
+        last_action_end = self._last_action_end()
+        self.current_time = last_action_end
 
         # If max time exceeded, exits loop.
         if self.max_combat_time:
             if self.current_time > self.max_combat_time:
-                self.__all_available_actions_after_single_action_applied = True
+                self.__all_dead_or_max_time_exceeded = True
                 return
 
         # After previous events are applied, applies action effects.
@@ -1531,11 +1531,18 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         :return: (None)
         """
+
         for new_action in self.rotation_lst:
+
+            # COST REQUIREMENTS
+            # (more costly to run this before cd check)
+            if not self.cost_sufficiency(action_name=new_action):
+                # If the cost is too high, action is skipped.
+                continue
 
             self.apply_single_action(new_action=new_action)
 
-            if self.__all_available_actions_after_single_action_applied:
+            if self.__all_dead_or_max_time_exceeded:
                 return
 
     def _actions_priorities_triggers_state(self, triggers_dct):
@@ -1708,7 +1715,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 # If its not on cd and it's cost is met.
                 self.apply_single_action(new_action=action_name)
 
-                if self.__all_available_actions_after_single_action_applied:
+                if self.__all_dead_or_max_time_exceeded:
                     return
 
             # If no action was available, adds a set amount of time before retrying.
@@ -1731,7 +1738,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         else:
             self._apply_all_actions_by_priority()
 
-        self.combat_end_time = self.current_time
+        self.combat_end_time = self._last_action_end()
 
     def apply_events_after_actions(self, fully_apply_dots=False):
         """
