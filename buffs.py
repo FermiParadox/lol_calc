@@ -160,7 +160,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
             for item_name in self.chosen_items_lst:
                 # (If item is bought multiple times, all stacks are applied)
                 self.add_single_ability_passive_buff(target_type=target_type,
-                                                     effects_dct=self.items_effects_dct[item_name],
+                                                     effects_dct=self.ITEMS_EFFECTS[item_name],
                                                      tar_name=tar_name)
 
     def add_abilities_and_items_passive_buffs(self, abilities_effects_dct_func, abilities_lvls):
@@ -190,8 +190,8 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
                                                  effects_dct=abilities_effects_dct_func('inn'),
                                                  tar_name=tar_name)
 
-            # Item passive buffs.
-            self.add_items_passive_buffs(target_type=target_type, tar_name=tar_name)
+        # Item passive buffs.
+        self.add_items_passive_buffs(target_type='player', tar_name='player')
 
 
 class Counters(BuffsGeneral):

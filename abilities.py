@@ -1783,23 +1783,34 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         for tar_name in self.enemy_target_names:
             self.apply_death(tar_name=tar_name)
 
-    def run_combat_preparation(self):
-        self.current_time = 0
-
-        # Adds runes buff.
+    def _apply_runes_static_buff(self):
         if self.selected_runes:
             self.add_buff(buff_name='runes_buff', tar_name='player')
 
-        # Adds items stats buff.
-        if self.chosen_items_lst:
-            self.add_buff(buff_name='items_static_stats_buff', tar_name='player')
-
-        # Masteries stats buff
+    def _apply_masteries_static_buff(self):
         if self.selected_masteries_dct:
             self.add_buff(buff_name='masteries_static_stats_buff', tar_name='player')
 
-        # Adds hp5 and mp5.
-        self.add_regenerations()
+    def _apply_items_static_buff(self):
+        if self.chosen_items_lst:
+            self.add_buff(buff_name='items_static_stats_buff', tar_name='player')
+
+    def run_combat_preparation_without_regen(self):
+        """
+        Applies everything excluding hp5 and mp5 regen needed before a combat begins.
+
+        NOTE: Created to be used when reversing enemies
+            to evaluate their stats and buffs (regen excluded to speed it up).
+
+        :return: (None)
+        """
+        self.current_time = 0
+
+        self._apply_runes_static_buff()
+
+        self._apply_items_static_buff()
+
+        self._apply_masteries_static_buff()
 
         # Adds passive buffs from abilities.
         self.add_abilities_and_items_passive_buffs(abilities_effects_dct_func=self.abilities_effects,
@@ -1808,7 +1819,21 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # (Bonuses have to be applied here instead of in their normal methods for noting reasons)
         self.buffs_to_all_stats_bonuses()
 
-        # Precombat
+    def run_combat_preparation(self):
+        self.run_combat_preparation_without_regen()
+
+        # Adds hp5 and mp5.
+        self.add_regenerations()
+
+    def run_combat_preparation_and_note(self):
+        """
+        Prepares everything for combat and notes stats and buffs.
+
+        :return: (None)
+        """
+
+        self.run_combat_preparation()
+
         self.note_pre_combat_stats_in_results()
         self.note_precombat_active_buffs()
 
@@ -1818,7 +1843,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        self.run_combat_preparation()
+        self.run_combat_preparation_and_note()
 
         # Applies actions or events based on which occurs first.
         self._apply_all_actions()

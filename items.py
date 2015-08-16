@@ -4,16 +4,16 @@ import palette
 import collections
 
 
-CHOSEN_ITEMS_BUFF_BASE = palette.buff_dct_base_deepcopy()
-CHOSEN_ITEMS_BUFF_BASE['target_type'] = 'player'
-CHOSEN_ITEMS_BUFF_BASE['duration'] = 'permanent'
-CHOSEN_ITEMS_BUFF_BASE['max_stacks'] = 1
-CHOSEN_ITEMS_BUFF_BASE['on_hit'] = None
-CHOSEN_ITEMS_BUFF_BASE['prohibit_cd_start'] = None
-CHOSEN_ITEMS_BUFF_BASE['buff_source'] = 'items'
-CHOSEN_ITEMS_BUFF_BASE['dot'] = None
+CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE = palette.buff_dct_base_deepcopy()
+CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['target_type'] = 'player'
+CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['duration'] = 'permanent'
+CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['max_stacks'] = 1
+CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['on_hit'] = None
+CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['prohibit_cd_start'] = None
+CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['buff_source'] = 'items'
+CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['dot'] = None
 # (deleted so that a dict can be created later on that will have this dict updated in it as a reference)
-del CHOSEN_ITEMS_BUFF_BASE['stats']
+del CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['stats']
 
 
 class ItemsProperties(object):
@@ -24,13 +24,10 @@ class ItemsProperties(object):
     ITEMS_EFFECTS = items_data_module.ITEMS_EFFECTS
     ITEMS_CONDITIONALS = items_data_module.ITEMS_CONDITIONALS
 
-    _CHOSEN_ITEMS_BUFF_BASE = CHOSEN_ITEMS_BUFF_BASE
+    _CHOSEN_ITEMS_BUFF_BASE = CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE
 
     def __init__(self, chosen_items_lst):
         self.chosen_items_lst = chosen_items_lst
-
-        self.items_effects_dct = {}
-        self.items_conditions_dct = {}
 
         self._items_static_stats_buff_dct = {}
 
@@ -191,8 +188,6 @@ class ItemsProperties(object):
             item_count = items_counter[item_name]
 
             item_attrs = self.ITEMS_ATTRIBUTES[item_name]
-            item_effects = self.ITEMS_EFFECTS[item_name]
-            item_conditions = self.ITEMS_CONDITIONALS[item_name]
 
             # NON UNIQUE STATS
             item_non_unique_stats = item_attrs['non_unique_stats']
@@ -221,15 +216,6 @@ class ItemsProperties(object):
             self._set_chosen_items_static_stats_buff(non_unique_stats_dct=non_unique_stats_dct,
                                                      used_items_unique_stats_dct=used_items_unique_stats_dct)
 
-            # EFFECTS AND CONDITIONS
-            # Root effects (and conditions) are set to an empty dict, since leaf is (assumed to) override them.
-            if item_name in self.non_roots_in_build():
-                self.items_effects_dct.update({item_name: item_effects})
-                self.items_conditions_dct.update({item_name: item_conditions})
-            else:
-                self.items_effects_dct.update({item_name: {}})
-                self.items_conditions_dct.update({item_name: {}})
-
     def build_price(self):
         """
         Calculates cost of all items in given item build.
@@ -251,8 +237,6 @@ class ItemsProperties(object):
 
 if __name__ == '__main__':
 
-    from pprint import pprint as pp
-
     if 0:
         g = ItemsProperties(['hextech_gunblade', 'dorans_blade']).build_price()
         print(g)
@@ -260,9 +244,3 @@ if __name__ == '__main__':
     if 0:
         g = ItemsProperties(['hextech_gunblade', 'dorans_blade']).unique_stats_in_leafs_of_item(item_name='dorans_blade')
         print(g)
-
-    if 0:
-        g = ItemsProperties(['hextech_gunblade', 'dorans_blade'])
-        pp(g.items_effects_dct)
-        print('-'*10)
-        pp(g.items_conditions_dct)

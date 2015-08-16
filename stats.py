@@ -301,10 +301,7 @@ class StatCalculation(StatFilters):
         Sets active_buffs to initial_active_buffs if any.
         Then inserts target in active buffs if not already there.
 
-        Modifies:
-            active_buffs
-        Returns:
-            (None)
+        :return: (None)
         """
 
         # Checks if there are initial_active_buffs.
@@ -398,11 +395,9 @@ class StatCalculation(StatFilters):
         If stat doesnt exist it returns 0 since some stats (e.g. lifesteal)
         might not always be present in base_stats_dct.
 
-        Args:
-            requested_stat: (str)
-            tar_name: (str)
-        Returns:
-            (float) unfiltered stat value after bonuses
+        :param requested_stat: (str)
+        :param tar_name: (str)
+        :return: (float) unfiltered stat value after bonuses
         """
 
         if requested_stat not in ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE:
@@ -427,8 +422,7 @@ class StatCalculation(StatFilters):
         Base ad is the champion's ad at lvl 1 without any bonuses,
         plus the per lvl bonus.
 
-        Returns:
-            (float)
+        :return: (float)
         """
 
         return self._base_stat(stat_name='ad', tar_name=tar_name)
@@ -482,8 +476,7 @@ class StatCalculation(StatFilters):
         Each reduction of att_speed is applied after all other bonuses have been applied,
         by multiplying the pre-final value with each reduction.
 
-        Returns:
-            (float)
+        :return: (float)
         """
 
         value = self.base_stats_dct[tar_name]['base_att_speed']
@@ -523,8 +516,7 @@ class StatCalculation(StatFilters):
         -Strongest speed reduction effected is fully applied.
         -The other speed reductions are applied at 35% of their max.
 
-        Returns:
-            (float)
+        :return: (float)
         """
 
         # BASE VALUE AND BONUSES
@@ -549,8 +541,7 @@ class StatCalculation(StatFilters):
         """
         Returns filtered value of crit_chance.
 
-        Returns:
-            (float)
+        :return: (float)
         """
 
         return self.filtered_crit_chance(self.standard_stat(requested_stat='crit_chance',
@@ -560,8 +551,7 @@ class StatCalculation(StatFilters):
         """
         Returns filtered value of cdr.
 
-        Returns:
-            (float)
+        :return: (float)
         """
 
         return self.filtered_cdr(self.standard_stat(requested_stat='cdr',
@@ -690,11 +680,8 @@ class StatRequest(StatCalculation):
         Structure:
             bonuses_dct: {target: {stat: {bonus type: {bonus name: }, }, }, }
             buff dct: { , , 'stats': {stat_name: {'additive': value}, }, .. }
-        Modifies:
-            bonuses_dct
 
-        Returns:
-            (None)
+        :return: (None)
         """
 
         for buff_name in self.active_buffs[tar_name]:
