@@ -1,12 +1,7 @@
 import masteries_dir.masteries_data as masteries_data
 import items
 
-import copy
 import collections
-
-
-CHOSEN_MASTERIES_BUFF_BASE = copy.deepcopy(items.CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE)
-CHOSEN_MASTERIES_BUFF_BASE['source'] = 'masteries'
 
 
 class InvalidMasteriesSetupError(Exception):
@@ -120,8 +115,6 @@ class MasteriesProperties(MasteriesValidation):
     Creates a single buff containing all static stats from masteries.
     """
 
-    _CHOSEN_MASTERIES_BUFF_BASE = CHOSEN_MASTERIES_BUFF_BASE
-
     def __init__(self, selected_masteries_dct, player_lvl):
         MasteriesValidation.__init__(self,
                                      selected_masteries_dct=selected_masteries_dct)
@@ -205,8 +198,10 @@ class MasteriesProperties(MasteriesValidation):
 
         :return: (None)
         """
-        returned_dct = {'stats': self._total_masteries_stats_dct()}
-        returned_dct.update(self._CHOSEN_MASTERIES_BUFF_BASE)
+        returned_dct = {'stats': self._total_masteries_stats_dct(),
+                        'target_type': 'player',
+                        'buff_source': 'masteries'}
+        returned_dct.update(items.CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE)
 
         self.__masteries_static_stats_buff_dct = returned_dct
 
