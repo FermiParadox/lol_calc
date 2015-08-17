@@ -288,10 +288,17 @@ class StatCalculation(StatFilters):
         for tar in self.all_target_names:
             dct.update({tar: {}})
 
-    def fill_up_tars_and_empty_dct_in_dct(self, dct):
+    def fill_up_tars_and_empty_obj_in_dct(self, given_dct, obj_type='dict'):
+        if obj_type == 'dict':
+            empty_obj = {}
+        elif obj_type == 'list':
+            empty_obj = []
+        else:
+            raise palette.UnexpectedValueError
+
         for tar in self.all_target_names:
-            if tar not in dct:
-                dct.update({tar: {}})
+            if tar not in given_dct:
+                given_dct.update({tar: empty_obj})
 
     def set_base_stats_dct(self):
         """
@@ -325,8 +332,6 @@ class StatCalculation(StatFilters):
         for tar in self.all_target_names:
             if tar not in self.active_buffs:
                 self.active_buffs.update({tar: {}})
-
-        return
 
     def _base_stat(self, stat_name, tar_name):
         """

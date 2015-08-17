@@ -1,5 +1,5 @@
 import masteries_dir.masteries_data as masteries_data
-import items
+import items_module
 
 import collections
 
@@ -201,10 +201,9 @@ class MasteriesProperties(MasteriesValidation):
         returned_dct = {'stats': self._total_masteries_stats_dct(),
                         'target_type': 'player',
                         'buff_source': 'masteries'}
-        returned_dct.update(items.CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE)
+        returned_dct.update(items_module.CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE)
 
         self.__masteries_static_stats_buff_dct = returned_dct
 
     def masteries_static_stats_buff(self):
         return self.__masteries_static_stats_buff_dct
-

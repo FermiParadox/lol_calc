@@ -33,6 +33,13 @@ class UserSession(object):
         enemy_lvl = input_dct['champion_lvls_dct'][enemy_name]
         new_input_dct.update({'champion_lvls_dct': {'player': enemy_lvl, 'enemy_1': 1}})
 
+        chosen_items_dct = input_dct['chosen_items_dct']
+        if enemy_name in chosen_items_dct:
+            enemy_items = chosen_items_dct[enemy_name]
+        else:
+            enemy_items = []
+        new_input_dct.update({'chosen_items_dct': {'player': enemy_items, }})
+
         for key in input_dct:
             if key not in new_input_dct:
                 value = input_dct[key]

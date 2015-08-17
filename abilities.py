@@ -10,7 +10,7 @@ import runes
 from champions import app_champions_base_stats
 import palette
 import skills_points
-import items_folder.items_data
+import items_folder.items_data as items_data
 
 
 # Sets font size on all plt graphs.
@@ -37,7 +37,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                  initial_active_buffs,
                  initial_current_stats,
                  req_buff_dct_func,
-                 chosen_items_lst,
+                 chosen_items_dct,
                  req_dmg_dct_func,
                  ability_lvls_dct,
                  selected_masteries_dct,):
@@ -55,7 +55,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                                      max_combat_time=max_combat_time,
                                      initial_current_stats=initial_current_stats,
                                      initial_active_buffs=initial_active_buffs,
-                                     chosen_items_lst=chosen_items_lst,
+                                     chosen_items_dct=chosen_items_dct,
                                      req_dmg_dct_func=req_dmg_dct_func,
                                      ability_lvls_dct=ability_lvls_dct,
                                      req_buff_dct_func=req_buff_dct_func,
@@ -293,7 +293,7 @@ class AttributeBase(EventsGeneral):
                  initial_enemies_total_stats,
                  initial_active_buffs,
                  initial_current_stats,
-                 chosen_items_lst,
+                 chosen_items_dct,
                  selected_masteries_dct
                  ):
 
@@ -310,7 +310,7 @@ class AttributeBase(EventsGeneral):
                                max_combat_time=max_combat_time,
                                initial_active_buffs=initial_active_buffs,
                                initial_current_stats=initial_current_stats,
-                               chosen_items_lst=chosen_items_lst,
+                               chosen_items_dct=chosen_items_dct,
                                ability_lvls_dct=ability_lvls_dct,
                                req_dmg_dct_func=self.request_dmg,
                                req_buff_dct_func=self.request_buff,
@@ -688,14 +688,14 @@ class AttributeBase(EventsGeneral):
     def items_effects(self, item_name):
         return self._attrs_or_effs_base(obj_name=item_name,
                                         searched_obj_type='items_effects',
-                                        initial_dct=self.ITEMS_EFFECTS[item_name],
-                                        conditionals_dct=self.ITEMS_CONDITIONALS[item_name])
+                                        initial_dct=items_data.ITEMS_EFFECTS[item_name],
+                                        conditionals_dct=items_data.ITEMS_CONDITIONALS[item_name])
 
     def item_attributes(self, item_name):
         return self._attrs_or_effs_base(obj_name=item_name,
                                         searched_obj_type='item_attr',
-                                        initial_dct=self.ITEMS_EFFECTS[item_name],
-                                        conditionals_dct=self.ITEMS_CONDITIONALS[item_name])
+                                        initial_dct=items_data.ITEMS_EFFECTS[item_name],
+                                        conditionals_dct=items_data.ITEMS_CONDITIONALS[item_name])
 
     def abilities_attributes(self, ability_name):
         """
@@ -725,10 +725,10 @@ class AttributeBase(EventsGeneral):
             initial_dct = self.ABILITIES_ATTRIBUTES
             conditionals_dct = self.ABILITIES_CONDITIONALS
 
-        elif buff_name in self.ITEMS_BUFFS_NAMES:
-            item_name = self.ITEMS_BUFFS_NAMES[buff_name]
-            initial_dct = self.ITEMS_ATTRIBUTES[item_name]
-            conditionals_dct = self.ITEMS_CONDITIONALS[item_name]
+        elif buff_name in items_data.ITEMS_BUFFS_NAMES:
+            item_name = items_data.ITEMS_BUFFS_NAMES[buff_name]
+            initial_dct = items_data.ITEMS_ATTRIBUTES[item_name]
+            conditionals_dct = items_data.ITEMS_CONDITIONALS[item_name]
 
         else:
             return getattr(self, buff_name)()
@@ -752,10 +752,10 @@ class AttributeBase(EventsGeneral):
             initial_dct = self.ABILITIES_ATTRIBUTES
             conditionals_dct = self.ABILITIES_CONDITIONALS
 
-        elif dmg_name in self.ITEMS_DMGS_NAMES:
-            item_name = self.ITEMS_DMGS_NAMES[dmg_name]
-            initial_dct = self.ITEMS_ATTRIBUTES[item_name]
-            conditionals_dct = self.ITEMS_CONDITIONALS[item_name]
+        elif dmg_name in items_data.ITEMS_DMGS_NAMES:
+            item_name = items_data.ITEMS_DMGS_NAMES[dmg_name]
+            initial_dct = items_data.ITEMS_ATTRIBUTES[item_name]
+            conditionals_dct = items_data.ITEMS_CONDITIONALS[item_name]
 
         else:
             return getattr(self, dmg_name)()
@@ -789,7 +789,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                  ability_lvls_dct,
                  max_combat_time,
                  selected_masteries_dct,
-                 chosen_items_lst,
+                 chosen_items_dct,
                  selected_summoner_spells,
                  initial_enemies_total_stats,
                  initial_active_buffs,
@@ -814,7 +814,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                max_combat_time=max_combat_time,
                                initial_active_buffs=initial_active_buffs,
                                initial_current_stats=initial_current_stats,
-                               chosen_items_lst=chosen_items_lst,
+                               chosen_items_dct=chosen_items_dct,
                                selected_masteries_dct=selected_masteries_dct,
                                initial_enemies_total_stats=initial_enemies_total_stats)
 
@@ -822,12 +822,6 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                ability_lvls_dct=ability_lvls_dct,
                                req_dmg_dct_func=self.request_dmg,
                                req_abilities_attrs_func=self.abilities_attributes)
-
-    def action_gen_attrs(self, action_name):
-        if action_name in self.castable_spells_shortcuts:
-            return self.request_ability_gen_attrs_dct(ability_name=action_name)
-        elif action_name in self.chosen_items_lst:
-            return  # TODO
 
     def spell_on_cd(self, action_name):
         """
@@ -1608,16 +1602,16 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         """
 
         queue_set = set()
-        items_attrs_dct = items_folder.items_data.ITEMS_ATTRIBUTES
+        items_attrs_dct = items_data.ITEMS_ATTRIBUTES
 
         # SUMMONER'S SPELLS
         for spell_name in self.selected_summoner_spells:
             # TODO: Create 'castable_summoner_spells' and 'summoner_spells_at_combat_start' in a new class
-            if spell_name in self.summoner_spells_at_combat_start:
+            if spell_name in items_data.CASTABLE_ITEMS:
                 queue_set.add(spell_name)
 
         # ITEMS
-        for item_name in self.chosen_items_lst:
+        for item_name in self.player_items:
             if items_attrs_dct[item_name]['general_attributes']['castable']:
                 queue_set.add(item_name)
 
@@ -1805,7 +1799,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             self.add_buff(buff_name='masteries_static_stats_buff', tar_name='player')
 
     def _apply_items_static_buff(self):
-        if self.chosen_items_lst:
+        if self.player_items:
             self.add_buff(buff_name='items_static_stats_buff', tar_name='player')
 
     def run_combat_preparation_without_regen(self):
@@ -1906,7 +1900,7 @@ class Presets(Actions):
                  ability_lvls_dct,
                  max_combat_time,
                  selected_masteries_dct,
-                 chosen_items_lst,
+                 chosen_items_dct,
                  selected_summoner_spells,
                  initial_enemies_total_stats,
                  initial_active_buffs,
@@ -1921,7 +1915,7 @@ class Presets(Actions):
                          ability_lvls_dct=ability_lvls_dct,
                          max_combat_time=max_combat_time,
                          selected_masteries_dct=selected_masteries_dct,
-                         chosen_items_lst=chosen_items_lst,
+                         chosen_items_dct=chosen_items_dct,
                          selected_summoner_spells=selected_summoner_spells,
                          initial_active_buffs=initial_active_buffs,
                          initial_current_stats=initial_current_stats,
@@ -1957,7 +1951,7 @@ class VisualRepresentation(Presets):
                  ability_lvls_dct,
                  max_combat_time,
                  selected_masteries_dct,
-                 chosen_items_lst,
+                 chosen_items_dct,
                  selected_summoner_spells,
                  initial_enemies_total_stats,
                  initial_active_buffs,
@@ -1971,7 +1965,7 @@ class VisualRepresentation(Presets):
                          champion_lvls_dct=champion_lvls_dct,
                          ability_lvls_dct=ability_lvls_dct,
                          max_combat_time=max_combat_time,
-                         chosen_items_lst=chosen_items_lst,
+                         chosen_items_dct=chosen_items_dct,
                          selected_summoner_spells=selected_summoner_spells,
                          initial_active_buffs=initial_active_buffs,
                          initial_current_stats=initial_current_stats,

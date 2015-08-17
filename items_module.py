@@ -29,7 +29,7 @@ class ItemsProperties(object):
     def __init__(self, chosen_items_lst):
         self.chosen_items_lst = chosen_items_lst
 
-        self._items_static_stats_buff_dct = {}
+        self.items_static_stats_buff_dct = {}
 
         self._create_items_properties_dcts()
 
@@ -149,7 +149,7 @@ class ItemsProperties(object):
         returned_dct = {'stats': stats_dct, 'buff_source': 'items', 'target_type': 'player'}
         returned_dct.update(self._CHOSEN_ITEMS_BUFF_BASE)
 
-        self._items_static_stats_buff_dct = returned_dct
+        self.items_static_stats_buff_dct = returned_dct
 
     def _create_items_properties_dcts(self):
         """
@@ -211,10 +211,6 @@ class ItemsProperties(object):
             cost += items_data_module.ITEMS_ATTRIBUTES[item_name]['secondary_data']['total_price']
 
         return cost
-
-    def items_static_stats_buff(self):
-        # Used for calling from apply_buff method.
-        return self._items_static_stats_buff_dct
 
 
 if __name__ == '__main__':

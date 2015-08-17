@@ -5743,8 +5743,8 @@ if __name__ == '__main__':
     if 0:
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
-    if 0:
-        inst = ItemsModuleCreator(item_name='dorans_bl')
+    if 1:
+        inst = ItemsModuleCreator(item_name='dorans_sh')
         inst.create_and_insert_item_attrs()
         inst.create_and_insert_item_effects()
 

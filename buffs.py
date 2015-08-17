@@ -1,6 +1,7 @@
 import stats
 import targeting
-import items
+import items_module
+import items_folder.items_data
 import palette
 import dmgs_buffs_categories
 import masteries
@@ -9,7 +10,7 @@ import copy
 import abc
 
 
-class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProperties,
+class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
                    masteries.MasteriesProperties, metaclass=abc.ABCMeta):
 
     def __init__(self,
@@ -19,7 +20,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
                  selected_masteries_dct,
                  initial_current_stats,
                  initial_active_buffs,
-                 chosen_items_lst,
+                 chosen_items_dct,
                  initial_enemies_total_stats):
 
         self.current_time = 0
@@ -32,12 +33,25 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
                                          initial_current_stats=initial_current_stats,
                                          initial_enemies_total_stats=initial_enemies_total_stats)
 
-        items.ItemsProperties.__init__(self,
-                                       chosen_items_lst=chosen_items_lst)
-
         masteries.MasteriesProperties.__init__(self,
                                                selected_masteries_dct=selected_masteries_dct,
                                                player_lvl=self.player_lvl)
+
+        # ITEMS
+        self.chosen_items_dct = chosen_items_dct
+        self.fill_up_tars_and_empty_obj_in_dct(given_dct=self.chosen_items_dct, obj_type='list')
+        self.player_items = self.chosen_items_dct['player']
+
+        self._items_static_stats_buff_dct = {}
+        self.create_player_static_items_buff()
+
+    def create_player_static_items_buff(self):
+        items_instance = items_module.ItemsProperties(chosen_items_lst=self.player_items)
+        self._items_static_stats_buff_dct.update(items_instance.items_static_stats_buff_dct)
+
+    def items_static_stats_buff(self):
+        # Used for calling from apply_buff method.
+        return self._items_static_stats_buff_dct
 
     @abc.abstractproperty
     def castable_spells_shortcuts(self):
@@ -156,11 +170,11 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting, items.ItemsProp
 
         :return: (None)
         """
-        if self.chosen_items_lst:
-            for item_name in self.chosen_items_lst:
+        if self.player_items:
+            for item_name in self.player_items:
                 # (If item is bought multiple times, all stacks are applied)
                 self.add_single_ability_passive_buff(target_type=target_type,
-                                                     effects_dct=self.ITEMS_EFFECTS[item_name],
+                                                     effects_dct=items_folder.items_data.ITEMS_EFFECTS[item_name],
                                                      tar_name=tar_name)
 
     def add_abilities_and_items_passive_buffs(self, abilities_effects_dct_func, abilities_lvls):
@@ -208,7 +222,7 @@ class Counters(BuffsGeneral):
                  initial_enemies_total_stats,
                  initial_current_stats,
                  initial_active_buffs,
-                 chosen_items_lst,
+                 chosen_items_dct,
                  max_combat_time):
 
         BuffsGeneral.__init__(self,
@@ -216,7 +230,7 @@ class Counters(BuffsGeneral):
                               champion_lvls_dct=champion_lvls_dct,
                               initial_current_stats=initial_current_stats,
                               initial_active_buffs=initial_active_buffs,
-                              chosen_items_lst=chosen_items_lst,
+                              chosen_items_dct=chosen_items_dct,
                               req_buff_dct_func=req_buff_dct_func,
                               selected_masteries_dct=selected_masteries_dct,
                               initial_enemies_total_stats=initial_enemies_total_stats)
@@ -724,7 +738,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                  initial_enemies_total_stats,
                  initial_current_stats,
                  initial_active_buffs,
-                 chosen_items_lst,
+                 chosen_items_dct,
                  req_dmg_dct_func,
                  req_buff_dct_func,
                  ability_lvls_dct,
@@ -737,7 +751,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                           max_combat_time=max_combat_time,
                           initial_current_stats=initial_current_stats,
                           initial_active_buffs=initial_active_buffs,
-                          chosen_items_lst=chosen_items_lst,
+                          chosen_items_dct=chosen_items_dct,
                           req_buff_dct_func=req_buff_dct_func,
                           selected_masteries_dct=selected_masteries_dct,
                           initial_enemies_total_stats=initial_enemies_total_stats)
