@@ -892,17 +892,36 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         # RESOURCE HISTORY
         self.note_non_hp_resource_in_history(curr_resource_str=self.player_current_resource_name)
 
-    def mitigated_dmg(self, dmg_value, dmg_type, target):
+    @staticmethod
+    def aoe_bool(max_targets):
         """
-        Calculates the dmg value based on its type (magic, physical, AA, true).
+        Determines if effect is single or multi-target.
 
-        Returns:
-            (float)
+        :param max_targets: (int)
+        :return: (bool)
+        """
+        if max_targets == 1:
+            return False
+        else:
+            return True
+
+    def mitigated_dmg(self, dmg_value, dmg_type, target, is_aoe):
+        """
+        Calculates the dmg value based on its type (magic, physical, AA, true) and various reductions.
+
+        :return: (float)
         """
 
         # True dmg remains unmitigated.
         if dmg_type == 'true':
             return dmg_value
+
+        if is_aoe:
+            dmg_value *= 1-self.request_stat(target_name=target, stat_name='percent_aoe_reduction')
+            dmg_value -= self.request_stat(target_name=target, stat_name='flat_aoe_reduction')
+        else:
+            dmg_value *= 1-self.request_stat(target_name=target, stat_name='percent_non_aoe_reduction')
+            dmg_value -= self.request_stat(target_name=target, stat_name='flat_non_aoe_reduction')
 
         tar_bonuses = self.bonuses_dct[target]
         # Checks if there is any percent dmg reduction and applies it.
@@ -955,10 +974,12 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 
         dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
         dmg_type = dmg_dct['dmg_type']
+        aoe = self.aoe_bool(max_targets=dmg_dct['max_targets'])
 
         final_dmg_value = self.mitigated_dmg(dmg_value=self.request_dmg_value(dmg_name=dmg_name),
                                              dmg_type=dmg_type,
-                                             target=target_name)
+                                             target=target_name,
+                                             is_aoe=aoe)
 
         # VALUE APPLICATION
         # If it's a dmg.
