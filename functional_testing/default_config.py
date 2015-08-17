@@ -23,7 +23,10 @@ ALL_DATA = dict(
     max_combat_time=10,
 
     rotation_lst=None,
-    items_lst=['hextech_gunblade', 'hextech_gunblade'],
+    chosen_items_lst=['hextech_gunblade', 'hextech_gunblade'],
+    initial_enemies_total_stats=None,
+    initial_active_buffs=None,
+    initial_current_stats=None,
 
     selected_summoner_spells=[],
 

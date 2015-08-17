@@ -1,63 +1,21 @@
-import abilities
-
 import importlib
 
 
 class UserSession(object):
 
-    def __init__(self,
-                 test_and_display_mode=False):
+    def __init__(self):
 
-        self.test_and_display_mode = test_and_display_mode
         self.instances_results = {}
 
-    def combiner_class(self, input_dct):
+    @staticmethod
+    def combiner_class(input_dct):
 
         player_champ_name = input_dct['selected_champions_dct']['player']
+        # TODO: Import all champions at top of module?
         player_champ_module = importlib.import_module('champions.'+player_champ_name)
         player_champ_tot_attr_class = getattr(player_champ_module, 'ChampionAttributes')
 
-        # Checks if class is used for testing purposes.
-        if self.test_and_display_mode:
-            main_loop_class = abilities.VisualRepresentation
-        else:
-            main_loop_class = abilities.Presets
-
-        class CombinerClass(player_champ_tot_attr_class, main_loop_class):
-
-            def __init__(self,
-                         rotation_lst,
-                         max_targets_dct,
-                         selected_champions_dct,
-                         champion_lvls_dct,
-                         ability_lvls_dct,
-                         max_combat_time,
-                         selected_masteries_dct,
-                         items_lst,
-                         selected_summoner_spells,
-                         initial_enemies_total_stats=None,
-                         initial_active_buffs=None,
-                         initial_current_stats=None,
-                         selected_runes=None):
-
-                main_loop_class.__init__(self,
-                                         rotation_lst=rotation_lst,
-                                         max_targets_dct=max_targets_dct,
-                                         selected_champions_dct=selected_champions_dct,
-                                         champion_lvls_dct=champion_lvls_dct,
-                                         ability_lvls_dct=ability_lvls_dct,
-                                         max_combat_time=max_combat_time,
-                                         selected_summoner_spells=selected_summoner_spells,
-                                         initial_active_buffs=initial_active_buffs,
-                                         initial_current_stats=initial_current_stats,
-                                         chosen_items_lst=items_lst,
-                                         selected_runes=selected_runes,
-                                         selected_masteries_dct=selected_masteries_dct,
-                                         initial_enemies_total_stats=initial_enemies_total_stats)
-
-                player_champ_tot_attr_class.__init__(self,)
-
-        return CombinerClass(**input_dct)
+        return player_champ_tot_attr_class(input_dct)
 
     def single_reverted_enemy_stats_and_buffs(self, input_dct, enemy_name):
         """

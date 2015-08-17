@@ -1,3 +1,5 @@
+import abilities
+
 ABILITIES_ATTRIBUTES = {
     'buffs': {'e_dmg_red': {'dot': False,
                             'duration': 2,
@@ -343,7 +345,7 @@ SPELL_LVL_UP_PRIORITIES = {
     'spells_lvl_up_queue': ['r', 'w', 'q', 'e']}
 
 
-class ChampionAttributes(object):
+class ChampionAttributes(abilities.VisualRepresentation):
 
     ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES
     ABILITIES_EFFECTS = ABILITIES_EFFECTS
@@ -353,7 +355,8 @@ class ChampionAttributes(object):
     DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
     SPELL_LVL_UP_PRIORITIES = SPELL_LVL_UP_PRIORITIES
 
-    def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
+    def __init__(self, kwargs, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
+        abilities.VisualRepresentation.__init__(self, **kwargs)
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])
 

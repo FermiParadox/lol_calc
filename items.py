@@ -96,27 +96,6 @@ class ItemsProperties(object):
             return False
 
     @staticmethod
-    def merge_item_effects_dct_to_existing(existing_dct, new_merged_dct):
-        """
-        OBSOLETE
-        (merging effect and condition dicts was wrong, since different actives cant be merged)
-
-        Merges an item's effects dict into an existing effects dict.
-
-        Assumes the final values are lists,
-        which is not the case when there is "cds_modified" for champions instead of items.
-
-        :param existing_dct:
-        :param new_merged_dct:
-        :return: (None)
-        """
-
-        for key_1 in new_merged_dct:
-            for key_2 in new_merged_dct[key_1]:
-                for key_3 in new_merged_dct[key_1][key_2]:
-                    existing_dct[key_1][key_2][key_3] += new_merged_dct[key_1][key_2][key_3]
-
-    @staticmethod
     def _total_items_stats(non_unique_stats_dct, used_items_unique_stats_dct):
         """
         Creates a dict with all unique and non-unique stats from chosen items.

@@ -16,7 +16,7 @@ def _combat_loop_instance(data_dct):
 
     :return:
     """
-    user_instance = user_instance_settings.UserSession(test_and_display_mode=True)
+    user_instance = user_instance_settings.UserSession()
 
     combat_instance = user_instance.instance_after_combat(data_dct)
 
@@ -35,7 +35,7 @@ def _single_user_multiple_combats_instances_lst(repetitions):
 
     combat_instances_lst = []
 
-    user_instance = user_instance_settings.UserSession(test_and_display_mode=False)
+    user_instance = user_instance_settings.UserSession()
 
     for i in range(repetitions):
         combat_instance = user_instance.instance_after_combat(data)
@@ -59,7 +59,7 @@ def _multiprocessed_single_user_multiple_combats(repetitions):
 
     processes_lst = []
 
-    user_instance = user_instance_settings.UserSession(test_and_display_mode=False)
+    user_instance = user_instance_settings.UserSession()
 
     for i in range(repetitions):
 
@@ -88,7 +88,7 @@ def _single_combat_multiple_users_instances_lst(repetitions):
     combat_instances_lst = []
 
     for i in range(repetitions):
-        user_instance = user_instance_settings.UserSession(test_and_display_mode=False)
+        user_instance = user_instance_settings.UserSession()
         combat_instance = user_instance.instance_after_combat(data)
         combat_instances_lst.append(combat_instance)
 
@@ -160,7 +160,7 @@ class TestCases(object):
     def run_combat_without_showing_results(self, data_dct=None):
         data_dct = self.__data_dct(given_dct=data_dct)
 
-        user_instance = user_instance_settings.UserSession(test_and_display_mode=True)
+        user_instance = user_instance_settings.UserSession()
         post_combat_instance = user_instance.instance_after_combat(input_dct=data_dct)
 
         return post_combat_instance
@@ -175,7 +175,7 @@ class TestCases(object):
 
         data_dct = self.__data_dct(given_dct=data_dct)
 
-        user_instance = user_instance_settings.UserSession(test_and_display_mode=True)
+        user_instance = user_instance_settings.UserSession()
         post_combat_instance = user_instance.create_instance_and_represent_results(input_dct=data_dct)
 
         return post_combat_instance
@@ -390,4 +390,5 @@ if __name__ == '__main__':
 
     # dps: 363.03, dmg: 3628.11, 2423 movement, 240 movement/sec, 1.5sec / 100 rotations (action priorities used)
     # dps: 377.36, dmg: 3771.25, 2423 movement, 240 movement/sec, 1.5sec / 100 rotations (item usage in priorities)
+    # dps: 377.36, dmg: 3771.25, 2423 movement, 240 movement/sec, 0.6sec / 100 rotations (enemy-sourced buffs and stats)
 

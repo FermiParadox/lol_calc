@@ -286,6 +286,10 @@ class StatCalculation(StatFilters):
             raise ValueError('Dict is not empty.')
 
         for tar in self.all_target_names:
+            dct.update({tar: {}})
+
+    def fill_up_tars_and_empty_dct_in_dct(self, dct):
+        for tar in self.all_target_names:
             if tar not in dct:
                 dct.update({tar: {}})
 
@@ -321,6 +325,8 @@ class StatCalculation(StatFilters):
         for tar in self.all_target_names:
             if tar not in self.active_buffs:
                 self.active_buffs.update({tar: {}})
+
+        return
 
     def _base_stat(self, stat_name, tar_name):
         """

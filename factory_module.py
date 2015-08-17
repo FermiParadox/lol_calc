@@ -55,14 +55,16 @@ MASTERIES_ATTRS_DCT_NAME = 'MASTERIES_ATTRIBUTES'
 MASTERIES_MODULE_PATH = '.'.join((MASTERIES_MODULES_FOLDER_NAME, MASTERIES_DATA_MODULE_NAME))
 
 
-child_class_as_str = """class ChampionAttributes(object):
+child_class_as_str = """class ChampionAttributes(abilities.VisualRepresentation):
     ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES
     ABILITIES_EFFECTS = ABILITIES_EFFECTS
     ABILITIES_CONDITIONALS = ABILITIES_CONDITIONALS
+    RESOURCE_USED = RESOURCE_USED
     ACTION_PRIORITIES_CONDITIONALS = ACTION_PRIORITIES_CONDITIONALS
     DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
     SPELL_LVL_UP_PRIORITIES = SPELL_LVL_UP_PRIORITIES
-    def __init__(self, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
+    def __init__(self, kwargs, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
+        abilities.VisualRepresentation.__init__(self, **kwargs)
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])"""
 
