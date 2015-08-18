@@ -1062,7 +1062,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 
 
 NATURAL_REGEN_PERIOD = 0.5  # Tick period of hp5, mp5, etc.
-PER_5_DIVISOR = 10.  # Divides "per 5" stats. Used to create per tick value.
+PER_5_DIVISOR = 5 / NATURAL_REGEN_PERIOD  # Divides "per 5" stats. Used to create per tick value.
 
 
 # ----------------------------------------------------------------------------------------------------------------------

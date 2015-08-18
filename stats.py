@@ -105,7 +105,7 @@ ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_
 ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE = {i for i in ALL_POSSIBLE_STAT_NAMES if not i.startswith('current_')}
 
 # Enemy base stats' names.
-_ENEMY_BASE_STATS_NAMES = {'hp', 'ap', 'armor', 'mr'}
+_ENEMY_BASE_STATS_NAMES = {'hp', 'ap', 'armor', 'mr', 'hp5'}
 # (ensure they are allowed)
 if _ENEMY_BASE_STATS_NAMES - ALL_POSSIBLE_STAT_NAMES:
     raise palette.UnexpectedValueError
@@ -309,13 +309,13 @@ class StatCalculation(StatFilters):
             (None)
         """
 
+        if self.initial_enemies_total_stats:
+            self.base_stats_dct.update(self.initial_enemies_total_stats)
+
         player_base_stats = app_champions_base_stats.CHAMPION_BASE_STATS[self.selected_champions_dct['player']]
         self.base_stats_dct.update({'player': player_base_stats})
 
-        if self.initial_enemies_total_stats:
-            self.base_stats_dct.update(self.initial_enemies_total_stats)
-        else:
-            self.place_tars_and_empty_dct_in_dct(dct=self.base_stats_dct,ensure_empty_dct=False)
+        self.fill_up_tars_and_empty_obj_in_dct(given_dct=self.base_stats_dct, obj_type='dict')
 
     def set_active_buffs(self):
         """
@@ -602,6 +602,8 @@ class StatRequest(StatCalculation):
                                  initial_current_stats=initial_current_stats,
                                  initial_enemies_total_stats=initial_enemies_total_stats)
 
+        self.set_current_stats()
+
     SPECIAL_STATS_SET = SPECIAL_STATS_SET
 
     def request_stat(self, target_name, stat_name):
@@ -749,7 +751,7 @@ class StatRequest(StatCalculation):
 
                 # Also creates the player's 'current_'resource.
                 if tar == 'player':
-                    resource_used = self.base_stats_dct['player']['resource_used']
+                    resource_used = self.RESOURCE_USED
 
                     if ('current_' + resource_used) not in self.current_stats[tar]:
 

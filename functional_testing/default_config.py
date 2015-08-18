@@ -23,10 +23,12 @@ ALL_DATA = dict(
     max_combat_time=10,
 
     rotation_lst=None,
-    chosen_items_dct={'player': ['hextech_gunblade', 'hextech_gunblade'], },
+    chosen_items_dct={'player': ['hextech_gunblade', 'hextech_gunblade'], 'enemy_1': ['dorans_shield']},
     initial_enemies_total_stats=None,
     initial_active_buffs=None,
     initial_current_stats=None,
+    
+    _reversed_combat_mode=False,
 
     selected_summoner_spells=[],
 

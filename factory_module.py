@@ -4421,7 +4421,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
         :returns: (list)
         """
-        lst = list(self.ITEM_STAT_NAMES_MAP.values())+['tar_current_hp', 'tar_max_hp', 'move_speed_reduction']
+        lst = list(self.ITEM_STAT_NAMES_MAP.values())+['tar_current_hp', 'tar_max_hp', 'move_speed_reduction',
+                                                       'flat_non_aoe_reduction']
         return lst
 
     def __init__(self, item_name):
@@ -5372,9 +5373,6 @@ class ChampionsBaseStats(ModuleCreatorBase):
         att_speed_val = self.att_speed_by_att_speed_offset(att_speed_offset=new_dct['att_speed_offset'])
         new_dct.update({'base_att_speed': att_speed_val})
 
-        # Resource used.
-        new_dct.update({'resource_used': 'mp'})
-
         return new_dct
 
     def _all_champions_base_stats(self):
@@ -5739,18 +5737,13 @@ if __name__ == '__main__':
         inst.create_non_unique_stats_names_and_values()
         print(inst.non_unique_item_stats)
 
-    # ITEM ATTRS AND EFFECTS CREATION AND INSERTION
+    # ITEM ATTRS, EFFECTS AND CONDITIONALS CREATION AND INSERTION
     if 0:
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
     if 1:
         inst = ItemsModuleCreator(item_name='dorans_sh')
         inst.create_and_insert_item_attrs()
-        inst.create_and_insert_item_effects()
-
-    # ITEM CONDITION CREATION AND INSERTION
-    if 0:
-        inst = ItemsModuleCreator(item_name='gunblade')
         inst.create_and_insert_item_effects()
         inst.create_and_insert_item_conditionals()
 

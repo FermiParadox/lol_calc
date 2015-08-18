@@ -30,8 +30,9 @@ class UserSession(object):
         enemy_champion = input_dct['selected_champions_dct'][enemy_name]
         new_input_dct.update({'selected_champions_dct': {'player': enemy_champion, 'enemy_1': 'jax'}})
 
+        player_lvl = input_dct['champion_lvls_dct']['player']
         enemy_lvl = input_dct['champion_lvls_dct'][enemy_name]
-        new_input_dct.update({'champion_lvls_dct': {'player': enemy_lvl, 'enemy_1': 1}})
+        new_input_dct.update({'champion_lvls_dct': {'player': enemy_lvl, 'enemy_1': player_lvl}})
 
         chosen_items_dct = input_dct['chosen_items_dct']
         if enemy_name in chosen_items_dct:
@@ -40,14 +41,17 @@ class UserSession(object):
             enemy_items = []
         new_input_dct.update({'chosen_items_dct': {'player': enemy_items, }})
 
+        new_input_dct.update({'_reversed_combat_mode': True})
+
         for key in input_dct:
             if key not in new_input_dct:
                 value = input_dct[key]
                 new_input_dct.update({key: value})
 
         instance = self.combiner_class(new_input_dct)
+        instance.run_combat()
 
-        return instance.reversed_precombat_player_stats_and_enemy_buffs()
+        return instance.reversed_precombat_player_stats_and_enemy_buffs
 
     def all_enemy_stats_and_final_player_buffs(self, input_dct):
         """

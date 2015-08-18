@@ -62,9 +62,6 @@ class EventsGeneral(buffs.DeathAndRegen):
                                      selected_masteries_dct=selected_masteries_dct,
                                      initial_enemies_total_stats=initial_enemies_total_stats)
 
-        self.resource_used = app_champions_base_stats.CHAMPION_BASE_STATS[selected_champions_dct['player']][
-            'resource_used']
-
     def add_event_to_first_tar(self, effect_name, start_time):
         """
         Applies a dmg event to the first target.
@@ -116,11 +113,11 @@ class EventsGeneral(buffs.DeathAndRegen):
 
                 # RESOURCE
                 regen_event_name = None
-                if self.resource_used == 'energy':
+                if self.RESOURCE_USED == 'energy':
                     regen_event_name = 'ep5_dmg'
                     self.add_buff(buff_name='ep5_buff', tar_name=self.current_target)
 
-                elif self.resource_used == 'mp':
+                elif self.RESOURCE_USED == 'mp':
                     regen_event_name = 'mp5_dmg'
                     self.add_buff(buff_name='mp5_buff', tar_name=self.current_target)
 
@@ -794,12 +791,15 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                  initial_enemies_total_stats,
                  initial_active_buffs,
                  initial_current_stats,
-                 selected_runes):
+                 selected_runes,
+                 _reversed_combat_mode):
 
+        self._reversed_combat_mode = _reversed_combat_mode
         self.rotation_lst = rotation_lst
         self.selected_summoner_spells = selected_summoner_spells
         self.everyone_dead = None
         self.__all_dead_or_max_time_exceeded = False
+        self.reversed_precombat_player_stats_and_enemy_buffs = {}
 
         runes.RunesFinal.__init__(self,
                                   player_lvl=champion_lvls_dct['player'],
@@ -1813,6 +1813,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         """
         self.current_time = 0
 
+
         self._apply_runes_static_buff()
 
         self._apply_items_static_buff()
@@ -1825,21 +1826,6 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         # (Bonuses have to be applied here instead of in their normal methods for noting reasons)
         self.buffs_to_all_stats_bonuses()
-
-    def reversed_precombat_player_stats_and_enemy_buffs(self):
-        """
-        Used when combat's sole purpose is determining reverted enemy's "base" stats and reverted player's buffs.
-
-        :return: (dict) Base stats of player and enemy's active buffs.
-        """
-
-        self.run_combat_preparation_without_regen()
-
-        stats_dct = {i: self.request_stat(target_name='player', stat_name=i) for i in self.ENEMY_BASE_STATS_NAMES}
-
-        active_buffs = self.active_buffs['enemy_1']
-
-        return {'stats': stats_dct, 'buffs': active_buffs}
 
     def run_combat_preparation(self):
         self.run_combat_preparation_without_regen()
@@ -1859,26 +1845,48 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.note_pre_combat_stats_in_results()
         self.note_precombat_active_buffs()
 
-    def run_combat(self):
-        """
-        Returns:
-            (None)
-        """
-
-        self.set_current_stats()
-
-        self.run_combat_preparation_and_note()
-
+    def _main_combat(self):
         # Applies actions or events based on which occurs first.
         self._apply_all_actions()
 
         # Applies events after all actions have finished.
         self.apply_events_after_actions()
 
+    def _run_reversed_combat(self):
+        """
+        Used when combat's sole purpose is determining reverted enemy's "base" stats and reverted player's buffs.
+
+        :return: (dict) Base stats of player and enemy's active buffs.
+        """
+
+        self.run_combat_preparation_without_regen()
+
+        stats_dct = {i: self.request_stat(target_name='player', stat_name=i) for i in self.ENEMY_BASE_STATS_NAMES}
+        active_buffs = self.active_buffs['enemy_1']
+
+        self.reversed_precombat_player_stats_and_enemy_buffs = {'stats': stats_dct, 'buffs': active_buffs}
+
+        self._main_combat()
+
+    def _run_normal_combat(self):
+        """
+        :return: (None)
+        """
+
+        self.run_combat_preparation_and_note()
+
+        self._main_combat()
+
         # Postcombat
         self.note_dmg_totals_in_results()
         self.note_post_combat_stats_in_results()
         self.note_postcombat_active_buffs()
+
+    def run_combat(self):
+        if self._reversed_combat_mode:
+            self._run_reversed_combat()
+        else:
+            self._run_normal_combat()
 
     def rotation_followed(self):
         rot = []
@@ -1905,7 +1913,8 @@ class Presets(Actions):
                  initial_enemies_total_stats,
                  initial_active_buffs,
                  initial_current_stats,
-                 selected_runes):
+                 selected_runes,
+                 _reversed_combat_mode):
 
         Actions.__init__(self,
                          rotation_lst=rotation_lst,
@@ -1920,7 +1929,8 @@ class Presets(Actions):
                          initial_active_buffs=initial_active_buffs,
                          initial_current_stats=initial_current_stats,
                          selected_runes=selected_runes,
-                         initial_enemies_total_stats=initial_enemies_total_stats)
+                         initial_enemies_total_stats=initial_enemies_total_stats,
+                         _reversed_combat_mode=_reversed_combat_mode)
 
         self._setup_ability_lvls()
 
@@ -1956,7 +1966,8 @@ class VisualRepresentation(Presets):
                  initial_enemies_total_stats,
                  initial_active_buffs,
                  initial_current_stats,
-                 selected_runes):
+                 selected_runes,
+                 _reversed_combat_mode):
 
         Presets.__init__(self,
                          rotation_lst=rotation_lst,
@@ -1971,7 +1982,8 @@ class VisualRepresentation(Presets):
                          initial_current_stats=initial_current_stats,
                          selected_runes=selected_runes,
                          selected_masteries_dct=selected_masteries_dct,
-                         initial_enemies_total_stats=initial_enemies_total_stats)
+                         initial_enemies_total_stats=initial_enemies_total_stats,
+                         _reversed_combat_mode=_reversed_combat_mode)
 
     @staticmethod
     def __set_table_font_size(table_obj, font_size=8):
@@ -2128,7 +2140,7 @@ class VisualRepresentation(Presets):
         stat_color_map = {'lifesteal': 'orange', 'spellvamp': 'g', 'resource': 'b'}
 
         # Places initial value of resource.
-        subplot_obj.plot([0], self.request_stat(target_name='player', stat_name=self.resource_used),
+        subplot_obj.plot([0], self.request_stat(target_name='player', stat_name=self.RESOURCE_USED),
                          color=stat_color_map['resource'], marker='.')
 
         for examined in stat_color_map:
@@ -2136,7 +2148,7 @@ class VisualRepresentation(Presets):
             if examined == 'resource':
                 # (Sets initial value of resource)
                 x_val = [0, ]
-                y_val = [self.request_stat(target_name='player', stat_name=self.resource_used), ]
+                y_val = [self.request_stat(target_name='player', stat_name=self.RESOURCE_USED), ]
             else:
                 x_val = []
                 y_val = []
