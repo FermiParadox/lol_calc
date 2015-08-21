@@ -40,7 +40,8 @@ class EventsGeneral(buffs.DeathAndRegen):
                  chosen_items_dct,
                  req_dmg_dct_func,
                  ability_lvls_dct,
-                 selected_masteries_dct,):
+                 selected_masteries_dct,
+                 _reversed_combat_mode):
 
         # (User defined dict containing number of targets affected by abilities.)
         self.max_targets_dct = max_targets_dct
@@ -60,30 +61,28 @@ class EventsGeneral(buffs.DeathAndRegen):
                                      ability_lvls_dct=ability_lvls_dct,
                                      req_buff_dct_func=req_buff_dct_func,
                                      selected_masteries_dct=selected_masteries_dct,
-                                     initial_enemies_total_stats=initial_enemies_total_stats)
+                                     initial_enemies_total_stats=initial_enemies_total_stats,
+                                     _reversed_combat_mode=_reversed_combat_mode)
 
-    def add_event_to_first_tar(self, effect_name, start_time):
+    def add_event_to_first_tar(self, target_name, effect_name, start_time):
         """
         Applies a dmg event to the first target.
 
-        Modifies:
-            event_times
-        Returns:
-            (None)
+        :return: (None)
         """
 
         # If the event's time doesn't exist it creates it.
         if start_time not in self.event_times:
-            self.event_times.update({start_time: {self.current_target: [effect_name]}})
+            self.event_times.update({start_time: {target_name: [effect_name]}})
 
         else:
             # If the time exists in the dictionary,
             # checks if the target is inside the time.
-            if self.current_target in self.event_times[start_time]:
-                self.event_times[start_time][self.current_target].append(effect_name)
+            if target_name in self.event_times[start_time]:
+                self.event_times[start_time][target_name].append(effect_name)
             else:
                 # If not, it adds the target as well.
-                self.event_times[start_time].update({self.current_target: [effect_name]})
+                self.event_times[start_time].update({target_name: [effect_name]})
 
     def add_regenerations(self):
         """
@@ -100,31 +99,19 @@ class EventsGeneral(buffs.DeathAndRegen):
             # ENEMY
             if self.current_target != 'player':
                 self.add_buff(buff_name='enemy_hp5_buff', tar_name=self.current_target)
-                # HP5
-                self.add_event_to_first_tar(effect_name='enemy_hp5_dmg',
-                                            start_time=self.NATURAL_REGEN_START_TIME)
 
             # PLAYER
             else:
                 self.add_buff(buff_name='player_hp5_buff', tar_name=self.current_target)
-                # HP5
-                self.add_event_to_first_tar(effect_name='player_hp5_dmg',
-                                            start_time=self.NATURAL_REGEN_START_TIME)
 
                 # RESOURCE
-                regen_event_name = None
                 if self.RESOURCE_USED == 'energy':
-                    regen_event_name = 'ep5_dmg'
                     self.add_buff(buff_name='ep5_buff', tar_name=self.current_target)
 
                 elif self.RESOURCE_USED == 'mp':
-                    regen_event_name = 'mp5_dmg'
                     self.add_buff(buff_name='mp5_buff', tar_name=self.current_target)
-
-                # Checks if player's resource can regenerate per 5.
-                if regen_event_name:
-                    self.add_event_to_first_tar(effect_name=regen_event_name,
-                                                start_time=self.NATURAL_REGEN_START_TIME)
+                else:
+                    raise NotImplementedError('Other resources need to be added as well.')
 
     def add_aoe_events(self, effect_name, start_time):
         """
@@ -175,12 +162,23 @@ class EventsGeneral(buffs.DeathAndRegen):
         if eff_delay:
             start_time += eff_delay
 
-        # Adds event to first target.
-        self.add_event_to_first_tar(effect_name=effect_name, start_time=start_time)
+        dmg_dct = self.req_dmg_dct_func(dmg_name=effect_name)
+        tar_type = dmg_dct['target_type']
 
-        self.targets_already_hit = 1
+        if tar_type == 'player':
+            target_name = 'player'
+        else:
+            target_name = self.current_target
+
+        # Adds event to first target.
+        self.add_event_to_first_tar(target_name=target_name,effect_name=effect_name, start_time=start_time)
 
         # AOE DMG
+        # No aoe will be applied by dots originating from reverse combat mode.
+        if target_name == 'player':
+            return
+
+        self.targets_already_hit = 1
         # Aoe dmg has 'max_targets' in dmg dct. It can also additionally have externally set max_targets.
         # Tries to add events to targets.
         try:
@@ -218,8 +216,7 @@ class EventsGeneral(buffs.DeathAndRegen):
 
         # Checks dot's buff.
         if buff_name in tar_act_buffs:
-            if ((tar_act_buffs[buff_name]['ending_time'] == 'permanent') or
-                    (tar_act_buffs[buff_name]['ending_time'] > self.current_time)):
+            if (tar_act_buffs[buff_name]['ending_time'] == 'permanent') or (tar_act_buffs[buff_name]['ending_time'] > self.current_time):
 
                 self.add_events(effect_name=dmg_name,
                                 start_time=self.current_time + buff_dct['dot']['period'])
@@ -255,7 +252,205 @@ class EventsGeneral(buffs.DeathAndRegen):
                 self.refresh_periodic_event(dmg_name=dmg_name, tar_name=tar_name, dmg_dct=dmg_dct)
 
 
-class AttributeBase(EventsGeneral):
+_DPS_BY_ENEMIES_DMGS_NAMES = [dmg_type + '_dps_by_enemy_dmg' for dmg_type in ('true', 'magic', 'non_aa_physical', 'aa')]
+
+_DPS_BY_ENEMIES_BUFF_BASE = copy.deepcopy(buffs.REGEN_BUFF_DCT_BASE)
+_DPS_BY_ENEMIES_BUFF_BASE['target_type'] = 'player'
+_DPS_BY_ENEMIES_BUFF_BASE['dot']['period'] = buffs.NATURAL_REGEN_PERIOD
+_DPS_BY_ENEMIES_BUFF_BASE['buff_source'] = 'enemies_dps'
+
+# Adds all dmgs' names in dot buff.
+for dps_dmg_name in _DPS_BY_ENEMIES_DMGS_NAMES:
+    _DPS_BY_ENEMIES_BUFF_BASE['dot']['dmg_names'].append(dps_dmg_name)
+
+_DPS_BY_ENEMIES_DMG_BASE = dict(
+    target_type='player',
+    dmg_category='standard_dmg',
+    resource_type='hp',
+    dmg_source='dps_by_enemies',
+    # (None or {'enemy': {}, 'player': {'bonus_ad': 0.5}})
+    mods=None,
+    # (None or lifesteal or spellvamp)
+    life_conversion_type=None,
+    radius=None,
+    dot={'buff_name': 'dps_by_enemies_dot_buff'},
+    max_targets=1,
+    usual_max_targets=1,
+    delay=0,)
+
+_TRUE_DPS_BY_ENEMIES_DMG_BASE = {'dmg_type': 'true'}
+_MAGIC_DPS_BY_ENEMIES_DMG_BASE = {'dmg_type': 'magic'}
+_NON_AA_PHYSICAL_DPS_BY_ENEMIES_DMG_BASE = {'dmg_type': 'physical'}
+_AA_DPS_BY_ENEMIES_DMG_BASE = {'dmg_type': 'AA'}
+
+
+class EnemiesDmgToPlayer(EventsGeneral):
+    """
+    TOTAL ENEMIES:
+        Number of enemies doesn't matter for survivability under the assumption that more enemies
+        would also mean more allies, therefor distributing dmg over more targets
+        and finally canceling out the dmg increase.
+
+    ENEMIES' DPS:
+        Enemies' dps is raw dps without any mitigation (since target's defenses are set to 0),
+        meaning it can be directly applied as dmg to player over the main combat.
+    """
+
+    DPS_BY_ENEMIES_DMG_BASE = _DPS_BY_ENEMIES_DMG_BASE
+    DPS_ENHANCER_COEF = 1
+
+    FLAT_SURVIVABILITY_FACTORS = dict(
+        flash=1
+    )
+
+    def __init__(self,
+                 enemies_originating_dmg_data,
+                 champion_lvls_dct,
+                 selected_champions_dct,
+                 max_targets_dct,
+                 max_combat_time,
+                 initial_enemies_total_stats,
+                 initial_active_buffs,
+                 initial_current_stats,
+                 req_buff_dct_func,
+                 chosen_items_dct,
+                 req_dmg_dct_func,
+                 ability_lvls_dct,
+                 selected_masteries_dct,
+                 _reversed_combat_mode):
+
+        self.IGNORED_DMG_NAMES += _DPS_BY_ENEMIES_DMGS_NAMES
+
+        self.enemies_originating_dmg_data = enemies_originating_dmg_data
+        self.__true_dps_by_enemy_dmg = {}
+        self.__non_aa_physical_dps_by_enemy_dmg = {}
+        self.__aa_dps_by_enemy_dmg = {}
+        self.__magic_dps_by_enemy_dmg = {}
+
+        EventsGeneral.__init__(self,
+                               champion_lvls_dct,
+                               selected_champions_dct,
+                               max_targets_dct,
+                               max_combat_time,
+                               initial_enemies_total_stats,
+                               initial_active_buffs,
+                               initial_current_stats,
+                               req_buff_dct_func,
+                               chosen_items_dct,
+                               req_dmg_dct_func,
+                               ability_lvls_dct,
+                               selected_masteries_dct,
+                               _reversed_combat_mode=_reversed_combat_mode)
+
+    @staticmethod
+    def dps_by_enemies_dot_buff():
+        return _DPS_BY_ENEMIES_BUFF_BASE
+
+    def _enemies_dps_values_dct(self, ):
+        """
+        Creates a dict containing dps values for all dmg types (AA, magic, true, physical).
+
+        :return:
+        """
+
+        all_enemies_total_dmg = 0
+        all_enemies_magic_dmg = 0
+        all_enemies_physical_dmg = 0
+        all_enemies_true_dmg = 0
+        all_enemies_aa_dmg = 0
+        all_enemies_added_dps = 0
+
+        total_enemies = len(self.enemies_originating_dmg_data)
+
+        for enemy_name in self.enemies_originating_dmg_data:
+            dmg_data_dct = self.enemies_originating_dmg_data[enemy_name]['player']
+
+            all_enemies_total_dmg += dmg_data_dct['total_dmg_done']
+            all_enemies_magic_dmg += dmg_data_dct['total_magic']
+            all_enemies_physical_dmg += dmg_data_dct['total_physical']
+            all_enemies_true_dmg += dmg_data_dct['total_true']
+            all_enemies_added_dps += dmg_data_dct['dps']
+
+            source_dct = dmg_data_dct['source']
+            all_enemies_aa_dmg += source_dct['AA']
+
+        average_dps = all_enemies_added_dps / total_enemies
+        percent_magic = all_enemies_magic_dmg / all_enemies_total_dmg
+        percent_physical = all_enemies_physical_dmg / all_enemies_total_dmg
+        percent_true = all_enemies_true_dmg / all_enemies_total_dmg
+        percent_aa = all_enemies_aa_dmg / all_enemies_total_dmg
+
+        dct = {}
+        dct.update({'magic_dps': percent_magic})
+        dct.update({'non_aa_physical_dps': percent_physical-percent_aa})
+        dct.update({'aa_dps': percent_aa})
+        dct.update({'true_dps': percent_true})
+        for dps_type in dct:
+            dct[dps_type] *= average_dps * self.DPS_ENHANCER_COEF
+        print(dct)
+        return dct
+
+    def _create_enemies_dps_dmgs_dcts(self):
+        dps_values_dct = self._enemies_dps_values_dct()
+
+        true_dps_val = dps_values_dct['true_dps']
+        self.__true_dps_by_enemy_dmg = {'dmg_values': true_dps_val}
+        self.__true_dps_by_enemy_dmg.update(_TRUE_DPS_BY_ENEMIES_DMG_BASE)
+        self.__true_dps_by_enemy_dmg.update(self.DPS_BY_ENEMIES_DMG_BASE)
+
+        magic_dps_val = dps_values_dct['magic_dps']
+        self.__magic_dps_by_enemy_dmg = {'dmg_values': magic_dps_val}
+        self.__magic_dps_by_enemy_dmg.update(_MAGIC_DPS_BY_ENEMIES_DMG_BASE)
+        self.__magic_dps_by_enemy_dmg.update(self.DPS_BY_ENEMIES_DMG_BASE)
+
+        non_aa_physical_dps_val = dps_values_dct['non_aa_physical_dps']
+        self.__non_aa_physical_dps_by_enemy_dmg = {'dmg_values': non_aa_physical_dps_val}
+        self.__non_aa_physical_dps_by_enemy_dmg.update(_NON_AA_PHYSICAL_DPS_BY_ENEMIES_DMG_BASE)
+        self.__non_aa_physical_dps_by_enemy_dmg.update(self.DPS_BY_ENEMIES_DMG_BASE)
+
+        aa_dps_val = dps_values_dct['aa_dps']
+        self.__aa_dps_by_enemy_dmg = {'dmg_values': aa_dps_val}
+        self.__aa_dps_by_enemy_dmg.update(_AA_DPS_BY_ENEMIES_DMG_BASE)
+        self.__aa_dps_by_enemy_dmg.update(self.DPS_BY_ENEMIES_DMG_BASE)
+
+    def true_dps_by_enemy_dmg(self):
+        return self.__true_dps_by_enemy_dmg
+
+    def non_aa_physical_dps_by_enemy_dmg(self):
+        return self.__non_aa_physical_dps_by_enemy_dmg
+
+    def aa_dps_by_enemy_dmg(self):
+        return self.__aa_dps_by_enemy_dmg
+
+    def magic_dps_by_enemy_dmg(self):
+        return self.__magic_dps_by_enemy_dmg
+
+    def add_dps_dot_by_enemies(self):
+
+        self._create_enemies_dps_dmgs_dcts()
+        self.add_buff(buff_name='dps_by_enemies_dot_buff', tar_name='player')
+
+    def survivability(self):
+        """
+        Survivability is defined as 'total time required to kill the player'.
+
+        :return: (float)
+        """
+
+        max_hp = self.request_stat(target_name='player', stat_name='hp')
+        current_hp = self.request_stat(target_name='player', stat_name='current_hp')
+
+        combat_duration = self.combat_end_time
+
+        hp_lost_per_sec = (max_hp - current_hp) / combat_duration
+
+        return max_hp / hp_lost_per_sec
+
+    def note_survivability(self):
+        self.combat_results['player'].update({'survivability': self.survivability()})
+
+
+class AttributeBase(EnemiesDmgToPlayer):
 
     OPERATORS_STR_MAP = {
         '<': operator.lt,
@@ -291,7 +486,9 @@ class AttributeBase(EventsGeneral):
                  initial_active_buffs,
                  initial_current_stats,
                  chosen_items_dct,
-                 selected_masteries_dct
+                 selected_masteries_dct,
+                 enemies_originating_dmg_data,
+                 _reversed_combat_mode
                  ):
 
         self.ability_lvls_dct = ability_lvls_dct
@@ -300,19 +497,21 @@ class AttributeBase(EventsGeneral):
 
         self.__castable_spells_shortcuts = None
 
-        EventsGeneral.__init__(self,
-                               champion_lvls_dct=champion_lvls_dct,
-                               selected_champions_dct=selected_champions_dct,
-                               max_targets_dct=max_targets_dct,
-                               max_combat_time=max_combat_time,
-                               initial_active_buffs=initial_active_buffs,
-                               initial_current_stats=initial_current_stats,
-                               chosen_items_dct=chosen_items_dct,
-                               ability_lvls_dct=ability_lvls_dct,
-                               req_dmg_dct_func=self.request_dmg,
-                               req_buff_dct_func=self.request_buff,
-                               selected_masteries_dct=selected_masteries_dct,
-                               initial_enemies_total_stats=initial_enemies_total_stats)
+        EnemiesDmgToPlayer.__init__(self,
+                                    enemies_originating_dmg_data=enemies_originating_dmg_data,
+                                    champion_lvls_dct=champion_lvls_dct,
+                                    selected_champions_dct=selected_champions_dct,
+                                    max_targets_dct=max_targets_dct,
+                                    max_combat_time=max_combat_time,
+                                    initial_active_buffs=initial_active_buffs,
+                                    initial_current_stats=initial_current_stats,
+                                    chosen_items_dct=chosen_items_dct,
+                                    ability_lvls_dct=ability_lvls_dct,
+                                    req_dmg_dct_func=self.request_dmg,
+                                    req_buff_dct_func=self.request_buff,
+                                    selected_masteries_dct=selected_masteries_dct,
+                                    initial_enemies_total_stats=initial_enemies_total_stats,
+                                    _reversed_combat_mode=_reversed_combat_mode)
 
     def _x_value(self, x_name, x_type, x_owner):
         """
@@ -792,6 +991,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                  initial_active_buffs,
                  initial_current_stats,
                  selected_runes,
+                 enemies_originating_dmg_data,
                  _reversed_combat_mode):
 
         self._reversed_combat_mode = _reversed_combat_mode
@@ -799,7 +999,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.selected_summoner_spells = selected_summoner_spells
         self.everyone_dead = None
         self.__all_dead_or_max_time_exceeded = False
-        self.reversed_precombat_player_stats_and_enemy_buffs = {}
+        self.reversed_precombat_player_stats = {}
+        self.reversed_precombat_enemy_buffs = {}
 
         runes.RunesFinal.__init__(self,
                                   player_lvl=champion_lvls_dct['player'],
@@ -816,7 +1017,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                initial_current_stats=initial_current_stats,
                                chosen_items_dct=chosen_items_dct,
                                selected_masteries_dct=selected_masteries_dct,
-                               initial_enemies_total_stats=initial_enemies_total_stats)
+                               initial_enemies_total_stats=initial_enemies_total_stats,
+                               enemies_originating_dmg_data=enemies_originating_dmg_data,
+                               _reversed_combat_mode=_reversed_combat_mode)
 
         timers.Timers.__init__(self,
                                ability_lvls_dct=ability_lvls_dct,
@@ -1203,10 +1406,11 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
             buff_dot_dct = buff_dct['dot']
             if buff_dot_dct:
-                dmg_dot_name = buff_dot_dct['dmg_name']
-                first_tick = self.first_dot_tick(current_time=self.current_time, dmg_name=dmg_dot_name)
+                dmg_dot_names = buff_dot_dct['dmg_names']
+                for dmg_name in dmg_dot_names:
+                    first_tick = self.first_dot_tick(current_time=self.current_time, dmg_name=dmg_name)
 
-                self.add_events(effect_name=dmg_dot_name, start_time=first_tick)
+                    self.add_events(effect_name=dmg_name, start_time=first_tick)
 
     def change_cd_before_buff_removal(self, buff_dct):
         """
@@ -1421,11 +1625,6 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         then event_times changes and is checked again.
         If all targets die, the loop stops.
 
-        Modifies:
-            current_time
-            event_times
-            active_buffs
-            intermediate_events_changed
         Returns:
             (None)
         """
@@ -1477,11 +1676,10 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 # DEATHS
                 self.everyone_dead = True
                 # Checks if alive targets exist.
-                for tar_name in self.champion_lvls_dct:
-                    if tar_name != 'player':
-                        if 'dead_buff' not in self.active_buffs[tar_name]:
-                            self.everyone_dead = False
-                            break
+                for tar_name in self.enemy_target_names:
+                    if 'dead_buff' not in self.active_buffs[tar_name]:
+                        self.everyone_dead = False
+                        break
 
                 # EXIT METHOD
                 # If everyone has died, stops applying following events.
@@ -1712,7 +1910,6 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                     # If the cost is too high, action is skipped.
                     continue
 
-                # If its not on cd and it's cost is met.
                 self.apply_single_action(new_action=action_name)
 
                 if self.__all_dead_or_max_time_exceeded:
@@ -1854,19 +2051,30 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
     def _run_reversed_combat(self):
         """
-        Used when combat's sole purpose is determining reverted enemy's "base" stats and reverted player's buffs.
+        Stores enemy's "base" stats, reverted player's buffs and dmg taken,
+        in when combat is reversed.
 
-        :return: (dict) Base stats of player and enemy's active buffs.
+        That is, 'enemy_x' has become 'player' in order to determine enemy-originating buffs.
+        Base stats are derived from reversed combats, since it's much more speedy
+        than calculating them in the normal combat.
+
+        :return: (None)
         """
 
         self.run_combat_preparation_without_regen()
 
         stats_dct = {i: self.request_stat(target_name='player', stat_name=i) for i in self.ENEMY_BASE_STATS_NAMES}
-        active_buffs = self.active_buffs['enemy_1']
+        all_enemy_active_buffs = self.active_buffs['enemy_1']
 
-        self.reversed_precombat_player_stats_and_enemy_buffs = {'stats': stats_dct, 'buffs': active_buffs}
+        non_dead_buff_enemy_buffs = {key: val for key, val in all_enemy_active_buffs.items()}
+
+        # Stores stats player's (that is, 'enemy_x' for normal combat) stats
+        # and 'enemy_1' (that is, 'player' for normal combat) active buffs, before the combat starts.
+        self.reversed_precombat_player_stats = stats_dct
+        self.reversed_precombat_enemy_buffs = non_dead_buff_enemy_buffs
 
         self._main_combat()
+        self.note_dmg_totals_movement_and_heals_in_results()
 
     def _run_normal_combat(self):
         """
@@ -1875,12 +2083,15 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         self.run_combat_preparation_and_note()
 
+        self.add_dps_dot_by_enemies()
+
         self._main_combat()
 
         # Postcombat
-        self.note_dmg_totals_in_results()
+        self.note_dmg_totals_movement_and_heals_in_results()
         self.note_post_combat_stats_in_results()
         self.note_postcombat_active_buffs()
+        self.note_survivability()
 
     def run_combat(self):
         if self._reversed_combat_mode:
@@ -1914,6 +2125,7 @@ class Presets(Actions):
                  initial_active_buffs,
                  initial_current_stats,
                  selected_runes,
+                 enemies_originating_dmg_data,
                  _reversed_combat_mode):
 
         Actions.__init__(self,
@@ -1930,7 +2142,8 @@ class Presets(Actions):
                          initial_current_stats=initial_current_stats,
                          selected_runes=selected_runes,
                          initial_enemies_total_stats=initial_enemies_total_stats,
-                         _reversed_combat_mode=_reversed_combat_mode)
+                         _reversed_combat_mode=_reversed_combat_mode,
+                         enemies_originating_dmg_data=enemies_originating_dmg_data)
 
         self._setup_ability_lvls()
 
@@ -1950,7 +2163,7 @@ class Presets(Actions):
 
 class VisualRepresentation(Presets):
 
-    PLAYER_STATS_DISPLAYED = ('ap', 'ad', 'armor', 'mr', 'hp', 'mp', 'att_speed', 'cdr')
+    PLAYER_STATS_DISPLAYED = ('ap', 'ad', 'armor', 'mr', 'current_hp', 'mp', 'att_speed', 'cdr')
     ENEMY_STATS_DISPLAYED = ('armor', 'mr', 'physical_dmg_taken', 'magic_dmg_taken', 'current_hp')
 
     def __init__(self,
@@ -1967,6 +2180,7 @@ class VisualRepresentation(Presets):
                  initial_active_buffs,
                  initial_current_stats,
                  selected_runes,
+                 enemies_originating_dmg_data,
                  _reversed_combat_mode):
 
         Presets.__init__(self,
@@ -1983,7 +2197,8 @@ class VisualRepresentation(Presets):
                          selected_runes=selected_runes,
                          selected_masteries_dct=selected_masteries_dct,
                          initial_enemies_total_stats=initial_enemies_total_stats,
-                         _reversed_combat_mode=_reversed_combat_mode)
+                         _reversed_combat_mode=_reversed_combat_mode,
+                         enemies_originating_dmg_data=enemies_originating_dmg_data)
 
     @staticmethod
     def __set_table_font_size(table_obj, font_size=8):
@@ -2178,10 +2393,10 @@ class VisualRepresentation(Presets):
         for stat_name in self.PLAYER_STATS_DISPLAYED:
 
             precombat_value = self.combat_results['player']['pre_combat_stats'][stat_name]
-            precombat_value = round(precombat_value, 4)
+            precombat_value = precombat_value
 
             postcombat_value = self.combat_results['player']['post_combat_stats'][stat_name]
-            postcombat_value = round(postcombat_value, 4)
+            postcombat_value = postcombat_value
 
             line_tpl = (stat_name+': ', precombat_value, postcombat_value)
 
@@ -2249,24 +2464,11 @@ class VisualRepresentation(Presets):
         dps_str = 'DPS: {}'.format(dps_value)
         table_lst.append((dps_str,))
 
-        # Dmg
-        total_dmg_done_val = self.combat_results['player']['total_dmg_done']
-        total_dmg_done_val = round(total_dmg_done_val, 2)
-        dmg_str = 'DMG: {}'.format(total_dmg_done_val)
-        table_lst.append((dmg_str,))
-
-        # Total movement
-        total_movement_val = self.combat_results['player']['total_movement']
-        total_movement_val = round(total_movement_val)
-        total_movement_str = 'TOTAL MOVEMENT: {}'.format(total_movement_val)
-        table_lst.append((total_movement_str,))
-
-        # Total movement
-        # (rounds value)
-        movement_per_sec_val = self.combat_results['player']['movement_per_sec']
-        movement_per_sec_val = round(movement_per_sec_val)
-        movement_per_sec_str = 'MOVEMENT PER SEC: {}'.format(movement_per_sec_val)
-        table_lst.append((movement_per_sec_str,))
+        for metric_name in ('total_dmg_done', 'total_movement', 'movement_per_sec', 'survivability', 'heals'):
+            val = self.combat_results['player'][metric_name]
+            val = round(val, 2)
+            metric_str = '{}: {}'.format(metric_name, val)
+            table_lst.append((metric_str, ))
 
         subplot_obj.axis('off')
         table_obj = subplot_obj.table(

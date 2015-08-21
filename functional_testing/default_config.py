@@ -23,7 +23,11 @@ ALL_DATA = dict(
     max_combat_time=10,
 
     rotation_lst=None,
-    chosen_items_dct={'player': ['hextech_gunblade', 'hextech_gunblade'], 'enemy_1': ['dorans_shield']},
+    chosen_items_dct={'player': ['hextech_gunblade', 'hextech_gunblade'],
+                      'enemy_2': ['dorans_shield', 'hextech_gunblade'],
+                      'enemy_3': ['dorans_shield', 'hextech_gunblade'],
+                      'enemy_4': ['dorans_shield', 'hextech_gunblade'],
+                      'enemy_1': ['dorans_shield', 'hextech_gunblade']},
     initial_enemies_total_stats=None,
     initial_active_buffs=None,
     initial_current_stats=None,
@@ -37,7 +41,10 @@ ALL_DATA = dict(
             ad_per_lvl=dict(
                 additive=6))),
 
-    selected_masteries_dct=dict(archmage=3))
+    selected_masteries_dct=dict(archmage=3),
+
+    enemies_originating_dmg_data=None,
+)
 
 
 def all_data_deepcopy():

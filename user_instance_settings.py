@@ -1,4 +1,5 @@
 import importlib
+import pprint as pp
 
 
 class UserSession(object):
@@ -17,14 +18,7 @@ class UserSession(object):
 
         return player_champ_tot_attr_class(input_dct)
 
-    def single_reverted_enemy_stats_and_buffs(self, input_dct, enemy_name):
-        """
-        Calculates enemy's stats and enemy generated buffs to be applied to player,
-        by creating an instance with given enemy being converted to 'player'.
-
-        :return: (dict) Contains buffs that should be applied to the player and enemy's total stats.
-        """
-
+    def reversed_combat_instance(self, input_dct, enemy_name):
         new_input_dct = {}
 
         enemy_champion = input_dct['selected_champions_dct'][enemy_name]
@@ -51,7 +45,7 @@ class UserSession(object):
         instance = self.combiner_class(new_input_dct)
         instance.run_combat()
 
-        return instance.reversed_precombat_player_stats_and_enemy_buffs
+        return instance
 
     def all_enemy_stats_and_final_player_buffs(self, input_dct):
         """
@@ -63,19 +57,26 @@ class UserSession(object):
 
         player_buffs = {}
         enemies_base_stats = {}
+        dmg_data = {}
 
         enemy_target_names = tuple(tar for tar in sorted(input_dct['selected_champions_dct']) if tar != 'player')
 
         for enemy_name in enemy_target_names:
+            instance = self.reversed_combat_instance(input_dct=input_dct, enemy_name=enemy_name)
 
-            stats_and_buffs_dct = self.single_reverted_enemy_stats_and_buffs(input_dct=input_dct, enemy_name=enemy_name)
-            stats_dct = stats_and_buffs_dct['stats']
-            buffs_dct = stats_and_buffs_dct['buffs']
-
+            # Stats
+            stats_dct = instance.reversed_precombat_player_stats
             enemies_base_stats.update({enemy_name: stats_dct})
+
+            # Buffs
+            buffs_dct = instance.reversed_precombat_enemy_buffs
             player_buffs.update(buffs_dct)
 
-        return {'all_stats': enemies_base_stats, 'all_player_buffs': player_buffs}
+            # Dmg
+            enemy_dmg_results = instance.combat_results
+            dmg_data.update({enemy_name: enemy_dmg_results})
+
+        return {'all_stats': enemies_base_stats, 'all_player_buffs': player_buffs, 'all_dmg_results': dmg_data}
 
     def finalized_input_dct(self, input_dct):
         """
@@ -89,10 +90,13 @@ class UserSession(object):
         stats_and_buffs_dct = self.all_enemy_stats_and_final_player_buffs(input_dct=input_dct)
         enemies_stats_dct = stats_and_buffs_dct['all_stats']
         player_buffs_dct = stats_and_buffs_dct['all_player_buffs']
+        dmg_data_dct = stats_and_buffs_dct['all_dmg_results']
 
         dct.update({'initial_active_buffs': {'player': player_buffs_dct}})
 
         dct.update({'initial_enemies_total_stats': enemies_stats_dct})
+
+        dct.update({'enemies_originating_dmg_data': dmg_data_dct})
 
         for key in input_dct:
             if key not in dct:
@@ -123,6 +127,11 @@ class UserSession(object):
 
         instance = self.instance_after_combat(input_dct=input_dct)
         instance.represent_results_visually()
+
+        pp.pprint(instance.combat_history)
+        pp.pprint(instance.combat_results)
+        print('\nCombat duration: {}'.format(instance.combat_end_time))
+        print('\nSurvivability: {}'.format(instance.survivability()))
 
         return instance
 

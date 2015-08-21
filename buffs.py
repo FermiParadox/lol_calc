@@ -21,7 +21,8 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
                  initial_current_stats,
                  initial_active_buffs,
                  chosen_items_dct,
-                 initial_enemies_total_stats):
+                 initial_enemies_total_stats,
+                 _reversed_combat_mode):
 
         self.current_time = 0
 
@@ -31,7 +32,8 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
                                          req_buff_dct_func=req_buff_dct_func,
                                          initial_active_buffs=initial_active_buffs,
                                          initial_current_stats=initial_current_stats,
-                                         initial_enemies_total_stats=initial_enemies_total_stats)
+                                         initial_enemies_total_stats=initial_enemies_total_stats,
+                                         _reversed_combat_mode=_reversed_combat_mode)
 
         masteries.MasteriesProperties.__init__(self,
                                                selected_masteries_dct=selected_masteries_dct,
@@ -211,7 +213,6 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
 class Counters(BuffsGeneral):
 
     AOE_SPELLVAMP_MOD = 30/100
-    LOWEST_MEANINGFUL_COMBAT_TIME = 5
     EXTRA_STATS_SET = {'lifesteal', 'spellvamp', 'ap'}
 
     def __init__(self,
@@ -223,7 +224,8 @@ class Counters(BuffsGeneral):
                  initial_current_stats,
                  initial_active_buffs,
                  chosen_items_dct,
-                 max_combat_time):
+                 max_combat_time,
+                 _reversed_combat_mode):
 
         BuffsGeneral.__init__(self,
                               selected_champions_dct=selected_champions_dct,
@@ -233,7 +235,8 @@ class Counters(BuffsGeneral):
                               chosen_items_dct=chosen_items_dct,
                               req_buff_dct_func=req_buff_dct_func,
                               selected_masteries_dct=selected_masteries_dct,
-                              initial_enemies_total_stats=initial_enemies_total_stats)
+                              initial_enemies_total_stats=initial_enemies_total_stats,
+                              _reversed_combat_mode=_reversed_combat_mode)
 
         self.max_combat_time = max_combat_time
         self.total_movement = 0
@@ -257,6 +260,7 @@ class Counters(BuffsGeneral):
         lst = list(self.base_stats_dct['player'])
         lst += self.SPECIAL_STATS_SET
         lst += self.EXTRA_STATS_SET
+        lst.append('current_hp')
 
         return lst
 
@@ -315,7 +319,9 @@ class Counters(BuffsGeneral):
 
             lifesteal={},
             spellvamp={},
-            resource={},))
+            resource={},
+            heals={},
+        ))
 
     def add_dmg_tot_history(self):
         """
@@ -472,6 +478,18 @@ class Counters(BuffsGeneral):
         else:
             self.combat_history['player'][heal_type].update({self.current_time: value})
 
+    def note_heal_in_history(self, value):
+        """
+        Notes player's heals in history.
+
+        :return: (None)
+        """
+
+        if self.current_time in self.combat_history['player']['heals']:
+            self.combat_history['player']['heals'][self.current_time] += value
+        else:
+            self.combat_history['player']['heals'].update({self.current_time: value})
+
     def note_current_hp_in_history(self, target_name):
         """
         Stores current_hp of a target.
@@ -521,34 +539,38 @@ class Counters(BuffsGeneral):
             (None)
         """
 
+        # Filters out heals.
+        if final_dmg_value < 0:
+            return
+
         # (AA type is converted to physical before being stored.)
         if dmg_type == 'AA':
             dmg_type = 'physical'
 
-        # Filters out heals.
-        if final_dmg_value > 0:
-            if self.current_time in self.combat_history[target_name][dmg_type]:
-                self.combat_history[target_name][dmg_type][self.current_time] += final_dmg_value
-            else:
-                self.combat_history[target_name][dmg_type].update({self.current_time: final_dmg_value})
+        dmg_type_combat_history_dct = self.combat_history[target_name][dmg_type]
+
+        if self.current_time in dmg_type_combat_history_dct:
+            dmg_type_combat_history_dct[self.current_time] += final_dmg_value
+        else:
+            dmg_type_combat_history_dct.update({self.current_time: final_dmg_value})
 
     # RESULTS ---------------------------------------------------------------------------------------------------------
     def set_combat_results(self):
         """
-        Returns:
-            (None)
+        NOTE: Not all keys are inserted here.
+
+        :return: (None)
         """
 
         self.place_tars_and_empty_dct_in_dct(self.combat_results)
         self.combat_results['player'].update({'source': {}, 'total_physical': 0, 'total_magic': 0, 'total_true': 0})
 
-    def note_dmg_totals_in_results(self):
+    def note_dmg_totals_movement_and_heals_in_results(self):
         """
         Calculates total dmg for each dmg type and stores it,
         and total overall dmg.
 
-        Returns:
-            (None)
+        :return: (None)
         """
 
         self.combat_results['player']['total_dmg_done'] = 0
@@ -569,6 +591,12 @@ class Counters(BuffsGeneral):
             # OVERALL TOTALS
             self.combat_results['player']['total_dmg_done'] += tot_value
 
+        self.note_lifesteal_spellvamp_totals_in_results()
+        self.note_heals_in_results()
+        self.note_dps_in_results()
+        self.note_movement_in_results()
+        self.note_movement_per_sec_in_results()
+
     def note_lifesteal_spellvamp_totals_in_results(self):
         """
         Calculates and stores total values of lifesteal and spellvamp.
@@ -587,6 +615,14 @@ class Counters(BuffsGeneral):
             # Stores regen_type.
             self.combat_results['player'][regen_type] = tot_regen_val
 
+    def note_heals_in_results(self):
+        tot_regen_val = 0
+        for event_time in self.combat_history['player']['heals']:
+            tot_regen_val += self.combat_history['player']['heals'][event_time]
+
+        # Stores regen_type.
+        self.combat_results['player']['heals'] = tot_regen_val
+
     def _last_action_end(self):
 
         if not self.actions_dct:
@@ -604,21 +640,16 @@ class Counters(BuffsGeneral):
 
     def dps_result(self):
         """
-        Calculates player's dps value if combat time is higher than threshold.
+        Calculates player's dps value..
 
-        Returns:
-            (float)
-            (str) 'Not available'
+        :return: (float)
         """
         # TODO change method name after other method is removed.
 
         last_action_end = self._last_action_end()
-        # DPS
-        # (if time is too short for dps to be meaningful, returns message)
-        if last_action_end >= self.LOWEST_MEANINGFUL_COMBAT_TIME:
-            return self.combat_results['player']['total_dmg_done'] / last_action_end
-        else:
-            return 'Not available (combat time too short).'
+        if not last_action_end:
+            last_action_end += 0.1
+        return self.combat_results['player']['total_dmg_done'] / last_action_end
 
     def note_dps_in_results(self):
         """
@@ -707,10 +738,6 @@ class Counters(BuffsGeneral):
         """
 
         self.__note_stats_pre_or_post_combat_in_results(stats_category_name='post_combat_stats')
-        self.note_lifesteal_spellvamp_totals_in_results()
-        self.note_dps_in_results()
-        self.note_movement_in_results()
-        self.note_movement_per_sec_in_results()
 
     def __note_active_buffs(self, str_pre_or_post):
         """
@@ -731,6 +758,8 @@ class Counters(BuffsGeneral):
 
 class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 
+    IGNORED_DMG_NAMES = ['regen', ]
+
     def __init__(self,
                  selected_champions_dct,
                  champion_lvls_dct,
@@ -743,6 +772,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                  req_buff_dct_func,
                  ability_lvls_dct,
                  selected_masteries_dct,
+                 _reversed_combat_mode
                  ):
 
         Counters.__init__(self,
@@ -754,7 +784,8 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                           chosen_items_dct=chosen_items_dct,
                           req_buff_dct_func=req_buff_dct_func,
                           selected_masteries_dct=selected_masteries_dct,
-                          initial_enemies_total_stats=initial_enemies_total_stats)
+                          initial_enemies_total_stats=initial_enemies_total_stats,
+                          _reversed_combat_mode=_reversed_combat_mode)
 
         dmgs_buffs_categories.DmgCategories.__init__(self,
                                                      req_stats_func=self.request_stat,
@@ -794,7 +825,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                 self.note_lifesteal_or_spellvamp_in_history(value=lifesteal_value, heal_type='lifesteal')
 
             # If it's not an AA checks if either lifesteal or spellvamp is applicable.
-            if dmg_type != 'AA':
+            else:
 
                 dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
                 life_conversion_type = dmg_dct['life_conversion_type']
@@ -840,6 +871,8 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 
         # Applies heal_reduction.
         heal_value *= 1 - self.request_stat(target_name=tar_name, stat_name='percent_healing_reduction')
+
+        self.note_heal_in_history(value=heal_value)
 
         # Ensures target is not overhealed.
         # If current_hp is going to become less than max hp..
@@ -986,11 +1019,15 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         if final_dmg_value >= 0:
             self.current_stats[target_name]['current_hp'] -= final_dmg_value
 
-            # DMG COUNTERS
-            self.note_dmg_in_history(dmg_type=dmg_type,
-                                     final_dmg_value=final_dmg_value,
-                                     target_name=target_name)
-            self.note_source_dmg_in_results(dmg_dct=dmg_dct, final_dmg_value=final_dmg_value)
+            if dmg_name not in self.IGNORED_DMG_NAMES:
+                # DMG COUNTERS
+                # (dmg on player is not needed)
+                # (dps by enemies is not needed)
+                if target_name != 'player':
+                    self.note_dmg_in_history(dmg_type=dmg_type,
+                                             final_dmg_value=final_dmg_value,
+                                             target_name=target_name)
+                    self.note_source_dmg_in_results(dmg_dct=dmg_dct, final_dmg_value=final_dmg_value)
             self.note_current_hp_in_history(target_name=target_name)
 
         # Otherwise it's a heal.
@@ -1061,7 +1098,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         return self.refined_combat_history()['all_targets']['total_dmg'] / last_cast_completion
 
 
-NATURAL_REGEN_PERIOD = 0.5  # Tick period of hp5, mp5, etc.
+NATURAL_REGEN_PERIOD = 1  # Tick period of hp5, mp5, etc.
 PER_5_DIVISOR = 5 / NATURAL_REGEN_PERIOD  # Divides "per 5" stats. Used to create per tick value.
 
 
@@ -1079,26 +1116,26 @@ _DEAD_BUFF_DCT_BASE['prohibit_cd_start'] = None
 # REGEN BUFF BASE
 
 # Creates base dict for regenerations (hp, mp, energy, etc).
-_REGEN_BUFF_DCT_BASE = palette.buff_dct_base_deepcopy()
+REGEN_BUFF_DCT_BASE = palette.buff_dct_base_deepcopy()
 # Sets values correctly for regenerations.
 for regen_buff_base_key in ('on_hit', 'prohibit_cd_start', 'stats'):
-    _REGEN_BUFF_DCT_BASE[regen_buff_base_key] = None
-_REGEN_BUFF_DCT_BASE['max_stacks'] = 1
-_REGEN_BUFF_DCT_BASE['duration'] = 'permanent'
+    REGEN_BUFF_DCT_BASE[regen_buff_base_key] = None
+REGEN_BUFF_DCT_BASE['max_stacks'] = 1
+REGEN_BUFF_DCT_BASE['duration'] = 'permanent'
 # (adds dot data)
-_REGEN_BUFF_DCT_BASE['dot'] = {'period': None, 'dmg_name': None}
-_REGEN_BUFF_DCT_BASE['dot']['period'] = NATURAL_REGEN_PERIOD
+REGEN_BUFF_DCT_BASE['dot'] = {'period': None, 'dmg_names': []}
+REGEN_BUFF_DCT_BASE['dot']['period'] = NATURAL_REGEN_PERIOD
 
 
 # PLAYER buff base.
-_REGEN_BUFF_DCT_BASE_PLAYER = copy.deepcopy(_REGEN_BUFF_DCT_BASE)
+_REGEN_BUFF_DCT_BASE_PLAYER = copy.deepcopy(REGEN_BUFF_DCT_BASE)
 _REGEN_BUFF_DCT_BASE_PLAYER['target_type'] = 'player'
-_REGEN_BUFF_DCT_BASE_PLAYER['dot']['dmg_name'] = 'player_hp5_dmg'
+_REGEN_BUFF_DCT_BASE_PLAYER['dot']['dmg_names'] = ['player_hp5_dmg']
 
 # ENEMY buff base.
-_REGEN_BUFF_DCT_BASE_ENEMY = copy.deepcopy(_REGEN_BUFF_DCT_BASE)
+_REGEN_BUFF_DCT_BASE_ENEMY = copy.deepcopy(REGEN_BUFF_DCT_BASE)
 _REGEN_BUFF_DCT_BASE_ENEMY['target_type'] = 'enemy'
-_REGEN_BUFF_DCT_BASE_ENEMY['dot']['dmg_name'] = 'enemy_hp5_dmg'
+_REGEN_BUFF_DCT_BASE_ENEMY['dot']['dmg_names'] = ['enemy_hp5_dmg']
 
 
 # ----------------------------------------------------------------------------------------------------------------------

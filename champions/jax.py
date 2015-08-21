@@ -265,7 +265,7 @@ ABILITIES_EFFECTS = {
                                  'dmg': [],
                                  'remove_buff': []},
                      'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}}},
-    'q': {'enemy': {'actives': {'buffs': [], 'dmg': [], 'remove_buff': []},
+    'q': {'enemy': {'actives': {'buffs': [], 'dmg': ['q_dmg_0'], 'remove_buff': []},
                     'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
           'player': {'actives': {'buffs': [],
                                  'cds_modified': {},

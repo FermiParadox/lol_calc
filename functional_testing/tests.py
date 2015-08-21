@@ -186,7 +186,7 @@ class TestCases(object):
         data_dct['rotation_lst'] = rotation_lst
         data_dct['selected_runes'] = None
         data_dct['selected_masteries_dct'] = None
-        data_dct['items_lst'] = None
+        data_dct['chosen_items_dct'] = {}
         self.__set_all_initial_lvls_to(initial_lvls_val=all_champs_lvls, given_data_dct=data_dct)
 
         post_combat_instance = self.run_combat_and_show_results(data_dct=data_dct)
@@ -375,7 +375,7 @@ if __name__ == '__main__':
         inst = TestCases().naked_combat_and_results(rotation_lst=['AA'], all_champs_lvls=1)
 
     # RUN DURATION
-    if 1:
+    if 0:
         test_run_time(repetitions=100, sort_by='tottime', count_of_shown_functions=0)
 
     # CONSISTENCY

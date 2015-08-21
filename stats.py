@@ -8,8 +8,9 @@ ALL_RESOURCE_NAMES = frozenset({'mp', 'energy', 'rage', None, 'flow', 'hp'})
 
 
 RESOURCE_CURRENT_STAT_NAMES = frozenset({'current_'+i for i in ALL_RESOURCE_NAMES if i is not None})
-
 RESOURCE_TO_CURRENT_RESOURCE_MAP = {i: 'current_'+i for i in ALL_RESOURCE_NAMES if i is not None}
+
+CURRENT_TYPE_STATS = RESOURCE_CURRENT_STAT_NAMES | {'current_hp',}
 
 DEFENSIVE_SPECIAL_STATS = frozenset({'percent_physical_reduction_by_armor',
                                      'percent_magic_reduction_by_mr',
@@ -222,6 +223,7 @@ class StatCalculation(StatFilters):
     ALL_STANDARD_STAT_NAMES = ALL_STANDARD_STAT_NAMES
     RESOURCE_TO_CURRENT_RESOURCE_MAP = RESOURCE_TO_CURRENT_RESOURCE_MAP
     ENEMY_BASE_STATS_NAMES = _ENEMY_BASE_STATS_NAMES
+    CURRENT_TYPE_STATS = CURRENT_TYPE_STATS
 
     def __init__(self,
                  champion_lvls_dct,
@@ -312,10 +314,19 @@ class StatCalculation(StatFilters):
         if self.initial_enemies_total_stats:
             self.base_stats_dct.update(self.initial_enemies_total_stats)
 
-        player_base_stats = app_champions_base_stats.CHAMPION_BASE_STATS[self.selected_champions_dct['player']]
+        all_base_stats_dct = app_champions_base_stats.CHAMPION_BASE_STATS
+
+        player_base_stats = all_base_stats_dct[self.selected_champions_dct['player']]
         self.base_stats_dct.update({'player': player_base_stats})
 
-        self.fill_up_tars_and_empty_obj_in_dct(given_dct=self.base_stats_dct, obj_type='dict')
+        for tar_name in self.enemy_target_names:
+            if tar_name not in self.base_stats_dct:
+                self.base_stats_dct.update({tar_name: {}})
+
+                tar_champ = self.selected_champions_dct[tar_name]
+                tar_hp = all_base_stats_dct[tar_champ]['hp']
+                tar_hp_per_lvl = all_base_stats_dct[tar_champ]['hp_per_lvl']
+                self.base_stats_dct[tar_name].update({'hp': tar_hp, 'hp_per_lvl': tar_hp_per_lvl})
 
     def set_active_buffs(self):
         """
@@ -334,6 +345,7 @@ class StatCalculation(StatFilters):
             if tar not in self.active_buffs:
                 self.active_buffs.update({tar: {}})
 
+    # TODO: memoization
     def _base_stat(self, stat_name, tar_name):
         """
         Returns stat value resulting from base stat value and per lvl scaling,
@@ -591,9 +603,11 @@ class StatRequest(StatCalculation):
                  req_buff_dct_func,
                  initial_active_buffs,
                  initial_current_stats,
-                 initial_enemies_total_stats):
+                 initial_enemies_total_stats,
+                 _reversed_combat_mode):
 
         self.req_buff_dct_func = req_buff_dct_func
+        self._reversed_combat_mode = _reversed_combat_mode
 
         StatCalculation.__init__(self,
                                  champion_lvls_dct=champion_lvls_dct,
@@ -620,6 +634,8 @@ class StatRequest(StatCalculation):
             return self._bonus_stat(stat_name=stat_name, tar_name=target_name)
         elif stat_name in self.SPECIAL_STATS_SET:
             return getattr(self, stat_name)(target_name)
+        elif stat_name in CURRENT_TYPE_STATS:
+            return self.current_stats[target_name][stat_name]
 
         # Most stats can be calculated using the 'standard_stat' method.
         else:
@@ -736,9 +752,11 @@ class StatRequest(StatCalculation):
         :return: (None)
         """
 
-        # Checks if there are any preset values for current_stats.
-        if self.initial_current_stats:
-            self.current_stats = copy.deepcopy(self.initial_current_stats)
+        # In reversed mode survivability (in generally) is all that matters so initial stats are ignored.
+        if not self._reversed_combat_mode:
+            # Checks if there are any preset values for current_stats.
+            if self.initial_current_stats:
+                self.current_stats = copy.deepcopy(self.initial_current_stats)
 
         for tar in self.all_target_names:
 
@@ -752,13 +770,12 @@ class StatRequest(StatCalculation):
                 # Also creates the player's 'current_'resource.
                 if tar == 'player':
                     resource_used = self.RESOURCE_USED
-
-                    if ('current_' + resource_used) not in self.current_stats[tar]:
+                    current_resource_name = RESOURCE_TO_CURRENT_RESOURCE_MAP[self.RESOURCE_USED]
+                    if current_resource_name not in self.current_stats[tar]:
 
                         self.current_stats['player'].update(
 
-                            {('current_' + resource_used): self.request_stat(target_name=tar,
-                                                                             stat_name=resource_used)})
+                            {current_resource_name: self.request_stat(target_name=tar, stat_name=resource_used)})
 
 
 class DmgReductionStats(StatRequest):
