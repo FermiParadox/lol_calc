@@ -2,7 +2,7 @@ import copy
 import palette
 
 from champions import app_champions_base_stats
-import items_folder.items_data as items_data
+
 
 ALL_RESOURCE_NAMES = frozenset({'mp', 'energy', 'rage', None, 'flow', 'hp'})
 
@@ -591,12 +591,6 @@ class StatCalculation(StatFilters):
 
 class StatRequest(StatCalculation):
 
-    """
-    Contains methods for handing requests to a stat's calculation.
-
-    Stats are calculated once and then stored until they or their controllers (stats or buffs) change.
-    """
-
     def __init__(self,
                  champion_lvls_dct,
                  selected_champions_dct,
@@ -697,18 +691,18 @@ class StatRequest(StatCalculation):
         # Inserts bonus_name and its value in bonuses_dct.
         self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: stat_val})
 
-    def buffs_to_single_stat_bonuses(self, tar_name):
+    def apply_bonuses_by_buffs(self, tar_name):
         """
-        Stores a stat's bonuses caused by buffs.
-
-        Structure:
-            bonuses_dct: {target: {stat: {bonus type: {bonus name: }, }, }, }
-            buff dct: { , , 'stats': {stat_name: {'additive': value}, }, .. }
+        Creates all bonuses to stats caused by buffs.
 
         :return: (None)
         """
 
-        for buff_name in self.active_buffs[tar_name]:
+        tar_active_buffs = self.active_buffs[tar_name]
+
+        time_sorted_tar_active_buffs = sorted(tar_active_buffs, key=lambda x: tar_active_buffs[x]['starting_time'])
+
+        for buff_name in time_sorted_tar_active_buffs:
 
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
             # (All buff stats dict)
@@ -738,11 +732,11 @@ class StatRequest(StatCalculation):
                                                           buff_dct=buff_dct, tar_name=tar_name,
                                                           buff_name=buff_name, buff_stats_dct=buff_stats_dct)
 
-    def buffs_to_all_stats_bonuses(self):
+    def refresh_stats_bonuses(self):
         self.place_tars_and_empty_dct_in_dct(self.bonuses_dct, ensure_empty_dct=False)
 
         for tar_name in self.all_target_names:
-            self.buffs_to_single_stat_bonuses(tar_name=tar_name)
+            self.apply_bonuses_by_buffs(tar_name=tar_name)
 
     def set_current_stats(self):
         """

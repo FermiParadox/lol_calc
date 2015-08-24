@@ -278,11 +278,6 @@ _DPS_BY_ENEMIES_DMG_BASE = dict(
     usual_max_targets=1,
     delay=0,)
 
-_TRUE_DPS_BY_ENEMIES_DMG_BASE = {'dmg_type': 'true'}
-_MAGIC_DPS_BY_ENEMIES_DMG_BASE = {'dmg_type': 'magic'}
-_NON_AA_PHYSICAL_DPS_BY_ENEMIES_DMG_BASE = {'dmg_type': 'physical'}
-_AA_DPS_BY_ENEMIES_DMG_BASE = {'dmg_type': 'AA'}
-
 
 class EnemiesDmgToPlayer(EventsGeneral):
     """
@@ -322,10 +317,10 @@ class EnemiesDmgToPlayer(EventsGeneral):
         self.IGNORED_DMG_NAMES += _DPS_BY_ENEMIES_DMGS_NAMES
 
         self.enemies_originating_dmg_data = enemies_originating_dmg_data
-        self.__true_dps_by_enemy_dmg = {}
-        self.__non_aa_physical_dps_by_enemy_dmg = {}
-        self.__aa_dps_by_enemy_dmg = {}
-        self.__magic_dps_by_enemy_dmg = {}
+        self._true_dps_by_enemy_dmg = {}
+        self._non_aa_physical_dps_by_enemy_dmg = {}
+        self._aa_dps_by_enemy_dmg = {}
+        self._magic_dps_by_enemy_dmg = {}
 
         EventsGeneral.__init__(self,
                                champion_lvls_dct,
@@ -387,43 +382,43 @@ class EnemiesDmgToPlayer(EventsGeneral):
         dct.update({'true_dps': percent_true})
         for dps_type in dct:
             dct[dps_type] *= average_dps * self.DPS_ENHANCER_COEF
-        print(dct)
+
         return dct
 
     def _create_enemies_dps_dmgs_dcts(self):
         dps_values_dct = self._enemies_dps_values_dct()
 
         true_dps_val = dps_values_dct['true_dps']
-        self.__true_dps_by_enemy_dmg = {'dmg_values': true_dps_val}
-        self.__true_dps_by_enemy_dmg.update(_TRUE_DPS_BY_ENEMIES_DMG_BASE)
-        self.__true_dps_by_enemy_dmg.update(self.DPS_BY_ENEMIES_DMG_BASE)
+        self._true_dps_by_enemy_dmg = {'dmg_values': true_dps_val}
+        self._true_dps_by_enemy_dmg.update({'dmg_type': 'true'})
+        self._true_dps_by_enemy_dmg.update(self.DPS_BY_ENEMIES_DMG_BASE)
 
         magic_dps_val = dps_values_dct['magic_dps']
-        self.__magic_dps_by_enemy_dmg = {'dmg_values': magic_dps_val}
-        self.__magic_dps_by_enemy_dmg.update(_MAGIC_DPS_BY_ENEMIES_DMG_BASE)
-        self.__magic_dps_by_enemy_dmg.update(self.DPS_BY_ENEMIES_DMG_BASE)
+        self._magic_dps_by_enemy_dmg = {'dmg_values': magic_dps_val}
+        self._magic_dps_by_enemy_dmg.update({'dmg_type': 'magic'})
+        self._magic_dps_by_enemy_dmg.update(self.DPS_BY_ENEMIES_DMG_BASE)
 
         non_aa_physical_dps_val = dps_values_dct['non_aa_physical_dps']
-        self.__non_aa_physical_dps_by_enemy_dmg = {'dmg_values': non_aa_physical_dps_val}
-        self.__non_aa_physical_dps_by_enemy_dmg.update(_NON_AA_PHYSICAL_DPS_BY_ENEMIES_DMG_BASE)
-        self.__non_aa_physical_dps_by_enemy_dmg.update(self.DPS_BY_ENEMIES_DMG_BASE)
+        self._non_aa_physical_dps_by_enemy_dmg = {'dmg_values': non_aa_physical_dps_val}
+        self._non_aa_physical_dps_by_enemy_dmg.update({'dmg_type': 'physical'})
+        self._non_aa_physical_dps_by_enemy_dmg.update(self.DPS_BY_ENEMIES_DMG_BASE)
 
         aa_dps_val = dps_values_dct['aa_dps']
-        self.__aa_dps_by_enemy_dmg = {'dmg_values': aa_dps_val}
-        self.__aa_dps_by_enemy_dmg.update(_AA_DPS_BY_ENEMIES_DMG_BASE)
-        self.__aa_dps_by_enemy_dmg.update(self.DPS_BY_ENEMIES_DMG_BASE)
+        self._aa_dps_by_enemy_dmg = {'dmg_values': aa_dps_val}
+        self._aa_dps_by_enemy_dmg.update({'dmg_type': 'AA'})
+        self._aa_dps_by_enemy_dmg.update(self.DPS_BY_ENEMIES_DMG_BASE)
 
     def true_dps_by_enemy_dmg(self):
-        return self.__true_dps_by_enemy_dmg
+        return self._true_dps_by_enemy_dmg
 
     def non_aa_physical_dps_by_enemy_dmg(self):
-        return self.__non_aa_physical_dps_by_enemy_dmg
+        return self._non_aa_physical_dps_by_enemy_dmg
 
     def aa_dps_by_enemy_dmg(self):
-        return self.__aa_dps_by_enemy_dmg
+        return self._aa_dps_by_enemy_dmg
 
     def magic_dps_by_enemy_dmg(self):
-        return self.__magic_dps_by_enemy_dmg
+        return self._magic_dps_by_enemy_dmg
 
     def add_dps_dot_by_enemies(self):
 
@@ -444,7 +439,11 @@ class EnemiesDmgToPlayer(EventsGeneral):
 
         hp_lost_per_sec = (max_hp - current_hp) / combat_duration
 
-        return max_hp / hp_lost_per_sec
+        if hp_lost_per_sec:
+            return max_hp / hp_lost_per_sec
+        else:
+            # If player heals exceeded the dmg he took.
+            return 999999
 
     def note_survivability(self):
         self.combat_results['player'].update({'survivability': self.survivability()})
@@ -1472,7 +1471,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
     def remove_expired_buffs_and_refresh_bonuses(self):
         self._remove_expired_buffs()
-        self.buffs_to_all_stats_bonuses()
+        self.refresh_stats_bonuses()
 
     def apply_on_hit_effects(self):
         """
@@ -2022,7 +2021,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                                    abilities_lvls=self.ability_lvls_dct)
 
         # (Bonuses have to be applied here instead of in their normal methods for noting reasons)
-        self.buffs_to_all_stats_bonuses()
+        self.refresh_stats_bonuses()
 
     def run_combat_preparation(self):
         self.run_combat_preparation_without_regen()
@@ -2497,4 +2496,6 @@ class VisualRepresentation(Presets):
 
         plt.figure(1).set_size_inches(11, 8, forward=True)
         plt.show()
+
+        return
 

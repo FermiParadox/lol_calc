@@ -4,10 +4,58 @@ import functional_testing.default_config as default_config
 from palette import delimiter, fat_delimiter
 
 import cProfile
+import importlib
 import pstats
 import pandas
 import memory_profiler
 import multiprocessing
+import os
+import sys
+
+
+PROJECT_PATH = '/home/black/Dev/PycharmProjects/WhiteProject'
+
+
+def modules_in_project_directory():
+    all_files = os.listdir(PROJECT_PATH)
+
+    project_files = set()
+    py_files = set()
+
+    # Filter our based on first letter.
+    for name in all_files[:]:
+        if name[0] in '._':
+            pass
+        else:
+            project_files.add(name)
+
+    # Adds '.py' files.
+    for name in project_files:
+        if name[-3:] == '.py':
+            py_files.add(name)
+
+        # Scans directories for '.py' files and them as well.
+        elif name[-3:]:
+            inner_dir_path = PROJECT_PATH + '/' + name
+            for inner_name in os.listdir(inner_dir_path):
+                if inner_name[-3:0] == '.py':
+                    py_files.add(inner_name)
+
+    py_files = {i[0:-3] for i in py_files}
+
+    return py_files
+
+
+def modules_loaded():
+    modules_names = {i for i in sys.modules.keys()}
+    return modules_names
+
+
+def reload_project_modules():
+    used_modules = modules_in_project_directory() & set(modules_loaded())
+
+    for module_name in used_modules:
+        importlib.reload(importlib.import_module(module_name))
 
 
 def _combat_loop_instance(data_dct):
@@ -88,6 +136,20 @@ def _single_combat_multiple_users_instances_lst(repetitions):
     combat_instances_lst = []
 
     for i in range(repetitions):
+        user_instance = user_instance_settings.UserSession()
+        combat_instance = user_instance.instance_after_combat(data)
+        combat_instances_lst.append(combat_instance)
+
+    return combat_instances_lst
+
+
+def _reloaded_modules_multi_users_single_combat(repetitions):
+    data = default_config.ALL_DATA
+
+    combat_instances_lst = []
+
+    for i in range(repetitions):
+
         user_instance = user_instance_settings.UserSession()
         combat_instance = user_instance.instance_after_combat(data)
         combat_instances_lst.append(combat_instance)
@@ -329,8 +391,6 @@ class TestCases(object):
             else:
                 print('No differences.')
 
-    # TODO: If more inconsistencies appear that can't be tracked down, create noting of active_buffs, bonuses, dps, etc.
-
     def _display_differences(self, combat_instances_lst, instances_type_msg):
         """
         Compares given instances searching for any differences and displays them.
@@ -366,6 +426,11 @@ class TestCases(object):
         instances_lst = _single_combat_multiple_users_instances_lst(repetitions=repetitions)
         self._display_differences(combat_instances_lst=instances_lst, instances_type_msg=instances_type_msg)
 
+    def display_reloaded_modules_single_user_differences(self, repetitions):
+        instances_type_msg = 'RELOADED MODULES SINGLE USER'
+        instances_lst = _reloaded_modules_multi_users_single_combat(repetitions=repetitions)
+        self._display_differences(combat_instances_lst=instances_lst, instances_type_msg=instances_type_msg)
+
 
 if __name__ == '__main__':
     if 1:
@@ -375,7 +440,7 @@ if __name__ == '__main__':
         inst = TestCases().naked_combat_and_results(rotation_lst=['AA'], all_champs_lvls=1)
 
     # RUN DURATION
-    if 0:
+    if 1:
         test_run_time(repetitions=100, sort_by='tottime', count_of_shown_functions=0)
 
     # CONSISTENCY
@@ -383,6 +448,7 @@ if __name__ == '__main__':
         reps = 10
         TestCases().display_single_user_multi_combats_differences(repetitions=reps)
         TestCases().display_multi_users_differences(repetitions=reps)
+        TestCases().display_reloaded_modules_single_user_differences(repetitions=reps)
 
     # MEMORY
     if 0:

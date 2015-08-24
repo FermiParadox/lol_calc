@@ -283,11 +283,7 @@ class Counters(BuffsGeneral):
         """
         Sets up combat_history by inserting history blueprints for all targets.
 
-        Modifies:
-            combat_history dict.
-
-        Returns:
-            (None)
+        :return: (None)
         """
 
         for tar in self.all_target_names:
@@ -298,7 +294,8 @@ class Counters(BuffsGeneral):
                     magic={},
                     physical={},
                     total={},
-                    current_hp={},)})
+                    current_hp={},
+                )})
 
         self.combat_history['player'].update(dict(
             # Each dmg_name and its value
@@ -321,6 +318,7 @@ class Counters(BuffsGeneral):
             spellvamp={},
             resource={},
             heals={},
+            dmg_or_heal_taken=[]
         ))
 
     def add_dmg_tot_history(self):
@@ -496,12 +494,27 @@ class Counters(BuffsGeneral):
 
         Replaces previous value for specific time if events occur simultaneously.
 
-        Returns:
-            (None)
+        :return: (None)
         """
 
         self.combat_history[target_name]['current_hp'].update(
             {self.current_time: self.current_stats[target_name]['current_hp']})
+
+    def note_player_dmg_taken(self, dmg_name, unmitigated_dmg_value, mitigated_dmg_value):
+        """
+        Notes in history dmg and heals the player takes.
+
+        NOTE: It is tracked separately in history, since it isn't used for results as other dmgs.
+
+        :return: (None)
+        """
+
+        appended_dct = {'dmg_name': dmg_name,
+                        'unmitigated_dmg_value': unmitigated_dmg_value,
+                        'mitigated_dmg_value': mitigated_dmg_value,
+                        'current_time': self.current_time}
+
+        self.combat_history['player']['dmg_or_heal_taken'].append(appended_dct)
 
     def note_non_hp_resource_in_history(self, curr_resource_str):
         """
@@ -797,7 +810,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                                      active_buffs=self.active_buffs,
                                                      ability_lvls_dct=ability_lvls_dct)
 
-    def apply_spellvamp_or_lifesteal(self, dmg_name, dmg_value, dmg_type):
+    def apply_spellvamp_or_lifesteal(self, tar_name, dmg_name, dmg_value, dmg_type):
         """
         Applies lifesteal or spellvamp to the player and notes it in history.
 
@@ -805,12 +818,10 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 
         Spellvamp is applied to true, physical, or magic dmg types,
         excluding AAs and some on hit dmg effects (not marked in their dict).
-
-        Modifies:
-            current_stats
-            combat_history
         """
 
+        if tar_name == 'player':
+            return
         # Checks if the event is not a heal.
         if dmg_value > 0:
 
@@ -956,10 +967,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             dmg_value *= 1-self.request_stat(target_name=target, stat_name='percent_non_aoe_reduction')
             dmg_value -= self.request_stat(target_name=target, stat_name='flat_non_aoe_reduction')
 
-        tar_bonuses = self.bonuses_dct[target]
-        # Checks if there is any percent dmg reduction and applies it.
-        if 'percent_dmg_reduction' in tar_bonuses:
-            dmg_value *= 1-self.request_stat(target_name=target, stat_name='percent_dmg_reduction')
+        dmg_value *= 1-self.request_stat(target_name=target, stat_name='percent_dmg_reduction')
 
         # Magic dmg.
         if dmg_type == 'magic':
@@ -967,12 +975,10 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             dmg_value *= self.request_stat(target_name=target, stat_name='magic_dmg_taken')
 
             # Checks if there is flat magic reduction
-            if 'flat_magic_dmg_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target_name=target, stat_name='flat_magic_dmg_reduction')
+            dmg_value -= self.request_stat(target_name=target, stat_name='flat_magic_dmg_reduction')
 
             # Checks if there is flat reduction
-            if 'flat_dmg_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target_name=target, stat_name='flat_dmg_reduction')
+            dmg_value -= self.request_stat(target_name=target, stat_name='flat_dmg_reduction')
 
         # Physical (AA or non-AA)..
         else:
@@ -980,17 +986,14 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             dmg_value *= self.request_stat(target_name=target, stat_name='physical_dmg_taken')
 
             # Checks if there is flat physical reduction
-            if 'flat_physical_dmg_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target_name=target, stat_name='flat_physical_dmg_reduction')
+            dmg_value -= self.request_stat(target_name=target, stat_name='flat_physical_dmg_reduction')
 
             # Checks if there is flat reduction
-            if 'flat_dmg_reduction' in tar_bonuses:
-                dmg_value -= self.request_stat(target_name=target, stat_name='flat_dmg_reduction')
+            dmg_value -= self.request_stat(target_name=target, stat_name='flat_dmg_reduction')
 
             # AA reduction.
             if dmg_type == 'AA':
-                if 'flat_AA_reduction' in tar_bonuses:
-                    dmg_value -= self.request_stat(target_name=target, stat_name='flat_AA_reduction')
+                dmg_value -= self.request_stat(target_name=target, stat_name='flat_AA_reduction')
 
         return max(dmg_value, 0.)
 
@@ -1008,8 +1011,9 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
         dmg_type = dmg_dct['dmg_type']
         aoe = self.aoe_bool(max_targets=dmg_dct['max_targets'])
+        unmitigated_dmg_value = self.request_dmg_value(dmg_name=dmg_name)
 
-        final_dmg_value = self.mitigated_dmg(dmg_value=self.request_dmg_value(dmg_name=dmg_name),
+        final_dmg_value = self.mitigated_dmg(dmg_value=unmitigated_dmg_value,
                                              dmg_type=dmg_type,
                                              target=target_name,
                                              is_aoe=aoe)
@@ -1028,6 +1032,10 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                              final_dmg_value=final_dmg_value,
                                              target_name=target_name)
                     self.note_source_dmg_in_results(dmg_dct=dmg_dct, final_dmg_value=final_dmg_value)
+            if target_name == 'player':
+                self.note_player_dmg_taken(dmg_name=dmg_name,
+                                           unmitigated_dmg_value=unmitigated_dmg_value,
+                                           mitigated_dmg_value=final_dmg_value)
             self.note_current_hp_in_history(target_name=target_name)
 
         # Otherwise it's a heal.
@@ -1037,7 +1045,8 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                   heal_value=-final_dmg_value)
 
         # LIFESTEAL/SPELLVAMP
-        self.apply_spellvamp_or_lifesteal(dmg_name=dmg_name,
+        self.apply_spellvamp_or_lifesteal(tar_name=target_name,
+                                          dmg_name=dmg_name,
                                           dmg_value=final_dmg_value,
                                           dmg_type=dmg_type)
 

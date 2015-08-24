@@ -1,12 +1,7 @@
 import importlib
-import pprint as pp
 
 
 class UserSession(object):
-
-    def __init__(self):
-
-        self.instances_results = {}
 
     @staticmethod
     def combiner_class(input_dct):
@@ -123,15 +118,9 @@ class UserSession(object):
 
     def create_instance_and_represent_results(self, input_dct):
 
-        input_dct = self.finalized_input_dct(input_dct=input_dct)
-
         instance = self.instance_after_combat(input_dct=input_dct)
         instance.represent_results_visually()
 
-        pp.pprint(instance.combat_history)
-        pp.pprint(instance.combat_results)
-        print('\nCombat duration: {}'.format(instance.combat_end_time))
-        print('\nSurvivability: {}'.format(instance.survivability()))
 
         return instance
 
