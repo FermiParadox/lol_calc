@@ -993,6 +993,8 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 
             # AA reduction.
             if dmg_type == 'AA':
+                dmg_value *= 1 - self.request_stat(target_name=target, stat_name='percent_AA_reduction')
+                self.request_stat(target_name='player', stat_name='bonus_ad')
                 dmg_value -= self.request_stat(target_name=target, stat_name='flat_AA_reduction')
 
         return max(dmg_value, 0.)

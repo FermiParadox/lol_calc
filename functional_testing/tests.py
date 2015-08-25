@@ -454,7 +454,5 @@ if __name__ == '__main__':
     if 0:
         inst = TestCases().test_memory_usage()
 
-    # dps: 363.03, dmg: 3628.11, 2423 movement, 240 movement/sec, 1.5sec / 100 rotations (action priorities used)
-    # dps: 377.36, dmg: 3771.25, 2423 movement, 240 movement/sec, 1.5sec / 100 rotations (item usage in priorities)
     # dps: 377.36, dmg: 3771.25, 2423 movement, 240 movement/sec, 0.6sec / 100 rotations (enemy-sourced buffs and stats)
-
+    # dps: 424, dmg: 4242, move: 2422, move/sec: 242, survivability: 14.77, heals: 874 (fixed bugs, change items)

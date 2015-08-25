@@ -43,7 +43,7 @@ _DEFENSE_REDUCING_MR_AND_ARMOR_MAP = dict(
 # Defensive stats that normally exist without need of special function to create
 # (contains deepest dict values from DEFENSE_REDUCING_STATS)
 # Dmg reductions and extra dmg dealt modifiers are both expressed by the same stats, and are always multiplicative.
-DEFENSIVE_NORMAL_STATS = {'percent_dmg_reduction', 'flat_AA_reduction',
+DEFENSIVE_NORMAL_STATS = {'percent_dmg_reduction', 'flat_AA_reduction', 'percent_AA_reduction',
                           'flat_dmg_reduction', 'flat_physical_dmg_reduction', 'flat_magic_dmg_reduction',
                           'percent_physical_dmg_reduction', 'percent_magic_dmg_reduction', 'flat_non_aoe_reduction',
                           'flat_aoe_reduction', 'percent_aoe_reduction', 'percent_non_aoe_reduction'}
@@ -345,17 +345,16 @@ class StatCalculation(StatFilters):
             if tar not in self.active_buffs:
                 self.active_buffs.update({tar: {}})
 
-    # TODO: memoization
+    # TODO: memoization (ONLY of player stat since enemy "base stats" are set by "reverse mode")
     def _base_stat(self, stat_name, tar_name):
         """
         Returns stat value resulting from base stat value and per lvl scaling,
-        that is based exclusively on champion (no items, runes, masteries etc.).
+        that is, based exclusively on champion (no items, runes, masteries etc.).
 
         :param stat_name: (str)
         :param tar_name: (str)
         :return: (float)
         """
-        value = 0
 
         tar_base_stats_dct = self.base_stats_dct[tar_name]
 
@@ -363,6 +362,8 @@ class StatCalculation(StatFilters):
         if stat_name in tar_base_stats_dct:
             # .. its initial value is set to it.
             value = tar_base_stats_dct[stat_name]
+        else:
+            value = 0
 
         # PER_LVL BONUS
         # Iterates through all base stats.
@@ -376,20 +377,47 @@ class StatCalculation(StatFilters):
     def _bonus_stat(self, stat_name, tar_name):
         """
         Returns only the bonus value of a stat,
-        that is, only champion related value (base and per lvl),
-        without abilities, items, masteries, runes, etc.
+        that is, only values related to abilities, items, masteries, runes, etc,
+        without champion base (and per champion lvl) values.
 
         :param stat_name: (str)
         :param tar_name: (str)
         :return: (float)
         """
 
-        value = 0
+        # Removes 'bonus_' from stat name.
+        stat_name = stat_name[6:]
+
+        base_stat_value = self._base_stat(stat_name=stat_name, tar_name=tar_name)
+        total_stat_val = self.standard_stat(requested_stat=stat_name, tar_name=tar_name)
+
+        return total_stat_val - base_stat_value
+
+    def standard_stat(self, requested_stat, tar_name):
+        """
+        Calculates the value of a stat after applying all its bonuses to its base value found in base_stats_dct.
+
+        Not to be used for special stats like att_speed, or ad.
+        Not to be used for filtered stats.
+
+        If stat doesnt exist it returns 0 since some stats (e.g. lifesteal)
+        might not always be present in base_stats_dct.
+
+        :param requested_stat: (str)
+        :param tar_name: (str)
+        :return: (float) unfiltered stat value after bonuses
+        """
+
+        if requested_stat not in ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE:
+            raise NotImplementedError(requested_stat)
+
+        # BASE VALUE PLUS BASE PER LVL
+        value = self._base_stat(stat_name=requested_stat, tar_name=tar_name)
 
         tar_bonuses = self.bonuses_dct[tar_name]
-        if stat_name in tar_bonuses:
+        if requested_stat in tar_bonuses:
 
-            tar_bonuses_stat_dct = tar_bonuses[stat_name]
+            tar_bonuses_stat_dct = tar_bonuses[requested_stat]
 
             # .. if there are additive bonuses..
             if 'additive' in tar_bonuses_stat_dct:
@@ -417,36 +445,6 @@ class StatCalculation(StatFilters):
                 value *= multiplication_mod
 
         return value
-
-    def standard_stat(self, requested_stat, tar_name):
-        """
-        Calculates the value of a stat after applying all its bonuses to its base value found in base_stats_dct.
-
-        Not to be used for special stats like att_speed, or ad.
-        Not to be used for filtered stats.
-
-        If stat doesnt exist it returns 0 since some stats (e.g. lifesteal)
-        might not always be present in base_stats_dct.
-
-        :param requested_stat: (str)
-        :param tar_name: (str)
-        :return: (float) unfiltered stat value after bonuses
-        """
-
-        if requested_stat not in ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE:
-            raise NotImplementedError(requested_stat)
-
-        # BASE VALUE PLUS BASE PER LVL
-        value = self._base_stat(stat_name=requested_stat, tar_name=tar_name)
-
-        # ITEM AND BUFF BONUSES
-        # If the requested_stat has bonuses..
-        per_lvl_value = self._bonus_stat(stat_name=requested_stat, tar_name=tar_name)
-
-        if per_lvl_value:
-            return value + per_lvl_value
-        else:
-            return value
 
     def base_ad(self, tar_name):
         """
