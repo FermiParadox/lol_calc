@@ -2268,7 +2268,8 @@ class BuffsBase(object):
                                          'armor': 'armor',
                                          'magic resist': 'mr',
                                          'critical strike chance': 'crit_chance',
-                                         'armor penetration': 'armor_penetration'}
+                                         'armor penetration': 'armor_penetration',
+                                         'bonus attack damage': 'ad'}
 
     NTH_TUPLE = ('second', 'third', 'forth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth')
 
@@ -2323,30 +2324,24 @@ class BuffsBase(object):
         if modified_dct:
 
             msg = delimiter(40)
-            msg += '\nChange buff names?\n'
+            msg += '\nChange buff names?'
 
-            while True:
-                change_buffs_answer = input(msg)
+            change_buffs_answer = _y_n_question(question_str=msg)
 
-                if change_buffs_answer == 'y':
-                    for previous_buff_name in sorted(modified_dct):
-                        new_name_msg = delimiter(10)
-                        new_name_msg += '\nInsert new name for: %s. (press enter to skip)\n' % previous_buff_name
+            if change_buffs_answer:
+                for previous_buff_name in sorted(modified_dct):
+                    new_name_msg = delimiter(10)
+                    new_name_msg += '\nInsert new name for: %s. (press enter to skip)\n' % previous_buff_name
 
-                        new_name = input(new_name_msg)
+                    new_name = input(new_name_msg)
 
-                        if new_name == '':
-                            print('\nNot changed.')
-                        # If new name is selected, creates new buff with previous value,
-                        # .. then removes previous buff.
-                        else:
-                            modified_dct.update({new_name: modified_dct[previous_buff_name]})
-                            del modified_dct[previous_buff_name]
-                    break
-                elif change_buffs_answer == 'n':
-                    break
-                else:
-                    print_invalid_answer()
+                    if new_name == '':
+                        print('\nNot changed.')
+                    # If new name is selected, creates new buff with previous value,
+                    # .. then removes previous buff.
+                    else:
+                        modified_dct.update({new_name: modified_dct[previous_buff_name]})
+                        del modified_dct[previous_buff_name]
 
     def _ask_amount_of_buffs_and_change_names(self, modified_dct, obj_name):
         self._ask_amount_of_buffs(modified_dct=modified_dct, obj_name=obj_name)
@@ -2358,7 +2353,7 @@ class StatsCreation(object):
     @staticmethod
     def _suggest_stats(stats_dct, stat_name, suggested_values_lst, suggest_mods_func):
         chosen_types_lst = []
-        suggest_lst_of_attr_values(suggested_values_lst=('additive', 'multiplicative'),
+        suggest_lst_of_attr_values(suggested_values_lst=('additive', 'percent', 'multiplicative'),
                                    modified_lst=chosen_types_lst)
 
         for type_name in chosen_types_lst:
@@ -3058,7 +3053,7 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
         reduced_ability_names = []
         suggest_lst_of_attr_values(modified_lst=reduced_ability_names,
                                    suggested_values_lst=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
-                                   extra_start_msg='\nOn cast modifies abilities:',
+                                   extra_start_msg='\nOn cast modifies cd of following abilities:',
                                    sort_suggested_lst=False)
 
         # (removes placeholders to prepare for data insertion)
@@ -3537,18 +3532,27 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation):
         Checks if affected stat has any possible mod-stats,
         and suggests them.
 
-        Returns:
-            (None)
+        :return: (None)
         """
 
         # Removes affected stat name from possible mods.
         possible_mods = self._stat_names_in_tooltip()
-        possible_mods.remove(affected_stat)
+        if affected_stat in possible_mods:
+            possible_mods.remove(affected_stat)
 
         # Checks if there are any stats left in ability tooltip.
         if possible_mods:
 
-            affected_stat_app_form = self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP[affected_stat]
+            if affected_stat in self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP:
+                affected_stat_app_form = self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP[affected_stat]
+            else:
+                affected_stat_app_form = enumerated_question(
+                    question_str='Auto-determining stat name failed. Give stat name. (enter for exit)',
+                    choices_seq=[''] + stats.NON_PER_LVL_STAT_NAMES,
+                    restrict_choices=True)
+
+            if not affected_stat:
+                return
 
             start_msg = delimiter(40)
             start_msg += '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, self.ability_name)
@@ -3561,33 +3565,31 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation):
 
                 stat_mod_app_form = self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP[stat_mod]
 
-                while True:
-                    stat_mods_answer = input(stat_mod_msg + '\n')
-                    if stat_mods_answer == 'y':
+                stat_mods_answer = _y_n_question(stat_mod_msg)
+                if stat_mods_answer:
 
-                        # Creates new mod dict for affected stat.
-                        stats_dct[affected_stat_app_form].update({'stat_mods': {}})
-                        # Inserts new mod name.
-                        stats_dct[affected_stat_app_form]['stat_mods'].update(
-                            {stat_mod_app_form: None})
+                    # Creates new mod dict for affected stat.
+                    stats_dct.setdefault(affected_stat_app_form, {})
+                    stats_dct[affected_stat_app_form].update({'stat_mods': {}})
+                    # Inserts new mod name.
+                    stats_dct[affected_stat_app_form]['stat_mods'].update(
+                        {stat_mod_app_form: None})
 
-                        pp.pprint(self.ability_vars_dct)
+                    pp.pprint(self.ability_vars_dct)
 
-                        # (params for method below)
-                        mod_vals_lst = [var_dct['coeff'] for var_dct in self.ability_vars_dct]
-                        suggested_vals_dct = {stat_mod_app_form: mod_vals_lst}
-                        modified_dct = stats_dct[affected_stat_app_form]['stat_mods']
-                        extra_msg = '\nmod value:'
+                    # (params for method below)
+                    mod_vals_lst = [var_dct['coeff'] for var_dct in self.ability_vars_dct]
+                    suggested_vals_dct = {stat_mod_app_form: mod_vals_lst}
+                    modified_dct = stats_dct[affected_stat_app_form]['stat_mods']
+                    extra_msg = '\nmod value:'
 
-                        suggest_attr_values(suggested_values_dct=suggested_vals_dct,
-                                            modified_dct=modified_dct,
-                                            extra_start_msg=extra_msg)
-                        break
-                    elif stat_mods_answer == 'n':
-                        stats_dct[affected_stat_app_form]['stat_mods'] = None
-                        break
-                    else:
-                        print_invalid_answer()
+                    suggest_attr_values(suggested_values_dct=suggested_vals_dct,
+                                        modified_dct=modified_dct,
+                                        extra_start_msg=extra_msg)
+
+                else:
+                    stats_dct.setdefault(affected_stat_app_form, {})
+                    stats_dct[affected_stat_app_form]['stat_mods'] = None
 
     def suggest_affected_stats_and_their_attrs(self, buff_name):
         """
@@ -3921,10 +3923,12 @@ class AbilitiesAttributes(object):
         self._gen_attr(attrs_dct=attrs_dct, spell_name=spell_name)
 
         # DMG ATTRIBUTES
-        self._dmg_attrs(attrs_dct=attrs_dct, spell_name=spell_name)
+        if _y_n_question(question_str='{} contains dmgs?'.format(spell_name.upper())):
+            self._dmg_attrs(attrs_dct=attrs_dct, spell_name=spell_name)
 
         # BUFF ATTRIBUTES
-        self._buff_attrs(attrs_dct=attrs_dct, spell_name=spell_name)
+        if _y_n_question(question_str='{} contains buffs?'.format(spell_name.upper())):
+            self._buff_attrs(attrs_dct=attrs_dct, spell_name=spell_name)
 
         print(fat_delimiter(40))
         pp.pprint(attrs_dct)
@@ -3947,18 +3951,11 @@ class AbilitiesAttributes(object):
             self.initial_abilities_attrs[spell_name] = self._single_spell_attrs(spell_name=spell_name)
 
             # Redo spell attributes if needed.
-            while True:
-                redo_all_attr_of_spell = input('\nRedo all attributes of %s?\n' % spell_name.upper())
+            redo_all_attr_of_spell = _y_n_question(question_str='\nRedo all attributes of {}?'.format(spell_name.upper()))
 
-                if redo_all_attr_of_spell == 'y':
-                    # (not breaking after this allows redoing multiple times)
-                    self.initial_abilities_attrs[spell_name] = self._single_spell_attrs(spell_name=spell_name)
-
-                # (exit keys added for convenience when debugging)
-                elif redo_all_attr_of_spell in ('n', INNER_LOOP_KEY, OUTER_LOOP_KEY):
-                    break
-                else:
-                    print_invalid_answer()
+            if redo_all_attr_of_spell:
+                # (not breaking after this allows redoing multiple times)
+                self.initial_abilities_attrs[spell_name] = self._single_spell_attrs(spell_name=spell_name)
 
     def _join_spells_buffs_and_dmgs(self):
         """
@@ -4193,7 +4190,7 @@ class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
     # (Used to determine what to insert next.)
     FORMULA_TYPE = ('constant_value', 'x_function')
     COMPARISON_OPERATOR_STRINGS = palette.COMPARISON_OPERATOR_STRINGS
-    NON_PER_LVL_STAT_NAMES = sorted(i for i in stats.ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
+    NON_PER_LVL_STAT_NAMES = stats.NON_PER_LVL_STAT_NAMES
 
     def available_buff_names(self):
         return sorted(self.attributes_dct['buffs'])
@@ -5723,8 +5720,8 @@ if __name__ == '__main__':
         print(ExploreApiAbilities().champion_id('dariu'))
 
     # CHAMPION MODULE CREATION
-    if 0:
-        ChampionModuleCreator(champion_name='jax').run_champ_module_creation()
+    if 1:
+        ChampionModuleCreator(champion_name='vayne').run_champ_module_creation()
 
     # FETCHING CASTABLE ABILITIES
     if 0:
@@ -5741,7 +5738,7 @@ if __name__ == '__main__':
     if 0:
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
-    if 1:
+    if 0:
         inst = ItemsModuleCreator(item_name='dorans_sh')
         inst.create_and_insert_item_attrs()
         inst.create_and_insert_item_effects()

@@ -104,6 +104,7 @@ ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_
                                                                                                - {None})
 
 ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE = {i for i in ALL_POSSIBLE_STAT_NAMES if not i.startswith('current_')}
+NON_PER_LVL_STAT_NAMES = sorted(i for i in ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
 
 # Enemy base stats' names.
 _ENEMY_BASE_STATS_NAMES = {'hp', 'ap', 'armor', 'mr', 'hp5'}

@@ -26,8 +26,6 @@ class EnemyTargetsDeadError(Exception):
 
 class EventsGeneral(buffs.DeathAndRegen):
 
-    NATURAL_REGEN_START_TIME = 0.5
-
     def __init__(self,
                  champion_lvls_dct,
                  selected_champions_dct,
@@ -381,7 +379,7 @@ class EnemiesDmgToPlayer(EventsGeneral):
         dct.update({'aa_dps': percent_aa})
         dct.update({'true_dps': percent_true})
         for dps_type in dct:
-            dct[dps_type] *= average_dps * self.DPS_ENHANCER_COEF
+            dct[dps_type] *= average_dps * self.DPS_ENHANCER_COEF * buffs.NATURAL_REGEN_PERIOD
 
         return dct
 

@@ -526,20 +526,8 @@ class Counters(BuffsGeneral):
             (None)
         """
 
-        if curr_resource_str == 'current_hp':
-            return
-
-        resource_history_dct = self.combat_history['player']['resource']
         new_val = self.current_stats['player'][curr_resource_str]
-
-        if self.current_time in resource_history_dct:
-            old_val = self.combat_history['player']['resource'][self.current_time]
-
-            if old_val > new_val:
-                self.combat_history['player']['resource'][self.current_time] = new_val
-
-        else:
-            self.combat_history['player']['resource'].update({self.current_time: new_val})
+        self.combat_history['player']['resource'][self.current_time] = new_val
 
     def note_dmg_in_history(self, dmg_type, final_dmg_value, target_name):
         """
@@ -1109,7 +1097,8 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         return self.refined_combat_history()['all_targets']['total_dmg'] / last_cast_completion
 
 
-NATURAL_REGEN_PERIOD = 1  # Tick period of hp5, mp5, etc.
+NATURAL_REGEN_PERIOD = 0.5  # Tick period of hp5, mp5, etc.
+NATURAL_REGEN_START_DELAY = 0.5
 PER_5_DIVISOR = 5 / NATURAL_REGEN_PERIOD  # Divides "per 5" stats. Used to create per tick value.
 
 
@@ -1138,10 +1127,14 @@ REGEN_BUFF_DCT_BASE['dot'] = {'period': None, 'dmg_names': []}
 REGEN_BUFF_DCT_BASE['dot']['period'] = NATURAL_REGEN_PERIOD
 
 
-# PLAYER buff base.
-_REGEN_BUFF_DCT_BASE_PLAYER = copy.deepcopy(REGEN_BUFF_DCT_BASE)
-_REGEN_BUFF_DCT_BASE_PLAYER['target_type'] = 'player'
-_REGEN_BUFF_DCT_BASE_PLAYER['dot']['dmg_names'] = ['player_hp5_dmg']
+# PLAYER hp5 buff base.
+_HP5_BUFF_DCT_BASE_PLAYER = copy.deepcopy(REGEN_BUFF_DCT_BASE)
+_HP5_BUFF_DCT_BASE_PLAYER['target_type'] = 'player'
+_HP5_BUFF_DCT_BASE_PLAYER['dot']['dmg_names'] = ['player_hp5_dmg']
+# PLAYER rp5 buff base.
+_RESOURCE_P5_BUFF_DCT_BASE_PLAYER = copy.deepcopy(REGEN_BUFF_DCT_BASE)
+_RESOURCE_P5_BUFF_DCT_BASE_PLAYER['target_type'] = 'player'
+_RESOURCE_P5_BUFF_DCT_BASE_PLAYER['dot']['dmg_names'] = []
 
 # ENEMY buff base.
 _REGEN_BUFF_DCT_BASE_ENEMY = copy.deepcopy(REGEN_BUFF_DCT_BASE)
@@ -1172,7 +1165,7 @@ _REGEN_DMG_DCT_BASE = dict(
     dot={'buff_name': 'placeholder'},
     max_targets=1,
     usual_max_targets=1,
-    delay=NATURAL_REGEN_PERIOD,)
+    delay=NATURAL_REGEN_START_DELAY,)
 
 # HEALTH
 _HP5_DMG_DCT_BASE = copy.deepcopy(_REGEN_DMG_DCT_BASE)
@@ -1188,20 +1181,32 @@ _ENEMY_HP5_DMG_DCT_BASE['target_type'] = 'enemy'
 _ENEMY_HP5_DMG_DCT_BASE['dot']['buff_name'] = 'enemy_hp5_buff'
 _ENEMY_HP5_DMG_DCT_BASE['mods'] = {'enemy': {'hp5': {'multiplicative': 1}}}
 
-# MP
-_PLAYER_MP_DMG_DCT_BASE = copy.deepcopy(_PLAYER_HP5_DMG_DCT)
-_PLAYER_MP_DMG_DCT_BASE['resource_type'] = 'mp'
-_PLAYER_MP_DMG_DCT_BASE['mods'] = {'player': {'mp5': {'multiplicative': 1}}}
-_PLAYER_MP_DMG_DCT_BASE['dot']['buff_name'] = 'mp5_buff'
+# Resources
+_RESOURCE_P5_BUFFS_DCTS = {'mp5': None, 'ep5': None, 'rp5': None}
+for _key in _RESOURCE_P5_BUFFS_DCTS:
+    _new_rp5_dct = copy.deepcopy(_RESOURCE_P5_BUFF_DCT_BASE_PLAYER)
+    _new_rp5_dct['dot']['dmg_names'].append('player_{}_dmg'.format(_key))
+    _new_rp5_dct['buff_source'] = 'regen'
+    _RESOURCE_P5_BUFFS_DCTS[_key] = _new_rp5_dct
+
+_RESOURCE_P5_DMGS_DCTS = {i: {} for i in _RESOURCE_P5_BUFFS_DCTS}
+for _key in _RESOURCE_P5_DMGS_DCTS:
+    _new_rp5_dct = copy.deepcopy(_REGEN_DMG_DCT_BASE)
+    _new_rp5_dct['resource_type'] = _key[:-1]
+    _new_rp5_dct['mods'] = {'player': {_key: {'multiplicative': 1}}}
+    _new_rp5_dct['dot']['buff_name'] = '{}_buff'.format(_key)
+    _RESOURCE_P5_DMGS_DCTS[_key] = _new_rp5_dct
 
 
 class DeathAndRegen(DmgApplication):
 
-    REGEN_BUFF_DCT_BASE_PLAYER = _REGEN_BUFF_DCT_BASE_PLAYER
+    HP5_BUFF_DCT_BASE_PLAYER = _HP5_BUFF_DCT_BASE_PLAYER
+    RP5_BUFF_DCT_BASE_PLAYER = _RESOURCE_P5_BUFF_DCT_BASE_PLAYER
     REGEN_BUFF_DCT_BASE_ENEMY = _REGEN_BUFF_DCT_BASE_ENEMY
     ENEMY_HP5_DMG_DCT_BASE = _ENEMY_HP5_DMG_DCT_BASE
     PLAYER_HP5_DMG_DCT = _PLAYER_HP5_DMG_DCT
-    PLAYER_MP_DMG_DCT_BASE = _PLAYER_MP_DMG_DCT_BASE
+    RESOURCE_P5_BUFFS_DCTS = _RESOURCE_P5_BUFFS_DCTS
+    RESOURCE_P5_DMGS_DCTS = _RESOURCE_P5_DMGS_DCTS
 
     @staticmethod
     def dead_buff():
@@ -1234,11 +1239,28 @@ class DeathAndRegen(DmgApplication):
         return self.PLAYER_HP5_DMG_DCT
 
     def player_hp5_buff(self):
-        return self.REGEN_BUFF_DCT_BASE_PLAYER
+        return self.HP5_BUFF_DCT_BASE_PLAYER
 
+    # Resource buffs
     def mp5_buff(self):
-        return self.REGEN_BUFF_DCT_BASE_PLAYER
+        return self.RESOURCE_P5_BUFFS_DCTS['mp5']
 
-    def mp5_dmg(self):
-        return self.PLAYER_MP_DMG_DCT_BASE
+    def rp5_buff(self):
+        # Rage per 5
+        return self.RESOURCE_P5_BUFFS_DCTS['rp5']
+
+    def ep5_buff(self):
+        return self.RESOURCE_P5_BUFFS_DCTS['ep5']
+
+    # Resource dmgs
+    def player_mp5_dmg(self):
+        return self.RESOURCE_P5_DMGS_DCTS['mp5']
+
+    def player_rp5_dmg(self):
+        # Rage per 5
+        return self.RESOURCE_P5_DMGS_DCTS['rp5']
+
+    def player_ep5_dmg(self):
+        return self.RESOURCE_P5_DMGS_DCTS['ep5']
+
 
