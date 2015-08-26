@@ -1167,9 +1167,10 @@ class RequestDataFromAPI(object):
         """
 
         # Messages
-        start_msg = '\n' + delimiter(num_of_lines=40)
-        start_msg += '\nWARNING !!!\n'
-        start_msg += '\nAPI KEY USED: %s\n' % api_key.KEY
+        start_msg = '\n' + fat_delimiter(num_of_lines=40)
+        start_msg += '\nWARNING !!!'
+        start_msg += fat_delimiter(num_of_lines=40)
+        start_msg += '\n\nAPI KEY USED: %s\n' % api_key.KEY
         start_msg += '\nStart API requests (%s)?\n' % requested_item
 
         abort_msg = '\nData request ABORTED.\n'
@@ -2525,12 +2526,13 @@ class AbilitiesAttributesBase(GenAttrsBase):
         self.api_innate_dct = api_champions_database.ALL_CHAMPIONS_ATTR[champion_name]['passive']
         self.sanitized_tooltip = self.api_spell_dct['sanitizedTooltip']
         # (removes None from API effect list)
-        self.ability_effect_lst = copy.copy(self.api_spell_dct['effect'])[1:]
+        self.ability_effects_lst = copy.copy(self.api_spell_dct['effect'])[1:]
         # (some spells don't contain 'vars')
         try:
             self.ability_vars_dct = self.api_spell_dct['vars']
         except KeyError:
             self.ability_vars_dct = []
+        self.mod_vals_lst = [var_dct['coeff'] for var_dct in self.ability_vars_dct]
 
     def _champion_and_ability_msg(self):
 
@@ -3527,123 +3529,67 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation):
 
         return stats_lst
 
-    def suggest_stat_mods(self, stats_dct, affected_stat):
+    def suggest_buff_affected_stats_attributes(self, buff_name):
         """
-        Checks if affected stat has any possible mod-stats,
-        and suggests them.
+        Suggests stats that the buff modifies,
+        mods of the stats (if any of the stats are scaling).
 
         :return: (None)
         """
 
-        # Removes affected stat name from possible mods.
-        possible_mods = self._stat_names_in_tooltip()
-        if affected_stat in possible_mods:
-            possible_mods.remove(affected_stat)
+        # STATS
+        print(delimiter(10))
 
-        # Checks if there are any stats left in ability tooltip.
-        if possible_mods:
+        if _y_n_question('\nBUFF: {}\nDoes it modify stats'.format(buff_name)):
+            if self._stat_names_in_tooltip():
+                # (clears placeholder)
+                self.buffs_dct[buff_name]['stats'] = {}
 
-            if affected_stat in self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP:
-                affected_stat_app_form = self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP[affected_stat]
-            else:
-                affected_stat_app_form = enumerated_question(
-                    question_str='Auto-determining stat name failed. Give stat name. (enter for exit)',
-                    choices_seq=[''] + stats.NON_PER_LVL_STAT_NAMES,
-                    restrict_choices=True)
+                modified_stats_names = []
+                suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
+                                           modified_lst=modified_stats_names)
 
-            if not affected_stat:
-                return
+                # Stat name
+                for stat_modified in modified_stats_names:
+                    self.buffs_dct[buff_name]['stats'].update({stat_modified: {}})
 
-            start_msg = delimiter(40)
-            start_msg += '\nCHAMPION: %s, ABILITY: %s' % (self.champion_name, self.ability_name)
-            start_msg += '\nSTAT: %s' % affected_stat_app_form
+                    buff_name_stat_name_msg = '\nBUFF: {}, STAT: {}'.format(buff_name, stat_modified)
 
-            for stat_mod in possible_mods:
+                    # Stat type
+                    for stat_type in self.BUFF_STAT_TYPES:
+                        if _y_n_question(buff_name_stat_name_msg+'\nIs there a {} bonus to the stat?'.format(stat_type)):
+                            self.buffs_dct[buff_name]['stats'][stat_modified].update(
+                                {stat_type: {'stat_mods': {}, }})
 
-                stat_mod_msg = delimiter(10)
-                stat_mod_msg += '\nIs %s modified by %s?' % (affected_stat, stat_mod)
+                        # Stat values
+                        stat_vals = enumerated_question(question_str=buff_name_stat_name_msg+'\nStat values?',
+                                                        choices_seq=self.ability_effects_lst)
+                        self.buffs_dct[buff_name]['stats'][stat_modified][stat_type].update(
+                            {'stat_values': stat_vals})
 
-                stat_mod_app_form = self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP[stat_mod]
+                        # MODS
+                        modifier_name_question = buff_name_stat_name_msg + '\nDoes the stat have modifiers'
+                        if _y_n_question(modifier_name_question):
 
-                stat_mods_answer = _y_n_question(stat_mod_msg)
-                if stat_mods_answer:
+                            stat_modifiers_lst = []
+                            suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
+                                                       modified_lst=stat_modifiers_lst)
 
-                    # Creates new mod dict for affected stat.
-                    stats_dct.setdefault(affected_stat_app_form, {})
-                    stats_dct[affected_stat_app_form].update({'stat_mods': {}})
-                    # Inserts new mod name.
-                    stats_dct[affected_stat_app_form]['stat_mods'].update(
-                        {stat_mod_app_form: None})
+                            for modifier in stat_modifiers_lst:
 
-                    pp.pprint(self.ability_vars_dct)
+                                # Suggests mod values.
+                                modifier_vals_question = '\nBUFF: {}, STAT: {}, MOD: {}'.format(buff_name, stat_modified, modifier)
+                                modifier_vals_question += '\nChoose mod values.'
+                                mod_vals = enumerated_question(question_str=modifier_vals_question,
+                                                               choices_seq=self.mod_vals_lst)
 
-                    # (params for method below)
-                    mod_vals_lst = [var_dct['coeff'] for var_dct in self.ability_vars_dct]
-                    suggested_vals_dct = {stat_mod_app_form: mod_vals_lst}
-                    modified_dct = stats_dct[affected_stat_app_form]['stat_mods']
-                    extra_msg = '\nmod value:'
+                                # Inserts mod values.
+                                self.buffs_dct[buff_name]['stats'][stat_modified][stat_type]['stat_mods'].update(
+                                    {modifier: mod_vals})
 
-                    suggest_attr_values(suggested_values_dct=suggested_vals_dct,
-                                        modified_dct=modified_dct,
-                                        extra_start_msg=extra_msg)
-
-                else:
-                    stats_dct.setdefault(affected_stat_app_form, {})
-                    stats_dct[affected_stat_app_form]['stat_mods'] = None
-
-    def suggest_affected_stats_and_their_attrs(self, buff_name):
-        """
-        Suggests stats that may be affected by a buff,
-        and each stat's mods.
-
-        Returns:
-            (None)
-        """
-
-        for affected_stat in self._stat_names_in_tooltip():
-            stat_name = self.STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP[affected_stat]
-            stats_dct = self.buffs_dct[buff_name]['stats']
-            stats_dct.update({stat_name: {}})
-
-            self._suggest_single_affected_stats_and_its_attrs(buff_name=buff_name, stat_name=stat_name,
-                                                              stats_dct=stats_dct,
-                                                              suggest_mods_func=self.suggest_stat_mods,
-                                                              suggested_values_lst=self.ability_effect_lst)
-
-    def suggest_buff_affected_stats_attributes(self, buff_name):
-        """
-        Suggests possible values for stats that the buff modifies,
-        mods of the stats (if they are scaling),
-        and mod values.
-
-        Returns:
-            (None)
-        """
-
-        start_msg = delimiter(10)
-        start_msg += '\nBUFF: %s' % buff_name
-        start_msg += '\nDoes it modify stats?'
-
-        while True:
-            changes_stats = input(start_msg + '\n')
-
-            if changes_stats == 'n':
-                print("\nDoesn't modify stats.")
-                self.buffs_dct[buff_name]['stats'] = None
-                break
-
-            elif changes_stats == 'y':
-                if self._stat_names_in_tooltip():
-                    # (clears placeholder)
-                    del self.buffs_dct[buff_name]['stats']['placeholder_stat_1']
-
-                    # Inserts each affected stat.
-                    self.suggest_affected_stats_and_their_attrs(buff_name=buff_name)
-
-                break
-
-            else:
-                print_invalid_answer()
+        else:
+            print("\nDoesn't modify stats.")
+            self.buffs_dct[buff_name]['stats'] = None
 
     # ---------------------------------------------------------------
 
@@ -3744,7 +3690,7 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation):
                     # (recovers effect value if it was an abbreviation)
                     effect_abbr = re.findall(r'\D(\d{1,2})', result_str)
                     if effect_abbr:
-                        result_str = self.ability_effect_lst[int(effect_abbr[0])]
+                        result_str = self.ability_effects_lst[int(effect_abbr[0])]
                     else:
                         result_str = int(result_str)
 
