@@ -56,7 +56,13 @@ DMG_DCT_BASE = dict(
     crit_type='placeholder'
 )
 
+
 CRIT_TYPES = (None, 'normal', 'always')
+
+
+SHIELDS_DATA = {'shield_type': 'placeholder',
+                'mods': {},
+                'shield_value': 'placeholder'}
 
 
 ON_HIT_EFFECTS = dict(

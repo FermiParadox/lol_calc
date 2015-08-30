@@ -470,10 +470,9 @@ class StatCalculation(StatFilters):
         :return: (float)
         """
 
-        tar_bonuses = self.bonuses_dct[tar_name]
-
         try:
-            return min(tar_bonuses['move_speed_reduction']['multiplicative'])
+            tar_bonuses = self.bonuses_dct[tar_name]['move_speed_reduction']['multiplicative']
+            return min(tar_bonuses, key=lambda x: tar_bonuses[x])
         # If no reductions are found.
         except KeyError:
             return 0
@@ -522,6 +521,16 @@ class StatCalculation(StatFilters):
 
         return value
 
+    def slow_reduction(self, tar_name):
+
+        tar_bonuses = self.bonuses_dct[tar_name]
+        slow_mod = 1
+        if 'slow_reduction' in tar_bonuses:
+            for slow_red_bonus in tar_bonuses['slow_reduction']['multiplicative']:
+                slow_mod *= 1 - slow_red_bonus
+
+        return 1-slow_mod
+
     def move_speed(self, tar_name):
         """
         Calculates final value of movement speed, after all bonuses and soft caps are applied.
@@ -540,15 +549,10 @@ class StatCalculation(StatFilters):
 
         # SLOW REDUCTIONS
         # Calculates the modifier that dampens slow effects (e.g. boots of swiftness)
-        tar_bonuses = self.bonuses_dct[tar_name]
-        slow_mod = 1
-        if 'slow_reduction' in tar_bonuses:
-            for slow_red_bonus in tar_bonuses['slow_reduction']['percent']:
-                slow_mod -= slow_red_bonus
+        slow_mod = 1 - self.slow_reduction(tar_name=tar_name)
 
         # SPEED REDUCTIONS
-        if 'move_speed_reduction' in tar_bonuses:
-            value *= self.move_speed_reduction(tar_name=tar_name)
+        value *= 1 - (slow_mod * self.move_speed_reduction(tar_name=tar_name))
 
         return self.filtered_move_speed(unfiltered_stat=value)
 

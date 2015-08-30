@@ -251,7 +251,8 @@ def full_or_partial_match_in_iterable(searched_name, iterable):
     if tot_partial_matches == 1:
         return partial_matches_lst[0]
     elif tot_partial_matches > 1:
-        raise KeyError('{} partial matches found instead of one.'.format(tot_partial_matches))
+        error_msg = '{} partial matches found instead of one: {}'.format(tot_partial_matches, partial_matches_lst)
+        raise KeyError(error_msg)
     else:
         raise KeyError('No full or partial match.')
 
@@ -4622,37 +4623,30 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         # MODS
         self.pprint_item_description()
 
-        # Ask dmg has mods.
-        if _y_n_question(question_str='New dmg mod?') is True:
+        # Ask if dmg has mods.
+        if _y_n_question(question_str='Dmg has mods?'):
+            self.item_dmgs[dmg_name]['mods'].update(self.dmg_mod_contents())
+            self.pprint_item_description()
 
-            # MOD STAT OWNERS.
-            for tar_type in self.dmg_mod_contents():
-                if _y_n_question(question_str='Mod stat owner {}?'.format(tar_type.upper())) is True:
-                    self.item_dmgs[dmg_name]['mods'].update({tar_type: {}})
+            # OWNER
+            for owner_type in self.item_dmgs[dmg_name]['mods']:
 
-                    # MOD STATS (names and values)
-                    self.pprint_item_description()
-                    while 1:
-                        # Stat name
-                        stat_name_msg = 'ITEM: {}, MOD STAT OWNER: {}.'.format(self.item_name, tar_type)
-                        stat_name_msg += '\nMod stat name?("1" to exit)'
-                        stat_name = enumerated_question(question_str=stat_name_msg,
-                                                        # (enter added as a choice by '')
-                                                        choices_seq=self.items_stat_names() + [''],
-                                                        restrict_choices=True)
-                        # (enter exits loop)
-                        if stat_name == '':
-                            break
+                # NAMES
+                mods_names = enumerated_question('Mods belonging to {}'.format(owner_type.upper()),
+                                                 choices_seq=stats.NON_PER_LVL_STAT_NAMES)
 
-                        # Stat value
-                        stat_val_msg = 'ITEM: {}, MOD STAT OWNER: {}, STAT NAME: {}'.format(self.item_name, tar_type,
-                                                                                            stat_name)
-                        stat_val_msg += '\nMod value?'
-                        stat_val = restricted_input(question_msg=stat_val_msg,
-                                                    input_type='num', characteristic='non_zero',
-                                                    disallow_enter=True)
+                if mods_names:
+                    for mod_name in mods_names:
+                        self.item_dmgs[dmg_name]['mods'][owner_type].update({mod_name: {}})
 
-                        self.item_dmgs[dmg_name]['mods'][tar_type].update({stat_name: stat_val})
+                        # APPLICATION TYPE
+                        for mod_type in ('additive', 'multiplicative'):
+                            if _y_n_question("{}'s mod: {}, is {}".format(owner_type, mod_name.upper(), mod_type.upper())):
+
+                                # VALUE
+                                mod_value = restricted_input('{} value?'.format(mod_name.upper()), input_type='num')
+
+                                self.item_dmgs[dmg_name]['mods'][owner_type][mod_name].update({mod_type: mod_value})
 
         pp.pprint(self.item_dmgs[dmg_name]['mods'])
 
@@ -5798,11 +5792,11 @@ if __name__ == '__main__':
     if 0:
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
-    if 0:
-        inst = ItemsModuleCreator(item_name='hextech_g')
+    if 1:
+        inst = ItemsModuleCreator(item_name='crystalline')
         inst.create_item()
     # Create all items.
-    if 1:
+    if 0:
         ItemsModuleCreator.create_non_created_items()
 
     # PRETTY FORMAT OBJECT IN MODULE
