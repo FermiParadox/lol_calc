@@ -433,7 +433,7 @@ class EnemiesDmgToPlayer(EventsGeneral):
         max_hp = self.request_stat(target_name='player', stat_name='hp')
         current_hp = self.request_stat(target_name='player', stat_name='current_hp')
 
-        combat_duration = self.combat_end_time
+        combat_duration = self.combat_duration
 
         hp_lost_per_sec = (max_hp - current_hp) / combat_duration
 
@@ -1504,9 +1504,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
                 # BUFFS APPLIED ON HIT.
                 for buff_applied_on_hit in buff_dct['on_hit']['apply_buff']:
-
-                    self.add_buff(buff_name=buff_applied_on_hit,
-                                  tar_name=self.request_buff(buff_name=buff_applied_on_hit)['target_type'])
+                    tar_type = self.request_buff(buff_name=buff_applied_on_hit)['target_type']
+                    tar_name = self.current_target_or_player(tar_type=tar_type)
+                    self.add_buff(buff_name=buff_applied_on_hit, tar_name=tar_name)
 
                 # BUFFS REMOVED ON HIT.
                 for buff_removed_on_hit in buff_dct['on_hit']['remove_buff']:
@@ -1932,7 +1932,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         else:
             self._apply_all_actions_by_priority()
 
-        self.combat_end_time = self._last_action_end()
+        self.combat_duration = self._last_action_end()
 
     def apply_events_after_actions(self, fully_apply_dots=False):
         """
@@ -2007,7 +2007,6 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         """
         self.current_time = 0
 
-
         self._apply_runes_static_buff()
 
         self._apply_items_static_buff()
@@ -2020,6 +2019,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         # (Bonuses have to be applied here instead of in their normal methods for noting reasons)
         self.refresh_stats_bonuses()
+
+        # (current stats must be created after bonuses are applied otherwise
+        self.set_current_stats()
 
     def run_combat_preparation(self):
         self.run_combat_preparation_without_regen()
@@ -2466,6 +2468,9 @@ class VisualRepresentation(Presets):
             val = round(val, 2)
             metric_str = '{}: {}'.format(metric_name, val)
             table_lst.append((metric_str, ))
+
+        combat_duration_str = 'Fight duration: {}'.format(self.combat_duration)
+        table_lst.append((combat_duration_str,))
 
         subplot_obj.axis('off')
         table_obj = subplot_obj.table(

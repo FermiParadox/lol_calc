@@ -16,6 +16,7 @@ _AA_DMG_DCT['life_conversion_type'] = 'lifesteal'
 _AA_DMG_DCT['resource_type'] = 'hp'
 _AA_DMG_DCT['dmg_values'] = 1
 _AA_DMG_DCT['mods'] = None
+_AA_DMG_DCT['crit_type'] = 'normal'
 
 
 class GeneralCategories(object):
@@ -157,8 +158,7 @@ class DmgCategories(BuffCategories):
 
         Takes into account all related stat-caused mods and dmg_category.
 
-        Returns:
-            (float)
+        :return: (float)
         """
 
         dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
@@ -184,9 +184,5 @@ class DmgCategories(BuffCategories):
 
     @staticmethod
     def aa_dmg():
-        """Returns dmg dictionary of an AA.
-
-        Value includes critable bonuses and modifiers.
-        """
         return _AA_DMG_DCT
 

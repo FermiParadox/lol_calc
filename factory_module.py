@@ -14,7 +14,7 @@ import api_masteries_database
 import champion_ids
 import api_key
 import palette
-from palette import delimiter, fat_delimiter
+from palette import delimiter, fat_delimiter, ON_HIT_EFFECTS
 import stats
 import api_items_database
 import items_folder.items_data
@@ -32,7 +32,7 @@ ITEMS_DATA_MODULE_NAME = 'items_data'
 ITEMS_DATA_MODULE_PATH = '.'.join((ITEMS_MODULES_FOLDER_NAME, ITEMS_DATA_MODULE_NAME))
 ITEMS_ATTRS_DCT_NAME = 'ITEMS_ATTRIBUTES'
 ITEMS_EFFECTS_DCT_NAME = 'ITEMS_EFFECTS'
-ITEMS_CONDITIONS_DCT_NAME = 'ITEMS_CONDITIONS'
+ITEMS_CONDITIONS_DCT_NAME = 'ITEMS_CONDITIONALS'
 ABILITIES_ATTRS_DCT_NAME = 'ABILITIES_ATTRIBUTES'
 ABILITIES_EFFECT_DCT_NAME = 'ABILITIES_EFFECTS'
 ABILITIES_CONDITIONALS_DCT_NAME = 'ABILITIES_CONDITIONALS'
@@ -70,6 +70,8 @@ child_class_as_str = """class ChampionAttributes(abilities.VisualRepresentation)
 
 
 ALL_POSSIBLE_ACTIONS = ('AA', ) + palette.ALL_POSSIBLE_SPELL_SHORTCUTS + items_folder.items_data.CASTABLE_ITEMS + ('summoner_spell', )
+
+STAT_TYPES = ('additive', 'percent', 'multiplicative')
 
 
 # ===============================================================
@@ -1007,7 +1009,7 @@ def suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_m
 
 
 # ---------------------------------------------------------------
-def repeat_cluster(cluster_name):
+def repeat_cluster_decorator(cluster_name):
     """
     Decorator used for repeating cluster of suggestions.
     When appropriate exception is raised, re-calls the decorated function.
@@ -2255,8 +2257,6 @@ class BuffsBase(object):
         buff_source=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS
     )
 
-    BUFF_STAT_TYPES = ('additive', 'percent', 'multiplicative')
-
     @staticmethod
     def stat_mod_attributes():
         return dict(
@@ -2410,7 +2410,9 @@ class GenAttrsBase(object):
         channel_time=(None,),
         resets_aa=(False, True),
         toggled=(False, True),
-        independent_cast=(False, True)
+        independent_cast=(False, True),
+        base_cd=(),
+        range=()
     )
 
     @staticmethod
@@ -2465,7 +2467,8 @@ class DmgsBase(object):
             dot=(False, True),
             max_targets=(1, 2, 3, 4, 5, 'infinite'),
             usual_max_targets=(1, 2, 3, 4, 5),
-            delay=(None,)
+            delay=(None,),
+            crit_type=palette.CRIT_TYPES
         )
 
     @staticmethod
@@ -2625,7 +2628,7 @@ class ItemAndMasteriesBase(object):
                 stat_type_msg += '\nStat type?\n'
 
                 stat_type = enumerated_question(question_str=stat_type_msg,
-                                                choices_seq=BuffsBase.BUFF_STAT_TYPES,
+                                                choices_seq=STAT_TYPES,
                                                 restrict_choices=True)
 
                 # STAT VALUE
@@ -2800,13 +2803,13 @@ class _ConditionalsBase(metaclass=abc.ABCMeta):
         print('\nCONDITION: {}'.format(con_name))
         pp.pprint(self.conditions_dct[con_name][plural_str])
 
-    @repeat_cluster(cluster_name='CONDITION TRIGGERS')
+    @repeat_cluster_decorator(cluster_name='CONDITION TRIGGERS')
     def _add_triggers(self, con_name):
         return self.__add_triggers_or_effects(con_name=con_name,
                                               trig_or_eff_creation_func=self._create_and_insert_new_trigger,
                                               trig_or_eff_str='trigger')
 
-    @repeat_cluster(cluster_name='CONDITION EFFECTS')
+    @repeat_cluster_decorator(cluster_name='CONDITION EFFECTS')
     def _add_effects(self, con_name):
         return self.__add_triggers_or_effects(con_name=con_name,
                                               trig_or_eff_creation_func=self._create_and_insert_new_effect_base,
@@ -2820,7 +2823,7 @@ class _ConditionalsBase(metaclass=abc.ABCMeta):
         self._add_triggers(con_name=con_name)
 
     @outer_loop_exit_handler
-    @repeat_cluster(cluster_name='ALL CONDITIONS')
+    @repeat_cluster_decorator(cluster_name='ALL CONDITIONS')
     def run_conditions_creation(self, extra_msg=''):
         """
 
@@ -3066,7 +3069,7 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
             suggest_attr_values(suggested_values_dct={ability_name: (1, )},
                                 modified_dct=self.general_attr_dct['reduces_ability_cd'])
 
-    @repeat_cluster(cluster_name='GENERAL ATTRIBUTES')
+    @repeat_cluster_decorator(cluster_name='GENERAL ATTRIBUTES')
     def run_gen_attr_creation(self):
         """
         Inserts automatically some attributes and asks the dev for the rest.
@@ -3409,25 +3412,18 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
             (None)
         """
 
-        while True:
-            print('\n' + delimiter(num_of_lines=10))
-            extra_dmg = input('\nInsert extra dmg?\n')
+        print('\n' + delimiter(num_of_lines=10))
+        extra_dmg = _y_n_question('\nInsert extra dmg?\n')
 
-            if extra_dmg == 'y':
-                new_dmg_name = _new_automatic_attr_dct_name(existing_names=self.dmgs_dct, second_synthetic='dmg',
-                                                            first_synthetic=self.ability_name)
-                self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
-                self._suggest_dmg_values(dmg_name=new_dmg_name)
-                suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attrs(),
-                                    modified_dct=self.dmgs_dct[new_dmg_name],
-                                    extra_start_msg='\nManually inserted dmg.')
-                self.modify_dmg_names()
-
-            elif extra_dmg == 'n':
-                break
-
-            else:
-                print_invalid_answer()
+        if extra_dmg:
+            new_dmg_name = _new_automatic_attr_dct_name(existing_names=self.dmgs_dct, second_synthetic='dmg',
+                                                        first_synthetic=self.ability_name)
+            self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
+            self._suggest_dmg_values(dmg_name=new_dmg_name)
+            suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attrs(),
+                                modified_dct=self.dmgs_dct[new_dmg_name],
+                                extra_start_msg='\nManually inserted dmg.')
+            self.modify_dmg_names()
 
     def insert_dmg_category_related_attrs(self):
 
@@ -3473,7 +3469,7 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
         self.modify_dmg_names()
         self.insert_dmg_category_related_attrs()
 
-    @repeat_cluster(cluster_name='DMG ATTRIBUTES')
+    @repeat_cluster_decorator(cluster_name='DMG ATTRIBUTES')
     def run_dmg_attr_creation(self):
         """
         Runs all relevant methods for each dmg attribute detected.
@@ -3495,6 +3491,66 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
         print(msg)
         print('\nRESULT\n')
         pp.pprint(self.dmgs_dct)
+
+
+@inner_loop_exit_handler
+def suggest_affected_stats_attributes(str_buff_or_item, obj_name, modified_stats_dct, possible_stat_values_lst,
+                                      possible_mod_values_lst):
+    """
+    Suggests stats that the buff modifies and
+    mods of the stats (if any of the stats are scaling).
+
+    :return: (None)
+    """
+
+    if _y_n_question('\n{}: {}\nDoes it modify stats'.format(str_buff_or_item.upper(), obj_name)):
+        modified_stats_names = []
+        suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
+                                   modified_lst=modified_stats_names)
+
+        # Stat name
+        for stat_modified in modified_stats_names:
+            modified_stats_dct.update({stat_modified: {}})
+
+            buff_name_stat_name_msg = '\n{}: {}, STAT: {}'.format(str_buff_or_item.upper(), obj_name, stat_modified)
+
+            # Stat type
+            for stat_type in STAT_TYPES:
+                if _y_n_question(buff_name_stat_name_msg+'\nIs there a {} bonus to the stat?'.format(stat_type.upper())):
+                    modified_stats_dct[stat_modified].update(
+                        {stat_type: {'stat_mods': {}, }})
+                else:
+                    continue
+
+                # Stat values
+                stat_vals = enumerated_question(question_str=buff_name_stat_name_msg+'\nStat values?',
+                                                choices_seq=possible_stat_values_lst)
+                modified_stats_dct[stat_modified][stat_type].update(
+                    {'stat_values': stat_vals})
+
+                # MODS
+                modifier_name_question = buff_name_stat_name_msg + '\nDoes the stat have modifiers'
+                if _y_n_question(modifier_name_question):
+
+                    stat_modifiers_lst = []
+                    suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
+                                               modified_lst=stat_modifiers_lst)
+
+                    for modifier in stat_modifiers_lst:
+
+                        # Suggests mod values.
+                        modifier_vals_question = '\n{}: {}, STAT: {}, MOD: {}'.format(str_buff_or_item.upper(), obj_name, stat_modified, modifier)
+                        modifier_vals_question += '\nChoose mod values.'
+                        mod_vals = enumerated_question(question_str=modifier_vals_question,
+                                                       choices_seq=possible_mod_values_lst)
+
+                        # Inserts mod values.
+                        modified_stats_dct[stat_modified][stat_type]['stat_mods'].update(
+                            {modifier: mod_vals})
+
+    else:
+        print("\nDoesn't modify stats.")
+        modified_stats_dct.clear()
 
 
 class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation):
@@ -3528,68 +3584,6 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation):
                 stats_lst.append(stat_name)
 
         return stats_lst
-
-    def suggest_buff_affected_stats_attributes(self, buff_name):
-        """
-        Suggests stats that the buff modifies,
-        mods of the stats (if any of the stats are scaling).
-
-        :return: (None)
-        """
-
-        # STATS
-        print(delimiter(10))
-
-        if _y_n_question('\nBUFF: {}\nDoes it modify stats'.format(buff_name)):
-            if self._stat_names_in_tooltip():
-                # (clears placeholder)
-                self.buffs_dct[buff_name]['stats'] = {}
-
-                modified_stats_names = []
-                suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
-                                           modified_lst=modified_stats_names)
-
-                # Stat name
-                for stat_modified in modified_stats_names:
-                    self.buffs_dct[buff_name]['stats'].update({stat_modified: {}})
-
-                    buff_name_stat_name_msg = '\nBUFF: {}, STAT: {}'.format(buff_name, stat_modified)
-
-                    # Stat type
-                    for stat_type in self.BUFF_STAT_TYPES:
-                        if _y_n_question(buff_name_stat_name_msg+'\nIs there a {} bonus to the stat?'.format(stat_type)):
-                            self.buffs_dct[buff_name]['stats'][stat_modified].update(
-                                {stat_type: {'stat_mods': {}, }})
-
-                        # Stat values
-                        stat_vals = enumerated_question(question_str=buff_name_stat_name_msg+'\nStat values?',
-                                                        choices_seq=self.ability_effects_lst)
-                        self.buffs_dct[buff_name]['stats'][stat_modified][stat_type].update(
-                            {'stat_values': stat_vals})
-
-                        # MODS
-                        modifier_name_question = buff_name_stat_name_msg + '\nDoes the stat have modifiers'
-                        if _y_n_question(modifier_name_question):
-
-                            stat_modifiers_lst = []
-                            suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
-                                                       modified_lst=stat_modifiers_lst)
-
-                            for modifier in stat_modifiers_lst:
-
-                                # Suggests mod values.
-                                modifier_vals_question = '\nBUFF: {}, STAT: {}, MOD: {}'.format(buff_name, stat_modified, modifier)
-                                modifier_vals_question += '\nChoose mod values.'
-                                mod_vals = enumerated_question(question_str=modifier_vals_question,
-                                                               choices_seq=self.mod_vals_lst)
-
-                                # Inserts mod values.
-                                self.buffs_dct[buff_name]['stats'][stat_modified][stat_type]['stat_mods'].update(
-                                    {modifier: mod_vals})
-
-        else:
-            print("\nDoesn't modify stats.")
-            self.buffs_dct[buff_name]['stats'] = None
 
     # ---------------------------------------------------------------
 
@@ -3766,7 +3760,15 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation):
         print(delimiter(40))
 
         for buff_name in sorted(self.buffs_dct):
-            self.suggest_buff_affected_stats_attributes(buff_name=buff_name)
+            print(delimiter(10))
+            self.buffs_dct[buff_name]['stats'] = {}
+
+            stats_dct = self.buffs_dct[buff_name]['stats']
+            suggest_affected_stats_attributes(str_buff_or_item='buff',
+                                              obj_name=buff_name,
+                                              modified_stats_dct=stats_dct,
+                                              possible_stat_values_lst=self.ability_effects_lst,
+                                              possible_mod_values_lst=self.mod_vals_lst)
 
             usual_attrs_msg = 'USUAL BUFF ATTRIBUTES\n'
             usual_attrs_msg += '\nBUFF: %s' % buff_name
@@ -3774,7 +3776,7 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation):
                                 modified_dct=self.buffs_dct[buff_name],
                                 extra_start_msg=usual_attrs_msg)
 
-    @repeat_cluster(cluster_name='BUFFS')
+    @repeat_cluster_decorator(cluster_name='BUFFS')
     def run_buff_attr_creation(self):
 
         # Reset dict content
@@ -3959,7 +3961,7 @@ class AbilitiesAttributes(object):
                                 self.final_abilities_attrs[attr_type].update({new_name: old_attr_dct})
                                 break
 
-    @repeat_cluster(cluster_name='SPELL ATTRS')
+    @repeat_cluster_decorator(cluster_name='SPELL ATTRS')
     def run_spell_attrs_creation(self):
         """
         Creates all attributes for all spells of given champion,
@@ -3996,6 +3998,10 @@ class EffectsBase(object):
         :param modified_eff_dct: (dict) Exact dict that gets all effects for given object.
         :return: (None)
         """
+
+        if not _y_n_question('Does {} have any effects?'.format(obj_name)):
+            modified_eff_dct.clear()
+            return
 
         has_actives = Fetch().castable(champ_or_item=champ_or_item,
                                        spell_or_item_name=obj_name,
@@ -4099,7 +4105,7 @@ class AbilitiesEffects(EffectsBase):
                                             champ_name=self.champion_name)
 
     @outer_loop_exit_handler
-    @repeat_cluster(cluster_name='SPELL EFFECTS')
+    @repeat_cluster_decorator(cluster_name='SPELL EFFECTS')
     def run_spells_effects_creation(self):
         """
         Creates effects of every spell.
@@ -4221,7 +4227,7 @@ class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
 
             buff_on_hit=dict(
                 buff_name=self.available_buff_names(),
-                lst_category=palette.ChampionsStats.on_hit_effects(),
+                lst_category=ON_HIT_EFFECTS,
                 mod_operation=('append', 'remove'),
             ),
 
@@ -4378,10 +4384,10 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         self.item_gen_attrs = {}
         self.non_unique_item_stats = {}
         self.unique_item_stats = {}
-        self.item_dmgs = None
+        self.item_dmgs = {}
         self.item_buffs = {}
-        self.item_effects = None
-        self.item_tree = None
+        self.item_effects = {}
+        self.item_tree = {}
         self.item_api_data_dct = self.explore_items_module_inst.item_dct(given_name=self.item_name)
         self._item_description_str = self.explore_items_module_inst.descriptions(item=self.item_name)[0]
 
@@ -4425,6 +4431,47 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         self.pprint_item_or_mastery_description(obj_name=self.item_name,
                                                 obj_description_str=self._item_description_str,
                                                 str_item_or_mastery='item')
+
+    def arithmetic_values_in_description(self):
+        """
+        Finds all numbers in item description. Percent values are changed to decimal.
+
+        :return: (list)
+        """
+
+        arithmetic_vals = set()
+
+        pattern = re.compile(r'''
+        \d+                     # Starts with digits
+        (?:\.\d+)?              # ..may continue with dot and digits
+        \s?
+        %?                      # .. may end with %.
+        ''', re.VERBOSE)
+
+        matches = re.findall(pattern, self._item_description_str)
+
+        # Strings to floats.
+        for value in matches:
+            # Converts percent to decimal.
+            if '%' in value:
+                value = value.strip('% ')
+                value = float(value) / 100.
+                arithmetic_vals.add(value)
+
+            else:
+                arithmetic_vals.add(float(value))
+
+        # Converts floats to ints when needed (e.g. 1.0 -> 1)
+        final_values_set = set()
+        for value in arithmetic_vals:
+            val_as_int = int(value)
+            if val_as_int == value:
+                final_values_set.add(val_as_int)
+
+            else:
+                final_values_set.add(value)
+
+        return final_values_set
 
     def _validate_stats_names(self):
         """
@@ -4533,17 +4580,25 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         :return: (None)
         """
 
-        # Filters out string between stacking stats' tag.
-        description_match = re.search(r'</stats>(.+)', self._item_description_str.lower())
-        if description_match:
-            description_str = description_match.group()
-        else:
-            description_str = ''
+        try:
+            # Filters out string between stacking stats' tag.
+            description_match = re.search(r'</stats>(.+)', self._item_description_str.lower())
+            if description_match:
+                description_str = description_match.group()
+            else:
+                description_str = ''
 
-        self._create_stats_names_and_values(given_description_str=description_str, split_tags_lst=[r'[a-zA-Z]*'],
-                                            modified_dct=self.unique_item_stats)
+            self._create_stats_names_and_values(given_description_str=description_str, split_tags_lst=[r'[a-zA-Z]*'],
+                                                modified_dct=self.unique_item_stats)
 
-    @repeat_cluster(cluster_name='ITEM GEN ATTRS')
+        except AttributeError:
+            suggest_affected_stats_attributes(str_buff_or_item='item',
+                                              obj_name=self.item_name,
+                                              modified_stats_dct=self.unique_item_stats,
+                                              possible_stat_values_lst=[],
+                                              possible_mod_values_lst=[])
+
+    @repeat_cluster_decorator(cluster_name='ITEM GEN ATTRS')
     def create_item_gen_attrs(self):
         self.item_gen_attrs = {}
 
@@ -4559,7 +4614,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
         pp.pprint(self.item_gen_attrs)
 
-    @repeat_cluster(cluster_name='ITEM DMG MODS')
+    @repeat_cluster_decorator(cluster_name='ITEM DMG MODS')
     def _create_dmg_mods(self, dmg_name):
 
         self.item_dmgs[dmg_name]['mods'] = self.dmg_mod_contents()
@@ -4628,7 +4683,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         print(delimiter(40))
         pp.pprint(self.item_dmgs[new_dmg_name])
 
-    @repeat_cluster(cluster_name='ITEM DMGS')
+    @repeat_cluster_decorator(cluster_name='ITEM DMGS')
+    @inner_loop_exit_handler
     def create_item_dmgs(self):
 
         # Prints item description.
@@ -4645,6 +4701,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
             self._create_item_single_dmg()
 
         # Prints all dmgs
+        print('DMGS:')
         pp.pprint(self.item_dmgs)
 
     def _suggest_buff_affected_stats_of_item(self, buff_name):
@@ -4655,7 +4712,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                                                              available_stat_names=self.items_stat_names(),
                                                              lst_of_values_tuples=())
 
-    @repeat_cluster(cluster_name='ITEM BUFFS')
+    @repeat_cluster_decorator(cluster_name='ITEM BUFFS')
+    @inner_loop_exit_handler
     def create_item_buffs(self):
 
         print(fat_delimiter(80))
@@ -4667,16 +4725,45 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         for buff_name in self.item_buffs:
             self.item_buffs.update({buff_name: self.item_buff_attributes()})
 
+            # Buff attrs (excluding stats)
             buff_msg = '\nITEM: {}, BUFF: {}'.format(self.item_name, buff_name)
-            # Stats affected by buff.
-            self._suggest_buff_affected_stats_of_item(buff_name=buff_name)
-            # Rest of buff attrs.
             suggest_attr_values(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
                                 modified_dct=self.item_buffs[buff_name], extra_start_msg=buff_msg)
 
+            # Stats affected by buff.
+            self.item_buffs[buff_name]['stats'] = {}
+            suggest_affected_stats_attributes(str_buff_or_item='buff', obj_name=buff_name,
+                                              modified_stats_dct=self.item_buffs[buff_name],
+                                              possible_stat_values_lst=self.arithmetic_values_in_description(),
+                                              possible_mod_values_lst=self.arithmetic_values_in_description())
+
+        buff_names = sorted(self.item_buffs)
+        dmgs_names = sorted(self.item_dmgs)
+
+        # On hit
+        for buff_name in self.item_buffs:
+            self.item_buffs[buff_name].update(on_hit=palette.ON_HIT_EFFECTS)
+            buff_on_hit_dct = self.item_buffs[buff_name]['on_hit']
+            if _y_n_question('Does {} have ON HIT?'.format(buff_name.upper())):
+
+                # ('reduce_cd' should be set manually since too few items have it)
+
+                suggest_lst_of_attr_values(modified_lst=buff_on_hit_dct['apply_buff'], suggested_values_lst=buff_names,
+                                           extra_start_msg='APPLIED BUFFS on hit.')
+
+                suggest_lst_of_attr_values(modified_lst=buff_on_hit_dct['cause_dmg'], suggested_values_lst=dmgs_names,
+                                           extra_start_msg='CAUSED DMGS on hit.')
+
+                suggest_lst_of_attr_values(modified_lst=buff_on_hit_dct['remove_buff'], suggested_values_lst=buff_names,
+                                           extra_start_msg='REMOVED BUFFS on hit.')
+
+            else:
+                buff_on_hit_dct.clear()
+
+        print('BUFFS:')
         pp.pprint(self.item_buffs)
 
-    @repeat_cluster(cluster_name='ITEM EFFECTS')
+    @repeat_cluster_decorator(cluster_name='ITEM EFFECTS')
     def create_item_effects(self):
 
         self.item_effects = palette.ChampionsStats().item_effects()
@@ -5143,15 +5230,20 @@ class ModuleCreatorBase(object):
         :return:
         """
 
-        with open(targeted_module_path_str, 'r') as read_file:
-            r_as_lst = read_file.readlines()
+        try:
+            with open(targeted_module_path_str, 'r') as read_file:
+                r_as_lst = read_file.readlines()
 
-        for line in r_as_lst:
-            if re.match(r'\s*{}'.format(obj_name), line):
-                return True
-        # If no match has been found, returns False.
-        else:
-            return False
+                for line in r_as_lst:
+                    if re.match(r'\s*{}'.format(obj_name), line):
+                        return True
+                # If no match has been found, returns False.
+                else:
+                    return False
+
+        except FileNotFoundError:
+            with open(targeted_module_path_str, 'w') as _:
+                pass
 
     @staticmethod
     def insert_object_in_dct(obj_name, modified_dct, auto_replace, property_name, data_creation_func):
@@ -5470,6 +5562,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
         dct = {}
 
         self.temporary_item_attr_creation_instance = ItemAttrCreation(item_name=self.item_name)
+        self.temporary_item_attr_creation_instance.pprint_item_description()
         self.temporary_item_attr_creation_instance.create_non_unique_stats_names_and_values()
         self.temporary_item_attr_creation_instance.create_unique_stats_values()
         self.temporary_item_attr_creation_instance.create_item_gen_attrs()
@@ -5577,6 +5670,24 @@ class ItemsModuleCreator(ModuleCreatorBase):
         self._insert_item_created_attrs_or_effects_or_conds(effects_or_attrs_or_conds='conds',
                                                             auto_replace=auto_replace)
 
+    def create_item(self):
+        self.create_and_insert_item_attrs()
+        self.create_and_insert_item_effects()
+        self.create_and_insert_item_conditionals()
+
+    @staticmethod
+    def create_all_items():
+        for item_name in sorted(ExploreApiItems().usable_items_by_name_dct):
+            creation_instance = ItemsModuleCreator(item_name=item_name)
+            creation_instance.create_item()
+
+    @staticmethod
+    def create_non_created_items():
+        for item_name in sorted(ExploreApiItems().usable_items_by_name_dct):
+            if item_name not in Fetch().items_attrs_dct():
+                creation_instance = ItemsModuleCreator(item_name=item_name)
+                creation_instance.create_item()
+
 
 class MasteryModuleCreator(ModuleCreatorBase):
 
@@ -5649,6 +5760,9 @@ if __name__ == '__main__':
     # STORING ALL CHAMPIONS DATA
     if 0:
         RequestAllAbilitiesFromAPI().store_all_champions_data()
+    # REQUEST ITEMS API
+    if 0:
+        RequestAllItemsFromAPI().store_all_items_from_api()
 
     # EXPLORING CHAMPION ABILITIES AND TOOLTIPS
     if 0:
@@ -5666,7 +5780,7 @@ if __name__ == '__main__':
         print(ExploreApiAbilities().champion_id('dariu'))
 
     # CHAMPION MODULE CREATION
-    if 1:
+    if 0:
         ChampionModuleCreator(champion_name='vayne').run_champ_module_creation()
 
     # FETCHING CASTABLE ABILITIES
@@ -5685,10 +5799,11 @@ if __name__ == '__main__':
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
     if 0:
-        inst = ItemsModuleCreator(item_name='dorans_sh')
-        inst.create_and_insert_item_attrs()
-        inst.create_and_insert_item_effects()
-        inst.create_and_insert_item_conditionals()
+        inst = ItemsModuleCreator(item_name='hextech_g')
+        inst.create_item()
+    # Create all items.
+    if 1:
+        ItemsModuleCreator.create_non_created_items()
 
     # PRETTY FORMAT OBJECT IN MODULE
     if 0:

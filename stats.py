@@ -256,8 +256,8 @@ class StatCalculation(StatFilters):
         # (e.g. ad at lvl1 without per lvl bonus, ad_per_lvl, etc.)
         # .. and enemies TOTAL stats.
         # (that is, after applying enemy items, enemy masteries, runes, abilities etc).
-        self.base_stats_dct = {}
-        self.set_base_stats_dct()
+        self.basic_stats_dct = {}
+        self.set_basic_stats_dct()
 
         self.current_stats = {}
 
@@ -304,7 +304,7 @@ class StatCalculation(StatFilters):
             if tar not in given_dct:
                 given_dct.update({tar: empty_obj})
 
-    def set_base_stats_dct(self):
+    def set_basic_stats_dct(self):
         """
         Creates base stats dict.
 
@@ -313,21 +313,21 @@ class StatCalculation(StatFilters):
         """
 
         if self.initial_enemies_total_stats:
-            self.base_stats_dct.update(self.initial_enemies_total_stats)
+            self.basic_stats_dct.update(self.initial_enemies_total_stats)
 
         all_base_stats_dct = app_champions_base_stats.CHAMPION_BASE_STATS
 
         player_base_stats = all_base_stats_dct[self.selected_champions_dct['player']]
-        self.base_stats_dct.update({'player': player_base_stats})
+        self.basic_stats_dct.update({'player': player_base_stats})
 
         for tar_name in self.enemy_target_names:
-            if tar_name not in self.base_stats_dct:
-                self.base_stats_dct.update({tar_name: {}})
+            if tar_name not in self.basic_stats_dct:
+                self.basic_stats_dct.update({tar_name: {}})
 
                 tar_champ = self.selected_champions_dct[tar_name]
                 tar_hp = all_base_stats_dct[tar_champ]['hp']
                 tar_hp_per_lvl = all_base_stats_dct[tar_champ]['hp_per_lvl']
-                self.base_stats_dct[tar_name].update({'hp': tar_hp, 'hp_per_lvl': tar_hp_per_lvl})
+                self.basic_stats_dct[tar_name].update({'hp': tar_hp, 'hp_per_lvl': tar_hp_per_lvl})
 
     def set_active_buffs(self):
         """
@@ -357,7 +357,7 @@ class StatCalculation(StatFilters):
         :return: (float)
         """
 
-        tar_base_stats_dct = self.base_stats_dct[tar_name]
+        tar_base_stats_dct = self.basic_stats_dct[tar_name]
 
         # If the stat exists in target's base stats..
         if stat_name in tar_base_stats_dct:
@@ -494,14 +494,14 @@ class StatCalculation(StatFilters):
         :return: (float)
         """
 
-        value = self.base_stats_dct[tar_name]['base_att_speed']
+        value = self.basic_stats_dct[tar_name]['base_att_speed']
 
         # _PER_LVL
         # Adds _per_lvl bonus of att_speed to the modifier.
         # TODO change 50% in base stats to 0.5 and adapt below code
         # (champion att speed is in the form of 50%)
         multiplication_mod = 100
-        multiplication_mod += self.base_stats_dct[tar_name]['att_speed_per_lvl'] * (self.champion_lvls_dct[tar_name]-1)
+        multiplication_mod += self.basic_stats_dct[tar_name]['att_speed_per_lvl'] * (self.champion_lvls_dct[tar_name]-1)
 
         # ITEM AND BUFF BONUSES
         # Adds item and buff bonuses of att_speed to the modifier.
@@ -608,8 +608,6 @@ class StatRequest(StatCalculation):
                                  initial_active_buffs=initial_active_buffs,
                                  initial_current_stats=initial_current_stats,
                                  initial_enemies_total_stats=initial_enemies_total_stats)
-
-        self.set_current_stats()
 
     SPECIAL_STATS_SET = SPECIAL_STATS_SET
 

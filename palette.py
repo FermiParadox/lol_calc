@@ -30,7 +30,7 @@ BUFF_DCT_BASE = dict(
     ),
     prohibit_cd_start='placeholder',
     buff_source='placeholder',
-    dot=False
+    dot=False,
 )
 
 
@@ -53,6 +53,17 @@ DMG_DCT_BASE = dict(
     dot={'dot_buff': 'placeholder'},
     max_targets='placeholder',
     delay='placeholder',
+    crit_type='placeholder'
+)
+
+CRIT_TYPES = (None, 'normal', 'always')
+
+
+ON_HIT_EFFECTS = dict(
+    cause_dmg=[],
+    apply_buff=[],
+    remove_buff=[],
+    cds_modified={},
 )
 
 
@@ -119,15 +130,6 @@ def champion_buffs_or_dmgs_names_lst(champion_name, str_buffs_or_dmgs):
 
 
 class ChampionsStats(object):
-
-    @staticmethod
-    def on_hit_effects():
-        return dict(
-            cause_dmg=[],
-            add_buff=[],
-            remove_buff=[],
-            cds_modified={},
-        )
 
     @staticmethod
     def inn_effects():

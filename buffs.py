@@ -160,9 +160,11 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
         :return: (None)
         """
 
-        # Applies all passive buffs.
-        for buff_name in effects_dct[target_type]['passives']['buffs']:
-            self.add_buff(buff_name, tar_name)
+        if effects_dct:
+
+            # Applies all passive buffs.
+            for buff_name in effects_dct[target_type]['passives']['buffs']:
+                self.add_buff(buff_name, tar_name)
 
     def add_items_passive_buffs(self, target_type, tar_name):
         """
@@ -240,7 +242,7 @@ class Counters(BuffsGeneral):
 
         self.max_combat_time = max_combat_time
         self.total_movement = 0
-        self.combat_end_time = 0
+        self.combat_duration = 0
 
         self.actions_dct = {}
         self.combat_history = {}
@@ -257,7 +259,7 @@ class Counters(BuffsGeneral):
             (list)
         """
 
-        lst = list(self.base_stats_dct['player'])
+        lst = list(self.basic_stats_dct['player'])
         lst += self.SPECIAL_STATS_SET
         lst += self.EXTRA_STATS_SET
         lst.append('current_hp')
@@ -673,7 +675,7 @@ class Counters(BuffsGeneral):
         self.combat_results['player']['total_movement'] = self.total_movement
 
     def movement_per_sec(self):
-        return self.total_movement / self.combat_end_time
+        return self.total_movement / self.combat_duration
 
     def note_movement_per_sec_in_results(self):
         self.combat_results['player']['movement_per_sec'] = self.movement_per_sec()
@@ -1165,7 +1167,8 @@ _REGEN_DMG_DCT_BASE = dict(
     dot={'buff_name': 'placeholder'},
     max_targets=1,
     usual_max_targets=1,
-    delay=NATURAL_REGEN_START_DELAY,)
+    delay=NATURAL_REGEN_START_DELAY,
+    critability=0)
 
 # HEALTH
 _HP5_DMG_DCT_BASE = copy.deepcopy(_REGEN_DMG_DCT_BASE)

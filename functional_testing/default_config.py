@@ -23,16 +23,13 @@ ALL_DATA = dict(
     max_combat_time=10,
 
     rotation_lst=[],
-    chosen_items_dct={'player': ['hextech_gunblade', 'hextech_gunblade'],
+    chosen_items_dct={'player': ['hextech_gunblade', 'wits_end', 'dorans_blade', 'crystalline_bracer'],
+                      'enemy_1': ['hextech_gunblade'],
                       'enemy_2': ['dorans_shield', 'hextech_gunblade'],
-                      'enemy_3': ['dorans_shield', 'hextech_gunblade'],
-                      'enemy_4': ['dorans_shield', 'hextech_gunblade'],
-                      'enemy_1': ['dorans_shield', 'hextech_gunblade']},
+                      'enemy_3': ['dorans_shield', 'hextech_gunblade'],},
     initial_enemies_total_stats=None,
     initial_active_buffs=None,
-    initial_current_stats={
-        #'player':{'current_hp':0, 'current_mp': 900}
-    },
+    initial_current_stats={},
     
     _reversed_combat_mode=False,
 
