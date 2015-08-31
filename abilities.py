@@ -154,13 +154,12 @@ class EventsGeneral(buffs.DeathAndRegen):
             (None)
         """
 
-        effect_dct = self.req_dmg_dct_func(effect_name)
-        # Changes event start if needed.
-        eff_delay = effect_dct['delay']
-        if eff_delay:
-            start_time += eff_delay
-
         dmg_dct = self.req_dmg_dct_func(dmg_name=effect_name)
+        # Changes event start if needed.
+        dmg_delay = dmg_dct['delay']
+        if dmg_delay:
+            start_time += dmg_delay
+
         tar_type = dmg_dct['target_type']
 
         if tar_type == 'player':
@@ -169,7 +168,7 @@ class EventsGeneral(buffs.DeathAndRegen):
             target_name = self.current_target
 
         # Adds event to first target.
-        self.add_event_to_first_tar(target_name=target_name,effect_name=effect_name, start_time=start_time)
+        self.add_event_to_first_tar(target_name=target_name, effect_name=effect_name, start_time=start_time)
 
         # AOE DMG
         # No aoe will be applied by dots originating from reverse combat mode.
@@ -185,7 +184,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                 max_tars_val = self.max_targets_dct[effect_name]
 
             else:
-                max_tars_val = effect_dct['usual_max_targets']
+                max_tars_val = dmg_dct['usual_max_targets']
                 if max_tars_val == 'unlimited':
                     # If targets are unlimited applies to everyone.
                     max_tars_val = len(self.enemy_target_names)
@@ -1652,7 +1651,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                     # Applies all dmg effects for all targets.
                     for self.current_target in self.event_times[self.current_time]:
                         for dmg_name in self.event_times[self.current_time][self.current_target]:
-                            self.apply_dmg_or_heal(dmg_name, self.current_target)
+                            dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
+                            self.apply_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct, target_name=self.current_target)
                             self.add_next_periodic_event(tar_name=self.current_target, dmg_name=dmg_name)
 
                         # After dmg has been applied checks if target has died.
@@ -1973,7 +1973,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 for self.current_target in self.event_times[self.current_time]:
                     if self.current_stats[self.current_target]['current_hp'] > 0:
                         for dmg_name in self.event_times[self.current_time][self.current_target]:
-                            self.apply_dmg_or_heal(dmg_name=dmg_name, target_name=self.current_target)
+                            dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
+                            self.apply_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct, target_name=self.current_target)
 
                             # Extends dots.
                             if fully_apply_dots:

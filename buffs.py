@@ -66,17 +66,12 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
         """
         pass
 
-    def add_new_buff(self, buff_name, tar_name, initial_stacks_increment=1):
+    def add_new_buff(self, buff_name, buff_dct, tar_name, initial_stacks_increment=1):
         """
         Inserts a new buff in active_buffs dictionary.
 
-        Modifies:
-            active_buffs
-        Returns:
-            (None)
+        :return: (None)
         """
-
-        buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
         # Inserts the new buff.
         self.active_buffs[tar_name].update(
@@ -99,7 +94,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
         # STACKS
         self.active_buffs[tar_name][buff_name].update(dict(current_stacks=initial_stacks_increment))
 
-    def add_already_active_buff(self, buff_name, tar_name, stack_increment=1):
+    def add_already_active_buff(self, buff_name, buff_dct, tar_name, stack_increment=1):
         """
         Changes an existing buff in active_buffs dictionary,
         by refreshing its duration and increasing its stacks.
@@ -110,7 +105,6 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
             (None)
         """
 
-        buff_dct = self.req_buff_dct_func(buff_name=buff_name)
         tar_buff_dct_in_act_buffs = self.active_buffs[tar_name][buff_name]
 
         # DURATION
@@ -140,16 +134,20 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
         :return: (None)
         """
 
+        buff_dct = self.req_buff_dct_func(buff_name=buff_name)
+
         # NEW BUFF
         if buff_name not in self.active_buffs[tar_name]:
 
             self.add_new_buff(buff_name=buff_name,
+                              buff_dct=buff_dct,
                               tar_name=tar_name,
                               initial_stacks_increment=initial_stacks_increment)
 
         # EXISTING BUFF
         else:
             self.add_already_active_buff(buff_name=buff_name,
+                                         buff_dct=buff_dct,
                                          tar_name=tar_name,
                                          stack_increment=stack_increment)
 
@@ -800,7 +798,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                                      active_buffs=self.active_buffs,
                                                      ability_lvls_dct=ability_lvls_dct)
 
-    def apply_spellvamp_or_lifesteal(self, tar_name, dmg_name, dmg_value, dmg_type):
+    def apply_spellvamp_or_lifesteal(self, tar_name, dmg_dct, dmg_value, dmg_type):
         """
         Applies lifesteal or spellvamp to the player and notes it in history.
 
@@ -827,8 +825,6 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 
             # If it's not an AA checks if either lifesteal or spellvamp is applicable.
             else:
-
-                dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
                 life_conversion_type = dmg_dct['life_conversion_type']
                 # If it can cause spellvamp..
                 if life_conversion_type == 'spellvamp':
@@ -890,7 +886,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             self.current_stats[tar_name]['current_hp'] = self.request_stat(target_name=tar_name,
                                                                            stat_name='hp')
 
-    def apply_resource_dmg_or_heal(self, dmg_name):
+    def apply_resource_dmg_or_heal(self, dmg_name, dmg_dct):
         """
         Reduces or increases player's 'current_'resource and stores it in combat_history.
 
@@ -906,7 +902,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         """
 
         dmg_value = self.request_dmg_value(dmg_name=dmg_name)
-        resource_type = self.req_dmg_dct_func(dmg_name=dmg_name)['resource_type']
+        resource_type = dmg_dct['resource_type']
 
         # DMG
         if dmg_value >= 0:
@@ -1038,11 +1034,11 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 
         # LIFESTEAL/SPELLVAMP
         self.apply_spellvamp_or_lifesteal(tar_name=target_name,
-                                          dmg_name=dmg_name,
+                                          dmg_dct=dmg_dct,
                                           dmg_value=final_dmg_value,
                                           dmg_type=dmg_type)
 
-    def apply_dmg_or_heal(self, dmg_name, target_name):
+    def apply_dmg_or_heal(self, dmg_name, dmg_dct, target_name):
         """
         Applies dmg or heal to either current_hp or the player's resource.
 
@@ -1050,15 +1046,13 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             (None)
         """
 
-        dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
-
         # Checks if the effect is affecting a resource or hp.
         if dmg_dct['resource_type'] == 'hp':
             self.apply_hp_dmg_or_heal(dmg_name=dmg_name,
                                       target_name=target_name)
 
         else:
-            self.apply_resource_dmg_or_heal(dmg_name=dmg_name)
+            self.apply_resource_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct)
 
     def times_of_death(self):
         """
