@@ -121,7 +121,6 @@ class UserSession(object):
         instance = self.instance_after_combat(input_dct=input_dct)
         instance.represent_results_visually()
 
-
         return instance
 
 

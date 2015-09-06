@@ -923,13 +923,15 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         self.note_non_hp_resource_in_history(curr_resource_str=self.player_current_resource_name)
 
     @staticmethod
-    def aoe_bool(max_targets):
+    def is_aoe(dmg_dct):
         """
         Determines if effect is single or multi-target.
 
-        :param max_targets: (int)
         :return: (bool)
         """
+
+        max_targets = dmg_dct['max_targets']
+
         if max_targets == 1:
             return False
         else:
@@ -998,7 +1000,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 
         dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
         dmg_type = dmg_dct['dmg_type']
-        aoe = self.aoe_bool(max_targets=dmg_dct['max_targets'])
+        aoe = self.is_aoe(dmg_dct=dmg_dct)
         unmitigated_dmg_value = self.request_dmg_value(dmg_name=dmg_name)
 
         final_dmg_value = self.mitigated_dmg(dmg_value=unmitigated_dmg_value,

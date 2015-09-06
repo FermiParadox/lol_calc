@@ -2435,7 +2435,7 @@ class GenAttrsBase(object):
             dashed_distance='placeholder',
             channel_time='placeholder',
             resets_aa='placeholder',
-            reduces_ability_cd=dict(
+            cds_modified=dict(
                 name_placeholder='duration_placeholder'
             )
         )
@@ -3063,12 +3063,12 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
                                    sort_suggested_lst=False)
 
         # (removes placeholders to prepare for data insertion)
-        self.general_attr_dct['reduces_ability_cd'] = {}
+        self.general_attr_dct['cds_modified'] = {}
         # For each reduced ability, creates dict key and suggests values.
         for ability_name in reduced_ability_names:
 
             suggest_attr_values(suggested_values_dct={ability_name: (1, )},
-                                modified_dct=self.general_attr_dct['reduces_ability_cd'])
+                                modified_dct=self.general_attr_dct['cds_modified'])
 
     @repeat_cluster_decorator(cluster_name='GENERAL ATTRIBUTES')
     def run_gen_attr_creation(self):
@@ -4396,7 +4396,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
     def general_attributes():
 
         # Not needed list.
-        lst = ['dashed_distance', 'cost', 'resets_aa', 'channel_time', 'dashed_distance', 'reduces_ability_cd', ]
+        lst = ['dashed_distance', 'cost', 'resets_aa', 'channel_time', 'dashed_distance', 'cds_modified', ]
 
         # Removes not needed.
         dct = {k: v for k, v in GenAttrsBase.general_attributes().items() if k not in lst}
@@ -4632,8 +4632,9 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
             for owner_type in self.item_dmgs[dmg_name]['mods']:
 
                 # NAMES
-                mods_names = enumerated_question('Mods belonging to {}'.format(owner_type.upper()),
-                                                 choices_seq=stats.NON_PER_LVL_STAT_NAMES)
+                mods_names = []
+                suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES, modified_lst=mods_names,
+                                           extra_start_msg='Mods belonging to {}\n'.format(owner_type.upper()))
 
                 if mods_names:
                     for mod_name in mods_names:
@@ -4644,7 +4645,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                             if _y_n_question("{}'s mod: {}, is {}".format(owner_type, mod_name.upper(), mod_type.upper())):
 
                                 # VALUE
-                                mod_value = restricted_input('{} value?'.format(mod_name.upper()), input_type='num')
+                                mod_value = restricted_input('{} mod value?'.format(mod_name.upper()), input_type='num')
 
                                 self.item_dmgs[dmg_name]['mods'][owner_type][mod_name].update({mod_type: mod_value})
 
@@ -4727,7 +4728,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
             # Stats affected by buff.
             self.item_buffs[buff_name]['stats'] = {}
             suggest_affected_stats_attributes(str_buff_or_item='buff', obj_name=buff_name,
-                                              modified_stats_dct=self.item_buffs[buff_name],
+                                              modified_stats_dct=self.item_buffs[buff_name]['stats'],
                                               possible_stat_values_lst=self.arithmetic_values_in_description(),
                                               possible_mod_values_lst=self.arithmetic_values_in_description())
 
@@ -4735,6 +4736,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         dmgs_names = sorted(self.item_dmgs)
 
         # On hit
+        # (done later so that buffs' and dmgs' names are available)
         for buff_name in self.item_buffs:
             self.item_buffs[buff_name].update(on_hit=palette.ON_HIT_EFFECTS)
             buff_on_hit_dct = self.item_buffs[buff_name]['on_hit']
@@ -5793,7 +5795,7 @@ if __name__ == '__main__':
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
     if 1:
-        inst = ItemsModuleCreator(item_name='crystalline')
+        inst = ItemsModuleCreator(item_name='trinity_for')
         inst.create_item()
     # Create all items.
     if 0:

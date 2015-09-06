@@ -100,8 +100,7 @@ SPECIAL_STATS_SET = frozenset({'base_ad',
                                } | DEFENSIVE_SPECIAL_STATS)
 
 
-ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_BONUS_STATS | (ALL_RESOURCE_NAMES
-                                                                                               - {None})
+ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_BONUS_STATS | (ALL_RESOURCE_NAMES - {None})
 
 ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE = {i for i in ALL_POSSIBLE_STAT_NAMES if not i.startswith('current_')}
 NON_PER_LVL_STAT_NAMES = sorted(i for i in ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
@@ -747,7 +746,7 @@ class StatRequest(StatCalculation):
         :return: (None)
         """
 
-        # In reversed mode survivability (in generally) is all that matters so initial stats are ignored.
+        # In reversed mode survivability (in general) is all that matters so initial stats are ignored.
         if not self._reversed_combat_mode:
             # Checks if there are any preset values for current_stats.
             if self.initial_current_stats:

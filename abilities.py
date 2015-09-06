@@ -172,7 +172,7 @@ class EventsGeneral(buffs.DeathAndRegen):
 
         # AOE DMG
         # No aoe will be applied by dots originating from reverse combat mode.
-        if target_name == 'player':
+        if self._reversed_combat_mode:
             return
 
         self.targets_already_hit = 1
@@ -1026,14 +1026,13 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         """
         Checks if given spell is on cd.
 
-        Starts from last casted action, and checks them until if finds searched spell.
+        Starts from last casted action, and checks them until it finds searched spell.
         Then checks its cd end.
 
-        Returns:
-            (bool)
+        :return: (bool)
         """
 
-        for action_time in reversed(self.actions_dct):
+        for action_time in sorted(self.actions_dct, reverse=True):
             if self.actions_dct[action_time]['action_name'] == action_name:
 
                 # (if the spell has been casted before, the loop ends)
@@ -1045,6 +1044,21 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # If it hasn't been casted before, then it is not on cd.
         else:
             return False
+
+    def reduce_action_cd(self, action_name, reduction_value):
+        """
+        Reduces an action's cd.
+
+        :return: (None)
+        """
+
+        for action_time in sorted(self.actions_dct, reverse=True):
+            action_dct = self.actions_dct[action_time]
+            if action_dct['action_name'] == action_name:
+
+                # (if the spell has been casted before, the loop ends)
+                if action_dct['cd_end'] > self.current_time:
+                    action_dct['cd_end'] -= reduction_value
 
     # COSTS
     def non_toggled_action_cost_dct(self, action_name):
@@ -1230,17 +1244,14 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             self.total_movement += app_champions_base_stats.CHAMPION_BASE_STATS['kalista']['dashed_distance_on_aa']
 
     # ABILITIES
-    def reset_aa_cd(self, action_name):
+    def check_and_reset_aa_cd(self, action_attrs_dct):
         """
         Removes an AA's cd after an AA-resetting ability is casted.
 
-        Modifies:
-            actions_dict
-        Returns:
-            (None)
+        :return: (None)
         """
 
-        if self.request_ability_gen_attrs_dct(ability_name=action_name)['resets_aa']:
+        if action_attrs_dct['resets_aa']:
 
             for action_time in sorted(self.actions_dct, reverse=True):
 
@@ -1307,6 +1318,40 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         return cast_start
 
+    def _add_new_spell_or_item_action(self, action_name, action_attrs_dct, cast_start, str_spell_or_item):
+        """
+        Inserts new action when action is spell or item active.
+
+        :return: (None)
+        """
+
+        self.actions_dct.update(
+            {cast_start: dict(
+                cast_end=self.cast_end(action_gen_attrs_dct=action_attrs_dct, action_cast_start=cast_start),
+                action_name=action_name,)})
+
+        if str_spell_or_item == 'spell':
+            cd_end = self.ability_cd_end(ability_name=action_name,
+                                         cast_start=cast_start,
+                                         stats_function=self.request_stat,
+                                         actions_dct=self.actions_dct)
+        else:
+            cd_end = action_attrs_dct['base_cd']
+
+        # (cd_end is applied later since it requires cast_end)
+        self.actions_dct[cast_start].update(dict(
+            cd_end=cd_end))
+
+        # CHANNEL
+        channel_val = action_attrs_dct['channel_time']
+        if channel_val:
+            channel_end_time = self.actions_dct[cast_start]['cast_end'] + channel_val
+
+            self.actions_dct[cast_start].update({"channel_end": channel_end_time})
+
+        # Checks if ability resets AA's cd_end, and applies it.
+        self.check_and_reset_aa_cd(action_attrs_dct=action_attrs_dct)
+
     def add_new_action(self, action_name):
         """
         Inserts a new action.
@@ -1317,10 +1362,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         The second dictionary contains the time the action's animation ends (cast_end),
         the time the action's application ends, the action's name and the time its cooldown ends.
 
-        Modifies:
-            actions_dct
-        Returns:
-            (None)
+        :return: (None)
         """
 
         # (cast_start is the moment the action is 'clicked')
@@ -1335,27 +1377,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # CHAMPION ABILITIES
         if action_name in palette.ALL_POSSIBLE_SPELL_SHORTCUTS:
             spell_dct = self.abilities_attributes(ability_name=action_name)
-            self.actions_dct.update(
-                {cast_start: dict(
-                    cast_end=self.cast_end(action_gen_attrs_dct=spell_dct, action_cast_start=cast_start),
-                    action_name=action_name,)})
+            self._add_new_spell_or_item_action(action_name=action_name, action_attrs_dct=spell_dct,
+                                               cast_start=cast_start, str_spell_or_item='spell')
 
-            # (cd_end is applied later since it requires cast_end)
-            self.actions_dct[cast_start].update(dict(
-                cd_end=self.ability_cd_end(ability_name=action_name,
-                                           cast_start=cast_start,
-                                           stats_function=self.request_stat,
-                                           actions_dct=self.actions_dct)))
-
-            # CHANNEL
-            channel_val = self.abilities_attributes(ability_name=action_name)['channel_time']
-            if channel_val:
-                channel_end_time = self.actions_dct[cast_start]['cast_end'] + channel_val
-
-                self.actions_dct[cast_start].update({"channel_end": channel_end_time})
-
-            # Checks if ability resets AA's cd_end, and applies it.
-            self.reset_aa_cd(action_name=action_name)
             # Movement
             self.add_action_dash()
 
@@ -1369,10 +1393,16 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
             self.add_kalista_dash()
 
-        # ITEM ACTIVES OR SUMMONER SPELLS
+        # ITEMS
+        elif action_name in self.chosen_items_dct['player']:
+            item_attrs_dct = items_data.ITEMS_ATTRIBUTES[action_name]['general_attributes']
+            self._add_new_spell_or_item_action(action_name=action_name, action_attrs_dct=item_attrs_dct,
+                                               cast_start=cast_start, str_spell_or_item='item')
+
+        # SUMMONER SPELLS
         else:
             # (cast_end is the same as cast_start)
-            # (item actives and summoner spells have too high cooldowns, so they are set to a high value)
+            # (summoner spells have too high cooldowns, so they are set to a high value)
             self.actions_dct.update({cast_start: dict(
                 cast_end=cast_start,
                 cd_end=360,
@@ -1482,33 +1512,30 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             -and finally removes buffs that are removed on hit.
 
 
-        Modifies:
-            active_buffs
-            event_times
-        Returns:
-            (None)
+        :return: (None)
         """
 
         # (can't iter over active_buffs itself since it gets modified)
         for buff_name in frozenset(self.active_buffs['player']):
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
+            on_hit_dct = buff_dct['on_hit']
 
-            if buff_dct['on_hit']:
+            if on_hit_dct:
 
                 # DMG CAUSED ON HIT.
-                for dmg_name in buff_dct['on_hit']['cause_dmg']:
+                for dmg_name in on_hit_dct['cause_dmg']:
 
                     self.switch_to_first_alive_enemy()
                     self.add_events(effect_name=dmg_name, start_time=self.current_time)
 
                 # BUFFS APPLIED ON HIT.
-                for buff_applied_on_hit in buff_dct['on_hit']['apply_buff']:
+                for buff_applied_on_hit in on_hit_dct['apply_buff']:
                     tar_type = self.request_buff(buff_name=buff_applied_on_hit)['target_type']
                     tar_name = self.current_target_or_player(tar_type=tar_type)
                     self.add_buff(buff_name=buff_applied_on_hit, tar_name=tar_name)
 
                 # BUFFS REMOVED ON HIT.
-                for buff_removed_on_hit in buff_dct['on_hit']['remove_buff']:
+                for buff_removed_on_hit in on_hit_dct['remove_buff']:
 
                     # Checks if the buff exists on the player.
                     if buff_removed_on_hit in self.active_buffs['player']:
@@ -1518,6 +1545,12 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                     # Checks if the buff exists on current enemy target.
                     elif buff_removed_on_hit in self.active_buffs[self.current_target]:
                         del self.active_buffs[self.current_target][buff_removed_on_hit]
+
+                # MODIFIED CDS.
+                cds_modifications_dct = on_hit_dct['cds_modified']
+                for modified_action_cd_name in cds_modifications_dct:
+                    reduction_value = cds_modifications_dct[modified_action_cd_name]
+                    self.reduce_action_cd(action_name=modified_action_cd_name, reduction_value=reduction_value)
 
     def apply_aa_effects(self, current_time):
         """
@@ -1692,7 +1725,6 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         :return: (bool)
         """
 
-        # (used for champions that action application is affected by existing buffs)
         self.remove_expired_buffs_and_refresh_bonuses()
 
         self.add_new_action(new_action)

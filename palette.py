@@ -25,7 +25,7 @@ BUFF_DCT_BASE = dict(
     on_hit=dict(
         apply_buff=['placeholder', ],
         cause_dmg=['placeholder', ],
-        reduce_cd={},
+        cds_modified={},
         remove_buff=['placeholder', ]
     ),
     prohibit_cd_start='placeholder',
