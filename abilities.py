@@ -226,12 +226,8 @@ class EventsGeneral(buffs.DeathAndRegen):
 
         Checks active_buffs for the dot buff, then adds event if the buff still exists.
 
-        Modifies:
-            event_times
-        Args:
-            only_temporary: (boolean) Used for filtering out permanent dots (e.g. sunfire) if needed.
-        Returns:
-            (None)
+        :param only_temporary: (boolean) Used for filtering out permanent dots (e.g. sunfire) if needed.
+        :return: (None)
         """
 
         dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
@@ -241,7 +237,8 @@ class EventsGeneral(buffs.DeathAndRegen):
             # If only temporary periodic events are re-applied..
             if only_temporary:
                 # ..checks if their duration is not permanent.
-                if dmg_dct['duration'] != 'permanent':
+                buff_dct = self.req_buff_dct_func(dmg_dct['dot']['buff_name'])
+                if buff_dct['duration'] != 'permanent':
                     self.refresh_periodic_event(dmg_name=dmg_name, tar_name=tar_name, dmg_dct=dmg_dct)
 
             # Otherwise checks both permanent and temporary dots.
@@ -253,6 +250,8 @@ _DPS_BY_ENEMIES_DMGS_NAMES = [dmg_type + '_dps_by_enemy_dmg' for dmg_type in ('t
 
 _DPS_BY_ENEMIES_BUFF_BASE = copy.deepcopy(buffs.REGEN_BUFF_DCT_BASE)
 _DPS_BY_ENEMIES_BUFF_BASE['target_type'] = 'player'
+# (duration set a non 'permanent', stable value, to ensure independence of initial current hp)
+_DPS_BY_ENEMIES_BUFF_BASE['duration'] = 10
 _DPS_BY_ENEMIES_BUFF_BASE['dot']['period'] = buffs.NATURAL_REGEN_PERIOD
 _DPS_BY_ENEMIES_BUFF_BASE['buff_source'] = 'enemies_dps'
 
@@ -424,19 +423,25 @@ class EnemiesDmgToPlayer(EventsGeneral):
 
     def survivability(self):
         """
-        Survivability is defined as 'total time required to kill the player'.
+        Survivability is defined as 'estimated time required to kill the player'.
+
+        It is independent of initial starting hp, while it depends on max hp.
 
         :return: (float)
         """
 
         max_hp = self.request_stat(target_name='player', stat_name='hp')
         current_hp = self.request_stat(target_name='player', stat_name='current_hp')
-
         combat_duration = self.combat_duration
 
-        hp_lost_per_sec = (max_hp - current_hp) / combat_duration
+        try:
+            starting_hp = self.initial_current_stats['player']['current_hp']
+        except KeyError:
+            starting_hp = max_hp
 
-        if hp_lost_per_sec:
+        hp_lost_per_sec = (starting_hp - current_hp) / combat_duration
+
+        if hp_lost_per_sec > 0:
             return max_hp / hp_lost_per_sec
         else:
             # If player heals exceeded the dmg he took.
@@ -1966,20 +1971,14 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         self.combat_duration = self._last_action_end()
 
-    def apply_events_after_actions(self, fully_apply_dots=False):
+    def apply_events_after_actions(self, fully_apply_dots=True):
         """
         Applies events after all actions have finished.
 
         Non permanent dots are refreshed and their events fully applied.
         Applies death to each viable target.
 
-        Modifies:
-            current_time
-            event_times
-            active_buffs
-            intermediate_events_changed
-        Returns:
-            (None)
+        :return: (None)
         """
 
         self.intermediate_events_changed = True

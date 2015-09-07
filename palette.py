@@ -73,6 +73,13 @@ ON_HIT_EFFECTS = dict(
 )
 
 
+ON_ACTION_EFFECTS = {
+    'increase_counter_stat':
+        {'counter_stat_name': 'placeholder',
+         'value_increase': 'placeholder'}}
+ON_ACTION_EFFECTS.update(ON_HIT_EFFECTS)
+
+
 def dmg_dct_base_deepcopy():
     return copy.deepcopy(DMG_DCT_BASE)
 

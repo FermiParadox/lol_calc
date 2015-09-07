@@ -761,15 +761,15 @@ class StatRequest(StatCalculation):
                 self.current_stats.update(
                     {tar: dict(current_hp=self.request_stat(target_name=tar, stat_name='hp'))})
 
-                # Also creates the player's 'current_'resource.
-                if tar == 'player':
-                    resource_used = self.RESOURCE_USED
-                    current_resource_name = RESOURCE_TO_CURRENT_RESOURCE_MAP[self.RESOURCE_USED]
-                    if current_resource_name not in self.current_stats[tar]:
+            # Also creates the player's 'current_'resource.
+            if tar == 'player':
+                resource_used = self.RESOURCE_USED
+                current_resource_name = RESOURCE_TO_CURRENT_RESOURCE_MAP[self.RESOURCE_USED]
+                if current_resource_name not in self.current_stats[tar]:
 
-                        self.current_stats['player'].update(
+                    self.current_stats['player'].update(
 
-                            {current_resource_name: self.request_stat(target_name=tar, stat_name=resource_used)})
+                        {current_resource_name: self.request_stat(target_name=tar, stat_name=resource_used)})
 
 
 class DmgReductionStats(StatRequest):
