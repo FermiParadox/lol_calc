@@ -922,6 +922,9 @@ class AttributeBase(EnemiesDmgToPlayer):
             initial_dct = self.ABILITIES_ATTRIBUTES
             conditionals_dct = self.ABILITIES_CONDITIONALS
 
+        elif buff_name in self.buffs_implemented_by_methods:
+            return getattr(self, buff_name)()
+
         elif buff_name in items_data.ITEMS_BUFFS_NAMES:
             item_name = items_data.ITEMS_BUFFS_NAMES[buff_name]
             initial_dct = items_data.ITEMS_ATTRIBUTES[item_name]
@@ -2052,7 +2055,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # (Bonuses have to be applied here instead of in their normal methods for noting reasons)
         self.refresh_stats_bonuses()
 
-        # (current stats must be created after bonuses are applied otherwise
+        # (current stats must be created after bonuses are applied otherwise initial hp will be incorrect)
         self.set_current_stats()
 
     def run_combat_preparation(self):
@@ -2140,7 +2143,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         return rot
 
 
-class Presets(Actions):
+class SpecialItems(Actions):
 
     def __init__(self,
                  rotation_lst,
@@ -2175,6 +2178,71 @@ class Presets(Actions):
                          initial_enemies_total_stats=initial_enemies_total_stats,
                          _reversed_combat_mode=_reversed_combat_mode,
                          enemies_originating_dmg_data=enemies_originating_dmg_data)
+
+        self.buffs_implemented_by_methods |= {'guinsoos_rageblade_low_hp_buff', }
+
+    # Guinsoo's rageblade
+    GUINSOOS_BELOW_HALF_HP_BUFF = {'buff_source': 'guinsoos_rageblade',
+                                   'dot': False,
+                                   'duration': 'permanent',
+                                   'max_stacks': 1,
+                                   'on_hit': {},
+                                   'stats': {'att_speed': {'percent': {'stat_mods': {},
+                                                                       'stat_values': 0.2}},
+                                             'lifesteal': {'additive': {'stat_mods': {},
+                                                                        'stat_values': 0.1}},
+                                             'spellvamp': {'additive': {'stat_mods': {},
+                                                                        'stat_values': 0.1}}},
+                                   'target_type': 'player'}
+    GUINSOOS_ABOVE_HALF_HP_BUFF = {k: v for k, v in GUINSOOS_BELOW_HALF_HP_BUFF.items() if k != 'stats'}
+    GUINSOOS_ABOVE_HALF_HP_BUFF.update({'stats': {}})
+
+    def guinsoos_rageblade_low_hp_buff(self):
+        # BELOW 50%
+        # (when initially called during item passives application current stats aren't created yet)
+        if 'player' in self.current_stats:
+            if self.current_stats['player']['current_hp'] < self.request_stat(target_name='player', stat_name='hp') / 2:
+                return self.GUINSOOS_BELOW_HALF_HP_BUFF
+
+        # ABOVE 50%
+        return self.GUINSOOS_ABOVE_HALF_HP_BUFF
+
+
+class Presets(SpecialItems):
+
+    def __init__(self,
+                 rotation_lst,
+                 max_targets_dct,
+                 selected_champions_dct,
+                 champion_lvls_dct,
+                 ability_lvls_dct,
+                 max_combat_time,
+                 selected_masteries_dct,
+                 chosen_items_dct,
+                 selected_summoner_spells,
+                 initial_enemies_total_stats,
+                 initial_active_buffs,
+                 initial_current_stats,
+                 selected_runes,
+                 enemies_originating_dmg_data,
+                 _reversed_combat_mode):
+
+        SpecialItems.__init__(self,
+                              rotation_lst=rotation_lst,
+                              max_targets_dct=max_targets_dct,
+                              selected_champions_dct=selected_champions_dct,
+                              champion_lvls_dct=champion_lvls_dct,
+                              ability_lvls_dct=ability_lvls_dct,
+                              max_combat_time=max_combat_time,
+                              selected_masteries_dct=selected_masteries_dct,
+                              chosen_items_dct=chosen_items_dct,
+                              selected_summoner_spells=selected_summoner_spells,
+                              initial_active_buffs=initial_active_buffs,
+                              initial_current_stats=initial_current_stats,
+                              selected_runes=selected_runes,
+                              initial_enemies_total_stats=initial_enemies_total_stats,
+                              _reversed_combat_mode=_reversed_combat_mode,
+                              enemies_originating_dmg_data=enemies_originating_dmg_data)
 
         self._setup_ability_lvls()
 

@@ -4134,6 +4134,8 @@ class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
         self.obj_type = obj_type
         self.attributes_dct = attributes_dct
         self.abilities_effects_dct = effects_dct
+        self.available_dmg_attr_names = DmgsBase.dmg_attributes()
+        self.available_buff_attr_names = BuffsBase.buff_attributes()
 
     @property
     def attrs_with_lst_val(self):
@@ -4144,6 +4146,7 @@ class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
     FORMULA_TYPE = ('constant_value', 'x_function')
     COMPARISON_OPERATOR_STRINGS = palette.COMPARISON_OPERATOR_STRINGS
     NON_PER_LVL_STAT_NAMES = stats.NON_PER_LVL_STAT_NAMES
+    SPECIAL_ATTRS_NAMES = ('stats', 'on_hit')
 
     def available_buff_names(self):
         return sorted(self.attributes_dct['buffs'])
@@ -4151,29 +4154,8 @@ class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
     def available_dmg_names(self):
         return sorted(self.attributes_dct['dmgs'])
 
-    def available_buff_attr_names(self):
-
-        s = {}
-        for buff_name in self.available_buff_names():
-            s |= self.attributes_dct['buffs'][buff_name].keys()
-
-        return s
-
-    def available_dmg_attr_names(self):
-
-        s = {}
-        for dmg_name in self.available_dmg_names():
-            s |= self.attributes_dct['dmgs'][dmg_name].keys()
-
-        return s
-
-    def available_ability_attr_names(self):
-
-        s = {}
-        for ability_name in self.attributes_dct['general_attributes']:
-            s |= self.attributes_dct['general_attributes'][ability_name].keys()
-
-        return s
+    def available_attr_names(self):
+        return sorted(i for i in GenAttrsBase.general_attributes() if i not in self.SPECIAL_ATTRS_NAMES)
 
     @property
     def trigger_setup_dct(self,):
@@ -4214,14 +4196,14 @@ class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
 
             ability_attr=dict(
                 obj_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
-                attr_name=self.available_ability_attr_names(),
+                attr_name=self.available_attr_names,
                 mod_operation=('multiply', 'add', 'remove'),
                 formula_type=self.FORMULA_TYPE,
             ),
 
             buff_attr=dict(
                 obj_name=self.available_buff_names(),
-                buff_attr_name=self.available_buff_attr_names(),
+                buff_attr_name=self.available_buff_attr_names,
                 mod_operation=('multiply', 'add', 'remove'),
                 formula_type=self.FORMULA_TYPE
             ),
@@ -4234,7 +4216,7 @@ class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
 
             dmg_attr=dict(
                 dmg_name=self.available_dmg_names(),
-                attr_name=self.available_dmg_attr_names(),
+                attr_name=self.available_dmg_attr_names,
                 mod_operation=('multiply', 'add', 'remove'),
                 formula_type=self.FORMULA_TYPE,
             ),
@@ -4567,12 +4549,11 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
             (None)
         """
 
-        stats_part_str = self._content_between_tags_in_description(
-            item_description=self._item_description_str.lower(),
-            tag_str='stats')
-
-        self._create_stats_names_and_values(given_description_str=stats_part_str, split_tags_lst=['br'],
-                                            modified_dct=self.non_unique_item_stats)
+        suggest_affected_stats_attributes(str_buff_or_item='item',
+                                          obj_name=self.item_name,
+                                          modified_stats_dct=self.non_unique_item_stats,
+                                          possible_stat_values_lst=self.arithmetic_values_in_description(),
+                                          possible_mod_values_lst=self.arithmetic_values_in_description())
 
     def create_unique_stats_values(self):
         """
@@ -4581,23 +4562,11 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         :return: (None)
         """
 
-        try:
-            # Filters out string between stacking stats' tag.
-            description_match = re.search(r'</stats>(.+)', self._item_description_str.lower())
-            if description_match:
-                description_str = description_match.group()
-            else:
-                description_str = ''
-
-            self._create_stats_names_and_values(given_description_str=description_str, split_tags_lst=[r'[a-zA-Z]*'],
-                                                modified_dct=self.unique_item_stats)
-
-        except AttributeError:
-            suggest_affected_stats_attributes(str_buff_or_item='item',
-                                              obj_name=self.item_name,
-                                              modified_stats_dct=self.unique_item_stats,
-                                              possible_stat_values_lst=[],
-                                              possible_mod_values_lst=[])
+        suggest_affected_stats_attributes(str_buff_or_item='item',
+                                          obj_name=self.item_name,
+                                          modified_stats_dct=self.unique_item_stats,
+                                          possible_stat_values_lst=self.arithmetic_values_in_description(),
+                                          possible_mod_values_lst=self.arithmetic_values_in_description())
 
     @repeat_cluster_decorator(cluster_name='ITEM GEN ATTRS')
     def create_item_gen_attrs(self):
@@ -4894,7 +4863,7 @@ class ItemsConditionals(_ItemsAndAbilitiesConditionalsBase):
     def __init__(self, item_name):
         super().__init__(obj_name=item_name,
                          obj_type='item',
-                         attributes_dct=Fetch().items_attrs_dct(),
+                         attributes_dct=Fetch().items_attrs_dct()[item_name],
                          effects_dct=Fetch().items_effects_dct())
 
 
@@ -5795,7 +5764,7 @@ if __name__ == '__main__':
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
     if 1:
-        inst = ItemsModuleCreator(item_name='trinity_for')
+        inst = ItemsModuleCreator(item_name='guins')
         inst.create_item()
     # Create all items.
     if 0:
