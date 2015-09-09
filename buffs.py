@@ -867,6 +867,9 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             (None)
         """
 
+        if heal_value < 0:
+            raise ValueError('Value should be positive.')
+
         # Applies heal_reduction.
         heal_value *= 1 - self.request_stat(target_name=tar_name, stat_name='percent_healing_reduction')
 
@@ -1027,6 +1030,13 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                 self.note_player_dmg_taken(dmg_name=dmg_name,
                                            unmitigated_dmg_value=unmitigated_dmg_value,
                                            mitigated_dmg_value=final_dmg_value)
+            else:
+                # Heal-for-dmg-dealt type of dmgs.
+                # (only applies for dmgs that are not on player)
+                if dmg_dct['heal_for_dmg_amount']:
+                    self.apply_heal_value(tar_name='player',
+                                          heal_value=final_dmg_value)
+
             self.note_current_hp_in_history(target_name=target_name)
 
         # Otherwise it's a heal.
@@ -1148,24 +1158,18 @@ _REGEN_BUFF_DCT_BASE_ENEMY['dot']['dmg_names'] = ['enemy_hp5_dmg']
 # mod*mod_val + base_dmg_val
 
 # Creates base dict for regenerations' dmg dicts.
-_REGEN_DMG_DCT_BASE = dict(
-    target_type='placeholder',
-    dmg_category='standard_dmg',
-    resource_type='placeholder',
-    dmg_type='true',
-    # Regen is "healing" a stat so it has to be negative.
-    dmg_values=-1/PER_5_DIVISOR,
-    dmg_source='regen',
-    # (None or {'enemy': {}, 'player': {'bonus_ad': 0.5}})
-    mods='placeholder',
-    # (None or lifesteal or spellvamp)
-    life_conversion_type=None,
-    radius=None,
-    dot={'buff_name': 'placeholder'},
-    max_targets=1,
-    usual_max_targets=1,
-    delay=NATURAL_REGEN_START_DELAY,
-    critability=0)
+_REGEN_DMG_DCT_BASE = palette.dmg_dct_base_deepcopy()
+_REGEN_DMG_DCT_BASE['dmg_category'] = 'standard_dmg'
+_REGEN_DMG_DCT_BASE['dmg_type'] = 'true'
+# Regen is "healing" a stat so it has to be negative.
+_REGEN_DMG_DCT_BASE['dmg_values'] = -1/PER_5_DIVISOR
+_REGEN_DMG_DCT_BASE['dmg_source'] = 'regen'
+_REGEN_DMG_DCT_BASE['life_conversion_type'] = None
+_REGEN_DMG_DCT_BASE['radius'] = None
+_REGEN_DMG_DCT_BASE['max_targets'] = 1
+_REGEN_DMG_DCT_BASE['usual_max_targets'] = 1
+_REGEN_DMG_DCT_BASE['delay'] = NATURAL_REGEN_START_DELAY
+_REGEN_DMG_DCT_BASE['heal_for_dmg_amount'] = False
 
 # HEALTH
 _HP5_DMG_DCT_BASE = copy.deepcopy(_REGEN_DMG_DCT_BASE)

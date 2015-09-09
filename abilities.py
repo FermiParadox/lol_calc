@@ -2181,7 +2181,7 @@ class SpecialItems(Actions):
 
         self.buffs_implemented_by_methods |= {'guinsoos_rageblade_low_hp_buff', }
 
-    # Guinsoo's rageblade
+    # GUINSOOS RAGEBLADE
     GUINSOOS_BELOW_HALF_HP_BUFF = {'buff_source': 'guinsoos_rageblade',
                                    'dot': False,
                                    'duration': 'permanent',
@@ -2201,7 +2201,8 @@ class SpecialItems(Actions):
         # BELOW 50%
         # (when initially called during item passives application current stats aren't created yet)
         if 'player' in self.current_stats:
-            if self.current_stats['player']['current_hp'] < self.request_stat(target_name='player', stat_name='hp') / 2:
+            half_max_hp = self.request_stat(target_name='player', stat_name='hp') / 2
+            if self.current_stats['player']['current_hp'] < half_max_hp:
                 return self.GUINSOOS_BELOW_HALF_HP_BUFF
 
         # ABOVE 50%

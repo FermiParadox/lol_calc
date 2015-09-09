@@ -53,7 +53,8 @@ DMG_DCT_BASE = dict(
     dot={'dot_buff': 'placeholder'},
     max_targets='placeholder',
     delay='placeholder',
-    crit_type='placeholder'
+    crit_type='placeholder',
+    heal_for_dmg_amount=(False, True)
 )
 
 
@@ -78,6 +79,13 @@ ON_ACTION_EFFECTS = {
         {'counter_stat_name': 'placeholder',
          'value_increase': 'placeholder'}}
 ON_ACTION_EFFECTS.update(ON_HIT_EFFECTS)
+
+
+ON_ACTION_TRIGGERS = dict(
+    cost_mandatory=(True, False),
+    sources_names_ignored={'placeholder_source_category': 'placeholder_source_name', },
+    sources_categories_ignored=('items', 'masteries', 'summoner_spells', 'champion_spells'),
+)
 
 
 def dmg_dct_base_deepcopy():

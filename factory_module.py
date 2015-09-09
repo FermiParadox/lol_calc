@@ -2469,7 +2469,8 @@ class DmgsBase(object):
             max_targets=(1, 2, 3, 4, 5, 'infinite'),
             usual_max_targets=(1, 2, 3, 4, 5),
             delay=(None,),
-            crit_type=palette.CRIT_TYPES
+            crit_type=palette.CRIT_TYPES,
+            heal_for_dmg_amount=(False, True)
         )
 
     @staticmethod
@@ -4549,6 +4550,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
             (None)
         """
 
+        print('\nNON UNIQUE ITEM STATS:')
         suggest_affected_stats_attributes(str_buff_or_item='item',
                                           obj_name=self.item_name,
                                           modified_stats_dct=self.non_unique_item_stats,
@@ -4562,6 +4564,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         :return: (None)
         """
 
+        print('\nUNIQUE ITEM STATS:')
         suggest_affected_stats_attributes(str_buff_or_item='item',
                                           obj_name=self.item_name,
                                           modified_stats_dct=self.unique_item_stats,
@@ -5764,7 +5767,7 @@ if __name__ == '__main__':
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
     if 1:
-        inst = ItemsModuleCreator(item_name='guins')
+        inst = ItemsModuleCreator(item_name='ruined')
         inst.create_item()
     # Create all items.
     if 0:
