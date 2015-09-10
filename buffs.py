@@ -1189,18 +1189,19 @@ _ENEMY_HP5_DMG_DCT_BASE['mods'] = {'enemy': {'hp5': {'multiplicative': 1}}}
 # Resources
 _RESOURCE_P5_BUFFS_DCTS = {'mp5': None, 'ep5': None, 'rp5': None}
 for _key in _RESOURCE_P5_BUFFS_DCTS:
-    _new_rp5_dct = copy.deepcopy(_RESOURCE_P5_BUFF_DCT_BASE_PLAYER)
-    _new_rp5_dct['dot']['dmg_names'].append('player_{}_dmg'.format(_key))
-    _new_rp5_dct['buff_source'] = 'regen'
-    _RESOURCE_P5_BUFFS_DCTS[_key] = _new_rp5_dct
+    _new_resource_p5_dct = copy.deepcopy(_RESOURCE_P5_BUFF_DCT_BASE_PLAYER)
+    _new_resource_p5_dct['dot']['dmg_names'].append('player_{}_dmg'.format(_key))
+    _new_resource_p5_dct['buff_source'] = 'regen'
+    _RESOURCE_P5_BUFFS_DCTS[_key] = _new_resource_p5_dct
 
 _RESOURCE_P5_DMGS_DCTS = {i: {} for i in _RESOURCE_P5_BUFFS_DCTS}
 for _key in _RESOURCE_P5_DMGS_DCTS:
-    _new_rp5_dct = copy.deepcopy(_REGEN_DMG_DCT_BASE)
-    _new_rp5_dct['resource_type'] = _key[:-1]
-    _new_rp5_dct['mods'] = {'player': {_key: {'multiplicative': 1}}}
-    _new_rp5_dct['dot']['buff_name'] = '{}_buff'.format(_key)
-    _RESOURCE_P5_DMGS_DCTS[_key] = _new_rp5_dct
+    _new_resource_p5_dct = copy.deepcopy(_REGEN_DMG_DCT_BASE)
+    _new_resource_p5_dct['resource_type'] = _key[:-1]
+    _new_resource_p5_dct['target_type'] = 'player'
+    _new_resource_p5_dct['mods'] = {'player': {_key: {'multiplicative': 1}}}
+    _new_resource_p5_dct['dot']['buff_name'] = '{}_buff'.format(_key)
+    _RESOURCE_P5_DMGS_DCTS[_key] = _new_resource_p5_dct
 
 
 class DeathAndRegen(DmgApplication):

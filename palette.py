@@ -21,7 +21,7 @@ class Placeholder(object):
     Used to add an extra layer of bug preventions when accidentally placeholders have not been removed.
 
     It is not bulletproof, some accidental uses of a placeholder will not raise an exception as they should.
-    Only most usages are covered.
+    Only most common usages are covered.
     """
 
     def __init__(self, optional_value=None):
@@ -54,20 +54,20 @@ ALL_POSSIBLE_ABILITIES_SHORTCUTS = ABILITY_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
 
 
 BUFF_DCT_BASE = dict(
-    target_type='placeholder',
-    duration='placeholder',
-    max_stacks='placeholder',
+    target_type=Placeholder(),
+    duration=Placeholder(),
+    max_stacks=Placeholder(),
     stats=dict(
-        placeholder_stat_1='placeholder'
+        placeholder_stat_1=Placeholder()
     ),
     on_hit=dict(
-        apply_buff=['placeholder', ],
-        cause_dmg=['placeholder', ],
+        apply_buff=[Placeholder(), ],
+        cause_dmg=[Placeholder(), ],
         cds_modified={},
-        remove_buff=['placeholder', ]
+        remove_buff=[Placeholder(), ]
     ),
-    prohibit_cd_start='placeholder',
-    buff_source='placeholder',
+    prohibit_cd_start=Placeholder(),
+    buff_source=Placeholder(),
     dot=False,
 )
 
@@ -77,21 +77,21 @@ def buff_dct_base_deepcopy():
 
 
 DMG_DCT_BASE = dict(
-    target_type='placeholder',
-    dmg_category='placeholder',
-    resource_type='placeholder',
-    dmg_type='placeholder',
-    dmg_values='placeholder',
-    dmg_source='placeholder',
+    target_type=Placeholder(),
+    dmg_category=Placeholder(),
+    resource_type=Placeholder(),
+    dmg_type=Placeholder(),
+    dmg_values=Placeholder(),
+    dmg_source=Placeholder(),
     # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
-    mods='placeholder',
+    mods=Placeholder(),
     # (None or lifesteal or spellvamp)
-    life_conversion_type='placeholder',
-    radius='placeholder',
-    dot={'dot_buff': 'placeholder'},
-    max_targets='placeholder',
-    delay='placeholder',
-    crit_type='placeholder',
+    life_conversion_type=Placeholder(),
+    radius=Placeholder(),
+    dot={'dot_buff': Placeholder()},
+    max_targets=Placeholder(),
+    delay=Placeholder(),
+    crit_type=Placeholder(),
     heal_for_dmg_amount=Placeholder((False, True))
 )
 
@@ -99,9 +99,9 @@ DMG_DCT_BASE = dict(
 CRIT_TYPES = (None, 'normal', 'always')
 
 
-SHIELDS_DATA = {'shield_type': 'placeholder',
+SHIELDS_DATA = {'shield_type': Placeholder(),
                 'mods': {},
-                'shield_value': 'placeholder'}
+                'shield_value': Placeholder()}
 
 
 ON_HIT_EFFECTS = dict(
@@ -114,8 +114,8 @@ ON_HIT_EFFECTS = dict(
 
 ON_ACTION_EFFECTS = {
     'increase_counter_stat':
-        {'counter_stat_name': 'placeholder',
-         'value_increase': 'placeholder'}}
+        {'counter_stat_name': Placeholder(),
+         'value_increase': Placeholder()}}
 ON_ACTION_EFFECTS.update(ON_HIT_EFFECTS)
 
 
