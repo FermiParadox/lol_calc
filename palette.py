@@ -2,6 +2,44 @@ import copy
 import importlib
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# PLACEHOLDER
+
+class PlaceholderUsedError(Exception):
+    """
+    Raised when placeholder is accidentally used.
+    """
+    pass
+
+
+def _placeholder_error_func(*args, **kwargs):
+    raise PlaceholderUsedError
+
+
+class Placeholder(object):
+    """
+    Used to add an extra layer of bug preventions when accidentally placeholders have not been removed.
+
+    It is not bulletproof, some accidental uses of a placeholder will not raise an exception as they should.
+    Only most usages are covered.
+    """
+
+    def __init__(self, optional_value=None):
+        self.__optional_value = optional_value
+
+    @property
+    def value(self):
+        return self.__optional_value
+
+
+SUPPRESSED_MAGIC_METHODS = ('__bool__', '__eq__', '__ge__', '__gt__', '__le__', '__lt__', '__ne__')
+for magic_method in SUPPRESSED_MAGIC_METHODS:
+    setattr(Placeholder, magic_method, _placeholder_error_func)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
 TARGET_TYPES = ('player', 'enemy')
 
 COMPARISON_OPERATOR_STRINGS = ('>', '<', '==', '<=', '>=')
@@ -54,7 +92,7 @@ DMG_DCT_BASE = dict(
     max_targets='placeholder',
     delay='placeholder',
     crit_type='placeholder',
-    heal_for_dmg_amount=(False, True)
+    heal_for_dmg_amount=Placeholder((False, True))
 )
 
 

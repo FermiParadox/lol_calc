@@ -17,6 +17,7 @@ _AA_DMG_DCT['resource_type'] = 'hp'
 _AA_DMG_DCT['dmg_values'] = 1
 _AA_DMG_DCT['mods'] = None
 _AA_DMG_DCT['crit_type'] = 'normal'
+_AA_DMG_DCT['heal_for_dmg_amount'] = False
 
 
 class GeneralCategories(object):

@@ -1170,6 +1170,7 @@ _REGEN_DMG_DCT_BASE['max_targets'] = 1
 _REGEN_DMG_DCT_BASE['usual_max_targets'] = 1
 _REGEN_DMG_DCT_BASE['delay'] = NATURAL_REGEN_START_DELAY
 _REGEN_DMG_DCT_BASE['heal_for_dmg_amount'] = False
+_REGEN_DMG_DCT_BASE['crit_type'] = None
 
 # HEALTH
 _HP5_DMG_DCT_BASE = copy.deepcopy(_REGEN_DMG_DCT_BASE)
