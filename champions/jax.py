@@ -364,8 +364,9 @@ class ChampionAttributes(abilities.VisualRepresentation):
     DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
     SPELL_LVL_UP_PRIORITIES = SPELL_LVL_UP_PRIORITIES
 
-    def __init__(self, kwargs, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
+    def __init__(self, kwargs):
         abilities.VisualRepresentation.__init__(self, **kwargs)
-        for i in external_vars_dct:
-            setattr(ChampionAttributes, i, external_vars_dct[i])
+
+for i in CHAMPION_EXTERNAL_VARIABLES:
+    setattr(ChampionAttributes, i, CHAMPION_EXTERNAL_VARIABLES[i])
 

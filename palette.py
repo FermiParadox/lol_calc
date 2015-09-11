@@ -7,6 +7,7 @@ import importlib
 
 class PlaceholderUsedError(Exception):
     """
+    NOT TO BE HANDLED!
     Raised when placeholder is accidentally used.
     """
     pass
@@ -35,6 +36,118 @@ class Placeholder(object):
 SUPPRESSED_MAGIC_METHODS = ('__bool__', '__eq__', '__ge__', '__gt__', '__le__', '__lt__', '__ne__')
 for magic_method in SUPPRESSED_MAGIC_METHODS:
     setattr(Placeholder, magic_method, _placeholder_error_func)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# COMPARATOR
+
+def __print_extra_elements_msg(depth_and_path_str_msg, both_full_objects_msg, extra_elements_1, extra_elements_2,
+                               str_elements_or_keys):
+    msg = depth_and_path_str_msg + both_full_objects_msg
+    msg += 'Extra {}: \n'.format(str_elements_or_keys.upper())
+    msg += '1:    {}\n'.format(extra_elements_1)
+    msg += '2:    {}\n\n'.format(extra_elements_2)
+
+    print(msg)
+
+
+def compare_complex_object(obj_1, obj_2, _depth=0, _path_str=''):
+    """
+    Prints differences of 2 given dicts.
+
+    Avoid using when given objects contain a list of dicts.
+    """
+
+    if obj_1 == obj_2:
+        return
+
+    depth_and_path_str_msg = 'DEPTH: {}, PATH: {}\n'.format(_depth, _path_str)
+    both_full_objects_msg = 'Full objects: \n1:    {}\n2:    {}\n'.format(obj_1, obj_2)
+
+    # Different types.
+    if type(obj_1) != type(obj_2):
+        different_types_msg = depth_and_path_str_msg + both_full_objects_msg
+        different_types_msg += 'Different TYPES\n\n'
+
+        print(different_types_msg)
+        return
+
+    # SETS
+    if isinstance(obj_1, set):
+        extra_elements_1 = obj_1-obj_2
+        extra_elements_2 = obj_2-obj_1
+
+        if extra_elements_1 or extra_elements_2:
+
+            __print_extra_elements_msg(depth_and_path_str_msg=depth_and_path_str_msg,
+                                       both_full_objects_msg=both_full_objects_msg,
+                                       extra_elements_1=extra_elements_1,
+                                       extra_elements_2=extra_elements_2,
+                                       str_elements_or_keys='elements')
+
+    # DICTS
+    elif isinstance(obj_1, dict):
+        # Dict keys
+        keys_1 = obj_1.keys()
+        keys_2 = obj_2.keys()
+
+        extra_keys_1 = keys_1 - keys_2
+        extra_keys_2 = keys_1 - keys_2
+        if extra_keys_1 or extra_keys_2:
+            __print_extra_elements_msg(depth_and_path_str_msg=depth_and_path_str_msg,
+                                       both_full_objects_msg=both_full_objects_msg,
+                                       extra_elements_1=extra_keys_1,
+                                       extra_elements_2=extra_keys_2,
+                                       str_elements_or_keys='keys')
+
+        # Dict values
+        for k in sorted(obj_1):
+            # (key must exist in both dicts to compare its values)
+            if k not in obj_2:
+                continue
+
+            dict_val_1 = obj_1[k]
+            dict_val_2 = obj_2[k]
+
+            # (same values are skipped)
+            if dict_val_1 == dict_val_2:
+                continue
+            else:
+                new_path = _path_str + '[' + str(k) + ']'
+                new_depth = _depth + 1
+                compare_complex_object(dict_val_1, dict_val_2, _depth=new_depth, _path_str=new_path)
+
+    # LIST, TUPLE
+    elif type(obj_1) in (list, tuple):
+        # Wrong order
+        obj_1_as_set = set(obj_1)
+        obj_2_as_set = set(obj_2)
+        if obj_1_as_set == obj_2_as_set:
+            wrong_order_msg = depth_and_path_str_msg + both_full_objects_msg
+            wrong_order_msg += 'Elements in WRONG ORDER'
+
+            print(wrong_order_msg)
+
+        # Extra elements.
+        else:
+            extra_elements_1 = obj_1_as_set - obj_2_as_set
+            extra_elements_2 = obj_2_as_set - obj_1_as_set
+            __print_extra_elements_msg(depth_and_path_str_msg=depth_and_path_str_msg,
+                                       both_full_objects_msg=both_full_objects_msg,
+                                       extra_elements_1=extra_elements_1,
+                                       extra_elements_2=extra_elements_2,
+                                       str_elements_or_keys='elements')
+
+    # INT, FLOAT, STR
+    elif type(obj_1) in (int, float, str):
+        if obj_1 != obj_2:
+            diff_objects_msg = depth_and_path_str_msg + both_full_objects_msg
+            diff_objects_msg += 'DIFFERENT objects \n\n'
+
+            print(diff_objects_msg)
+
+    else:
+        raise UnexpectedValueError
 
 
 # ----------------------------------------------------------------------------------------------------------------------

@@ -259,20 +259,20 @@ _DPS_BY_ENEMIES_BUFF_BASE['buff_source'] = 'enemies_dps'
 for dps_dmg_name in _DPS_BY_ENEMIES_DMGS_NAMES:
     _DPS_BY_ENEMIES_BUFF_BASE['dot']['dmg_names'].append(dps_dmg_name)
 
-_DPS_BY_ENEMIES_DMG_BASE = dict(
-    target_type='player',
-    dmg_category='standard_dmg',
-    resource_type='hp',
-    dmg_source='dps_by_enemies',
-    # (None or {'enemy': {}, 'player': {'bonus_ad': 0.5}})
-    mods=None,
-    # (None or lifesteal or spellvamp)
-    life_conversion_type=None,
-    radius=None,
-    dot={'buff_name': 'dps_by_enemies_dot_buff'},
-    max_targets=1,
-    usual_max_targets=1,
-    delay=0,)
+_DPS_BY_ENEMIES_DMG_BASE = {i: None for i in palette.dmg_dct_base_deepcopy() if i not in ('dmg_type', 'dmg_values')}
+_DPS_BY_ENEMIES_DMG_BASE['target_type'] = 'player'
+_DPS_BY_ENEMIES_DMG_BASE['dmg_category'] = 'standard_dmg'
+_DPS_BY_ENEMIES_DMG_BASE['resource_type'] = 'hp'
+_DPS_BY_ENEMIES_DMG_BASE['dmg_source'] = 'dps_by_enemies'
+_DPS_BY_ENEMIES_DMG_BASE['mods'] = {}
+_DPS_BY_ENEMIES_DMG_BASE['life_conversion_type'] = None
+_DPS_BY_ENEMIES_DMG_BASE['radius'] = None
+_DPS_BY_ENEMIES_DMG_BASE['dot'] = {'buff_name': 'dps_by_enemies_dot_buff'}
+_DPS_BY_ENEMIES_DMG_BASE['max_targets'] = 1
+_DPS_BY_ENEMIES_DMG_BASE['usual_max_targets'] = 1
+_DPS_BY_ENEMIES_DMG_BASE['delay'] = 0
+_DPS_BY_ENEMIES_DMG_BASE['heal_for_dmg_amount'] = False
+_DPS_BY_ENEMIES_DMG_BASE['crit_type'] = None
 
 
 class EnemiesDmgToPlayer(EventsGeneral):
@@ -1560,15 +1560,11 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                     reduction_value = cds_modifications_dct[modified_action_cd_name]
                     self.reduce_action_cd(action_name=modified_action_cd_name, reduction_value=reduction_value)
 
-    def apply_aa_effects(self, current_time):
+    def apply_on_hit_effects_and_aa(self, current_time):
         """
-        Applies AA effects from buffs and AA dmg event.
+        Applies AA effects from buffs and adds AA dmg event.
 
-        Modifies:
-            active_buffs
-            event_times
-        Returns:
-            (None)
+        :return: (None)
         """
 
         # Applies on_hit effects.
@@ -1632,19 +1628,15 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
     def apply_action_effects(self, action_name):
         """
-        Applies an action's effects (buffs, dmg, buff removal).
+        Applies an action's effects.
 
-        Modifies:
-            active_buffs
-            event_times
-        Returns:
-            (None)
+        :return: (None)
         """
 
         # AA
         if action_name == 'AA':
             # ..applies AA physical dmg, and applies (or removes) on_hit buffs and dmg.
-            self.apply_aa_effects(current_time=self.current_time)
+            self.apply_on_hit_effects_and_aa(current_time=self.current_time)
 
         # ABILITY
         elif action_name in self.castable_spells_shortcuts:
