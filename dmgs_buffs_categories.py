@@ -135,21 +135,21 @@ class DmgCategories(BuffCategories):
                 else:
                     owner = self.current_target
 
-                for mod_name in dmg_dct_mods[owner_type]:
+                owner_dmg_mods_dct = dmg_dct_mods[owner_type]
+                for mod_name in sorted(owner_dmg_mods_dct):
 
-                    for application_type in dmg_dct_mods[owner_type][mod_name]:
+                    if 'additive' in owner_dmg_mods_dct:
 
-                        if application_type == 'additive':
-                            val += dmg_dct_mods[owner_type][mod_name][application_type] * self.req_stats_func(
+                        val += owner_dmg_mods_dct[mod_name]['additive'] * self.req_stats_func(
+                            target_name=owner,
+                            stat_name=mod_name)
+
+                for mod_name in sorted(owner_dmg_mods_dct):
+                    if 'multiplicative' in owner_dmg_mods_dct:
+
+                        val *= owner_dmg_mods_dct[mod_name]['multiplicative'] * self.req_stats_func(
                                 target_name=owner,
                                 stat_name=mod_name)
-                        elif application_type == 'multiplicative':
-                            val *= dmg_dct_mods[owner_type][mod_name][application_type] * self.req_stats_func(
-                                target_name=owner,
-                                stat_name=mod_name)
-
-                        else:
-                            raise palette.UnexpectedValueError
 
         return val
 

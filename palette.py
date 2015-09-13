@@ -1,5 +1,6 @@
 import copy
 import importlib
+import pprint
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -45,13 +46,33 @@ def __print_extra_elements_msg(depth_and_path_str_msg, both_full_objects_msg, ex
                                str_elements_or_keys):
     msg = depth_and_path_str_msg + both_full_objects_msg
     msg += 'Extra {}: \n'.format(str_elements_or_keys.upper())
-    msg += '1:    {}\n'.format(extra_elements_1)
-    msg += '2:    {}\n\n'.format(extra_elements_2)
+    msg += '1:    {}\n'.format(sorted(extra_elements_1))
+    msg += '2:    {}\n\n'.format(sorted(extra_elements_2))
 
     print(msg)
 
 
-def compare_complex_object(obj_1, obj_2, _depth=0, _path_str=''):
+def almost_equal(num_1, num_2, relative_delta=10**-6):
+    """
+    Checks if given numbers are almost equal to one another.
+
+    :return: (bool)
+    """
+
+    if relative_delta > 1:
+        raise ValueError('Relative delta too large.')
+
+    diff = abs(num_1 - num_2)
+
+    given_relative_delta = diff / num_1
+
+    if given_relative_delta <= relative_delta:
+        return True
+    else:
+        return False
+
+
+def compare_complex_object(obj_1, obj_2, _depth=0, _path_str='', _difference_detected=False):
     """
     Prints differences of 2 given dicts.
 
@@ -59,18 +80,21 @@ def compare_complex_object(obj_1, obj_2, _depth=0, _path_str=''):
     """
 
     if obj_1 == obj_2:
-        return
+        return _difference_detected
 
+    pformated_1 = pprint.pformat(obj_1, width=10**6)
+    pformated_2 = pprint.pformat(obj_2, width=10**6)
     depth_and_path_str_msg = 'DEPTH: {}, PATH: {}\n'.format(_depth, _path_str)
-    both_full_objects_msg = 'Full objects: \n1:    {}\n2:    {}\n'.format(obj_1, obj_2)
+    both_full_objects_msg = 'Full objects: \n1:    {}\n2:    {}\n'.format(pformated_1, pformated_2)
 
     # Different types.
     if type(obj_1) != type(obj_2):
+        _difference_detected = True
         different_types_msg = depth_and_path_str_msg + both_full_objects_msg
         different_types_msg += 'Different TYPES\n\n'
 
         print(different_types_msg)
-        return
+        return _difference_detected
 
     # SETS
     if isinstance(obj_1, set):
@@ -78,6 +102,7 @@ def compare_complex_object(obj_1, obj_2, _depth=0, _path_str=''):
         extra_elements_2 = obj_2-obj_1
 
         if extra_elements_1 or extra_elements_2:
+            _difference_detected = True
 
             __print_extra_elements_msg(depth_and_path_str_msg=depth_and_path_str_msg,
                                        both_full_objects_msg=both_full_objects_msg,
@@ -92,8 +117,10 @@ def compare_complex_object(obj_1, obj_2, _depth=0, _path_str=''):
         keys_2 = obj_2.keys()
 
         extra_keys_1 = keys_1 - keys_2
-        extra_keys_2 = keys_1 - keys_2
+        extra_keys_2 = keys_2 - keys_1
         if extra_keys_1 or extra_keys_2:
+            _difference_detected = True
+
             __print_extra_elements_msg(depth_and_path_str_msg=depth_and_path_str_msg,
                                        both_full_objects_msg=both_full_objects_msg,
                                        extra_elements_1=extra_keys_1,
@@ -115,21 +142,29 @@ def compare_complex_object(obj_1, obj_2, _depth=0, _path_str=''):
             else:
                 new_path = _path_str + '[' + str(k) + ']'
                 new_depth = _depth + 1
-                compare_complex_object(dict_val_1, dict_val_2, _depth=new_depth, _path_str=new_path)
+                _difference_detected = compare_complex_object(obj_1=dict_val_1, obj_2=dict_val_2,
+                                                              _depth=new_depth, _path_str=new_path,
+                                                              _difference_detected=_difference_detected)
 
     # LIST, TUPLE
     elif type(obj_1) in (list, tuple):
-        # Wrong order
-        obj_1_as_set = set(obj_1)
-        obj_2_as_set = set(obj_2)
-        if obj_1_as_set == obj_2_as_set:
-            wrong_order_msg = depth_and_path_str_msg + both_full_objects_msg
-            wrong_order_msg += 'Elements in WRONG ORDER'
+        # Same size
+        if len(obj_1) == len(obj_2):
+            for i, j in zip(obj_1, obj_2):
+                new_path = _path_str + '[' + 'SEQUENCE' + ']'
+                new_depth = _depth + 1
+                _difference_detected = compare_complex_object(obj_1=i, obj_2=j,
+                                                              _depth=new_depth,
+                                                              _path_str=new_path,
+                                                              _difference_detected=_difference_detected)
 
-            print(wrong_order_msg)
-
-        # Extra elements.
+        # Different size
         else:
+            _difference_detected = True
+
+            obj_1_as_set = {tuple(i) for i in obj_1}
+            obj_2_as_set = {tuple(i) for i in obj_2}
+
             extra_elements_1 = obj_1_as_set - obj_2_as_set
             extra_elements_2 = obj_2_as_set - obj_1_as_set
             __print_extra_elements_msg(depth_and_path_str_msg=depth_and_path_str_msg,
@@ -138,17 +173,25 @@ def compare_complex_object(obj_1, obj_2, _depth=0, _path_str=''):
                                        extra_elements_2=extra_elements_2,
                                        str_elements_or_keys='elements')
 
-    # INT, FLOAT, STR
-    elif type(obj_1) in (int, float, str):
-        if obj_1 != obj_2:
+    # NUMBER
+    elif type(obj_1) in (int, float):
+        if not almost_equal(obj_1, obj_2):
             diff_objects_msg = depth_and_path_str_msg + both_full_objects_msg
             diff_objects_msg += 'DIFFERENT objects \n\n'
+
+            print(diff_objects_msg)
+
+    elif isinstance(obj_1, str):
+        if obj_1 != obj_2:
+            diff_objects_msg = depth_and_path_str_msg + both_full_objects_msg
+            diff_objects_msg += 'DIFFERENT strings \n\n'
 
             print(diff_objects_msg)
 
     else:
         raise UnexpectedValueError
 
+    return _difference_detected
 
 # ----------------------------------------------------------------------------------------------------------------------
 

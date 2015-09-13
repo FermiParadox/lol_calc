@@ -187,7 +187,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
         :returns: (None)
         """
 
-        for tar_name in self.champion_lvls_dct:
+        for tar_name in self.all_target_names:
             # (player or enemy)
             target_type = self.target_type(tar_name=tar_name)
 
@@ -328,10 +328,7 @@ class Counters(BuffsGeneral):
 
         That is, if multiple dmg events occur simultaneously they are stored as a single dmg event.
 
-        Modifies:
-            combat_history
-        Returns:
-            (None)
+        :return: (None)
         """
 
         for target_name in self.combat_history:

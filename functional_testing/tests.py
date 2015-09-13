@@ -4,58 +4,17 @@ import functional_testing.default_config as default_config
 from palette import delimiter, fat_delimiter
 
 import cProfile
-import importlib
+import ast
 import pstats
 import pandas
 import memory_profiler
 import multiprocessing
-import os
 import sys
+import subprocess
+import pprint
 
 
 PROJECT_PATH = '/home/black/Dev/PycharmProjects/WhiteProject'
-
-
-def modules_in_project_directory():
-    all_files = os.listdir(PROJECT_PATH)
-
-    project_files = set()
-    py_files = set()
-
-    # Filter our based on first letter.
-    for name in all_files[:]:
-        if name[0] in '._':
-            pass
-        else:
-            project_files.add(name)
-
-    # Adds '.py' files.
-    for name in project_files:
-        if name[-3:] == '.py':
-            py_files.add(name)
-
-        # Scans directories for '.py' files and them as well.
-        elif name[-3:]:
-            inner_dir_path = PROJECT_PATH + '/' + name
-            for inner_name in os.listdir(inner_dir_path):
-                if inner_name[-3:0] == '.py':
-                    py_files.add(inner_name)
-
-    py_files = {i[0:-3] for i in py_files}
-
-    return py_files
-
-
-def modules_loaded():
-    modules_names = {i for i in sys.modules.keys()}
-    return modules_names
-
-
-def reload_project_modules():
-    used_modules = modules_in_project_directory() & set(modules_loaded())
-
-    for module_name in used_modules:
-        importlib.reload(importlib.import_module(module_name))
 
 
 def _combat_loop_instance(data_dct):
@@ -143,20 +102,6 @@ def _single_combat_multiple_users_instances_lst(repetitions):
     return combat_instances_lst
 
 
-def _reloaded_modules_multi_users_single_combat(repetitions):
-    data = default_config.ALL_DATA
-
-    combat_instances_lst = []
-
-    for i in range(repetitions):
-
-        user_instance = user_instance_settings.UserSession()
-        combat_instance = user_instance.instance_after_combat(data)
-        combat_instances_lst.append(combat_instance)
-
-    return combat_instances_lst
-
-
 def test_run_time(repetitions, sort_by='tottime', count_of_shown_functions=5):
     """
     Tests run duration of program in two ways:
@@ -187,6 +132,10 @@ def test_run_time(repetitions, sort_by='tottime', count_of_shown_functions=5):
 
 
 class TestCases(object):
+
+    def __init__(self):
+        # Used to ensure storage and comparison are separate runs.
+        self.prohibit_storage_comparison = False
 
     @property
     def __data_deepcopy(self):
@@ -402,7 +351,7 @@ class TestCases(object):
         total_instances = len(combat_instances_lst)
 
         print(palette.fat_delimiter(80))
-        print('Comparing {} combat instances. ({})'.format(total_instances, instances_type_msg))
+        print('{}. Comparing {} combat instances.'.format(instances_type_msg, total_instances))
 
         diff_combat_results = self.different_combat_results_count(combat_instances_lst=combat_instances_lst)
         diff_combat_histories = self.different_combat_history_count(combat_instances_lst=combat_instances_lst)
@@ -426,10 +375,61 @@ class TestCases(object):
         instances_lst = _single_combat_multiple_users_instances_lst(repetitions=repetitions)
         self._display_differences(combat_instances_lst=instances_lst, instances_type_msg=instances_type_msg)
 
-    def display_reloaded_modules_single_user_differences(self, repetitions):
-        instances_type_msg = 'RELOADED MODULES SINGLE USER'
-        instances_lst = _reloaded_modules_multi_users_single_combat(repetitions=repetitions)
-        self._display_differences(combat_instances_lst=instances_lst, instances_type_msg=instances_type_msg)
+    @staticmethod
+    def _process_history_and_results():
+        """
+        Creates a new process and returns history and results from a combat.
+
+        :return: (dict) Keys: 'history', 'results'
+        """
+
+        output_as_bytes = subprocess.check_output([sys.executable, 'process_creation_helper.py'])
+        output_as_str = output_as_bytes.decode("utf-8")
+        output_as_dct = ast.literal_eval(output_as_str)
+
+        return output_as_dct
+
+    def multiple_runs_output_comparison(self, repetitions):
+        """
+        Creates multiple processes (so that PYTHONHASHSEED changes)
+        and compares combat output.
+
+        :return: (None)
+        """
+
+        # Creates first instance that will be compared to all other instances.
+        first_process_output_dct = self._process_history_and_results()
+        first_history = first_process_output_dct['history']
+        first_results = first_process_output_dct['results']
+
+        print(fat_delimiter(80))
+        print('MULTIPLE DIFFERENT RUNS. Comparing {} combat instances.'.format(repetitions))
+
+        # Creates multiple instances and compares them to the first instance.
+        for i in range(repetitions):
+            print(i)
+            process_output_dct = self._process_history_and_results()
+            fresh_history = process_output_dct['history']
+            fresh_results = process_output_dct['results']
+
+            history_different = palette.compare_complex_object(obj_1=first_history, obj_2=fresh_history)
+            results_different = palette.compare_complex_object(obj_1=first_results, obj_2=fresh_results)
+
+            if history_different:
+                pprint.pprint(first_history['player']['heals'], width=10**6)
+                pprint.pprint(fresh_history['player']['heals'], width=10**6)
+
+            if results_different:
+                print(first_results)
+                print(fresh_results)
+
+            if history_different or results_different:
+
+                break
+
+        # If loop didn't end prematurely.
+        else:
+            print('-No differences.')
 
 
 if __name__ == '__main__':
@@ -444,11 +444,15 @@ if __name__ == '__main__':
         test_run_time(repetitions=100, sort_by='tottime', count_of_shown_functions=0)
 
     # CONSISTENCY
-    if 1:
+    # Different instances
+    if 0:
         reps = 10
         TestCases().display_single_user_multi_combats_differences(repetitions=reps)
         TestCases().display_multi_users_differences(repetitions=reps)
-        TestCases().display_reloaded_modules_single_user_differences(repetitions=reps)
+    # Different runs:
+    if 1:
+        reps = 10
+        TestCases().multiple_runs_output_comparison(repetitions=reps)
 
     # MEMORY
     if 0:

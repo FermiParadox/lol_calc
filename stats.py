@@ -239,7 +239,7 @@ class StatCalculation(StatFilters):
 
         self.player_current_resource_name = ''
 
-        self.all_target_names = self.selected_champions_dct.keys()   # e.g. ['player', 'enemy_1', ]
+        self.all_target_names = tuple(sorted(self.selected_champions_dct.keys()))   # e.g. ['player', 'enemy_1', ]
 
         self.enemy_target_names = tuple(tar for tar in sorted(self.all_target_names) if tar != 'player')
 
@@ -700,7 +700,7 @@ class StatRequest(StatCalculation):
 
         tar_active_buffs = self.active_buffs[tar_name]
 
-        time_sorted_tar_active_buffs = sorted(tar_active_buffs, key=lambda x: tar_active_buffs[x]['starting_time'])
+        time_sorted_tar_active_buffs = sorted(tar_active_buffs, key=lambda x: (tar_active_buffs[x]['starting_time'], x))
 
         for buff_name in time_sorted_tar_active_buffs:
 
@@ -710,11 +710,11 @@ class StatRequest(StatCalculation):
             # Checks if the buff has stat bonuses.
             if buff_stats_dct:
 
-                for stat_name in buff_stats_dct:
+                for stat_name in sorted(buff_stats_dct):
                     # (single stat dict)
                     stat_dct = buff_stats_dct[stat_name]
 
-                    for bonus_type in stat_dct:
+                    for bonus_type in sorted(stat_dct):
                         if not stat_dct[bonus_type]:
                             continue
 

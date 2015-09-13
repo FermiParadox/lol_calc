@@ -1,6 +1,5 @@
 import operator
 import copy
-
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
@@ -1486,7 +1485,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        for tar_name in self.active_buffs:
+        for tar_name in self.all_target_names:
             tar_act_buffs = self.active_buffs[tar_name]
 
             for buff_name in sorted(tar_act_buffs):
@@ -1523,8 +1522,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         :return: (None)
         """
 
-        # (can't iter over active_buffs itself since it gets modified)
-        for buff_name in frozenset(self.active_buffs['player']):
+        for buff_name in sorted(self.active_buffs['player']):
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
             on_hit_dct = buff_dct['on_hit']
 
@@ -1832,7 +1830,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         items_attrs_dct = items_data.ITEMS_ATTRIBUTES
 
         # SUMMONER'S SPELLS
-        for spell_name in self.selected_summoner_spells:
+        for spell_name in sorted(self.selected_summoner_spells):
             # TODO: Create 'castable_summoner_spells' and 'summoner_spells_at_combat_start' in a new class
             if spell_name in items_data.CASTABLE_ITEMS:
                 queue_set.add(spell_name)
@@ -1858,7 +1856,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         new_priorities_lst = old_priorities_lst[:]
 
-        for cond_name in self.ACTION_PRIORITIES_CONDITIONALS:
+        for cond_name in sorted(self.ACTION_PRIORITIES_CONDITIONALS):
             old_priorities_lst = new_priorities_lst[:]
 
             conditional_dct = self.ACTION_PRIORITIES_CONDITIONALS[cond_name]
@@ -1867,7 +1865,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             if self._actions_priorities_triggers_state(triggers_dct=triggers_dct) is True:
                 effects_dct = conditional_dct['effects']
 
-                for eff_name in effects_dct:
+                for eff_name in sorted(effects_dct):
                     eff_dct = effects_dct[eff_name]
                     eff_type = eff_dct['effect_type']
 

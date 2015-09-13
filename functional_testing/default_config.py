@@ -30,7 +30,7 @@ ALL_DATA = dict(
                       'enemy_3': ['dorans_shield', 'hextech_gunblade'],},
     initial_enemies_total_stats=None,
     initial_active_buffs=None,
-    initial_current_stats={'player': {'current_hp': 1300}},
+    initial_current_stats={'player': {'current_hp': 1600}},
     
     _reversed_combat_mode=False,
 
