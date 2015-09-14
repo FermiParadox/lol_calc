@@ -72,7 +72,7 @@ def almost_equal(num_1, num_2, relative_delta=10**-6):
         return False
 
 
-def compare_complex_object(obj_1, obj_2, _depth=0, _path_str='', _difference_detected=False):
+def __compare_complex_object(obj_1, obj_2, _depth=0, _path_str='', _difference_detected=False):
     """
     Prints differences of 2 given dicts.
 
@@ -142,9 +142,9 @@ def compare_complex_object(obj_1, obj_2, _depth=0, _path_str='', _difference_det
             else:
                 new_path = _path_str + '[' + str(k) + ']'
                 new_depth = _depth + 1
-                _difference_detected = compare_complex_object(obj_1=dict_val_1, obj_2=dict_val_2,
-                                                              _depth=new_depth, _path_str=new_path,
-                                                              _difference_detected=_difference_detected)
+                _difference_detected = __compare_complex_object(obj_1=dict_val_1, obj_2=dict_val_2,
+                                                                _depth=new_depth, _path_str=new_path,
+                                                                _difference_detected=_difference_detected)
 
     # LIST, TUPLE
     elif type(obj_1) in (list, tuple):
@@ -153,10 +153,10 @@ def compare_complex_object(obj_1, obj_2, _depth=0, _path_str='', _difference_det
             for i, j in zip(obj_1, obj_2):
                 new_path = _path_str + '[' + 'SEQUENCE' + ']'
                 new_depth = _depth + 1
-                _difference_detected = compare_complex_object(obj_1=i, obj_2=j,
-                                                              _depth=new_depth,
-                                                              _path_str=new_path,
-                                                              _difference_detected=_difference_detected)
+                _difference_detected = __compare_complex_object(obj_1=i, obj_2=j,
+                                                                _depth=new_depth,
+                                                                _path_str=new_path,
+                                                                _difference_detected=_difference_detected)
 
         # Different size
         else:
@@ -193,6 +193,9 @@ def compare_complex_object(obj_1, obj_2, _depth=0, _path_str='', _difference_det
 
     return _difference_detected
 
+
+def compare_complex_object(obj_1, obj_2):
+    return __compare_complex_object(obj_1=obj_1, obj_2=obj_2)
 # ----------------------------------------------------------------------------------------------------------------------
 
 

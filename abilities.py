@@ -1504,6 +1504,12 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                     del tar_act_buffs[buff_name]
 
     def remove_expired_buffs_and_refresh_bonuses(self):
+        """
+        Buffs and bonuses must be refreshed after an event has been applied.
+
+        :return: (None)
+        """
+
         self._remove_expired_buffs()
         self.refresh_stats_bonuses()
 

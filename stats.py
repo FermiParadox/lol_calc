@@ -6,11 +6,10 @@ from champions import app_champions_base_stats
 
 ALL_RESOURCE_NAMES = frozenset({'mp', 'energy', 'rage', None, 'flow', 'hp'})
 
-
 RESOURCE_CURRENT_STAT_NAMES = frozenset({'current_'+i for i in ALL_RESOURCE_NAMES if i is not None})
 RESOURCE_TO_CURRENT_RESOURCE_MAP = {i: 'current_'+i for i in ALL_RESOURCE_NAMES if i is not None}
 
-CURRENT_TYPE_STATS = RESOURCE_CURRENT_STAT_NAMES | {'current_hp',}
+CURRENT_TYPE_STATS = RESOURCE_CURRENT_STAT_NAMES | {'current_hp', }
 
 DEFENSIVE_SPECIAL_STATS = frozenset({'percent_physical_reduction_by_armor',
                                      'percent_magic_reduction_by_mr',
@@ -104,6 +103,12 @@ ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_
 
 ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE = {i for i in ALL_POSSIBLE_STAT_NAMES if not i.startswith('current_')}
 NON_PER_LVL_STAT_NAMES = sorted(i for i in ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
+
+
+# Bonuses to those stats will be prioritized during bonus creation to avoid bugs.
+# (e.g.
+PRIORITIZED_BONUSES_STATS_NAMES = ['hp'] + [i for i in ALL_RESOURCE_NAMES if i not in ('hp', None)]
+
 
 # Enemy base stats' names.
 _ENEMY_BASE_STATS_NAMES = {'hp', 'ap', 'armor', 'mr', 'hp5'}
@@ -300,8 +305,7 @@ class StatCalculation(StatFilters):
             raise palette.UnexpectedValueError
 
         for tar in self.all_target_names:
-            if tar not in given_dct:
-                given_dct.update({tar: empty_obj})
+            given_dct.setdefault(tar, empty_obj)
 
     def set_basic_stats_dct(self):
         """
@@ -691,18 +695,15 @@ class StatRequest(StatCalculation):
         # Inserts bonus_name and its value in bonuses_dct.
         self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: stat_val})
 
-    def apply_bonuses_by_buffs(self, tar_name):
+    def _apply_prioritized_bonuses_by_buffs(self, tar_name, sorted_active_buffs, must_in_priority_seq):
         """
-        Creates all bonuses to stats caused by buffs.
+        Creates bonuses based on which stats are prioritized.
 
+        :param must_in_priority_seq: (bool)
         :return: (None)
         """
 
-        tar_active_buffs = self.active_buffs[tar_name]
-
-        time_sorted_tar_active_buffs = sorted(tar_active_buffs, key=lambda x: (tar_active_buffs[x]['starting_time'], x))
-
-        for buff_name in time_sorted_tar_active_buffs:
+        for buff_name in sorted_active_buffs:
 
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
             # (All buff stats dict)
@@ -711,6 +712,17 @@ class StatRequest(StatCalculation):
             if buff_stats_dct:
 
                 for stat_name in sorted(buff_stats_dct):
+
+                    # Priorities
+                    if must_in_priority_seq and (stat_name in PRIORITIZED_BONUSES_STATS_NAMES):
+                        pass
+                    elif not must_in_priority_seq and (stat_name not in PRIORITIZED_BONUSES_STATS_NAMES):
+                        pass
+
+                    else:
+                        # (Skips this stat)
+                        continue
+
                     # (single stat dict)
                     stat_dct = buff_stats_dct[stat_name]
 
@@ -720,17 +732,37 @@ class StatRequest(StatCalculation):
 
                         tar_bonuses = self.bonuses_dct[tar_name]
 
-                        if stat_name not in tar_bonuses:
-                            # Inserts stat_name in bonuses_dct.
-                            tar_bonuses.update({stat_name: {}})
-
-                        if bonus_type not in tar_bonuses[stat_name]:
-                            # Inserts bonus_type in bonuses_dct.
-                            tar_bonuses[stat_name].update({bonus_type: {}})
+                        tar_bonuses.setdefault(stat_name, {})
+                        tar_bonuses[stat_name].setdefault(bonus_type, {})
 
                         self._insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
                                                           buff_dct=buff_dct, tar_name=tar_name,
                                                           buff_name=buff_name, buff_stats_dct=buff_stats_dct)
+
+    def apply_bonuses_by_buffs(self, tar_name):
+        """
+        Creates all bonuses to stats caused by buffs.
+
+        It first creates bonuses that must be prioritized. Prioritized bonuses are typically max hp, and resource.
+
+        :return: (None)
+        """
+
+        tar_active_buffs = self.active_buffs[tar_name]
+
+        time_sorted_tar_active_buffs = sorted(tar_active_buffs,
+                                              key=lambda x: (tar_active_buffs[x]['starting_time'],
+                                                             x))
+
+        # PRIORITIZED BONUSES
+        self._apply_prioritized_bonuses_by_buffs(tar_name=tar_name,
+                                                 sorted_active_buffs=time_sorted_tar_active_buffs,
+                                                 must_in_priority_seq=True)
+
+        # NON PRIORITIZED BONUSES
+        self._apply_prioritized_bonuses_by_buffs(tar_name=tar_name,
+                                                 sorted_active_buffs=time_sorted_tar_active_buffs,
+                                                 must_in_priority_seq=False)
 
     def refresh_stats_bonuses(self):
         self.place_tars_and_empty_dct_in_dct(self.bonuses_dct, ensure_empty_dct=False)
@@ -755,11 +787,7 @@ class StatRequest(StatCalculation):
         for tar in self.all_target_names:
 
             # If the target's current_hp has not been set, it creates it.
-            if tar not in self.current_stats:
-                self.current_stats.update({tar: {}})
-
-                self.current_stats.update(
-                    {tar: dict(current_hp=self.request_stat(target_name=tar, stat_name='hp'))})
+            self.current_stats.setdefault(tar, dict(current_hp=self.request_stat(target_name=tar, stat_name='hp')))
 
             # Also creates the player's 'current_'resource.
             if tar == 'player':
@@ -810,19 +838,13 @@ class DmgReductionStats(StatRequest):
 
         # percent_penetration calculation
         percent_penetration_name = self.DEFENSE_REDUCING_MR_AND_ARMOR_MAP[stat]['_percent_penetration']
-        if percent_penetration_name in self.bonuses_dct['player']:
-            percent_penetration = self.request_stat(target_name='player',
-                                                    stat_name=percent_penetration_name)
-        else:
-            percent_penetration = 0
+        percent_penetration = self.request_stat(target_name='player', stat_name=percent_penetration_name)
 
         armor_after_reductions = self.request_stat(target_name=target,
                                                    stat_name=stat)
         # flat_reduction calculation
         flat_reduction_name = self.DEFENSE_REDUCING_MR_AND_ARMOR_MAP[stat]['_flat_reduction']
-        if flat_reduction_name in tar_bonuses:
-            armor_after_reductions -= self.request_stat(target_name=target,
-                                                        stat_name=flat_reduction_name)
+        armor_after_reductions -= self.request_stat(target_name=target, stat_name=flat_reduction_name)
 
         # Applies percent reduction and percent penetration
         # (Armor can't be reduced further if negative)
@@ -831,9 +853,8 @@ class DmgReductionStats(StatRequest):
         else:
             armor_after_reductions *= (1-percent_reduction) * (1-percent_penetration)
 
-        # flat_penetration
-        flat_penetration_name = self.DEFENSE_REDUCING_MR_AND_ARMOR_MAP[stat]['_flat_penetration']
-        if flat_penetration_name in self.bonuses_dct['player']:
+            # flat_penetration
+            flat_penetration_name = self.DEFENSE_REDUCING_MR_AND_ARMOR_MAP[stat]['_flat_penetration']
             if armor_after_reductions > self.request_stat(target_name='player',
                                                           stat_name=flat_penetration_name):
                 return armor_after_reductions - self.request_stat(target_name='player',
@@ -841,8 +862,6 @@ class DmgReductionStats(StatRequest):
 
             else:
                 return 0.
-        else:
-            return armor_after_reductions
 
     def reduced_mr(self, target):
         """
