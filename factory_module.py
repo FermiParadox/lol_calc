@@ -39,10 +39,12 @@ ABILITIES_CONDITIONALS_DCT_NAME = 'ABILITIES_CONDITIONALS'
 CHAMPION_EXTERNAL_VAR_DCT_NAME = 'CHAMPION_EXTERNAL_VARIABLES'
 CHAMP_CLASS_NAME = 'class ChampionAttributes'
 DEFAULT_ACTIONS_PRIORITY_NAME = 'DEFAULT_ACTIONS_PRIORITY'
+CHAMPION_STATS_DEPENDENCIES_NAME = 'CHAMPION_STATS_DEPENDENCIES'
 SPELL_LVL_UP_PRIORITIES_NAME = 'SPELL_LVL_UP_PRIORITIES'
 CHAMPION_MODULE_OBJECT_NAMES = (ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME,
                                 ABILITIES_CONDITIONALS_DCT_NAME, CHAMPION_EXTERNAL_VAR_DCT_NAME, CHAMP_CLASS_NAME,
-                                DEFAULT_ACTIONS_PRIORITY_NAME, SPELL_LVL_UP_PRIORITIES_NAME)
+                                DEFAULT_ACTIONS_PRIORITY_NAME, SPELL_LVL_UP_PRIORITIES_NAME,
+                                CHAMPION_STATS_DEPENDENCIES_NAME)
 
 CHAMPION_BASE_STATS_DCT_NAME = 'CHAMPION_BASE_STATS'
 CHAMPION_BASE_STATS_MODULE = 'app_champions_base_stats.py'
@@ -5143,6 +5145,55 @@ class SkillsLvlUps(object):
         return dct
 
 
+class StatsDependencies(object):
+
+    @staticmethod
+    def _stats_dependencies(obj_name, str_champion_or_item_or_mastery):
+        """
+        Creates and returns dependencies list.
+
+        :return: (list)
+        """
+
+        lst = []
+
+        print(fat_delimiter(80))
+        print('STATS DEPENDENCIES, CHAMPION: {}'.format(obj_name, str_champion_or_item_or_mastery.upper()))
+
+        while 1:
+
+            if lst:
+                print('Current dependencies:')
+                for i in lst:
+                    print(i)
+
+            if _y_n_question('\nNew dependency?'):
+
+                controller_stat = enumerated_question(question_str='Select CONTROLLER stat:',
+                                                      choices_seq=stats.NON_PER_LVL_STAT_NAMES,
+                                                      restrict_choices=True)
+
+                affected_stat = enumerated_question(question_str='Select AFFECTED stat:',
+                                                    choices_seq=stats.NON_PER_LVL_STAT_NAMES,
+                                                    restrict_choices=True)
+
+                lst.append((controller_stat, affected_stat))
+
+            else:
+                break
+
+            return lst
+
+    def champion_stats_dependencies(self, champion_name):
+        return self._stats_dependencies(obj_name=champion_name, str_champion_or_item_or_mastery='champion')
+
+    def item_stats_dependencies(self, item_name):
+        return self._stats_dependencies(obj_name=item_name, str_champion_or_item_or_mastery='item')
+
+    def mastery_stats_dependencies(self, mastery_name):
+        return self._stats_dependencies(obj_name=mastery_name, str_champion_or_item_or_mastery='mastery')
+
+
 # ===============================================================
 #       MODULE CREATION
 # ===============================================================
@@ -5485,6 +5536,9 @@ class ChampionModuleCreator(ModuleCreatorBase):
 
         elif obj_name == SPELL_LVL_UP_PRIORITIES_NAME:
             return SkillsLvlUps().lvl_up_priorities()
+
+        elif obj_name == CHAMPION_STATS_DEPENDENCIES_NAME:
+            return StatsDependencies().champion_stats_dependencies(champion_name=self.champion_name)
 
         else:
             palette.UnexpectedValueError(obj_name)

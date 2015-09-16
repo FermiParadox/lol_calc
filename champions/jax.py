@@ -354,6 +354,11 @@ SPELL_LVL_UP_PRIORITIES = {
     'spells_lvl_up_queue': ['r', 'w', 'q', 'e']}
 
 
+CHAMPION_STATS_DEPENDENCIES = [
+    ('ap', 'mr'),
+    ('ad', 'armor')]
+
+
 class ChampionAttributes(abilities.VisualRepresentation):
 
     ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES

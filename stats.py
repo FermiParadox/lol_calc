@@ -695,6 +695,78 @@ class StatRequest(StatCalculation):
         # Inserts bonus_name and its value in bonuses_dct.
         self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: stat_val})
 
+    @staticmethod
+    def priorities_tiers(dependencies_dct):
+        """
+        Groups stats' names into tiers, based on which should be calculated first.
+        Highest priority is tier 0.
+
+        >>> dep_dct = dict(i={('a1', 'b1'), ('a2', 'b2'), ('a3', 'b3'), ('b1', 'c1'), ('b2', 'c1'), ('c1', 'd1'), ('b3', 'd1')})
+        >>> StatRequest.priorities_tiers(dep_dct)
+        {0: {'a1', 'a2', 'a3'}, 1: {'b1', 'b2', 'b3'}, 2: {'c1'}, 3: {'d1'}}
+
+        :return: (dict)
+        """
+
+        controllers = set()
+        slaves = set()
+
+        # Unpacks all stat-pairs into a single set.
+        all_tuples = set()
+        for dependency_name in dependencies_dct:
+            dependency_tuples_lst = dependencies_dct[dependency_name]
+
+            for tup in dependency_tuples_lst:
+                all_tuples.add(tup)
+
+        # TIERS CREATION
+        for t in all_tuples:
+            first = t[0]
+            second = t[1]
+
+            controllers.add(first)
+            slaves.add(second)
+
+        tiers_dct = {}
+        # Tier 0
+        # (tier 0 are controllers that are not slaves at the same time.)
+        tier_0 = controllers - slaves
+        tiers_dct.update({0: tier_0})
+
+        # Other tiers.
+        previous_tier_value = 0
+        while 1:
+            new_tier_stats = set()
+            new_tier_value = previous_tier_value + 1
+
+            # Previous controllers
+            all_previous_controllers = set()
+            for i in tiers_dct:
+                if i >= new_tier_value:
+                    break
+                all_previous_controllers |= tiers_dct[i]
+
+            # (new tier is consisted of slaves dependent only on previous tier)
+            for stat_name in slaves-all_previous_controllers:
+                for t in all_tuples:
+                    # Searches all controllers of examined stat's controllers.
+                    if t[1] == stat_name:
+
+                        # (if a single controller is not in , the stat's loop is interrupted,
+                        # since the stat is even higher tier)
+                        controller_name = t[0]
+                        if controller_name not in all_previous_controllers:
+                            break
+                else:
+                    # (if loop is complete without any controller of non previous tier being found, stat is added)
+                    new_tier_stats.add(stat_name)
+
+            if new_tier_stats:
+                tiers_dct.update({new_tier_value: new_tier_stats})
+                previous_tier_value = new_tier_value
+            else:
+                return tiers_dct
+
     def _apply_prioritized_bonuses_by_buffs(self, tar_name, sorted_active_buffs, must_in_priority_seq):
         """
         Creates bonuses based on which stats are prioritized.
