@@ -368,6 +368,7 @@ class ChampionAttributes(abilities.VisualRepresentation):
     ACTION_PRIORITIES_CONDITIONALS = ACTION_PRIORITIES_CONDITIONALS
     DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
     SPELL_LVL_UP_PRIORITIES = SPELL_LVL_UP_PRIORITIES
+    CHAMPION_STATS_DEPENDENCIES = CHAMPION_STATS_DEPENDENCIES
 
     def __init__(self, kwargs):
         abilities.VisualRepresentation.__init__(self, **kwargs)

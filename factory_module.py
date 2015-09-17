@@ -65,6 +65,7 @@ child_class_as_str = """class ChampionAttributes(abilities.VisualRepresentation)
     ACTION_PRIORITIES_CONDITIONALS = ACTION_PRIORITIES_CONDITIONALS
     DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
     SPELL_LVL_UP_PRIORITIES = SPELL_LVL_UP_PRIORITIES
+    CHAMPION_STATS_DEPENDENCIES = CHAMPION_STATS_DEPENDENCIES
     def __init__(self, kwargs, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
         abilities.VisualRepresentation.__init__(self, **kwargs)
         for i in external_vars_dct:
@@ -2246,6 +2247,56 @@ class ExploreChampionsBaseStats(_ExploreBase):
 # ===============================================================
 #       ATTRIBUTE CREATION
 # ===============================================================
+# STATS DEPENDENCIES
+class StatsDependencies(object):
+
+    @staticmethod
+    def _stats_dependencies(obj_name, str_champion_or_item_or_mastery):
+        """
+        Creates and returns dependencies list.
+
+        :return: (list)
+        """
+
+        lst = []
+
+        print(fat_delimiter(80))
+        print('STATS DEPENDENCIES, CHAMPION: {}'.format(obj_name, str_champion_or_item_or_mastery.upper()))
+
+        while 1:
+
+            if lst:
+                print('Current dependencies:')
+                for i in lst:
+                    print(i)
+
+            if _y_n_question('\nNew dependency?'):
+
+                controller_stat = enumerated_question(question_str='Select CONTROLLER stat:',
+                                                      choices_seq=stats.NON_PER_LVL_STAT_NAMES,
+                                                      restrict_choices=True)
+
+                affected_stat = enumerated_question(question_str='Select AFFECTED stat:',
+                                                    choices_seq=stats.NON_PER_LVL_STAT_NAMES,
+                                                    restrict_choices=True)
+
+                lst.append((controller_stat, affected_stat))
+
+            else:
+                break
+
+            return lst
+
+    def champion_stats_dependencies(self, champion_name):
+        return self._stats_dependencies(obj_name=champion_name, str_champion_or_item_or_mastery='champion')
+
+    def item_stats_dependencies(self, item_name):
+        return self._stats_dependencies(obj_name=item_name, str_champion_or_item_or_mastery='item')
+
+    def mastery_stats_dependencies(self, mastery_name):
+        return self._stats_dependencies(obj_name=mastery_name, str_champion_or_item_or_mastery='mastery')
+
+
 class BuffsBase(object):
 
     @staticmethod
@@ -4885,7 +4936,8 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
     BASE_MASTERY_DCT = dict(
         stats=None,
         buffs={},
-        dmgs={})
+        dmgs={},
+        stats_dependencies={})
 
     def __init__(self, mastery_name):
         self.mastery_name = mastery_name
@@ -5005,6 +5057,8 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
 
         self.create_mastery_buffs()
         dct['buffs'] = self.mastery_buffs
+
+        dct['stats_dependencies'] = StatsDependencies().mastery_stats_dependencies(mastery_name=self.mastery_name)
 
         return _return_or_pprint_complex_obj(given_dct=dct, print_mode=print_mode)
 
@@ -5143,55 +5197,6 @@ class SkillsLvlUps(object):
         dct['automatically_lvled_up'] = self._automatically_lvled_up_value()
 
         return dct
-
-
-class StatsDependencies(object):
-
-    @staticmethod
-    def _stats_dependencies(obj_name, str_champion_or_item_or_mastery):
-        """
-        Creates and returns dependencies list.
-
-        :return: (list)
-        """
-
-        lst = []
-
-        print(fat_delimiter(80))
-        print('STATS DEPENDENCIES, CHAMPION: {}'.format(obj_name, str_champion_or_item_or_mastery.upper()))
-
-        while 1:
-
-            if lst:
-                print('Current dependencies:')
-                for i in lst:
-                    print(i)
-
-            if _y_n_question('\nNew dependency?'):
-
-                controller_stat = enumerated_question(question_str='Select CONTROLLER stat:',
-                                                      choices_seq=stats.NON_PER_LVL_STAT_NAMES,
-                                                      restrict_choices=True)
-
-                affected_stat = enumerated_question(question_str='Select AFFECTED stat:',
-                                                    choices_seq=stats.NON_PER_LVL_STAT_NAMES,
-                                                    restrict_choices=True)
-
-                lst.append((controller_stat, affected_stat))
-
-            else:
-                break
-
-            return lst
-
-    def champion_stats_dependencies(self, champion_name):
-        return self._stats_dependencies(obj_name=champion_name, str_champion_or_item_or_mastery='champion')
-
-    def item_stats_dependencies(self, item_name):
-        return self._stats_dependencies(obj_name=item_name, str_champion_or_item_or_mastery='item')
-
-    def mastery_stats_dependencies(self, mastery_name):
-        return self._stats_dependencies(obj_name=mastery_name, str_champion_or_item_or_mastery='mastery')
 
 
 # ===============================================================
@@ -5597,6 +5602,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
         dct.update({'general_attributes': self.temporary_item_attr_creation_instance.item_gen_attrs})
         dct.update({'dmgs': self.temporary_item_attr_creation_instance.item_dmgs})
         dct.update({'buffs': self.temporary_item_attr_creation_instance.item_buffs})
+        dct.update({'stats_dependencies': StatsDependencies().item_stats_dependencies(item_name=self.item_name)})
 
         return dct
 

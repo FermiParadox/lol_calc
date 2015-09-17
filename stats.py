@@ -1,5 +1,6 @@
 import copy
 import palette
+import memoization
 
 from champions import app_champions_base_stats
 
@@ -103,11 +104,6 @@ ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_
 
 ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE = {i for i in ALL_POSSIBLE_STAT_NAMES if not i.startswith('current_')}
 NON_PER_LVL_STAT_NAMES = sorted(i for i in ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
-
-
-# Bonuses to those stats will be prioritized during bonus creation to avoid bugs.
-# (e.g.
-PRIORITIZED_BONUSES_STATS_NAMES = ['hp'] + [i for i in ALL_RESOURCE_NAMES if i not in ('hp', None)]
 
 
 # Enemy base stats' names.
@@ -608,6 +604,7 @@ class StatRequest(StatCalculation):
 
         self.req_buff_dct_func = req_buff_dct_func
         self._reversed_combat_mode = _reversed_combat_mode
+        self.stats_dependencies = {}
 
         StatCalculation.__init__(self,
                                  champion_lvls_dct=champion_lvls_dct,
@@ -696,14 +693,16 @@ class StatRequest(StatCalculation):
         self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: stat_val})
 
     @staticmethod
-    def priorities_tiers(dependencies_dct):
+    @memoization.MemoizeFirstCall
+    def _stats_priorities_tiers(dependencies_dct):
         """
         Groups stats' names into tiers, based on which should be calculated first.
         Highest priority is tier 0.
 
         >>> dep_dct = dict(i={('a1', 'b1'), ('a2', 'b2'), ('a3', 'b3'), ('b1', 'c1'), ('b2', 'c1'), ('c1', 'd1'), ('b3', 'd1')})
-        >>> StatRequest.priorities_tiers(dep_dct)
-        {0: {'a1', 'a2', 'a3'}, 1: {'b1', 'b2', 'b3'}, 2: {'c1'}, 3: {'d1'}}
+        >>> StatRequest._stats_priorities_tiers(dep_dct) == {0: {'a1', 'a2', 'a3'}, 1: {'b1', 'b2', 'b3'}, 2: {'c1'}, 3: {'d1'}}
+        True
+
 
         :return: (dict)
         """
@@ -767,7 +766,8 @@ class StatRequest(StatCalculation):
             else:
                 return tiers_dct
 
-    def _apply_prioritized_bonuses_by_buffs(self, tar_name, sorted_active_buffs, must_in_priority_seq):
+    def _apply_prioritized_bonuses_by_buffs(self, tar_name, prioritized_stats_names, sorted_active_buffs,
+                                            must_in_priority_seq):
         """
         Creates bonuses based on which stats are prioritized.
 
@@ -786,9 +786,9 @@ class StatRequest(StatCalculation):
                 for stat_name in sorted(buff_stats_dct):
 
                     # Priorities
-                    if must_in_priority_seq and (stat_name in PRIORITIZED_BONUSES_STATS_NAMES):
+                    if must_in_priority_seq and (stat_name in prioritized_stats_names):
                         pass
-                    elif not must_in_priority_seq and (stat_name not in PRIORITIZED_BONUSES_STATS_NAMES):
+                    elif not must_in_priority_seq and (stat_name not in prioritized_stats_names):
                         pass
 
                     else:
@@ -815,25 +815,28 @@ class StatRequest(StatCalculation):
         """
         Creates all bonuses to stats caused by buffs.
 
-        It first creates bonuses that must be prioritized. Prioritized bonuses are typically max hp, and resource.
-
         :return: (None)
         """
 
         tar_active_buffs = self.active_buffs[tar_name]
 
-        time_sorted_tar_active_buffs = sorted(tar_active_buffs,
-                                              key=lambda x: (tar_active_buffs[x]['starting_time'],
-                                                             x))
+        all_prioritized_stats = set()
 
-        # PRIORITIZED BONUSES
-        self._apply_prioritized_bonuses_by_buffs(tar_name=tar_name,
-                                                 sorted_active_buffs=time_sorted_tar_active_buffs,
-                                                 must_in_priority_seq=True)
+        # Prioritized stats.
+        priorities_tiers = self._stats_priorities_tiers(self.stats_dependencies)
+        for tier_num in sorted(priorities_tiers):
+            prioritized_stats_names = priorities_tiers[tier_num]
+            all_prioritized_stats.update(prioritized_stats_names)
 
-        # NON PRIORITIZED BONUSES
+            self._apply_prioritized_bonuses_by_buffs(tar_name=tar_name,
+                                                     prioritized_stats_names=prioritized_stats_names,
+                                                     sorted_active_buffs=tar_active_buffs,
+                                                     must_in_priority_seq=True)
+
+        # Non prioritized stats.
         self._apply_prioritized_bonuses_by_buffs(tar_name=tar_name,
-                                                 sorted_active_buffs=time_sorted_tar_active_buffs,
+                                                 prioritized_stats_names=all_prioritized_stats,
+                                                 sorted_active_buffs=tar_active_buffs,
                                                  must_in_priority_seq=False)
 
     def refresh_stats_bonuses(self):
@@ -850,7 +853,7 @@ class StatRequest(StatCalculation):
         :return: (None)
         """
 
-        # In reversed mode survivability (in general) is all that matters so initial stats are ignored.
+        # In reversed mode, survivability (in general) is all that matters so initial stats are ignored.
         if not self._reversed_combat_mode:
             # Checks if there are any preset values for current_stats.
             if self.initial_current_stats:
