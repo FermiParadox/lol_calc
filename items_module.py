@@ -212,6 +212,16 @@ class ItemsProperties(object):
 
         return cost
 
+    def items_stats_dependencies(self):
+
+        all_i_stats_deps = set()
+
+        for i in self.chosen_items_lst:
+            item_stats_deps = self.ITEMS_ATTRIBUTES[i]['stats_dependencies']
+
+            all_i_stats_deps |= item_stats_deps
+
+        return all_i_stats_deps
 
 if __name__ == '__main__':
 

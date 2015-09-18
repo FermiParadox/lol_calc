@@ -207,3 +207,18 @@ class MasteriesProperties(MasteriesValidation):
 
     def masteries_static_stats_buff(self):
         return self.__masteries_static_stats_buff_dct
+
+    def masteries_stats_dependencies(self):
+
+        all_m_stats_deps = set()
+
+        for m in self.selected_masteries_dct:
+            mastery_dct = self.MASTERIES_ATTRIBUTES[m]
+
+            if mastery_dct:
+                m_stats_dep = mastery_dct['stats_dependencies']
+
+                all_m_stats_deps |= m_stats_dep
+
+        return all_m_stats_deps
+

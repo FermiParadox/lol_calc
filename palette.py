@@ -196,6 +196,20 @@ def __compare_complex_object(obj_1, obj_2, _depth=0, _path_str='', _difference_d
 
 def compare_complex_object(obj_1, obj_2):
     return __compare_complex_object(obj_1=obj_1, obj_2=obj_2)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# SAFE DICT
+class SafeDict(dict):
+    """
+    Disallows creation of a non existing key through d[new_key] = val.
+    """
+    def __setitem__(self, key, value):
+        if key not in self:
+            raise KeyError('{}'.format(key))
+        dict.__setitem__(self, key, value)
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 

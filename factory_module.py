@@ -2255,19 +2255,19 @@ class StatsDependencies(object):
         """
         Creates and returns dependencies list.
 
-        :return: (list)
+        :return: (set)
         """
 
-        lst = []
+        deps_set = set()
 
         print(fat_delimiter(80))
         print('STATS DEPENDENCIES, CHAMPION: {}'.format(obj_name, str_champion_or_item_or_mastery.upper()))
 
         while 1:
 
-            if lst:
+            if deps_set:
                 print('Current dependencies:')
-                for i in lst:
+                for i in deps_set:
                     print(i)
 
             if _y_n_question('\nNew dependency?'):
@@ -2280,12 +2280,12 @@ class StatsDependencies(object):
                                                     choices_seq=stats.NON_PER_LVL_STAT_NAMES,
                                                     restrict_choices=True)
 
-                lst.append((controller_stat, affected_stat))
+                deps_set.add((controller_stat, affected_stat))
 
             else:
                 break
 
-            return lst
+            return deps_set
 
     def champion_stats_dependencies(self, champion_name):
         return self._stats_dependencies(obj_name=champion_name, str_champion_or_item_or_mastery='champion')

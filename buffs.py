@@ -4,14 +4,14 @@ import items_module
 import items_folder.items_data
 import palette
 import dmgs_buffs_categories
-import masteries
+import masteries_module
 
 import copy
 import abc
 
 
 class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
-                   masteries.MasteriesProperties, metaclass=abc.ABCMeta):
+                   masteries_module.MasteriesProperties, metaclass=abc.ABCMeta):
 
     def __init__(self,
                  selected_champions_dct,
@@ -36,9 +36,9 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
                                          initial_enemies_total_stats=initial_enemies_total_stats,
                                          _reversed_combat_mode=_reversed_combat_mode)
 
-        masteries.MasteriesProperties.__init__(self,
-                                               selected_masteries_dct=selected_masteries_dct,
-                                               player_lvl=self.player_lvl)
+        masteries_module.MasteriesProperties.__init__(self,
+                                                      selected_masteries_dct=selected_masteries_dct,
+                                                      player_lvl=self.player_lvl)
 
         # ITEMS
         self.chosen_items_dct = chosen_items_dct
@@ -46,11 +46,11 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
         self.player_items = self.chosen_items_dct['player']
 
         self._items_static_stats_buff_dct = {}
+        self.player_items_instance = items_module.ItemsProperties(chosen_items_lst=self.player_items)
         self.create_player_static_items_buff()
 
     def create_player_static_items_buff(self):
-        items_instance = items_module.ItemsProperties(chosen_items_lst=self.player_items)
-        self._items_static_stats_buff_dct.update(items_instance.items_static_stats_buff_dct)
+        self._items_static_stats_buff_dct.update(self.player_items_instance.items_static_stats_buff_dct)
 
     def items_static_stats_buff(self):
         # Used for calling from apply_buff method.
@@ -875,8 +875,8 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         # Ensures target is not overhealed.
         # If current_hp is going to become less than max hp..
         if (
-            (self.current_stats[tar_name]['current_hp'] + heal_value) < self.request_stat(target_name=tar_name,
-                                                                                          stat_name='hp')
+                    (self.current_stats[tar_name]['current_hp'] + heal_value) < self.request_stat(target_name=tar_name,
+                                                                                                  stat_name='hp')
         ):
 
             # .. applies heal.

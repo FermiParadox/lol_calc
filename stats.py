@@ -1,6 +1,6 @@
 import copy
 import palette
-import memoization
+import functools
 
 from champions import app_champions_base_stats
 
@@ -604,7 +604,6 @@ class StatRequest(StatCalculation):
 
         self.req_buff_dct_func = req_buff_dct_func
         self._reversed_combat_mode = _reversed_combat_mode
-        self.stats_dependencies = {}
 
         StatCalculation.__init__(self,
                                  champion_lvls_dct=champion_lvls_dct,
@@ -614,6 +613,9 @@ class StatRequest(StatCalculation):
                                  initial_enemies_total_stats=initial_enemies_total_stats)
 
     SPECIAL_STATS_SET = SPECIAL_STATS_SET
+
+    def stats_dependencies(self):
+        raise NotImplementedError
 
     def request_stat(self, target_name, stat_name):
         """
@@ -692,9 +694,8 @@ class StatRequest(StatCalculation):
         # Inserts bonus_name and its value in bonuses_dct.
         self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: stat_val})
 
-    @staticmethod
-    @memoization.MemoizeFirstCall
-    def _stats_priorities_tiers(dependencies_dct):
+    # TODO memoize
+    def _stats_priorities_tiers(self, dependencies_dct):
         """
         Groups stats' names into tiers, based on which should be calculated first.
         Highest priority is tier 0.
@@ -823,8 +824,8 @@ class StatRequest(StatCalculation):
         all_prioritized_stats = set()
 
         # Prioritized stats.
-        priorities_tiers = self._stats_priorities_tiers(self.stats_dependencies)
-        for tier_num in sorted(priorities_tiers):
+        priorities_tiers = self._stats_priorities_tiers(self.stats_dependencies())
+        for tier_num in sorted(priorities_tiers)[:-1]:
             prioritized_stats_names = priorities_tiers[tier_num]
             all_prioritized_stats.update(prioritized_stats_names)
 

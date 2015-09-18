@@ -10,6 +10,7 @@ from champions import app_champions_base_stats
 import palette
 import skills_points
 import items_folder.items_data as items_data
+import functools
 
 
 # Sets font size on all plt graphs.
@@ -1028,6 +1029,16 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                ability_lvls_dct=ability_lvls_dct,
                                req_dmg_dct_func=self.request_dmg,
                                req_abilities_attrs_func=self.abilities_attributes)
+
+    @functools.lru_cache()
+    def stats_dependencies(self):
+
+        dct = {}
+        dct.update({'masteries': self.masteries_stats_dependencies()})
+        dct.update({'champion': self.CHAMPION_STATS_DEPENDENCIES})
+        dct.update({'items': self.player_items_instance.items_stats_dependencies()})
+
+        return dct
 
     def spell_on_cd(self, action_name):
         """

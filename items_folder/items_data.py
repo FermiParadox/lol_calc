@@ -239,7 +239,7 @@ ITEMS_ATTRIBUTES = {
                                                                         'target_type': 'player'}},
                            'dmgs': {},
                            'general_attributes': {'castable': False},
-                           'stats_dependencies': set(),
+                           'stats_dependencies': {('hp', 'spellvamp'), },
                            'non_unique_stats': {'additive': {'ad': 30,
                                                              'ap': 40}},
                            'secondary_data': {'build_from': {'blasting_wand': 1,
