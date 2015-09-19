@@ -1030,7 +1030,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                req_dmg_dct_func=self.request_dmg,
                                req_abilities_attrs_func=self.abilities_attributes)
 
-    @functools.lru_cache()
+    # TODO: single call memo
     def stats_dependencies(self):
 
         dct = {}
@@ -2204,6 +2204,48 @@ class SpecialItems(Actions):
     GUINSOOS_ABOVE_HALF_HP_BUFF = {k: v for k, v in GUINSOOS_BELOW_HALF_HP_BUFF.items() if k != 'stats'}
     GUINSOOS_ABOVE_HALF_HP_BUFF.update({'stats': {}})
 
+    # SPELLBLADE
+    SPELLBLADE_ITEMS_PRIORITY_SORTED= ('lich_bane', 'trinity_force', 'iceborn_gantlet', 'sheen')
+    # (ensures names used exist, otherwise methods below will function incorrectly)
+
+    SPELLBLADE_ITEMS_NAMES_MAP = {'iceborn_gantlet': 'iceborn_gantlet',
+                                  'sheen': 'sheen',
+                                  'lich_bane': 'lich_bane',
+                                  'trinity_force': 'trinity_force'}
+    _CHECKED_SPELLBLADE_ITEMS_NAMES = set(SPELLBLADE_ITEMS_NAMES_MAP.values()) | set(SPELLBLADE_ITEMS_PRIORITY_SORTED)
+    for spellblade_related_item_name in _CHECKED_SPELLBLADE_ITEMS_NAMES:
+        if spellblade_related_item_name not in items_data.ITEMS_NAMES:
+            raise palette.UnexpectedValueError("{} does not exist in items' buffs.".format(spellblade_related_item_name))
+    # (ensures names used exist, otherwise methods below will function incorrectly)
+    SPELLBLADE_BUFF_NAMES_MAP = {'inhibitor': 'spellblade_inhibitor',
+                                 'triggered_tag': 'spellblade_triggered'}
+    for spellblade_related_buff_name in SPELLBLADE_BUFF_NAMES_MAP.values():
+        if spellblade_related_buff_name not in items_data.ITEMS_BUFFS_NAMES:
+            raise palette.UnexpectedValueError("{} does not exist in items' buffs.".format(spellblade_related_buff_name))
+
+    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF = {'buff_source': 'sheen',
+                                                'dot': False,
+                                                'duration': 'permanent',
+                                                'max_stacks': 1,
+                                                'stats': {},
+                                                'target_type': 'player'}
+
+    # (they are used purely as tags)
+    SPELLBLADE_INHIBITOR_BUFF = {'buff_source': 'sheen',
+                                 'dot': False,
+                                 'duration': 1.5,
+                                 'max_stacks': 1,
+                                 'on_hit': {},
+                                 'stats': {},
+                                 'target_type': 'player'}
+    SPELLBLADE_TRIGGERED_BUFF = {'buff_source': 'sheen',
+                                 'dot': False,
+                                 'duration': 7,
+                                 'max_stacks': 1,
+                                 'on_hit': {},
+                                 'stats': {},
+                                 'target_type': 'player'}
+
     def guinsoos_rageblade_low_hp_buff(self):
         # BELOW 50%
         # (when initially called during item passives application current stats aren't created yet)
@@ -2214,6 +2256,38 @@ class SpecialItems(Actions):
 
         # ABOVE 50%
         return self.GUINSOOS_ABOVE_HALF_HP_BUFF
+
+    # TODO: single call memo
+    def spellblade_dmgs_lst(self):
+        dmgs_lst = []
+        # Ring dmg is applied regardless of other items.
+        if self.SPELLBLADE_ITEMS_NAMES_MAP['iceborn_gantlet'] in self.player_items:
+            dmgs_lst.append('iceborn_gantlet_ring_dmg')
+
+        # Spellblade is applied only once, by prioritized item.
+        for spellblade_item in self.SPELLBLADE_ITEMS_PRIORITY_SORTED:
+            if spellblade_item in self.player_items:
+                # (by convention spellblade main dmg should be 'item_name_dmg_0')
+                dmgs_lst.append(spellblade_item + '_dmg_0')
+
+        return dmgs_lst
+
+    def spellblade_initiator(self):
+
+        final_buff_dct = {}
+        final_buff_dct.update(self.SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF)
+
+        player_active_buffs = self.active_buffs['player']
+
+        if self.SPELLBLADE_BUFF_NAMES_MAP['spellblade_inhibitor'] in player_active_buffs:
+            final_buff_dct.update({'stats': {}})
+            return final_buff_dct
+
+        else:
+            on_hit = copy.deepcopy(palette.ON_HIT_EFFECTS)
+
+            if self.SPELLBLADE_BUFF_NAMES_MAP['spellblade_triggered'] in player_active_buffs:
+                on_hit['cause_dmg'] = self.spellblade_dmgs_lst()
 
 
 class Presets(SpecialItems):

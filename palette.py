@@ -320,7 +320,7 @@ class DuplicateNameError(Exception):
     pass
 
 
-def items_or_masteries_buffs_or_dmgs_names_dct(str_buffs_or_dmgs, attrs_dct):
+def items_or_masteries_buffs_or_dmgs_names_dct(str_buffs_or_dmgs, attrs_dct, ignored_names=''):
     """
     Creates a dict of all items' (or masteries') dmgs or buffs names as keys, and corresponding item name as value.
 
@@ -338,7 +338,8 @@ def items_or_masteries_buffs_or_dmgs_names_dct(str_buffs_or_dmgs, attrs_dct):
 
                 # Checks if obj already exists.
                 if attr_name in dct:
-                    raise DuplicateNameError(attr_name)
+                    if attr_name not in ignored_names:
+                        raise DuplicateNameError(attr_name)
                 # Adds obj name to list
                 else:
                     dct.update({attr_name: obj_name})

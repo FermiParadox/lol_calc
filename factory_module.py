@@ -4379,25 +4379,41 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
     Responsible for creating a SINGLE item's attributes: unique and stacking item stats, item buffs, item effects.
     """
 
-    ITEM_STAT_NAMES_MAP = {
-        'Ability Power': 'ap',
-        'Ability Power per level': 'ap_per_lvl',
-        'Armor': 'armor',
-        'Attack Damage': 'ad',
-        'Attack Speed': 'att_speed',
-        'Base Health Regen': 'hp5',
-        'Base Mana Regen': 'mp5',
-        'Critical Strike Chance': 'crit_chance',
-        'Cooldown Reduction': 'cdr',
-        'Health': 'hp',
-        'Life Steal': 'lifesteal',
-        'Magic Penetration': 'flat_magic_penetration',
-        'Magic Resist': 'mr',
-        'Mana': 'mp',
-        'Movement Speed': 'move_speed',
-        'Spell Vamp': 'spellvamp'}
+    ITEM_STAT_NAMES_MAP = {'Ability Power': {'app_name': 'ap',
+                                             'application_type': 'additive'},
+                           'Ability Power per level': {'app_name': 'ap_per_lvl',
+                                                       'application_type': 'additive'},
+                           'Armor': {'app_name': 'armor',
+                                     'application_type': 'additive'},
+                           'Attack Damage': {'app_name': 'ad',
+                                             'application_type': 'additive'},
+                           'Attack Speed': {'app_name': 'att_speed',
+                                            'application_type': 'percent'},
+                           'Base Health Regen': {'app_name': 'hp5',
+                                                 'application_type': 'percent'},
+                           'Base Mana Regen': {'app_name': 'mp5',
+                                               'application_type': 'percent'},
+                           'Cooldown Reduction': {'app_name': 'cdr',
+                                                  'application_type': 'percent'},
+                           'Critical Strike Chance': {'app_name': 'crit_chance',
+                                                      'application_type': 'additive'},
+                           'Health': {'app_name': 'hp',
+                                      'application_type': 'additive'},
+                           'Life Steal': {'app_name': 'lifesteal',
+                                          'application_type': 'additive'},
+                           'Magic Penetration': {'app_name': 'flat_magic_penetration',
+                                                 'application_type': 'additive'},
+                           'Magic Resist': {'app_name': 'mr',
+                                            'application_type': 'additive'},
+                           'Mana': {'app_name': 'mp',
+                                    'application_type': 'additive'},
+                           'Movement Speed': {'app_name': 'move_speed',
+                                              'application_type': 'undefined'},
+                           'Spell Vamp': {'app_name': 'spellvamp',
+                                          'application_type': 'additive'}}
 
-    ITEM_ADDITIVE_STATS = [ITEM_STAT_NAMES_MAP['Spell Vamp'], ITEM_STAT_NAMES_MAP['Life Steal']]
+    _STATS_APP_NAMES = {i['app_name'] for i in ITEM_STAT_NAMES_MAP.values()}
+    stats.ensure_allowed_stats_names(_STATS_APP_NAMES)
 
     def items_stat_names(self):
         """
@@ -4407,12 +4423,10 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
         :returns: (list)
         """
-        lst = list(self.ITEM_STAT_NAMES_MAP.values())+['tar_current_hp', 'tar_max_hp', 'move_speed_reduction',
-                                                       'flat_non_aoe_reduction']
+        lst = list(self._STATS_APP_NAMES)+['tar_current_hp', 'tar_max_hp', 'move_speed_reduction', 'flat_non_aoe_reduction']
         return lst
 
     def __init__(self, item_name):
-        self._validate_stats_names()
         # Converts given item name to actual name.
         self.item_name = ExploreApiItems().actual_item_name(item_name=item_name)
         self.explore_items_module_inst = ExploreApiItems()
@@ -4510,21 +4524,6 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
         return final_values_set
 
-    def _validate_stats_names(self):
-        """
-        Ensures all stat names in this class are exactly the same as the main program's stat names.
-
-        Raises:
-            UnexpectedValueError
-        Returns:
-            (None)
-        """
-
-        diff = set(self.ITEM_STAT_NAMES_MAP.values()) - stats.ALL_POSSIBLE_STAT_NAMES
-
-        if diff:
-            raise palette.UnexpectedValueError(diff)
-
     @staticmethod
     def _content_between_tags_in_description(item_description, tag_str):
         """
@@ -4540,75 +4539,84 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         except AttributeError:
             return ''
 
-    def _create_stats_names_and_values(self, given_description_str, split_tags_lst, modified_dct):
+    def _automatic_non_unique_stats_names_and_values(self, given_description_str):
         """
-        Stores a dict with stat names as values and stat value as key.
+        Creates a dict with stat names as values and stat value as key.
 
-        Returns:
-            (None)
+        Assumes stats' bonuses are of a single type. Raises exception if multiple values for same stat are detected.
+
+        :return: (dict)
         """
 
         dct = {}
 
-        # STRING SPLITTING
-        # Creates split-string.
-        split_str = ''
-        for tag_name in split_tags_lst:
-            split_str += '|<{tag_name}>|</{tag_name}>'.format(tag_name=tag_name)
+        # Non unique stats are between: <stats> </stats>
+        non_unique_stats_str = self._content_between_tags_in_description(item_description=given_description_str,
+                                                                         tag_str='stats')
 
-        split_str = split_str.lstrip('|')
+        # Takes everything between a ">" and a "<".
+        stat_strings_lst = re.findall(r'>([^<^>]+)<', non_unique_stats_str)
 
-        partitions_lst = re.split(split_str, given_description_str)
-        # Filters out empty split-parts.
-        partitions_lst = [i for i in partitions_lst if i != '']
+        for str_fragment in stat_strings_lst:
+            val_str = re.search(r'\d+(?:\.\d+)?%?', str_fragment).group()
 
-        for str_part in partitions_lst:
+            # VALUE
+            val = ast.literal_eval(val_str.rstrip('%'))
 
-            # STAT NAME
-            # (reverse used to ensure 'ap per lvl' is matched before 'ap',
-            # otherwise it will mismatch 'ap')
-            for k in reversed(list(self.ITEM_STAT_NAMES_MAP)):
-                if k.lower() in str_part:
-                    stat_name = self.ITEM_STAT_NAMES_MAP[k]
+            # Percent is converted to float.
+            if '%' in val_str:
+                val /= 100
 
-                    # STAT VALUE
-                    # Searches for int or float.
-                    stat_val_str = re.search(r'(\d+\.?\d*%?)\s', str_part).group()
+            # NAME
+            # (starts searching in longest names first in order to avoid mismatching 'ap' instead of 'ap per lvl')
+            for api_name in sorted(self.ITEM_STAT_NAMES_MAP, key=lambda x: len(x), reverse=True):
 
-                    # Converts percent to float.
-                    if '%' in stat_val_str:
-                        stat_val_str = stat_val_str.replace('%', '')
-                        stat_val = ast.literal_eval(stat_val_str) / 100.
-                        # (some stats that have a '%' are additive)
-                        if stat_name in self.ITEM_ADDITIVE_STATS:
-                            stat_type = 'additive'
-                        else:
+                if api_name.lower() in str_fragment.lower():
+                    stat_app_name = self.ITEM_STAT_NAMES_MAP[api_name]['app_name']
+                    stat_type = self.ITEM_STAT_NAMES_MAP[api_name]['application_type']
+
+                    if stat_type == 'undefined':
+                        if '%' in val_str:
                             stat_type = 'percent'
 
-                    else:
-                        stat_type = 'additive'
-                        stat_val = ast.literal_eval(stat_val_str)
+                    dct.setdefault(stat_type, {})
 
-                    if stat_type not in dct:
-                        dct.update({stat_type: {}})
-                    dct[stat_type].update({stat_name: stat_val})
+                    if stat_app_name in dct[stat_type]:
+                        raise KeyError('{} already exists.'.format(stat_app_name))
 
-        modified_dct.update(dct)
+                    dct[stat_type].update({stat_app_name: val})
+                    break
+            else:
+                # No match found.
+                raise palette.UnexpectedValueError('No matching stat found in string: {}'.format(str_fragment))
+
+        return dct
 
     def create_non_unique_stats_names_and_values(self):
         """
         Creates a dict with stat names as values and stat value as key.
 
-        Returns:
-            (None)
+        :return: (None)
         """
 
-        print('\nNON UNIQUE ITEM STATS:')
-        suggest_affected_stats_attributes(str_buff_or_item='item',
-                                          obj_name=self.item_name,
-                                          modified_stats_dct=self.non_unique_item_stats,
-                                          possible_stat_values_lst=self.arithmetic_values_in_description(),
-                                          possible_mod_values_lst=self.arithmetic_values_in_description())
+        auto_created_stats = self._automatic_non_unique_stats_names_and_values(
+            given_description_str=self._item_description_str)
+
+        print(delimiter(20))
+        print('\nAutocreated NON UNIQUE stats:')
+        pp.pprint(auto_created_stats)
+
+        if _y_n_question('Redo NON UNIQUE stats manually? (enter to skip)', disallow_enter=False):
+
+            print('\nNON UNIQUE ITEM STATS:')
+            suggest_affected_stats_attributes(str_buff_or_item='item',
+                                              obj_name=self.item_name,
+                                              modified_stats_dct=self.non_unique_item_stats,
+                                              possible_stat_values_lst=self.arithmetic_values_in_description(),
+                                              possible_mod_values_lst=self.arithmetic_values_in_description())
+
+        else:
+            self.non_unique_item_stats = auto_created_stats
 
     def create_unique_stats_values(self):
         """
@@ -5827,7 +5835,7 @@ if __name__ == '__main__':
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
     if 1:
-        inst = ItemsModuleCreator(item_name='ruined')
+        inst = ItemsModuleCreator(item_name='crystalli')
         inst.create_item()
     # Create all items.
     if 0:

@@ -70,14 +70,21 @@ class BuffCategories(GeneralCategories):
 
 class DmgCategories(BuffCategories):
 
+    # TODO: memoization
     """
-    SUGGESTION: Memoization
+    Possible memoization:
 
     An aoe dmg that is applied simultaneously to multiple targets (e.g. brand W, NOT brand R) leaving no time in-between
     for dmg-triggers or stats to change, would have the same starting raw-dmg values.
 
-    Also, in case time between Caitlyn's Q dmgs is not taken into account (which currently isn't),
+    Also, in case time between Veigar's Q dmgs is not taken into account (which currently isn't),
     memoization would have an even bigger effect.
+
+    A possible way to implement it would be to create the raw value when distributing a multi-targeted event.
+    A different way would be to give (globally) the same value for all events that occur at the same time.
+
+    WARNING:
+    Some dmg values scale of target's stats (e.g. Malza W) making it very tricky to implement.
 
     --------------------------------------------------------------------------------------------------------------------
     Obsolete concepts:
@@ -153,7 +160,7 @@ class DmgCategories(BuffCategories):
 
         return val
 
-    def request_dmg_value(self, dmg_name):
+    def raw_dmg_value(self, dmg_name):
         """
         Calculates raw dmg value of given dmg name.
 
@@ -173,12 +180,18 @@ class DmgCategories(BuffCategories):
         if cat == 'standard_dmg':
             return val
 
+        elif cat == 'ring_dmg':
+            if self.current_target_num == 1:
+                return 0
+            else:
+                return val
+
         elif cat == 'chain_decay':
             coef = dmg_dct['decay_coef']
             stabilized_tar_num = dmg_dct['stabilized_tar_num']
 
-            if self.current_target <= stabilized_tar_num:
-                return val * (1 - coef(self.current_target - 1))
+            if self.current_target_num <= stabilized_tar_num:
+                return val * (1 - coef(self.current_target_num - 1))
 
         else:
             raise palette.UnexpectedValueError

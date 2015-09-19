@@ -887,7 +887,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             self.current_stats[tar_name]['current_hp'] = self.request_stat(target_name=tar_name,
                                                                            stat_name='hp')
 
-    def apply_resource_dmg_or_heal(self, dmg_name, dmg_dct):
+    def apply_resource_dmg_or_heal(self, dmg_name, dmg_dct, unmitigated_dmg_value):
         """
         Reduces or increases player's 'current_'resource and stores it in combat_history.
 
@@ -902,12 +902,11 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             (None)
         """
 
-        dmg_value = self.request_dmg_value(dmg_name=dmg_name)
         resource_type = dmg_dct['resource_type']
 
         # DMG
-        if dmg_value >= 0:
-            self.current_stats['player'][self.player_current_resource_name] -= dmg_value
+        if unmitigated_dmg_value >= 0:
+            self.current_stats['player'][self.player_current_resource_name] -= unmitigated_dmg_value
 
         # HEAL
         # (If the value is negative it's a resource replenish effect.)
@@ -915,10 +914,10 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             # Checks if resource heal exceeds max possible value.
             max_value = self.request_stat(target_name='player', stat_name=resource_type)
 
-            if self.current_stats['player'][self.player_current_resource_name] - dmg_value > max_value:
+            if self.current_stats['player'][self.player_current_resource_name] - unmitigated_dmg_value > max_value:
                 self.current_stats['player'][self.player_current_resource_name] = max_value
             else:
-                self.current_stats['player'][self.player_current_resource_name] -= dmg_value
+                self.current_stats['player'][self.player_current_resource_name] -= unmitigated_dmg_value
 
         # RESOURCE HISTORY
         self.note_non_hp_resource_in_history(curr_resource_str=self.player_current_resource_name)
@@ -988,21 +987,16 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 
         return max(dmg_value, 0.)
 
-    def apply_hp_dmg_or_heal(self, dmg_name, target_name):
+    def apply_hp_dmg_or_heal(self, dmg_name, target_name, unmitigated_dmg_value):
         """
         Applies a dmg or heal value to a target, along with lifesteal or spellvamp, and notes in history.
 
-        Modifies:
-            current_stats
-            combat_history
-        Returns:
-            (None)
+        :return: (None)
         """
 
         dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
         dmg_type = dmg_dct['dmg_type']
         aoe = self.is_aoe(dmg_dct=dmg_dct)
-        unmitigated_dmg_value = self.request_dmg_value(dmg_name=dmg_name)
 
         final_dmg_value = self.mitigated_dmg(dmg_value=unmitigated_dmg_value,
                                              dmg_type=dmg_type,
@@ -1056,13 +1050,21 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             (None)
         """
 
+        unmitigated_dmg_val = self.raw_dmg_value(dmg_name=dmg_name)
+        # 0 value dmgs are ignored completely.
+        if not unmitigated_dmg_val:
+            return
+
         # Checks if the effect is affecting a resource or hp.
         if dmg_dct['resource_type'] == 'hp':
             self.apply_hp_dmg_or_heal(dmg_name=dmg_name,
-                                      target_name=target_name)
+                                      target_name=target_name,
+                                      unmitigated_dmg_value=unmitigated_dmg_val)
 
         else:
-            self.apply_resource_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct)
+            self.apply_resource_dmg_or_heal(dmg_name=dmg_name,
+                                            dmg_dct=dmg_dct,
+                                            unmitigated_dmg_value=unmitigated_dmg_val)
 
     def times_of_death(self):
         """

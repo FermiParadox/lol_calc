@@ -1,6 +1,5 @@
 import copy
 import palette
-import functools
 
 from champions import app_champions_base_stats
 
@@ -104,6 +103,17 @@ ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_
 
 ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE = {i for i in ALL_POSSIBLE_STAT_NAMES if not i.startswith('current_')}
 NON_PER_LVL_STAT_NAMES = sorted(i for i in ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
+
+
+def ensure_allowed_stats_names(iterable):
+    """
+    Checks if all elements are allowed stat names.
+
+    :return:
+    """
+    for i in iterable:
+        if i not in ALL_POSSIBLE_STAT_NAMES:
+            raise palette.UnexpectedValueError(i)
 
 
 # Enemy base stats' names.
@@ -694,14 +704,15 @@ class StatRequest(StatCalculation):
         # Inserts bonus_name and its value in bonuses_dct.
         self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: stat_val})
 
-    # TODO memoize
-    def _stats_priorities_tiers(self, dependencies_dct):
+    # TODO: single call memo
+    @staticmethod
+    def _stats_priorities_tiers(dependencies_dct):
         """
         Groups stats' names into tiers, based on which should be calculated first.
         Highest priority is tier 0.
 
         >>> dep_dct = dict(i={('a1', 'b1'), ('a2', 'b2'), ('a3', 'b3'), ('b1', 'c1'), ('b2', 'c1'), ('c1', 'd1'), ('b3', 'd1')})
-        >>> StatRequest._stats_priorities_tiers(dep_dct) == {0: {'a1', 'a2', 'a3'}, 1: {'b1', 'b2', 'b3'}, 2: {'c1'}, 3: {'d1'}}
+        >>> StatRequest._stats_priorities_tiers() == {0: {'a1', 'a2', 'a3'}, 1: {'b1', 'b2', 'b3'}, 2: {'c1'}, 3: {'d1'}}
         True
 
 
