@@ -2278,18 +2278,33 @@ class SpecialItems(Actions):
 
         player_active_buffs = self.active_buffs['player']
 
-        if self.SPELLBLADE_BUFF_NAMES_MAP['inhibitor'] in player_active_buffs:
+        inhibitor_buff_name = self.SPELLBLADE_BUFF_NAMES_MAP['inhibitor']
+        if inhibitor_buff_name in player_active_buffs:
             final_buff_dct.update({'on_hit': {}})
 
         else:
             on_hit = copy.deepcopy(palette.ON_HIT_EFFECTS)
 
-            if self.SPELLBLADE_BUFF_NAMES_MAP['triggered'] in player_active_buffs:
+            triggered_buff_name = self.SPELLBLADE_BUFF_NAMES_MAP['triggered']
+            inhibitor_buff_name = self.SPELLBLADE_BUFF_NAMES_MAP['inhibitor']
+
+            if triggered_buff_name in player_active_buffs:
                 on_hit['cause_dmg'] = self.spellblade_dmgs_lst()
+                on_hit['remove_buff'].append(triggered_buff_name)
+                on_hit['apply_buff'].append(inhibitor_buff_name)
+
+            else:
+                on_hit['apply_buff'].append(triggered_buff_name)
 
             final_buff_dct.update({'on_hit': on_hit})
 
         return final_buff_dct
+
+    def spellblade_triggered(self):
+        return self.SPELLBLADE_TRIGGERED_BUFF
+
+    def spellblade_inhibitor(self):
+        return self.SPELLBLADE_INHIBITOR_BUFF
 
 class Presets(SpecialItems):
 

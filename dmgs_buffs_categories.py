@@ -144,19 +144,16 @@ class DmgCategories(BuffCategories):
 
                 owner_dmg_mods_dct = dmg_dct_mods[owner_type]
                 for mod_name in sorted(owner_dmg_mods_dct):
+                    mod_dct = owner_dmg_mods_dct[mod_name]
 
-                    if 'additive' in owner_dmg_mods_dct:
-
-                        val += owner_dmg_mods_dct[mod_name]['additive'] * self.req_stats_func(
-                            target_name=owner,
-                            stat_name=mod_name)
+                    if 'additive' in mod_dct:
+                        val += mod_dct['additive'] * self.req_stats_func(target_name=owner, stat_name=mod_name)
 
                 for mod_name in sorted(owner_dmg_mods_dct):
-                    if 'multiplicative' in owner_dmg_mods_dct:
+                    mod_dct = owner_dmg_mods_dct[mod_name]
 
-                        val *= owner_dmg_mods_dct[mod_name]['multiplicative'] * self.req_stats_func(
-                                target_name=owner,
-                                stat_name=mod_name)
+                    if 'multiplicative' in owner_dmg_mods_dct:
+                        val *= mod_dct['multiplicative'] * self.req_stats_func(target_name=owner, stat_name=mod_name)
 
         return val
 
