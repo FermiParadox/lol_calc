@@ -10,11 +10,14 @@ from champions import app_champions_base_stats
 import palette
 import skills_points
 import items_folder.items_data as items_data
-import functools
 
 
 # Sets font size on all plt graphs.
 plt.rcParams['font.size'] = 12
+
+
+BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS = set()
+BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS.update(items_data.ITEMS_BUFFS_AND_DMGS_EXPRESSED_BY_METHOD)
 
 
 class EnemyTargetsDeadError(Exception):
@@ -111,14 +114,10 @@ class EventsGeneral(buffs.DeathAndRegen):
                 else:
                     raise NotImplementedError('Other resources need to be added as well.')
 
-    def add_aoe_events(self, effect_name, start_time):
+    def add_aoe_event(self, effect_name, start_time):
         """
         Adds an aoe dmg event to affected target. If all unaffected targets are dead raises exception.
 
-        Modifies:
-            event_times
-            targets_already_hit
-            current_target
         Returns:
             (None)
         Raises:
@@ -155,6 +154,7 @@ class EventsGeneral(buffs.DeathAndRegen):
         """
 
         dmg_dct = self.req_dmg_dct_func(dmg_name=effect_name)
+        dmg_cat = dmg_dct['dmg_category']
         # Changes event start if needed.
         dmg_delay = dmg_dct['delay']
         if dmg_delay:
@@ -167,11 +167,12 @@ class EventsGeneral(buffs.DeathAndRegen):
         else:
             target_name = self.current_target
 
-        # Adds event to first target.
-        self.add_event_to_first_tar(target_name=target_name, effect_name=effect_name, start_time=start_time)
+        if dmg_cat != 'ring_dmg':
+            # Adds event to first target.
+            self.add_event_to_first_tar(target_name=target_name, effect_name=effect_name, start_time=start_time)
 
         # AOE DMG
-        # No aoe will be applied by dots originating from reverse combat mode.
+        # No aoe will be applied by dmgs originating from reverse combat mode.
         if self._reversed_combat_mode:
             return
 
@@ -191,7 +192,7 @@ class EventsGeneral(buffs.DeathAndRegen):
 
             # While the last target number is less than max targets, adds event.
             while self.targets_already_hit < max_tars_val:
-                self.add_aoe_events(effect_name=effect_name, start_time=start_time)
+                self.add_aoe_event(effect_name=effect_name, start_time=start_time)
 
         except EnemyTargetsDeadError:
             pass
@@ -922,7 +923,7 @@ class AttributeBase(EnemiesDmgToPlayer):
             initial_dct = self.ABILITIES_ATTRIBUTES
             conditionals_dct = self.ABILITIES_CONDITIONALS
 
-        elif buff_name in self.buffs_implemented_by_methods:
+        elif buff_name in BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS:
             return getattr(self, buff_name)()
 
         elif buff_name in items_data.ITEMS_BUFFS_NAMES:
@@ -2186,8 +2187,6 @@ class SpecialItems(Actions):
                          _reversed_combat_mode=_reversed_combat_mode,
                          enemies_originating_dmg_data=enemies_originating_dmg_data)
 
-        self.buffs_implemented_by_methods |= {'guinsoos_rageblade_low_hp_buff', }
-
     # GUINSOOS RAGEBLADE
     GUINSOOS_BELOW_HALF_HP_BUFF = {'buff_source': 'guinsoos_rageblade',
                                    'dot': False,
@@ -2205,20 +2204,20 @@ class SpecialItems(Actions):
     GUINSOOS_ABOVE_HALF_HP_BUFF.update({'stats': {}})
 
     # SPELLBLADE
-    SPELLBLADE_ITEMS_PRIORITY_SORTED= ('lich_bane', 'trinity_force', 'iceborn_gantlet', 'sheen')
+    SPELLBLADE_ITEMS_PRIORITY_SORTED= ('lich_bane', 'trinity_force', 'iceborn_gauntlet', 'sheen')
     # (ensures names used exist, otherwise methods below will function incorrectly)
 
-    SPELLBLADE_ITEMS_NAMES_MAP = {'iceborn_gantlet': 'iceborn_gantlet',
+    SPELLBLADE_ITEMS_NAMES_MAP = {'iceborn_gauntlet': 'iceborn_gauntlet',
                                   'sheen': 'sheen',
                                   'lich_bane': 'lich_bane',
                                   'trinity_force': 'trinity_force'}
     _CHECKED_SPELLBLADE_ITEMS_NAMES = set(SPELLBLADE_ITEMS_NAMES_MAP.values()) | set(SPELLBLADE_ITEMS_PRIORITY_SORTED)
     for spellblade_related_item_name in _CHECKED_SPELLBLADE_ITEMS_NAMES:
         if spellblade_related_item_name not in items_data.ITEMS_NAMES:
-            raise palette.UnexpectedValueError("{} does not exist in items' buffs.".format(spellblade_related_item_name))
+            raise palette.UnexpectedValueError("{} does not exist in items.".format(spellblade_related_item_name))
     # (ensures names used exist, otherwise methods below will function incorrectly)
     SPELLBLADE_BUFF_NAMES_MAP = {'inhibitor': 'spellblade_inhibitor',
-                                 'triggered_tag': 'spellblade_triggered'}
+                                 'triggered': 'spellblade_triggered'}
     for spellblade_related_buff_name in SPELLBLADE_BUFF_NAMES_MAP.values():
         if spellblade_related_buff_name not in items_data.ITEMS_BUFFS_NAMES:
             raise palette.UnexpectedValueError("{} does not exist in items' buffs.".format(spellblade_related_buff_name))
@@ -2261,8 +2260,8 @@ class SpecialItems(Actions):
     def spellblade_dmgs_lst(self):
         dmgs_lst = []
         # Ring dmg is applied regardless of other items.
-        if self.SPELLBLADE_ITEMS_NAMES_MAP['iceborn_gantlet'] in self.player_items:
-            dmgs_lst.append('iceborn_gantlet_ring_dmg')
+        if self.SPELLBLADE_ITEMS_NAMES_MAP['iceborn_gauntlet'] in self.player_items:
+            dmgs_lst.append('iceborn_gauntlet_ring_dmg')
 
         # Spellblade is applied only once, by prioritized item.
         for spellblade_item in self.SPELLBLADE_ITEMS_PRIORITY_SORTED:
@@ -2279,16 +2278,18 @@ class SpecialItems(Actions):
 
         player_active_buffs = self.active_buffs['player']
 
-        if self.SPELLBLADE_BUFF_NAMES_MAP['spellblade_inhibitor'] in player_active_buffs:
-            final_buff_dct.update({'stats': {}})
-            return final_buff_dct
+        if self.SPELLBLADE_BUFF_NAMES_MAP['inhibitor'] in player_active_buffs:
+            final_buff_dct.update({'on_hit': {}})
 
         else:
             on_hit = copy.deepcopy(palette.ON_HIT_EFFECTS)
 
-            if self.SPELLBLADE_BUFF_NAMES_MAP['spellblade_triggered'] in player_active_buffs:
+            if self.SPELLBLADE_BUFF_NAMES_MAP['triggered'] in player_active_buffs:
                 on_hit['cause_dmg'] = self.spellblade_dmgs_lst()
 
+            final_buff_dct.update({'on_hit': on_hit})
+
+        return final_buff_dct
 
 class Presets(SpecialItems):
 

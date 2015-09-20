@@ -518,10 +518,12 @@ def _y_n_question(question_str, disallow_enter=True):
         (False)
     """
 
-    msg = '\n{} (y, n)'.format(question_str)
+    msg = '\n{} '.format(question_str)
 
     if disallow_enter is False:
         msg += '(press enter to skip)'
+    else:
+        msg += '(y, n)'
 
     while True:
         answer = input(msg+'\n')
@@ -1012,6 +1014,20 @@ def suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_m
     print()
 
 
+def enumerated_lst_creation(suggested_values_lst, extra_start_msg='', sort_suggested_lst=True):
+    """
+    Creates and returns a list containing all selections from an enumerated question.
+
+    :return: (list)
+    """
+
+    lst = []
+    suggest_lst_of_attr_values(suggested_values_lst=suggested_values_lst, modified_lst=lst,
+                               extra_start_msg=extra_start_msg, sort_suggested_lst=sort_suggested_lst)
+
+    return lst
+
+
 # ---------------------------------------------------------------
 def repeat_cluster_decorator(cluster_name):
     """
@@ -1410,6 +1426,8 @@ class _ExploreBase(object):
         :param name: (str)
         :return: (str)
         """
+
+        name = name.strip()
 
         replacement_dct = {
             ' ': '_',
@@ -3550,7 +3568,7 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
 
 @inner_loop_exit_handler
 def suggest_affected_stats_attributes(str_buff_or_item, obj_name, modified_stats_dct, possible_stat_values_lst,
-                                      possible_mod_values_lst):
+                                      possible_mod_values_lst, question_msg=''):
     """
     Suggests stats that the buff modifies and
     mods of the stats (if any of the stats are scaling).
@@ -3558,7 +3576,13 @@ def suggest_affected_stats_attributes(str_buff_or_item, obj_name, modified_stats
     :return: (None)
     """
 
-    if _y_n_question('\n{}: {}\nDoes it modify stats'.format(str_buff_or_item.upper(), obj_name)):
+    msg = '\n{}: {}\n'.format(str_buff_or_item.upper(), obj_name)
+    if question_msg:
+        msg += question_msg
+    else:
+        msg += 'Does it modify stats'
+
+    if _y_n_question(msg):
         modified_stats_names = []
         suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
                                    modified_lst=modified_stats_names)
@@ -4410,7 +4434,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                            'Movement Speed': {'app_name': 'move_speed',
                                               'application_type': 'undefined'},
                            'Spell Vamp': {'app_name': 'spellvamp',
-                                          'application_type': 'additive'}}
+                                          'application_type': 'additive'},}
 
     _STATS_APP_NAMES = {i['app_name'] for i in ITEM_STAT_NAMES_MAP.values()}
     stats.ensure_allowed_stats_names(_STATS_APP_NAMES)
@@ -4525,19 +4549,27 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         return final_values_set
 
     @staticmethod
-    def _content_between_tags_in_description(item_description, tag_str):
+    def _all_matches_between_given_tag(item_description, tag_str):
+        return re.findall(r'<{tag_str}>(.+)</{tag_str}>'.format(tag_str=tag_str), item_description)
+
+    def _content_between_non_dup_tags_in_description(self, item_description, tag_str):
         """
         Cuts off and returns stats string in an item description by the xml tags (<stats> </stats>).
 
-        Returns:
-            (str)
+        Not to be used for tags that exist more than once in a single description.
+
+        :return: (str)
         """
 
-        try:
-            return re.search(r'<{tag_str}>(.+)</{tag_str}>'.format(tag_str=tag_str), item_description).group()
+        between_tags_matches = self._all_matches_between_given_tag(item_description=item_description, tag_str=tag_str)
 
-        except AttributeError:
+        total_found = len(between_tags_matches)
+        if total_found > 1:
+            raise palette.UnexpectedValueError('Description contains several matches with given tag.')
+        elif total_found == 0:
             return ''
+        else:
+            return between_tags_matches[0]
 
     def _automatic_non_unique_stats_names_and_values(self, given_description_str):
         """
@@ -4551,8 +4583,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         dct = {}
 
         # Non unique stats are between: <stats> </stats>
-        non_unique_stats_str = self._content_between_tags_in_description(item_description=given_description_str,
-                                                                         tag_str='stats')
+        non_unique_stats_str = self._content_between_non_dup_tags_in_description(item_description=given_description_str,
+                                                                                 tag_str='stats')
 
         # Takes everything between a ">" and a "<".
         stat_strings_lst = re.findall(r'>([^<^>]+)<', non_unique_stats_str)
@@ -4606,17 +4638,44 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         print('\nAutocreated NON UNIQUE stats:')
         pp.pprint(auto_created_stats)
 
-        if _y_n_question('Redo NON UNIQUE stats manually? (enter to skip)', disallow_enter=False):
+        if _y_n_question('Redo NON UNIQUE stats manually?', disallow_enter=False):
 
-            print('\nNON UNIQUE ITEM STATS:')
+            msg = '\nNON UNIQUE item stats:'
             suggest_affected_stats_attributes(str_buff_or_item='item',
                                               obj_name=self.item_name,
                                               modified_stats_dct=self.non_unique_item_stats,
                                               possible_stat_values_lst=self.arithmetic_values_in_description(),
-                                              possible_mod_values_lst=self.arithmetic_values_in_description())
+                                              possible_mod_values_lst=self.arithmetic_values_in_description(),
+                                              question_msg=msg)
 
         else:
             self.non_unique_item_stats = auto_created_stats
+
+    def _detected_uniques_names(self):
+
+        names_lst = []
+
+        between_tags_matches = self._all_matches_between_given_tag(item_description=self._item_description_str,
+                                                                   tag_str='unique')
+
+        between_tags_matches += self._all_matches_between_given_tag(item_description=self._item_description_str,
+                                                                    tag_str='aura')
+
+        # Extracts unique name.
+        for between_tag_str in between_tags_matches:
+            match_found = re.findall(r'UNIQUE [a-z]*\s?-\s*([^:]+):', between_tag_str, re.I)
+            if match_found:
+                raw_name_detected = match_found[0]
+
+                name = _ExploreBase.modify_api_names_to_callable_string(name=raw_name_detected)
+                names_lst.append(name)
+
+        return names_lst
+
+    def _possible_unique_names(self):
+        lst = ['unnamed']
+        lst += sorted(self._detected_uniques_names())
+        return lst
 
     def create_unique_stats_values(self):
         """
@@ -4625,12 +4684,30 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         :return: (None)
         """
 
-        print('\nUNIQUE ITEM STATS:')
-        suggest_affected_stats_attributes(str_buff_or_item='item',
-                                          obj_name=self.item_name,
-                                          modified_stats_dct=self.unique_item_stats,
-                                          possible_stat_values_lst=self.arithmetic_values_in_description(),
-                                          possible_mod_values_lst=self.arithmetic_values_in_description())
+        pp.pprint(self._item_description_str)
+
+        possible_unique_names = self._possible_unique_names()
+
+        print(fat_delimiter(80))
+        print('\nUNIQUE item stats:')
+        selected_unique_names_lst = enumerated_lst_creation(suggested_values_lst=possible_unique_names,
+                                                            sort_suggested_lst=False)
+
+        for name_of_unique in selected_unique_names_lst:
+            self.unique_item_stats.update({name_of_unique: {}})
+
+            msg = 'unique name: {}\nContains stats?'.format(name_of_unique)
+
+            suggest_affected_stats_attributes(str_buff_or_item='item',
+                                              obj_name=self.item_name,
+                                              modified_stats_dct=self.unique_item_stats[name_of_unique],
+                                              possible_stat_values_lst=self.arithmetic_values_in_description(),
+                                              possible_mod_values_lst=self.arithmetic_values_in_description(),
+                                              question_msg=msg)
+
+        print(delimiter(40))
+        print('UNIQUE stats:')
+        pp.pprint(self.unique_item_stats)
 
     @repeat_cluster_decorator(cluster_name='ITEM GEN ATTRS')
     def create_item_gen_attrs(self):
@@ -4694,19 +4771,23 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         print(delimiter(20))
         print('\nDMG NAME: {}'.format(new_dmg_name))
 
-        # (creates new_dmg_name dct)
-        self.item_dmgs.update({new_dmg_name: self.item_dmg_attrs()})
-        # Dmg value
-        dmg_val = restricted_input(question_msg='Dmg value?\n', input_type='num', characteristic='non_negative',
-                                   disallow_enter=True)
+        if _y_n_question(question_str='Expressed by method?'):
+            self.item_dmgs.update({new_dmg_name: 'expressed_by_method'})
 
-        self.item_dmgs[new_dmg_name]['dmg_values'] = dmg_val
-        # Rest of dmg attributes
-        suggest_attr_values(suggested_values_dct=self.usual_item_values_dmg_attrs(),
-                            modified_dct=self.item_dmgs[new_dmg_name],)
+        else:
+            # (creates new_dmg_name dct)
+            self.item_dmgs.update({new_dmg_name: self.item_dmg_attrs()})
+            # Dmg value
+            dmg_val = restricted_input(question_msg='Dmg value?\n', input_type='num', characteristic='non_negative',
+                                       disallow_enter=True)
 
-        # Inserts dmg mods.
-        self._create_dmg_mods(dmg_name=new_dmg_name)
+            self.item_dmgs[new_dmg_name]['dmg_values'] = dmg_val
+            # Rest of dmg attributes
+            suggest_attr_values(suggested_values_dct=self.usual_item_values_dmg_attrs(),
+                                modified_dct=self.item_dmgs[new_dmg_name],)
+
+            # Inserts dmg mods.
+            self._create_dmg_mods(dmg_name=new_dmg_name)
 
         print(delimiter(40))
         pp.pprint(self.item_dmgs[new_dmg_name])
@@ -4751,19 +4832,25 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         self._ask_amount_of_buffs_and_change_names(modified_dct=self.item_buffs, obj_name=self.item_name)
 
         for buff_name in self.item_buffs:
-            self.item_buffs.update({buff_name: self.item_buff_attributes()})
+            # Expressed by method.
+            if _y_n_question(question_str='{} expressed by method?'.format(buff_name)):
+                self.item_buffs.update({buff_name: 'expressed_by_method'})
 
-            # Buff attrs (excluding stats)
-            buff_msg = '\nITEM: {}, BUFF: {}'.format(self.item_name, buff_name)
-            suggest_attr_values(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
-                                modified_dct=self.item_buffs[buff_name], extra_start_msg=buff_msg)
+            else:
+                # Expressed normally.
+                self.item_buffs.update({buff_name: self.item_buff_attributes()})
 
-            # Stats affected by buff.
-            self.item_buffs[buff_name]['stats'] = {}
-            suggest_affected_stats_attributes(str_buff_or_item='buff', obj_name=buff_name,
-                                              modified_stats_dct=self.item_buffs[buff_name]['stats'],
-                                              possible_stat_values_lst=self.arithmetic_values_in_description(),
-                                              possible_mod_values_lst=self.arithmetic_values_in_description())
+                # Buff attrs (excluding stats)
+                buff_msg = '\nITEM: {}, BUFF: {}'.format(self.item_name, buff_name)
+                suggest_attr_values(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
+                                    modified_dct=self.item_buffs[buff_name], extra_start_msg=buff_msg)
+
+                # Stats affected by buff.
+                self.item_buffs[buff_name]['stats'] = {}
+                suggest_affected_stats_attributes(str_buff_or_item='buff', obj_name=buff_name,
+                                                  modified_stats_dct=self.item_buffs[buff_name]['stats'],
+                                                  possible_stat_values_lst=self.arithmetic_values_in_description(),
+                                                  possible_mod_values_lst=self.arithmetic_values_in_description())
 
         buff_names = sorted(self.item_buffs)
         dmgs_names = sorted(self.item_dmgs)
@@ -4771,6 +4858,11 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         # On hit
         # (done later so that buffs' and dmgs' names are available)
         for buff_name in self.item_buffs:
+
+            if self.item_buffs[buff_name] == 'expressed_by_method':
+                # (skips if expressed by method)
+                continue
+
             self.item_buffs[buff_name].update(on_hit=palette.ON_HIT_EFFECTS)
             buff_on_hit_dct = self.item_buffs[buff_name]['on_hit']
             if _y_n_question('Does {} have ON HIT?'.format(buff_name.upper())):
@@ -5835,7 +5927,7 @@ if __name__ == '__main__':
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
     if 1:
-        inst = ItemsModuleCreator(item_name='crystalli')
+        inst = ItemsModuleCreator(item_name='trinity')
         inst.create_item()
     # Create all items.
     if 0:

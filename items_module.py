@@ -50,6 +50,7 @@ class ItemsProperties(object):
         :param item_name: (str)
         :return: (dict)
         """
+
         used_leafs = self.leafs_of_item(item_name)
         returned_dct = {'additive': [], 'percent': []}
 
@@ -160,6 +161,7 @@ class ItemsProperties(object):
 
         non_unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
         used_items_unique_stats_dct = {'additive': collections.Counter(), 'percent': collections.Counter()}
+        unique_names_used_so_far = []
 
         # Counter of an item's occurrence, e.g. {'item_1': 2, ..}.
         items_counter = collections.Counter(self.chosen_items_lst)
@@ -182,17 +184,27 @@ class ItemsProperties(object):
             # UNIQUE STATS
             # If item A (leaf) builds from item B, then unique stats from B that are included in A are ignored.
             item_unique_stats_dct = item_attrs['unique_stats']
-            leafs_stats = self.unique_stats_in_leafs_of_item(item_name=item_name)
 
-            for stat_type in item_unique_stats_dct:
-                for stat_name in item_unique_stats_dct[stat_type]:
-                    item_unique_stats_type_dct = item_unique_stats_dct[stat_type]
+            for unique_name in item_unique_stats_dct:
+                unique_dct = item_unique_stats_dct[unique_name]
 
-                    # If stat is not inside leafs' stats.
-                    if stat_name not in leafs_stats[stat_type]:
-                        # (creates stat name first, if it doesn't exist)
-                        used_items_unique_stats_dct[stat_type].setdefault(stat_name, 0)
-                        used_items_unique_stats_dct[stat_type][stat_name] += item_unique_stats_type_dct[stat_name]
+                # (Unnamed uniques have 'unnamed' as a name.)
+                # (It is converted to the item's name before marked as used.)
+                if unique_name == 'unnamed':
+                    unique_name = item_name
+
+                if unique_name in unique_names_used_so_far:
+                    continue
+
+                else:
+                    unique_names_used_so_far.append(unique_name)
+
+                    for stat_type in unique_dct:
+                        stat_type_dct = unique_dct[stat_type]
+                        for stat_name in stat_type_dct:
+
+                            used_items_unique_stats_dct[stat_type].setdefault(stat_name, 0)
+                            used_items_unique_stats_dct[stat_type][stat_name] += stat_type_dct[stat_name]
 
             # ITEMS BUFF
             self._set_chosen_items_static_stats_buff(non_unique_stats_dct=non_unique_stats_dct,
@@ -219,7 +231,8 @@ class ItemsProperties(object):
         for i in self.chosen_items_lst:
             item_stats_deps = self.ITEMS_ATTRIBUTES[i]['stats_dependencies']
 
-            all_i_stats_deps |= item_stats_deps
+            if item_stats_deps:
+                all_i_stats_deps |= item_stats_deps
 
         return all_i_stats_deps
 

@@ -25,7 +25,6 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
                  _reversed_combat_mode):
 
         self.current_time = 0
-        self.buffs_implemented_by_methods = set()
 
         stats.DmgReductionStats.__init__(self,
                                          champion_lvls_dct=champion_lvls_dct,

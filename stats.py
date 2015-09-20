@@ -851,7 +851,16 @@ class StatRequest(StatCalculation):
                                                  sorted_active_buffs=tar_active_buffs,
                                                  must_in_priority_seq=False)
 
+    # TODO: optimize
     def refresh_stats_bonuses(self):
+        """
+        Creates all bonuses. (previous bonuses are discarded)
+
+        Note: Permanent buffs' bonuses can not be left since some of them have "dynamic" values (e.g. Malmortious AD).
+            However some are always static. E.g. items' stats. Keeping them intact might be a speed up.
+
+        :return: (None)
+        """
         self.place_tars_and_empty_dct_in_dct(self.bonuses_dct, ensure_empty_dct=False)
 
         for tar_name in self.all_target_names:

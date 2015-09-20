@@ -177,14 +177,8 @@ class DmgCategories(BuffCategories):
         else:
             val = self.standard_dmg_value(dmg_dct=dmg_dct)
 
-        if cat == 'standard_dmg':
+        if cat in ('standard_dmg', 'ring_dmg'):
             return val
-
-        elif cat == 'ring_dmg':
-            if self.current_target_num == 1:
-                return 0
-            else:
-                return val
 
         elif cat == 'chain_decay':
             coef = dmg_dct['decay_coef']
