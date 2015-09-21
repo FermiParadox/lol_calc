@@ -5649,7 +5649,7 @@ class ChampionModuleCreator(ModuleCreatorBase):
             return StatsDependencies().champion_stats_dependencies(champion_name=self.champion_name)
 
         elif obj_name == CHAMPION_RANGE_TYPE_NAME:
-            if _y_n_question('Is {} ranged?'.format(self.champion_name)):
+            if _y_n_question('Is {} ranged?'.format(self.champion_name.upper())):
                 return 'ranged'
             else:
                 return 'melee'
@@ -5936,7 +5936,7 @@ if __name__ == '__main__':
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
     if 1:
-        inst = ItemsModuleCreator(item_name='the_black_cl')
+        inst = ItemsModuleCreator(item_name='ruined')
         inst.create_item()
     # Create all items.
     if 0:

@@ -2396,15 +2396,18 @@ class SpecialItems(Actions):
         return self.BLACK_CLEAVER_INITIATOR_BUFF
 
     def activate_black_cleaver_armor_reduction_buff(self, dmg_type):
-        if dmg_type in ('physical', 'aa'):
-            if self._last_time_black_cleaver_applied != self.current_time:
 
-                self._last_time_black_cleaver_applied = self.current_time
-                black_cleavers_count = self.player_items.count('the_black_cleaver')
-                lst_applied = self.BLACK_CLEAVER_REDUCTION_BUFFS_NAMES[:black_cleavers_count+1]
+        if 'the_black_cleaver' in self.player_items:
 
-                for black_cleaver_red_buff_name in lst_applied:
-                    self.add_buff(buff_name=black_cleaver_red_buff_name, tar_name=self.current_target)
+            if dmg_type in ('physical', 'aa'):
+                if self._last_time_black_cleaver_applied != self.current_time:
+
+                    self._last_time_black_cleaver_applied = self.current_time
+                    black_cleavers_count = self.player_items.count('the_black_cleaver')
+                    lst_applied = self.BLACK_CLEAVER_REDUCTION_BUFFS_NAMES[:black_cleavers_count]
+
+                    for black_cleaver_red_buff_name in lst_applied:
+                        self.add_buff(buff_name=black_cleaver_red_buff_name, tar_name=self.current_target)
 
 
 for i in SpecialItems.BLACK_CLEAVER_REDUCTION_BUFFS_NAMES:
