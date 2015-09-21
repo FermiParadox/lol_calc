@@ -41,10 +41,11 @@ CHAMP_CLASS_NAME = 'class ChampionAttributes'
 DEFAULT_ACTIONS_PRIORITY_NAME = 'DEFAULT_ACTIONS_PRIORITY'
 CHAMPION_STATS_DEPENDENCIES_NAME = 'CHAMPION_STATS_DEPENDENCIES'
 SPELL_LVL_UP_PRIORITIES_NAME = 'SPELL_LVL_UP_PRIORITIES'
+CHAMPION_RANGE_TYPE_NAME = 'CHAMPION_RANGE_TYPE'
 CHAMPION_MODULE_OBJECT_NAMES = (ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME,
                                 ABILITIES_CONDITIONALS_DCT_NAME, CHAMPION_EXTERNAL_VAR_DCT_NAME, CHAMP_CLASS_NAME,
                                 DEFAULT_ACTIONS_PRIORITY_NAME, SPELL_LVL_UP_PRIORITIES_NAME,
-                                CHAMPION_STATS_DEPENDENCIES_NAME)
+                                CHAMPION_STATS_DEPENDENCIES_NAME, CHAMPION_RANGE_TYPE_NAME)
 
 CHAMPION_BASE_STATS_DCT_NAME = 'CHAMPION_BASE_STATS'
 CHAMPION_BASE_STATS_MODULE = 'app_champions_base_stats.py'
@@ -67,6 +68,7 @@ child_class_as_str = """class ChampionAttributes(abilities.VisualRepresentation)
     SPELL_LVL_UP_PRIORITIES = SPELL_LVL_UP_PRIORITIES
     CHAMPION_STATS_DEPENDENCIES = CHAMPION_STATS_DEPENDENCIES
     def __init__(self, kwargs, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
+        self.player_range_type = CHAMPION_RANGE_TYPE
         abilities.VisualRepresentation.__init__(self, **kwargs)
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])"""
@@ -5646,6 +5648,12 @@ class ChampionModuleCreator(ModuleCreatorBase):
         elif obj_name == CHAMPION_STATS_DEPENDENCIES_NAME:
             return StatsDependencies().champion_stats_dependencies(champion_name=self.champion_name)
 
+        elif obj_name == CHAMPION_RANGE_TYPE_NAME:
+            if _y_n_question('Is {} ranged?'.format(self.champion_name)):
+                return 'ranged'
+            else:
+                return 'melee'
+
         else:
             palette.UnexpectedValueError(obj_name)
 
@@ -5928,7 +5936,7 @@ if __name__ == '__main__':
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
     if 1:
-        inst = ItemsModuleCreator(item_name='trinity')
+        inst = ItemsModuleCreator(item_name='the_black_cl')
         inst.create_item()
     # Create all items.
     if 0:

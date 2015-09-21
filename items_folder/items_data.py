@@ -414,6 +414,27 @@ ITEMS_ATTRIBUTES = {
                                      'total_price': 3000},
                   'stats_dependencies': None,
                   'unique_stats': {}},
+    'phage': {'buffs': {'rage_initiator_buff': 'expressed_by_method'},
+              'dmgs': {},
+              'general_attributes': {'castable': False},
+              'non_unique_stats': {'additive': {'ad': 20,
+                                                'hp': 200}},
+              'secondary_data': {'build_from': {'long_sword': 1,
+                                                'ruby_crystal': 1},
+                                 'builds_into': {'entropy',
+                                                 'the_black_cleaver',
+                                                 'trinity_force'},
+                                 'id': 3044,
+                                 'leafs': {'entropy',
+                                           'the_black_cleaver',
+                                           'trinity_force'},
+                                 'recipe_price': 565,
+                                 'roots': {'long_sword',
+                                           'ruby_crystal'},
+                                 'sell_price': 927,
+                                 'total_price': 1325},
+              'stats_dependencies': None,
+              'unique_stats': {}},
     'sheen': {'buffs': {'spellblade_inhibitor': 'expressed_by_method',
                         'spellblade_initiator': 'expressed_by_method',
                         'spellblade_triggered': 'expressed_by_method'},
@@ -455,7 +476,29 @@ ITEMS_ATTRIBUTES = {
                                  'total_price': 1200},
               'stats_dependencies': None,
               'unique_stats': {}},
-    'trinity_force': {'buffs': {'rage': 'expressed_by_method',
+    'the_black_cleaver': {'buffs': {'black_cleaver_armor_reduction_buff': 'expressed_by_method',
+                                    'black_cleaver_initiator_buff': 'expressed_by_method',
+                                    'rage_initiator_buff': 'expressed_by_method'},
+                          'dmgs': {},
+                          'general_attributes': {'castable': False},
+                          'non_unique_stats': {'additive': {'ad': 40,
+                                                            'hp': 400},
+                                               'percent': {'cdr': 0.2}},
+                          'secondary_data': {'build_from': {'kindlegem': 1,
+                                                            'phage': 1},
+                                             'builds_into': set(),
+                                             'id': 3071,
+                                             'leafs': set(),
+                                             'recipe_price': 825,
+                                             'roots': {'kindlegem',
+                                                       'long_sword',
+                                                       'phage',
+                                                       'ruby_crystal'},
+                                             'sell_price': 2100,
+                                             'total_price': 3000},
+                          'stats_dependencies': None,
+                          'unique_stats': {}},
+    'trinity_force': {'buffs': {'rage_initiator_buff': 'expressed_by_method',
                                 'spellblade_inhibitor': 'expressed_by_method',
                                 'spellblade_initiator': 'expressed_by_method',
                                 'spellblade_triggered': 'expressed_by_method'},
@@ -662,6 +705,18 @@ ITEMS_EFFECTS = {
                              'passives': {'buffs': ['spellblade_initiator'],
                                           'dmg': [],
                                           'remove_buff': []}}},
+    'phage': {'enemy': {'actives': {'buffs': [],
+                                    'dmg': [],
+                                    'remove_buff': []},
+                        'passives': {'buffs': [],
+                                     'dmg': [],
+                                     'remove_buff': []}},
+              'player': {'actives': {'buffs': [],
+                                     'dmg': [],
+                                     'remove_buff': []},
+                         'passives': {'buffs': ['rage_initiator_buff'],
+                                      'dmg': [],
+                                      'remove_buff': []}}},
     'sheen': {'enemy': {'actives': {'buffs': [],
                                     'dmg': [],
                                     'remove_buff': []},
@@ -674,6 +729,19 @@ ITEMS_EFFECTS = {
                          'passives': {'buffs': ['spellblade_initiator'],
                                       'dmg': [],
                                       'remove_buff': []}}},
+    'the_black_cleaver': {'enemy': {'actives': {'buffs': [],
+                                                'dmg': [],
+                                                'remove_buff': []},
+                                    'passives': {'buffs': [],
+                                                 'dmg': [],
+                                                 'remove_buff': []}},
+                          'player': {'actives': {'buffs': [],
+                                                 'dmg': [],
+                                                 'remove_buff': []},
+                                     'passives': {'buffs': ['black_cleaver_initiator_buff',
+                                                            'rage_initiator_buff'],
+                                                  'dmg': [],
+                                                  'remove_buff': []}}},
     'trinity_force': {'enemy': {'actives': {'buffs': [],
                                             'dmg': [],
                                             'remove_buff': []},
@@ -683,7 +751,8 @@ ITEMS_EFFECTS = {
                       'player': {'actives': {'buffs': [],
                                              'dmg': [],
                                              'remove_buff': []},
-                                 'passives': {'buffs': ['spellblade_initiator'],
+                                 'passives': {'buffs': ['spellblade_initiator',
+                                                        'rage_initiator_buff'],
                                               'dmg': [],
                                               'remove_buff': []}}},
     'will_of_the_ancients': {},
@@ -713,7 +782,9 @@ ITEMS_CONDITIONALS = {
     'hextech_gunblade': {},
     'iceborn_gauntlet': {},
     'lich_bane': {},
+    'phage': {},
     'sheen': {},
+    'the_black_cleaver': {},
     'trinity_force': {},
     'will_of_the_ancients': {},
     'wits_end': {}}
@@ -738,6 +809,25 @@ for item_name in ITEMS_ATTRIBUTES:
     for dmg_name in ITEMS_ATTRIBUTES[item_name]['dmgs']:
         if ITEMS_ATTRIBUTES[item_name]['dmgs'][dmg_name] == 'expressed_by_method':
             ITEMS_BUFFS_AND_DMGS_EXPRESSED_BY_METHOD.add(dmg_name)
+
+
+def _ensure_in_iterable(given_iterable, standard_iterable):
+    extra_names = set(given_iterable) - set(standard_iterable)
+    if extra_names:
+        raise palette.UnexpectedValueError()
+
+
+def ensure_in_items_names(iterable):
+    _ensure_in_iterable(given_iterable=iterable, standard_iterable=ITEMS_NAMES)
+
+
+def ensure_in_items_buffs(iterable):
+    _ensure_in_iterable(given_iterable=iterable, standard_iterable=ITEMS_BUFFS_NAMES)
+
+
+def ensure_in_items_dmgs(iterable):
+    _ensure_in_iterable(given_iterable=iterable, standard_iterable=ITEMS_DMGS_NAMES)
+
 
 if __name__ == '__main__':
 

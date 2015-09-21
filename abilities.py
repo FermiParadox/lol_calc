@@ -1344,9 +1344,11 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         :return: (None)
         """
 
+        cast_end = self.cast_end(action_gen_attrs_dct=action_attrs_dct, action_cast_start=cast_start)
+
         self.actions_dct.update(
             {cast_start: dict(
-                cast_end=self.cast_end(action_gen_attrs_dct=action_attrs_dct, action_cast_start=cast_start),
+                cast_end=cast_end,
                 action_name=action_name,)})
 
         if str_spell_or_item == 'spell':
@@ -1354,6 +1356,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                          cast_start=cast_start,
                                          stats_function=self.request_stat,
                                          actions_dct=self.actions_dct)
+
+            self.activate_spellblade()
+
         else:
             cd_end = action_attrs_dct['base_cd']
 
@@ -1652,6 +1657,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # AA
         if action_name == 'AA':
             # ..applies AA physical dmg, and applies (or removes) on_hit buffs and dmg.
+            self.activate_rage_speed_buff()
             self.apply_on_hit_effects_and_aa(current_time=self.current_time)
 
         # ABILITY
@@ -2173,6 +2179,8 @@ class SpecialItems(Actions):
                  enemies_originating_dmg_data,
                  _reversed_combat_mode):
 
+        self._last_time_black_cleaver_applied = 0
+
         Actions.__init__(self,
                          rotation_lst=rotation_lst,
                          max_targets_dct=max_targets_dct,
@@ -2206,48 +2214,6 @@ class SpecialItems(Actions):
     GUINSOOS_ABOVE_HALF_HP_BUFF = {k: v for k, v in GUINSOOS_BELOW_HALF_HP_BUFF.items() if k != 'stats'}
     GUINSOOS_ABOVE_HALF_HP_BUFF.update({'stats': {}})
 
-    # SPELLBLADE
-    SPELLBLADE_ITEMS_PRIORITY_SORTED= ('lich_bane', 'trinity_force', 'iceborn_gauntlet', 'sheen')
-    # (ensures names used exist, otherwise methods below will function incorrectly)
-
-    SPELLBLADE_ITEMS_NAMES_MAP = {'iceborn_gauntlet': 'iceborn_gauntlet',
-                                  'sheen': 'sheen',
-                                  'lich_bane': 'lich_bane',
-                                  'trinity_force': 'trinity_force'}
-    _CHECKED_SPELLBLADE_ITEMS_NAMES = set(SPELLBLADE_ITEMS_NAMES_MAP.values()) | set(SPELLBLADE_ITEMS_PRIORITY_SORTED)
-    for spellblade_related_item_name in _CHECKED_SPELLBLADE_ITEMS_NAMES:
-        if spellblade_related_item_name not in items_data.ITEMS_NAMES:
-            raise palette.UnexpectedValueError("{} does not exist in items.".format(spellblade_related_item_name))
-    # (ensures names used exist, otherwise methods below will function incorrectly)
-    SPELLBLADE_BUFF_NAMES_MAP = {'inhibitor': 'spellblade_inhibitor',
-                                 'triggered': 'spellblade_triggered'}
-    for spellblade_related_buff_name in SPELLBLADE_BUFF_NAMES_MAP.values():
-        if spellblade_related_buff_name not in items_data.ITEMS_BUFFS_NAMES:
-            raise palette.UnexpectedValueError("{} does not exist in items' buffs.".format(spellblade_related_buff_name))
-
-    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF = {'buff_source': 'sheen',
-                                                'dot': False,
-                                                'duration': 'permanent',
-                                                'max_stacks': 1,
-                                                'stats': {},
-                                                'target_type': 'player'}
-
-    # (they are used purely as tags)
-    SPELLBLADE_INHIBITOR_BUFF = {'buff_source': 'sheen',
-                                 'dot': False,
-                                 'duration': 1.5,
-                                 'max_stacks': 1,
-                                 'on_hit': {},
-                                 'stats': {},
-                                 'target_type': 'player'}
-    SPELLBLADE_TRIGGERED_BUFF = {'buff_source': 'sheen',
-                                 'dot': False,
-                                 'duration': 7,
-                                 'max_stacks': 1,
-                                 'on_hit': {},
-                                 'stats': {},
-                                 'target_type': 'player'}
-
     def guinsoos_rageblade_low_hp_buff(self):
         # BELOW 50%
         # (when initially called during item passives application current stats aren't created yet)
@@ -2258,6 +2224,51 @@ class SpecialItems(Actions):
 
         # ABOVE 50%
         return self.GUINSOOS_ABOVE_HALF_HP_BUFF
+
+    # SPELLBLADE
+    SPELLBLADE_ITEMS_PRIORITY_SORTED = ('lich_bane', 'trinity_force', 'iceborn_gauntlet', 'sheen')
+    items_data.ensure_in_items_names(SPELLBLADE_ITEMS_PRIORITY_SORTED)
+    # (ensures names used exist, otherwise methods below will function incorrectly)
+
+    SPELLBLADE_ITEMS_NAMES_MAP = {'iceborn_gauntlet': 'iceborn_gauntlet',
+                                  'sheen': 'sheen',
+                                  'lich_bane': 'lich_bane',
+                                  'trinity_force': 'trinity_force'}
+    items_data.ensure_in_items_names(SPELLBLADE_ITEMS_NAMES_MAP.values())
+
+    SPELLBLADE_BUFF_NAMES_MAP = {'inhibitor': 'spellblade_inhibitor',
+                                 'triggered': 'spellblade_triggered'}
+    items_data.ensure_in_items_buffs(SPELLBLADE_BUFF_NAMES_MAP.values())
+
+    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF = palette.buff_dct_base_deepcopy()
+    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['buff_source'] = 'sheen'
+    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['dot'] = False
+    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['duration'] = 'permanent'
+    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['target_type'] = 'player'
+    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['max_stacks'] = 1
+    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['stats'] = {}
+    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['prohibit_cd_start'] = {}
+
+    # (they are used purely as tags)
+    SPELLBLADE_INHIBITOR_BUFF = palette.buff_dct_base_deepcopy()
+    SPELLBLADE_INHIBITOR_BUFF['buff_source'] = 'sheen'
+    SPELLBLADE_INHIBITOR_BUFF['dot'] = False
+    SPELLBLADE_INHIBITOR_BUFF['duration'] = 1.5
+    SPELLBLADE_INHIBITOR_BUFF['target_type'] = 'player'
+    SPELLBLADE_INHIBITOR_BUFF['max_stacks'] = 1
+    SPELLBLADE_INHIBITOR_BUFF['stats'] = {}
+    SPELLBLADE_INHIBITOR_BUFF['on_hit'] = {}
+    SPELLBLADE_INHIBITOR_BUFF['prohibit_cd_start'] = {}
+
+    SPELLBLADE_TRIGGERED_BUFF = palette.buff_dct_base_deepcopy()
+    SPELLBLADE_TRIGGERED_BUFF['buff_source'] = 'sheen'
+    SPELLBLADE_TRIGGERED_BUFF['dot'] = False
+    SPELLBLADE_TRIGGERED_BUFF['duration'] = 7
+    SPELLBLADE_TRIGGERED_BUFF['target_type'] = 'player'
+    SPELLBLADE_TRIGGERED_BUFF['max_stacks'] = 1
+    SPELLBLADE_TRIGGERED_BUFF['stats'] = {}
+    SPELLBLADE_TRIGGERED_BUFF['on_hit'] = {}
+    SPELLBLADE_TRIGGERED_BUFF['prohibit_cd_start'] = {}
 
     # TODO: single call memo
     def spellblade_dmgs_lst(self):
@@ -2296,9 +2307,6 @@ class SpecialItems(Actions):
                 on_hit['remove_buff'].append(triggered_buff_name)
                 on_hit['apply_buff'].append(inhibitor_buff_name)
 
-            else:
-                on_hit['apply_buff'].append(triggered_buff_name)
-
             final_buff_dct.update({'on_hit': on_hit})
 
         return final_buff_dct
@@ -2308,6 +2316,99 @@ class SpecialItems(Actions):
 
     def spellblade_inhibitor(self):
         return self.SPELLBLADE_INHIBITOR_BUFF
+
+    def activate_spellblade(self):
+
+        player_active_buffs = self.active_buffs['player']
+        if 'spellblade_initiator' in player_active_buffs:
+            if 'spellblade_inhibitor' not in player_active_buffs:
+                self.add_buff(buff_name='spellblade_triggered', tar_name='player')
+
+    # RAGE BUFF
+    RAGE_SPEED_BUFF_MELEE = palette.buff_dct_base_deepcopy()
+    RAGE_SPEED_BUFF_MELEE['buff_source'] = 'phage'
+    RAGE_SPEED_BUFF_MELEE['dot'] = False
+    RAGE_SPEED_BUFF_MELEE['duration'] = 2
+    RAGE_SPEED_BUFF_MELEE['target_type'] = 'player'
+    RAGE_SPEED_BUFF_MELEE['max_stacks'] = 1
+    RAGE_SPEED_BUFF_MELEE['stats'] = {'move_speed': {'additive': {'stat_mods': {}, 'stat_values': 20}}}
+    RAGE_SPEED_BUFF_MELEE['on_hit'] = {}
+    RAGE_SPEED_BUFF_MELEE['prohibit_cd_start'] = {}
+
+    RAGE_SPEED_BUFF_RANGED = copy.deepcopy(RAGE_SPEED_BUFF_MELEE)
+    RAGE_SPEED_BUFF_RANGED['stats']['move_speed']['additive']['stat_values'] /= 2
+
+    def rage_speed_buff(self):
+        if self.player_range_type == 'melee':
+            return self.RAGE_SPEED_BUFF_MELEE
+        else:
+            return self.RAGE_SPEED_BUFF_RANGED
+
+    def activate_rage_speed_buff(self):
+        player_active_buffs = self.active_buffs['player']
+        if 'rage_initiator_buff' in player_active_buffs:
+
+            self.add_buff(buff_name='rage_speed_buff', tar_name='player')
+
+    RAGE_INITIATOR_BUFF = palette.buff_dct_base_deepcopy()
+    RAGE_INITIATOR_BUFF['buff_source'] = 'phage'
+    RAGE_INITIATOR_BUFF['dot'] = False
+    RAGE_INITIATOR_BUFF['duration'] = 'permanent'
+    RAGE_INITIATOR_BUFF['target_type'] = 'player'
+    RAGE_INITIATOR_BUFF['max_stacks'] = 1
+    RAGE_INITIATOR_BUFF['stats'] = {}
+    RAGE_INITIATOR_BUFF['prohibit_cd_start'] = {}
+    for i in RAGE_INITIATOR_BUFF['on_hit']:
+        RAGE_INITIATOR_BUFF['on_hit'][i] = []
+    RAGE_INITIATOR_BUFF['on_hit']['apply_buff'] = ['rage_speed_buff']
+
+    def rage_initiator_buff(self):
+        return self.RAGE_INITIATOR_BUFF
+
+    # BLACK CLEAVER
+    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF = palette.buff_dct_base_deepcopy()
+    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['buff_source'] = 'the_black_cleaver'
+    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['dot'] = False
+    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['duration'] = 5
+    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['target_type'] = 'enemy'
+    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['max_stacks'] = 6
+    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['stats'] = {'percent_armor_reduction': {'additive': {'stat_mods': {},
+                                                                                            'stat_values': 0.05}}}
+    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['on_hit'] = {}
+    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['prohibit_cd_start'] = {}
+
+    def black_cleaver_armor_reduction_buff(self):
+        return self.BLACK_CLEAVER_ARMOR_REDUCTION_BUFF
+
+    BLACK_CLEAVER_REDUCTION_BUFFS_NAMES = ['black_cleaver_armor_reduction_'+str(i) for i in range(1, 7)]
+
+    BLACK_CLEAVER_INITIATOR_BUFF = palette.buff_dct_base_deepcopy()
+    BLACK_CLEAVER_INITIATOR_BUFF['buff_source'] = 'the_black_cleaver'
+    BLACK_CLEAVER_INITIATOR_BUFF['dot'] = False
+    BLACK_CLEAVER_INITIATOR_BUFF['duration'] = 'permanent'
+    BLACK_CLEAVER_INITIATOR_BUFF['target_type'] = 'player'
+    BLACK_CLEAVER_INITIATOR_BUFF['max_stacks'] = 1
+    BLACK_CLEAVER_INITIATOR_BUFF['stats'] = {}
+    BLACK_CLEAVER_INITIATOR_BUFF['prohibit_cd_start'] = {}
+    BLACK_CLEAVER_INITIATOR_BUFF['on_hit'] = {}
+
+    def black_cleaver_initiator_buff(self):
+        return self.BLACK_CLEAVER_INITIATOR_BUFF
+
+    def activate_black_cleaver_armor_reduction_buff(self, dmg_type):
+        if dmg_type in ('physical', 'aa'):
+            if self._last_time_black_cleaver_applied != self.current_time:
+
+                self._last_time_black_cleaver_applied = self.current_time
+                black_cleavers_count = self.player_items.count('the_black_cleaver')
+                lst_applied = self.BLACK_CLEAVER_REDUCTION_BUFFS_NAMES[:black_cleavers_count+1]
+
+                for black_cleaver_red_buff_name in lst_applied:
+                    self.add_buff(buff_name=black_cleaver_red_buff_name, tar_name=self.current_target)
+
+
+for i in SpecialItems.BLACK_CLEAVER_REDUCTION_BUFFS_NAMES:
+    setattr(SpecialItems, i, SpecialItems.black_cleaver_armor_reduction_buff)
 
 
 class Presets(SpecialItems):

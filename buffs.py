@@ -1041,6 +1041,8 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                           dmg_value=final_dmg_value,
                                           dmg_type=dmg_type)
 
+        self.activate_black_cleaver_armor_reduction_buff(dmg_type=dmg_type)
+
     def apply_dmg_or_heal(self, dmg_name, dmg_dct, target_name):
         """
         Applies dmg or heal to either current_hp or the player's resource.

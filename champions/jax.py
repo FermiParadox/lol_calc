@@ -358,6 +358,8 @@ CHAMPION_STATS_DEPENDENCIES = {
     ('ap', 'mr'),
     ('ad', 'armor')}
 
+CHAMPION_RANGE_TYPE = 'melee'
+
 
 class ChampionAttributes(abilities.VisualRepresentation):
 
@@ -371,6 +373,7 @@ class ChampionAttributes(abilities.VisualRepresentation):
     CHAMPION_STATS_DEPENDENCIES = CHAMPION_STATS_DEPENDENCIES
 
     def __init__(self, kwargs):
+        self.player_range_type = CHAMPION_RANGE_TYPE
         abilities.VisualRepresentation.__init__(self, **kwargs)
 
 for i in CHAMPION_EXTERNAL_VARIABLES:
