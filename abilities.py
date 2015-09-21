@@ -2023,6 +2023,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                 self.add_next_periodic_event(tar_name=self.current_target,
                                                              dmg_name=dmg_name,
                                                              only_temporary=True)
+                # Deletes the event after it's applied.
+                del self.event_times[self.current_time]
+
         # DEATHS
         for tar_name in self.enemy_target_names:
             self.apply_death(tar_name=tar_name)
@@ -2305,6 +2308,7 @@ class SpecialItems(Actions):
 
     def spellblade_inhibitor(self):
         return self.SPELLBLADE_INHIBITOR_BUFF
+
 
 class Presets(SpecialItems):
 
