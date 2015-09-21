@@ -42,7 +42,7 @@ _DEFENSE_REDUCING_MR_AND_ARMOR_MAP = dict(
 # Defensive stats that normally exist without need of special function to create
 # (contains deepest dict values from DEFENSE_REDUCING_STATS)
 # Dmg reductions and extra dmg dealt modifiers are both expressed by the same stats, and are always multiplicative.
-DEFENSIVE_NORMAL_STATS = {'percent_dmg_reduction', 'flat_AA_reduction', 'percent_AA_reduction',
+DEFENSIVE_NORMAL_STATS = {'percent_dmg_reduction', 'flat_AA_reduction', 'percent_AA_reduction', 'crit_dmg_reduction',
                           'flat_dmg_reduction', 'flat_physical_dmg_reduction', 'flat_magic_dmg_reduction',
                           'percent_physical_dmg_reduction', 'percent_magic_dmg_reduction', 'flat_non_aoe_reduction',
                           'flat_aoe_reduction', 'percent_aoe_reduction', 'percent_non_aoe_reduction'}
@@ -317,8 +317,7 @@ class StatCalculation(StatFilters):
         """
         Creates base stats dict.
 
-        Returns:
-            (None)
+        :return: (None)
         """
 
         if self.initial_enemies_total_stats:
@@ -328,6 +327,7 @@ class StatCalculation(StatFilters):
 
         player_base_stats = all_base_stats_dct[self.selected_champions_dct['player']]
         self.basic_stats_dct.update({'player': player_base_stats})
+        self.basic_stats_dct['player'].update({'crit_modifier': 2})
 
         for tar_name in self.enemy_target_names:
             if tar_name not in self.basic_stats_dct:
@@ -337,6 +337,7 @@ class StatCalculation(StatFilters):
                 tar_hp = all_base_stats_dct[tar_champ]['hp']
                 tar_hp_per_lvl = all_base_stats_dct[tar_champ]['hp_per_lvl']
                 self.basic_stats_dct[tar_name].update({'hp': tar_hp, 'hp_per_lvl': tar_hp_per_lvl})
+                self.basic_stats_dct[tar_name].update({'crit_modifier': 2})
 
     def set_active_buffs(self):
         """

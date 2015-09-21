@@ -3608,7 +3608,7 @@ def suggest_affected_stats_attributes(str_buff_or_item, obj_name, modified_stats
                     {'stat_values': stat_vals})
 
                 # MODS
-                modifier_name_question = buff_name_stat_name_msg + '\nDoes the stat have modifiers'
+                modifier_name_question = buff_name_stat_name_msg + '\nDoes the stat have modifiers?'
                 if _y_n_question(modifier_name_question):
 
                     stat_modifiers_lst = []
@@ -4587,7 +4587,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                                                                                  tag_str='stats')
 
         # Takes everything between a ">" and a "<".
-        stat_strings_lst = re.findall(r'>([^<^>]+)<', non_unique_stats_str)
+        stat_strings_lst = re.split(r'<[^<^>]+>', non_unique_stats_str)
+        stat_strings_lst = [i for i in stat_strings_lst if i != '']
 
         for str_fragment in stat_strings_lst:
             val_str = re.search(r'\d+(?:\.\d+)?%?', str_fragment).group()

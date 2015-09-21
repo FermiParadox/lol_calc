@@ -98,20 +98,16 @@ class DmgCategories(BuffCategories):
         """
         Returns the AVERAGE value of AA dmg, after applying crit change and crit mod.
 
-        Returns:
-            (float)
+        :return: (float)
         """
 
-        crit_chance = self.req_stats_func(target_name='player',
-                                          stat_name='crit_chance')
+        crit_chance = self.req_stats_func(target_name='player', stat_name='crit_chance')
+        crit_mod_val = self.req_stats_func(target_name='player', stat_name='crit_modifier')
+        crit_dmg_reduction = self.req_stats_func(target_name=self.current_target, stat_name='crit_dmg_reduction')
 
-        crit_mod_val = self.req_stats_func(target_name='player',
-                                           stat_name='crit_modifier')
+        average_crit_dmg_multiplier = (crit_chance*crit_mod_val*crit_dmg_reduction + 1 - crit_chance)
 
-        average_crit_dmg_multiplier = (crit_chance*crit_mod_val + 1 - crit_chance)
-
-        return average_crit_dmg_multiplier * self.req_stats_func(target_name='player',
-                                                                 stat_name='ad')
+        return average_crit_dmg_multiplier * self.req_stats_func(target_name='player', stat_name='ad')
 
     def standard_dmg_value(self, dmg_dct):
         """

@@ -251,8 +251,8 @@ _DPS_BY_ENEMIES_DMGS_NAMES = [dmg_type + '_dps_by_enemy_dmg' for dmg_type in ('t
 
 _DPS_BY_ENEMIES_BUFF_BASE = copy.deepcopy(buffs.REGEN_BUFF_DCT_BASE)
 _DPS_BY_ENEMIES_BUFF_BASE['target_type'] = 'player'
-# (duration set a non 'permanent', stable value, to ensure independence of initial current hp)
-_DPS_BY_ENEMIES_BUFF_BASE['duration'] = 10
+# obsolete comment: (duration set a non 'permanent', stable value, to ensure independence of initial current hp)
+_DPS_BY_ENEMIES_BUFF_BASE['duration'] = 'permanent'
 _DPS_BY_ENEMIES_BUFF_BASE['dot']['period'] = buffs.NATURAL_REGEN_PERIOD
 _DPS_BY_ENEMIES_BUFF_BASE['buff_source'] = 'enemies_dps'
 
