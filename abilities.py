@@ -2395,9 +2395,14 @@ class SpecialItems(Actions):
     def black_cleaver_initiator_buff(self):
         return self.BLACK_CLEAVER_INITIATOR_BUFF
 
-    def activate_black_cleaver_armor_reduction_buff(self, dmg_type):
+    def activate_black_cleaver_armor_reduction_buff(self, dmg_type, target_name):
+        """
+        Applies buff of armor reduction buff by black cleaver.
 
-        if 'the_black_cleaver' in self.player_items:
+        :return: (None)
+        """
+
+        if ('the_black_cleaver' in self.player_items) and (target_name == 'player'):
 
             if dmg_type in ('physical', 'aa'):
                 if self._last_time_black_cleaver_applied != self.current_time:

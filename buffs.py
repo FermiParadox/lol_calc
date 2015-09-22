@@ -1027,6 +1027,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                     self.apply_heal_value(tar_name='player',
                                           heal_value=final_dmg_value)
 
+            self.activate_black_cleaver_armor_reduction_buff(dmg_type=dmg_type, target_name=target_name)
             self.note_current_hp_in_history(target_name=target_name)
 
         # Otherwise it's a heal.
@@ -1040,8 +1041,6 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                           dmg_dct=dmg_dct,
                                           dmg_value=final_dmg_value,
                                           dmg_type=dmg_type)
-
-        self.activate_black_cleaver_armor_reduction_buff(dmg_type=dmg_type)
 
     def apply_dmg_or_heal(self, dmg_name, dmg_dct, target_name):
         """
