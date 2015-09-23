@@ -96,6 +96,8 @@ SPECIAL_STATS_SET = frozenset({'base_ad',
                                'crit_chance',
                                'cdr',
                                'move_speed_reduction',
+                               'missing_hp',
+                               'missing_mp',
                                } | DEFENSIVE_SPECIAL_STATS)
 
 
@@ -895,6 +897,26 @@ class StatRequest(StatCalculation):
                     self.current_stats['player'].update(
 
                         {current_resource_name: self.request_stat(target_name=tar, stat_name=resource_used)})
+
+    def _missing_current_stat(self, tar_name, non_current_stat_name):
+        """
+        Base for missing_hp, missing_mp etc.
+
+        :param non_current_stat_name: (str) 'hp', 'mp', etc
+        :return: (float)
+        """
+
+        max_val = self.request_stat(target_name=tar_name, stat_name=non_current_stat_name)
+        curr_val = self.current_stats[tar_name]['current_' + non_current_stat_name]
+        delta = max_val - curr_val
+        # Missing stat can't be lower than 0.
+        return max(0, delta)
+
+    def missing_hp(self, tar_name):
+        return self._missing_current_stat(tar_name=tar_name, non_current_stat_name='hp')
+
+    def missing_mp(self, tar_name):
+        return self._missing_current_stat(tar_name=tar_name, non_current_stat_name='mp')
 
 
 class DmgReductionStats(StatRequest):

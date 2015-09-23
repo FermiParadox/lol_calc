@@ -2414,6 +2414,84 @@ class SpecialItems(Actions):
                     for black_cleaver_red_buff_name in lst_applied:
                         self.add_buff(buff_name=black_cleaver_red_buff_name, tar_name=self.current_target)
 
+    # IMMOLATE
+    IMMOLATE_BUFF = palette.buff_dct_base_deepcopy()
+    IMMOLATE_BUFF['buff_source'] = 'sunfire'
+    IMMOLATE_BUFF['duration'] = 'permanent'
+    IMMOLATE_BUFF['target_type'] = 'player'
+    IMMOLATE_BUFF['max_stacks'] = 1
+    IMMOLATE_BUFF['stats'] = {}
+    IMMOLATE_BUFF['prohibit_cd_start'] = {}
+    IMMOLATE_BUFF['on_hit'] = {}
+    del IMMOLATE_BUFF['dot']
+
+    ORDERED_IMMOLATE_ITEMS = ('sunfire_cape', 'enchantment_cinderhulk', 'bamis_cinder',)  # (highest to lowest priority)
+    IMMOLATE_ITEMS_TO_DMG_NAME_MAP = {i: i+'_immolate_dmg' for i in ORDERED_IMMOLATE_ITEMS}
+    items_data.ensure_in_items_names(set(ORDERED_IMMOLATE_ITEMS) | set(IMMOLATE_ITEMS_TO_DMG_NAME_MAP))
+
+    REVERSED_IMMOLATE_ITEMS_TO_DMG_NAME_MAP = {v: k for k, v in IMMOLATE_ITEMS_TO_DMG_NAME_MAP.items()}
+
+    def immolate_buff(self):
+        """
+        Creates immolate buff based on highest priority item. Its dmg is the only dmg applied.
+        :return:
+        """
+
+        dot_attrs_dct = {'period': 1,
+                         'dmg_names': [],
+                         'always_on_x_targets': 3}
+
+        buff_dct = {'dot': dot_attrs_dct}
+        buff_dct.update(self.IMMOLATE_BUFF)
+
+        for immolate_item in self.ORDERED_IMMOLATE_ITEMS:
+            # (when a match is found, it adds its dmg_name and exits method)
+            if immolate_item in self.player_items:
+                dmg_name = self.IMMOLATE_ITEMS_TO_DMG_NAME_MAP[immolate_item]
+
+                buff_dct['dot']['dmg_names'].append(dmg_name)
+
+                return buff_dct
+
+    IMMOLATE_DMG_BASE = palette.dmg_dct_base_deepcopy()
+    IMMOLATE_DMG_BASE['target_type'] = 'enemy'
+    IMMOLATE_DMG_BASE['dmg_category'] = 'standard_dmg'
+    IMMOLATE_DMG_BASE['resource_type'] = 'hp'
+    IMMOLATE_DMG_BASE['mods'] = {}
+    IMMOLATE_DMG_BASE['life_conversion_type'] = None
+    IMMOLATE_DMG_BASE['radius'] = 500
+    IMMOLATE_DMG_BASE['dot'] = {'buff_name': 'immolate_buff'}
+    IMMOLATE_DMG_BASE['max_targets'] = 1
+    IMMOLATE_DMG_BASE['usual_max_targets'] = 1
+    IMMOLATE_DMG_BASE['delay'] = 0
+    IMMOLATE_DMG_BASE['heal_for_dmg_amount'] = False
+    IMMOLATE_DMG_BASE['crit_type'] = None
+    IMMOLATE_DMG_BASE['dmg_type'] = 'magic'
+    del IMMOLATE_DMG_BASE['dmg_source']
+    del IMMOLATE_DMG_BASE['dmg_values']
+
+    def _immolate_dmg_base(self, dmg_name, dmg_values):
+        dmg_source = self.REVERSED_IMMOLATE_ITEMS_TO_DMG_NAME_MAP[dmg_name]
+
+        dct = {'dmg_source': dmg_source,
+               'dmg_values': dmg_values}
+
+        dct.update(self.IMMOLATE_DMG_BASE)
+
+        return dct
+
+    def sunfire_cape_immolate_dmg(self):
+        dmg_values = 25 + self.player_lvl
+        return self._immolate_dmg_base(dmg_name='sunfire_cape_immolate_dmg', dmg_values=dmg_values)
+
+    def bamis_cinder_immolate_dmg(self):
+        dmg_values = 5 + self.player_lvl
+        return self._immolate_dmg_base(dmg_name='sunfire_cape_immolate_dmg', dmg_values=dmg_values)
+
+    def enchantment_cinderhulk(self):
+        dmg_values = 15 + 0.6 * self.player_lvl
+        return self._immolate_dmg_base(dmg_name='sunfire_cape_immolate_dmg', dmg_values=dmg_values)
+
 
 for i in SpecialItems.BLACK_CLEAVER_REDUCTION_BUFFS_NAMES:
     setattr(SpecialItems, i, SpecialItems.black_cleaver_armor_reduction_buff)

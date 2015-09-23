@@ -807,11 +807,42 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 
         if tar_name == 'player':
             return
-        # Checks if the event is not a heal.
-        if dmg_value > 0:
 
-            # If it's an AA applies lifesteal.
-            if dmg_type == 'AA':
+        # If it's an AA applies lifesteal.
+        if dmg_type == 'AA':
+            lifesteal_value = dmg_value * self.request_stat(target_name='player', stat_name='lifesteal')
+
+            self.apply_heal_value(tar_name='player',
+                                  heal_value=lifesteal_value)
+
+            # NOTE IN HISTORY
+            self.note_lifesteal_or_spellvamp_in_history(value=lifesteal_value, heal_type='lifesteal')
+
+        # If it's not an AA checks if either lifesteal or spellvamp is applicable.
+        else:
+            life_conversion_type = dmg_dct['life_conversion_type']
+            # If it can cause spellvamp..
+            if life_conversion_type == 'spellvamp':
+
+                # .. sets the healing done.
+                spellvamp_value = dmg_value * self.request_stat(target_name='player',
+                                                                stat_name='spellvamp')
+
+                # If it's an aoe affect, applies modifier.
+                if dmg_dct['max_targets'] != 1:
+                    spellvamp_value *= self.AOE_SPELLVAMP_MOD
+
+                self.apply_heal_value(tar_name='player',
+                                      heal_value=spellvamp_value)
+
+                # Then notes in history.
+                self.note_lifesteal_or_spellvamp_in_history(value=spellvamp_value, heal_type='spellvamp')
+
+            # (Lifesteal and spellvamp are exclusive so 'elif' is used)
+            # If the dmg can cause lifesteal..
+            elif life_conversion_type == 'lifesteal':
+
+                # .. sets the healing done.
                 lifesteal_value = dmg_value * self.request_stat(target_name='player', stat_name='lifesteal')
 
                 self.apply_heal_value(tar_name='player',
@@ -819,39 +850,6 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 
                 # NOTE IN HISTORY
                 self.note_lifesteal_or_spellvamp_in_history(value=lifesteal_value, heal_type='lifesteal')
-
-            # If it's not an AA checks if either lifesteal or spellvamp is applicable.
-            else:
-                life_conversion_type = dmg_dct['life_conversion_type']
-                # If it can cause spellvamp..
-                if life_conversion_type == 'spellvamp':
-
-                    # .. sets the healing done.
-                    spellvamp_value = dmg_value * self.request_stat(target_name='player',
-                                                                    stat_name='spellvamp')
-
-                    # If it's an aoe affect, applies modifier.
-                    if dmg_dct['max_targets'] != 1:
-                        spellvamp_value *= self.AOE_SPELLVAMP_MOD
-
-                    self.apply_heal_value(tar_name='player',
-                                          heal_value=spellvamp_value)
-
-                    # Then notes in history.
-                    self.note_lifesteal_or_spellvamp_in_history(value=spellvamp_value, heal_type='spellvamp')
-
-                # (Lifesteal and spellvamp are exclusive so 'elif' is used)
-                # If the dmg can cause lifesteal..
-                elif life_conversion_type == 'lifesteal':
-
-                    # .. sets the healing done.
-                    lifesteal_value = dmg_value * self.request_stat(target_name='player', stat_name='lifesteal')
-
-                    self.apply_heal_value(tar_name='player',
-                                          heal_value=lifesteal_value)
-
-                    # NOTE IN HISTORY
-                    self.note_lifesteal_or_spellvamp_in_history(value=lifesteal_value, heal_type='lifesteal')
 
     def apply_heal_value(self, tar_name, heal_value):
         """
@@ -1027,6 +1025,12 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                     self.apply_heal_value(tar_name='player',
                                           heal_value=final_dmg_value)
 
+            # LIFESTEAL/SPELLVAMP
+            self.apply_spellvamp_or_lifesteal(tar_name=target_name,
+                                              dmg_dct=dmg_dct,
+                                              dmg_value=final_dmg_value,
+                                              dmg_type=dmg_type)
+
             self.activate_black_cleaver_armor_reduction_buff(dmg_type=dmg_type, target_name=target_name)
             self.note_current_hp_in_history(target_name=target_name)
 
@@ -1035,12 +1039,6 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             # (minus used to reverse value)
             self.apply_heal_value(tar_name=target_name,
                                   heal_value=-final_dmg_value)
-
-        # LIFESTEAL/SPELLVAMP
-        self.apply_spellvamp_or_lifesteal(tar_name=target_name,
-                                          dmg_dct=dmg_dct,
-                                          dmg_value=final_dmg_value,
-                                          dmg_type=dmg_type)
 
     def apply_dmg_or_heal(self, dmg_name, dmg_dct, target_name):
         """
@@ -1178,10 +1176,12 @@ _HP5_DMG_DCT_BASE['resource_type'] = 'hp'
 _PLAYER_HP5_DMG_DCT = copy.deepcopy(_HP5_DMG_DCT_BASE)
 _PLAYER_HP5_DMG_DCT['target_type'] = 'player'
 _PLAYER_HP5_DMG_DCT['mods'] = {'player': {'hp5': {'multiplicative': 1}}}
+_PLAYER_HP5_DMG_DCT['dot'] = {}
 _PLAYER_HP5_DMG_DCT['dot']['buff_name'] = 'player_hp5_buff'
 # Enemy
 _ENEMY_HP5_DMG_DCT_BASE = copy.deepcopy(_HP5_DMG_DCT_BASE)
 _ENEMY_HP5_DMG_DCT_BASE['target_type'] = 'enemy'
+_ENEMY_HP5_DMG_DCT_BASE['dot'] = {}
 _ENEMY_HP5_DMG_DCT_BASE['dot']['buff_name'] = 'enemy_hp5_buff'
 _ENEMY_HP5_DMG_DCT_BASE['mods'] = {'enemy': {'hp5': {'multiplicative': 1}}}
 
@@ -1199,6 +1199,7 @@ for _key in _RESOURCE_P5_DMGS_DCTS:
     _new_resource_p5_dct['resource_type'] = _key[:-1]
     _new_resource_p5_dct['target_type'] = 'player'
     _new_resource_p5_dct['mods'] = {'player': {_key: {'multiplicative': 1}}}
+    _new_resource_p5_dct['dot'] = {}
     _new_resource_p5_dct['dot']['buff_name'] = '{}_buff'.format(_key)
     _RESOURCE_P5_DMGS_DCTS[_key] = _new_resource_p5_dct
 

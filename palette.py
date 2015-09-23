@@ -40,6 +40,8 @@ SUPPRESSED_MAGIC_METHODS = ('__bool__', '__eq__', '__ge__', '__gt__', '__le__', 
 for magic_method in SUPPRESSED_MAGIC_METHODS:
     setattr(Placeholder, magic_method, _placeholder_error_func)
 
+PlaceholderList = PlaceholderDict = PlaceholderInt = PlaceholderBool = PlaceholderSet = PlaceholderStr = Placeholder
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # COMPARATOR
@@ -228,6 +230,7 @@ ALL_POSSIBLE_SPELL_SHORTCUTS = SPELL_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
 ALL_POSSIBLE_ABILITIES_SHORTCUTS = ABILITY_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
 
 
+# BUFF
 BUFF_DCT_BASE = dict(
     target_type=Placeholder(),
     duration=Placeholder(),
@@ -250,7 +253,12 @@ BUFF_DCT_BASE = dict(
 def buff_dct_base_deepcopy():
     return copy.deepcopy(BUFF_DCT_BASE)
 
+BUFF_DOT_ATTRS = {'period': Placeholder(),
+                  'dmg_names': PlaceholderList(),
+                  'always_on_x_targets': Placeholder()}     # False or int.
 
+
+# DMG
 DMG_DCT_BASE = dict(
     target_type=Placeholder(),
     dmg_category=Placeholder(),
@@ -258,17 +266,20 @@ DMG_DCT_BASE = dict(
     dmg_type=Placeholder(),
     dmg_values=Placeholder(),
     dmg_source=Placeholder(),
-    # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
-    mods=Placeholder(),
-    # (None or lifesteal or spellvamp)
-    life_conversion_type=Placeholder(),
+    mods=Placeholder(),     # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
+    life_conversion_type=Placeholder(), # (None or lifesteal or spellvamp)
     radius=Placeholder(),
-    dot={'dot_buff': Placeholder()},
+    dot=Placeholder(),
     max_targets=Placeholder(),
+    usual_max_targets=Placeholder(),
     delay=Placeholder(),
     crit_type=Placeholder(),
-    heal_for_dmg_amount=Placeholder((False, True))
+    heal_for_dmg_amount=PlaceholderBool()
 )
+
+
+DMG_DOT_ATTRS = {'dot_buff': PlaceholderStr(),
+                 'jumps_on_death': PlaceholderBool()}
 
 
 CRIT_TYPES = (None, 'normal', 'always')

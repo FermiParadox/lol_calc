@@ -1699,6 +1699,7 @@ class ExploreApiItems(_ExploreBase):
         self.all_items_dct_by_id = self.item_related_api_data['data']
         # (there is a method below more suitable for returning item dict, that does not require exact name match)
         self.usable_items_by_name_dct = self._usable_items_dct_by_name()
+        self.total_usable_items = len(self.usable_items_by_name_dct)
 
     MANDATORY_MAP_ID = 1
     DISALLOWED_ITEM_TAGS = ('trinket', 'consumable', )
@@ -1727,7 +1728,7 @@ class ExploreApiItems(_ExploreBase):
             allowed_on_map = True
             # (if there is no map exclusion, then it is usable on required map)
             try:
-                if self.all_items_dct_by_id[item_id]['maps']['1'] is False:
+                if self.all_items_dct_by_id[item_id]['maps']['11'] is False:
                     allowed_on_map = False
             except KeyError:
                 pass
@@ -2283,29 +2284,23 @@ class StatsDependencies(object):
         print(fat_delimiter(80))
         print('STATS DEPENDENCIES, CHAMPION: {}'.format(obj_name, str_champion_or_item_or_mastery.upper()))
 
-        while 1:
-
+        while _y_n_question('\nNew dependency?'):
             if deps_set:
                 print('Current dependencies:')
                 for i in deps_set:
                     print(i)
 
-            if _y_n_question('\nNew dependency?'):
+            controller_stat = enumerated_question(question_str='Select CONTROLLER stat:',
+                                                  choices_seq=stats.NON_PER_LVL_STAT_NAMES,
+                                                  restrict_choices=True)
 
-                controller_stat = enumerated_question(question_str='Select CONTROLLER stat:',
-                                                      choices_seq=stats.NON_PER_LVL_STAT_NAMES,
-                                                      restrict_choices=True)
+            affected_stat = enumerated_question(question_str='Select AFFECTED stat:',
+                                                choices_seq=stats.NON_PER_LVL_STAT_NAMES,
+                                                restrict_choices=True)
 
-                affected_stat = enumerated_question(question_str='Select AFFECTED stat:',
-                                                    choices_seq=stats.NON_PER_LVL_STAT_NAMES,
-                                                    restrict_choices=True)
+            deps_set.add((controller_stat, affected_stat))
 
-                deps_set.add((controller_stat, affected_stat))
-
-            else:
-                break
-
-            return deps_set
+        return deps_set
 
     def champion_stats_dependencies(self, champion_name):
         return self._stats_dependencies(obj_name=champion_name, str_champion_or_item_or_mastery='champion')
@@ -2328,7 +2323,8 @@ class BuffsBase(object):
         max_stacks=(1,),
         duration=(1, 2, 3, 4, 5, 'permanent'),
         prohibit_cd_start=(None, ),
-        buff_source=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS
+        buff_source=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS,
+        dot=(False, True)
     )
 
     @staticmethod
@@ -4441,6 +4437,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
     _STATS_APP_NAMES = {i['app_name'] for i in ITEM_STAT_NAMES_MAP.values()}
     stats.ensure_allowed_stats_names(_STATS_APP_NAMES)
 
+    BUFF_DOT_ATTRS = {i: () for i in palette.BUFF_DOT_ATTRS}
+
     def items_stat_names(self):
         """
         Returns a list of names of item stats.
@@ -4608,11 +4606,11 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
                 if api_name.lower() in str_fragment.lower():
                     stat_app_name = self.ITEM_STAT_NAMES_MAP[api_name]['app_name']
-                    stat_type = self.ITEM_STAT_NAMES_MAP[api_name]['application_type']
 
-                    if stat_type == 'undefined':
-                        if '%' in val_str:
-                            stat_type = 'percent'
+                    if '%' in val_str:
+                        stat_type = 'percent'
+                    else:
+                        stat_type = 'additive'
 
                     dct.setdefault(stat_type, {})
 
@@ -4640,19 +4638,9 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         print(delimiter(20))
         print('\nAutocreated NON UNIQUE stats:')
         pp.pprint(auto_created_stats)
+        print()
 
-        if _y_n_question('Redo NON UNIQUE stats manually?', disallow_enter=False):
-
-            msg = '\nNON UNIQUE item stats:'
-            suggest_affected_stats_attributes(str_buff_or_item='item',
-                                              obj_name=self.item_name,
-                                              modified_stats_dct=self.non_unique_item_stats,
-                                              possible_stat_values_lst=self.arithmetic_values_in_description(),
-                                              possible_mod_values_lst=self.arithmetic_values_in_description(),
-                                              question_msg=msg)
-
-        else:
-            self.non_unique_item_stats = auto_created_stats
+        self.non_unique_item_stats = auto_created_stats
 
     def _detected_uniques_names(self):
 
@@ -4691,7 +4679,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
         possible_unique_names = self._possible_unique_names()
 
-        print(fat_delimiter(80))
+        print(fat_delimiter(40))
         print('\nUNIQUE item stats:')
         selected_unique_names_lst = enumerated_lst_creation(suggested_values_lst=possible_unique_names,
                                                             sort_suggested_lst=False)
@@ -4774,10 +4762,13 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         print(delimiter(20))
         print('\nDMG NAME: {}'.format(new_dmg_name))
 
-        if _y_n_question(question_str='Expressed by method?'):
+        expression_way = enumerated_question("Expressed by: (if expressed by another item, insert item name)",
+                                             choices_seq=('normally', 'by_method'))
+
+        if expression_way == 'by_method':
             self.item_dmgs.update({new_dmg_name: 'expressed_by_method'})
 
-        else:
+        elif expression_way == 'normally':
             # (creates new_dmg_name dct)
             self.item_dmgs.update({new_dmg_name: self.item_dmg_attrs()})
             # Dmg value
@@ -4789,8 +4780,18 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
             suggest_attr_values(suggested_values_dct=self.usual_item_values_dmg_attrs(),
                                 modified_dct=self.item_dmgs[new_dmg_name],)
 
+            # Dot.
+            if self.item_dmgs[new_dmg_name]['dot']:
+                dot_buff = restricted_input('Name of dot-buff?', input_type='str', disallow_enter=True)
+
+                self.item_dmgs[new_dmg_name]['dot'] = {'buff_name': dot_buff}
+
             # Inserts dmg mods.
             self._create_dmg_mods(dmg_name=new_dmg_name)
+
+        # Expressed by item.
+        else:
+            self.item_dmgs.update({new_dmg_name: expression_way})
 
         print(delimiter(40))
         pp.pprint(self.item_dmgs[new_dmg_name])
@@ -4836,10 +4837,13 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
         for buff_name in self.item_buffs:
             # Expressed by method.
-            if _y_n_question(question_str='{} expressed by method?'.format(buff_name)):
+            expression_way = enumerated_question("Expressed by: (if expressed by another item, insert item name)",
+                                                 choices_seq=('normally', 'by_method'))
+
+            if expression_way == 'by_method':
                 self.item_buffs.update({buff_name: 'expressed_by_method'})
 
-            else:
+            elif expression_way == 'normally':
                 # Expressed normally.
                 self.item_buffs.update({buff_name: self.item_buff_attributes()})
 
@@ -4848,12 +4852,26 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                 suggest_attr_values(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
                                     modified_dct=self.item_buffs[buff_name], extra_start_msg=buff_msg)
 
+                # Dot
+                if self.item_buffs[buff_name]['dot']:
+                    self.item_buffs[buff_name]['dot'] = {'dmg_names': []}
+                    suggest_attr_values(suggested_values_dct={k: v for k, v in self.BUFF_DOT_ATTRS if k != 'dmg_names'},
+                                        modified_dct=self.item_buffs[buff_name]['dot'],
+                                        extra_start_msg='Dot attrs: ')
+
+                    suggest_lst_of_attr_values(suggested_values_lst=(),
+                                               modified_lst=self.item_buffs[buff_name]['dot']['dmgs_names'],
+                                               extra_start_msg='Dmgs names?')
+
                 # Stats affected by buff.
                 self.item_buffs[buff_name]['stats'] = {}
                 suggest_affected_stats_attributes(str_buff_or_item='buff', obj_name=buff_name,
                                                   modified_stats_dct=self.item_buffs[buff_name]['stats'],
                                                   possible_stat_values_lst=self.arithmetic_values_in_description(),
                                                   possible_mod_values_lst=self.arithmetic_values_in_description())
+
+            else:
+                self.item_buffs.update({buff_name: expression_way})
 
         buff_names = sorted(self.item_buffs)
         dmgs_names = sorted(self.item_dmgs)
@@ -4862,7 +4880,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         # (done later so that buffs' and dmgs' names are available)
         for buff_name in self.item_buffs:
 
-            if self.item_buffs[buff_name] == 'expressed_by_method':
+            if isinstance(self.item_buffs[buff_name], str):
                 # (skips if expressed by method)
                 continue
 
@@ -5698,7 +5716,6 @@ class ItemsModuleCreator(ModuleCreatorBase):
         dct = {}
 
         self.temporary_item_attr_creation_instance = ItemAttrCreation(item_name=self.item_name)
-        self.temporary_item_attr_creation_instance.pprint_item_description()
         self.temporary_item_attr_creation_instance.create_non_unique_stats_names_and_values()
         self.temporary_item_attr_creation_instance.create_unique_stats_values()
         self.temporary_item_attr_creation_instance.create_item_gen_attrs()
@@ -5822,8 +5839,9 @@ class ItemsModuleCreator(ModuleCreatorBase):
     def create_non_created_items():
         for item_name in sorted(ExploreApiItems().usable_items_by_name_dct):
             if item_name not in Fetch().items_attrs_dct():
-                creation_instance = ItemsModuleCreator(item_name=item_name)
-                creation_instance.create_item()
+                if _y_n_question('Create {}?'.format(item_name.upper())):
+                    creation_instance = ItemsModuleCreator(item_name=item_name)
+                    creation_instance.create_item()
 
 
 class MasteryModuleCreator(ModuleCreatorBase):
@@ -5936,10 +5954,10 @@ if __name__ == '__main__':
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
     if 1:
-        inst = ItemsModuleCreator(item_name='ruined')
+        inst = ItemsModuleCreator(item_name='cinderh')
         inst.create_item()
     # Create all items.
-    if 0:
+    if 1:
         ItemsModuleCreator.create_non_created_items()
 
     # PRETTY FORMAT OBJECT IN MODULE
