@@ -114,43 +114,30 @@ class EventsGeneral(buffs.DeathAndRegen):
                 else:
                     raise NotImplementedError('Other resources need to be added as well.')
 
-    def add_aoe_event(self, effect_name, start_time):
+    def add_aoe_event(self, effect_name, start_time, tar_name):
         """
-        Adds an aoe dmg event to affected target. If all unaffected targets are dead raises exception.
+        Adds an aoe dmg event to affected target.
 
-        Returns:
-            (None)
-        Raises:
-            EnemyTargetsDeadException: No viable targets exist.
+        :return: (None)
         """
-
-        # NEXT TARGET
-        # If next target is None (because no valid targets exist) the loop breaks.
-        self.next_target(enemy_tar_names=self.enemy_target_names)
-        if self.current_target is None:
-            raise EnemyTargetsDeadError
 
         self.targets_already_hit += 1
 
         # ADD EVENT
         # Checks if the target is inside the time.
-        if self.current_target in self.event_times[start_time]:
-            self.event_times[start_time][self.current_target].append(effect_name)
+        if tar_name in self.event_times[start_time]:
+            self.event_times[start_time][tar_name].append(effect_name)
         else:
-            self.event_times[start_time].update({self.current_target: [effect_name]})
+            self.event_times[start_time].update({tar_name: [effect_name]})
 
     def add_events(self, effect_name, start_time):
         """
         Adds a dmg event (e.g. Brand W) to all affected targets.
 
-        Modifies:
-            event_times
-            targets_already_hit
-            current_target
         Structure:
             event_times: {0.: {'player': ['w_dmg',],},}
-        Returns:
-            (None)
+
+        :return: (None)
         """
 
         dmg_dct = self.req_dmg_dct_func(dmg_name=effect_name)
@@ -164,8 +151,12 @@ class EventsGeneral(buffs.DeathAndRegen):
 
         if tar_type == 'player':
             target_name = 'player'
+
         else:
-            target_name = self.current_target
+            if self.current_target is None:
+                target_name = 'enemy_1'
+            else:
+                target_name = self.current_target
 
         if dmg_cat != 'ring_dmg':
             # Adds event to first target.
@@ -177,29 +168,31 @@ class EventsGeneral(buffs.DeathAndRegen):
             return
 
         self.targets_already_hit = 1
-        # Aoe dmg has 'max_targets' in dmg dct. It can also additionally have externally set max_targets.
-        # Tries to add events to targets.
-        try:
-            # External max targets.
-            if effect_name in self.max_targets_dct:
-                max_tars_val = self.max_targets_dct[effect_name]
 
-            else:
-                max_tars_val = dmg_dct['usual_max_targets']
-                if max_tars_val == 'unlimited':
-                    # If targets are unlimited applies to everyone.
-                    max_tars_val = len(self.enemy_target_names)
+        # (Aoe dmg has 'max_targets' in dmg dct. It can also additionally have externally set max_targets.)
 
-            # While the last target number is less than max targets, adds event.
-            while self.targets_already_hit < max_tars_val:
-                self.add_aoe_event(effect_name=effect_name, start_time=start_time)
+        # External max targets.
+        if effect_name in self.max_targets_dct:
+            max_tars_val = self.max_targets_dct[effect_name]
 
-        except EnemyTargetsDeadError:
-            pass
+        else:
+            max_tars_val = dmg_dct['usual_max_targets']
+            if max_tars_val == 'unlimited':
+                # If targets are unlimited applies to everyone.
+                max_tars_val = len(self.enemy_target_names)
+
+        # While the last target number is less than max targets, adds event.
+        while self.targets_already_hit < max_tars_val:
+
+            next_enemy = self.next_alive_enemy()
+            if next_enemy is None:
+                break
+
+            self.add_aoe_event(effect_name=effect_name, start_time=start_time, tar_name=next_enemy)
 
     def refresh_periodic_event(self, dmg_name, tar_name, dmg_dct):
         """
-        Re-adds a periodic effect and notes the change.
+        Re-adds a periodic event and notes the change.
 
         Refreshed only if buff ending time is higher than event ending time,
         or if it's a permanent buff.
@@ -208,20 +201,26 @@ class EventsGeneral(buffs.DeathAndRegen):
             (None)
         """
 
-        tar_act_buffs = self.active_buffs[tar_name]
         buff_name = dmg_dct['dot']['buff_name']
         buff_dct = self.req_buff_dct_func(buff_name=buff_name)
+        buff_owner_type = buff_dct['target_type']
 
-        # Checks dot's buff.
+        if buff_owner_type == 'player':
+            tar_act_buffs = self.active_buffs['player']
+        else:
+            tar_act_buffs = self.active_buffs[tar_name]
+
+        # Checks dot's buff is active.
         if buff_name in tar_act_buffs:
-            if (tar_act_buffs[buff_name]['ending_time'] == 'permanent') or (tar_act_buffs[buff_name]['ending_time'] > self.current_time):
+            buff_ending_time = tar_act_buffs[buff_name]['ending_time']
+            if (buff_ending_time == 'permanent') or (buff_ending_time > self.current_time):
 
                 self.add_events(effect_name=dmg_name,
                                 start_time=self.current_time + buff_dct['dot']['period'])
 
                 self.intermediate_events_changed = True
 
-    def add_next_periodic_event(self, tar_name, dmg_name, only_temporary=False):
+    def add_next_periodic_event(self, tar_name, dmg_name, dmg_dct, only_temporary=False):
         """
         Adds next periodic tick.
 
@@ -230,8 +229,6 @@ class EventsGeneral(buffs.DeathAndRegen):
         :param only_temporary: (boolean) Used for filtering out permanent dots (e.g. sunfire) if needed.
         :return: (None)
         """
-
-        dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
 
         # Checks if event is periodic.
         if dmg_dct['dot']:
@@ -953,6 +950,9 @@ class AttributeBase(EnemiesDmgToPlayer):
             initial_dct = self.ABILITIES_ATTRIBUTES
             conditionals_dct = self.ABILITIES_CONDITIONALS
 
+        elif dmg_name in BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS:
+            return getattr(self, dmg_name)()
+
         elif dmg_name in items_data.ITEMS_DMGS_NAMES:
             item_name = items_data.ITEMS_DMGS_NAMES[dmg_name]
             initial_dct = items_data.ITEMS_ATTRIBUTES[item_name]
@@ -1443,18 +1443,19 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         """
 
         # Checks if (dot) event already applied.
-        new_event = True
+        is_new = True
         if buff_name in self.active_buffs[tar_name]:
-            new_event = False
+            is_new = False
 
         super().add_buff(buff_name=buff_name, tar_name=tar_name,
                          stack_increment=stack_increment, initial_stacks_increment=initial_stacks_increment)
 
         # If it's a new dot..
-        if new_event:
-            # If the buff is a dot, applies event as well.
+        if is_new:
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
             buff_dot_dct = buff_dct['dot']
+
+            # If the buff is a dot, applies dmg event as well.
             if buff_dot_dct:
                 dmg_dot_names = buff_dot_dct['dmg_names']
                 for dmg_name in dmg_dot_names:
@@ -1553,8 +1554,6 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
                 # DMG CAUSED ON HIT.
                 for dmg_name in on_hit_dct['cause_dmg']:
-
-                    self.switch_to_first_alive_enemy()
                     self.add_events(effect_name=dmg_name, start_time=self.current_time)
 
                 # BUFFS APPLIED ON HIT.
@@ -1676,8 +1675,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         then event_times changes and is checked again.
         If all targets die, the loop stops.
 
-        Returns:
-            (None)
+        :return: (None)
         """
 
         self.intermediate_events_changed = True
@@ -1704,11 +1702,14 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                     self.remove_expired_buffs_and_refresh_bonuses()
 
                     # Applies all dmg effects for all targets.
-                    for self.current_target in self.event_times[self.current_time]:
+                    for self.current_target in sorted(self.event_times[self.current_time]):
                         for dmg_name in self.event_times[self.current_time][self.current_target]:
-                            dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
+                            dmg_dct = self.request_dmg(dmg_name=dmg_name)
                             self.apply_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct, target_name=self.current_target)
-                            self.add_next_periodic_event(tar_name=self.current_target, dmg_name=dmg_name)
+                            self.add_next_periodic_event(tar_name=self.current_target,
+                                                         dmg_name=dmg_name,
+                                                         dmg_dct=dmg_dct,
+                                                         only_temporary=False)
 
                         # After dmg has been applied checks if target has died.
                         self.apply_death(tar_name=self.current_target)
@@ -2028,6 +2029,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                             if fully_apply_dots:
                                 self.add_next_periodic_event(tar_name=self.current_target,
                                                              dmg_name=dmg_name,
+                                                             dmg_dct=dmg_dct,
                                                              only_temporary=True)
                 # Deletes the event after it's applied.
                 del self.event_times[self.current_time]
@@ -2111,6 +2113,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         :return: (None)
         """
+
+        self.rotation_lst = []  # Rotation of enemies is always independent of player's rotation.
 
         self.run_combat_preparation_without_regen()
 
@@ -2461,8 +2465,8 @@ class SpecialItems(Actions):
     IMMOLATE_DMG_BASE['life_conversion_type'] = None
     IMMOLATE_DMG_BASE['radius'] = 500
     IMMOLATE_DMG_BASE['dot'] = {'buff_name': 'immolate_buff'}
-    IMMOLATE_DMG_BASE['max_targets'] = 1
-    IMMOLATE_DMG_BASE['usual_max_targets'] = 1
+    IMMOLATE_DMG_BASE['max_targets'] = 3
+    IMMOLATE_DMG_BASE['usual_max_targets'] = 3
     IMMOLATE_DMG_BASE['delay'] = 0
     IMMOLATE_DMG_BASE['heal_for_dmg_amount'] = False
     IMMOLATE_DMG_BASE['crit_type'] = None

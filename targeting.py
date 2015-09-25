@@ -1,21 +1,24 @@
+# TODO: refactor everything, since it's very old code.
+
+
 class Targeting(object):
 
     def __init__(self,
-                 active_buffs,
-                 current_target=None,
-                 targets_already_hit=None):
+                 enemy_target_names):
 
-        self.current_target = current_target
-        self.targets_already_hit = targets_already_hit
-        self.active_buffs = active_buffs
+        self.current_target = None
+        self.targets_already_hit = None
+        self.enemy_target_names = enemy_target_names
 
     def switch_to_first_alive_enemy(self):
         """Modifies current_target to first alive enemy.
         """
-        for tar in sorted(self.active_buffs):
-                if (tar != 'player') and ('dead_buff' not in self.active_buffs[tar]):
-                    self.current_target = tar
-                    break
+        for tar in self.enemy_target_names:
+            if 'dead_buff' not in self.active_buffs[tar]:
+                self.current_target = tar
+                return
+        else:
+            self.current_target = None
 
     def switch_target(self, effect_name):
         """
@@ -32,7 +35,13 @@ class Targeting(object):
         else:
             self.switch_to_first_alive_enemy()
 
-    def next_target(self, enemy_tar_names):
+    def is_alive(self, tar_name):
+        if 'dead_buff' in self.active_buffs[tar_name]:
+            return False
+        else:
+            return True
+
+    def next_alive_enemy(self):
         """
         Modifies current_target,
         if there are available (and alive) enemy targets.
@@ -40,21 +49,21 @@ class Targeting(object):
         If there are no valid targets, sets current_target to None.
         """
 
-        while True:
-            # Creates next target's name.
-            next_tar_name = 'enemy_%s' % (int(self.current_target[6:]) + 1)
+        if self.current_target in ('player', None):
+            enemies_seq = self.enemy_target_names
 
-            # Checks if target exists.
-            if next_tar_name not in enemy_tar_names:
+        else:
+            # Slices off current and previous enemies.
+            curr_tar_index = 1 + self.enemy_target_names.index(self.current_target)
+            enemies_seq = self.enemy_target_names[curr_tar_index:]
 
-                self.current_target = None
-                break
+        for tar in enemies_seq:
+            if self.is_alive(tar_name=tar):
+                return tar
 
-            # Checks if target is alive.
-            elif 'dead' not in self.active_buffs[next_tar_name]:
-                # Sets next target name.
-                self.current_target = next_tar_name
-                break
+        else:
+            # All enemies are dead.
+            return None
 
     def target_type(self, tar_name=None):
         """

@@ -39,6 +39,9 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
                                                       selected_masteries_dct=selected_masteries_dct,
                                                       player_lvl=self.player_lvl)
 
+        targeting.Targeting.__init__(self,
+                                     enemy_target_names=self.enemy_target_names)
+
         # ITEMS
         self.chosen_items_dct = chosen_items_dct
         self.fill_up_tars_and_empty_obj_in_dct(given_dct=self.chosen_items_dct, obj_type='list')
@@ -1216,6 +1219,7 @@ class DeathAndRegen(DmgApplication):
 
     @staticmethod
     def dead_buff():
+        # WARNING: do NOT change name (other methods use this name for checks)
         return _DEAD_BUFF_DCT_BASE
 
     def apply_death(self, tar_name):
