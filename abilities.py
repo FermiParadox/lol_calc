@@ -47,7 +47,8 @@ class EventsGeneral(buffs.DeathAndRegen):
         # (User defined dict containing number of targets affected by abilities.)
         self.max_targets_dct = max_targets_dct
         self.event_times = {}
-        self.current_target = None
+        # (first examined target is always 'enemy_1')
+        self.current_enemy = 'enemy_1'
         # (Used to note that a periodic event might have been added between current events and last action.)
         self.intermediate_events_changed = None
 
@@ -65,7 +66,7 @@ class EventsGeneral(buffs.DeathAndRegen):
                                      initial_enemies_total_stats=initial_enemies_total_stats,
                                      _reversed_combat_mode=_reversed_combat_mode)
 
-    def add_event_to_first_tar(self, target_name, effect_name, start_time):
+    def add_event_to_single_tar(self, target_name, effect_name, start_time):
         """
         Applies a dmg event to the first target.
 
@@ -89,30 +90,24 @@ class EventsGeneral(buffs.DeathAndRegen):
         """
         Adds hp5 (both event and buff) for all targets, and resource per 5 for player.
 
-        Modifies:
-            event_times
-            active_buffs
-        Returns:
-            (None)
+        :return: (None)
         """
 
-        for self.current_target in self.all_target_names:
-            # ENEMY
-            if self.current_target != 'player':
-                self.add_buff(buff_name='enemy_hp5_buff', tar_name=self.current_target)
+        # ENEMY
+        for self.current_enemy in self.enemy_target_names:
+            self.add_buff(buff_name='enemy_hp5_buff', tar_name=self.current_enemy)
 
-            # PLAYER
-            else:
-                self.add_buff(buff_name='player_hp5_buff', tar_name=self.current_target)
+        # PLAYER
+        self.add_buff(buff_name='player_hp5_buff', tar_name='player')
 
-                # RESOURCE
-                if self.RESOURCE_USED == 'energy':
-                    self.add_buff(buff_name='ep5_buff', tar_name=self.current_target)
+        # RESOURCE
+        if self.RESOURCE_USED == 'energy':
+            self.add_buff(buff_name='ep5_buff', tar_name='player')
 
-                elif self.RESOURCE_USED == 'mp':
-                    self.add_buff(buff_name='mp5_buff', tar_name=self.current_target)
-                else:
-                    raise NotImplementedError('Other resources need to be added as well.')
+        elif self.RESOURCE_USED == 'mp':
+            self.add_buff(buff_name='mp5_buff', tar_name='player')
+        else:
+            raise NotImplementedError('Other resources need to be added as well.')
 
     def add_aoe_event(self, effect_name, start_time, tar_name):
         """
@@ -130,7 +125,7 @@ class EventsGeneral(buffs.DeathAndRegen):
         else:
             self.event_times[start_time].update({tar_name: [effect_name]})
 
-    def add_events(self, effect_name, start_time):
+    def add_events(self, effect_name, start_time, tar_name):
         """
         Adds a dmg event (e.g. Brand W) to all affected targets.
 
@@ -147,34 +142,25 @@ class EventsGeneral(buffs.DeathAndRegen):
         if dmg_delay:
             start_time += dmg_delay
 
-        tar_type = dmg_dct['target_type']
-
-        if tar_type == 'player':
-            target_name = 'player'
-
-        else:
-            if self.current_target is None:
-                target_name = 'enemy_1'
-            else:
-                target_name = self.current_target
-
         if dmg_cat != 'ring_dmg':
             # Adds event to first target.
-            self.add_event_to_first_tar(target_name=target_name, effect_name=effect_name, start_time=start_time)
+            self.add_event_to_single_tar(target_name=tar_name, effect_name=effect_name, start_time=start_time)
+            self.targets_already_hit = 1
+        else:
+            self.targets_already_hit = 0
 
         # AOE DMG
+        # (Aoe is always applied to enemies.)
+
         # No aoe will be applied by dmgs originating from reverse combat mode.
         if self._reversed_combat_mode:
             return
-
-        self.targets_already_hit = 1
-
-        # (Aoe dmg has 'max_targets' in dmg dct. It can also additionally have externally set max_targets.)
 
         # External max targets.
         if effect_name in self.max_targets_dct:
             max_tars_val = self.max_targets_dct[effect_name]
 
+        # (Aoe dmg has 'max_targets' in dmg dct. It can also additionally have externally set max_targets.)
         else:
             max_tars_val = dmg_dct['usual_max_targets']
             if max_tars_val == 'unlimited':
@@ -182,41 +168,46 @@ class EventsGeneral(buffs.DeathAndRegen):
                 max_tars_val = len(self.enemy_target_names)
 
         # While the last target number is less than max targets, adds event.
+        prev_enemy = self.current_enemy
         while self.targets_already_hit < max_tars_val:
 
-            next_enemy = self.next_alive_enemy()
+            next_enemy = self.next_alive_enemy(current_tar=prev_enemy)
             if next_enemy is None:
                 break
 
+            self.current_enemy = next_enemy
             self.add_aoe_event(effect_name=effect_name, start_time=start_time, tar_name=next_enemy)
 
-    def refresh_periodic_event(self, dmg_name, tar_name, dmg_dct):
+            prev_enemy = next_enemy
+
+    def refresh_periodic_event(self, dmg_name, dmg_owner_name, dmg_dct):
         """
         Re-adds a periodic event and notes the change.
 
         Refreshed only if buff ending time is higher than event ending time,
         or if it's a permanent buff.
 
-        Returns:
-            (None)
+        :return: (None)
         """
 
+        # Buff owner can be different than the dmg owner.
+        # (e.g. sunfire's immolate is a buff on player, that dmgs enemies)
         buff_name = dmg_dct['dot']['buff_name']
         buff_dct = self.req_buff_dct_func(buff_name=buff_name)
         buff_owner_type = buff_dct['target_type']
+        buff_owner_name = self.current_target_or_player(tar_type=buff_owner_type)
 
-        if buff_owner_type == 'player':
-            tar_act_buffs = self.active_buffs['player']
-        else:
-            tar_act_buffs = self.active_buffs[tar_name]
+        buff_owner_act_buffs = self.active_buffs[buff_owner_name]
 
         # Checks dot's buff is active.
-        if buff_name in tar_act_buffs:
-            buff_ending_time = tar_act_buffs[buff_name]['ending_time']
+        if buff_name in buff_owner_act_buffs:
+            buff_ending_time = buff_owner_act_buffs[buff_name]['ending_time']
             if (buff_ending_time == 'permanent') or (buff_ending_time > self.current_time):
 
-                self.add_events(effect_name=dmg_name,
-                                start_time=self.current_time + buff_dct['dot']['period'])
+                start_time = self.current_time + buff_dct['dot']['period']
+                self.add_event_to_single_tar(target_name=dmg_owner_name,
+                                             effect_name=dmg_name,
+                                             start_time=start_time)
 
                 self.intermediate_events_changed = True
 
@@ -237,11 +228,11 @@ class EventsGeneral(buffs.DeathAndRegen):
                 # ..checks if their duration is not permanent.
                 buff_dct = self.req_buff_dct_func(dmg_dct['dot']['buff_name'])
                 if buff_dct['duration'] != 'permanent':
-                    self.refresh_periodic_event(dmg_name=dmg_name, tar_name=tar_name, dmg_dct=dmg_dct)
+                    self.refresh_periodic_event(dmg_name=dmg_name, dmg_owner_name=tar_name, dmg_dct=dmg_dct)
 
             # Otherwise checks both permanent and temporary dots.
             else:
-                self.refresh_periodic_event(dmg_name=dmg_name, tar_name=tar_name, dmg_dct=dmg_dct)
+                self.refresh_periodic_event(dmg_name=dmg_name, dmg_owner_name=tar_name, dmg_dct=dmg_dct)
 
 
 _DPS_BY_ENEMIES_DMGS_NAMES = [dmg_type + '_dps_by_enemy_dmg' for dmg_type in ('true', 'magic', 'non_aa_physical', 'aa')]
@@ -523,7 +514,7 @@ class AttributeBase(EnemiesDmgToPlayer):
         if x_owner == 'player':
             owner = x_owner
         else:
-            owner = self.current_target
+            owner = self.current_enemy
 
         # BUFF STACKS VALUE
         if x_type == 'buff':
@@ -577,7 +568,7 @@ class AttributeBase(EnemiesDmgToPlayer):
         if trig_dct['owner_type']:
             return 'player'
         else:
-            return self.current_target
+            return self.current_enemy
 
     def _check_abilities_cond_triggers_state(self, cond_name):
         """
@@ -1079,6 +1070,11 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 if action_dct['cd_end'] > self.current_time:
                     action_dct['cd_end'] -= reduction_value
 
+    def _target_of_dmg_by_name(self, dmg_name):
+        tar_type_of_dmg = self.request_dmg(dmg_name=dmg_name)['target_type']
+
+        return self.current_target_or_player(tar_type=tar_type_of_dmg)
+
     # COSTS
     def non_toggled_action_cost_dct(self, action_name):
         """
@@ -1461,7 +1457,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 for dmg_name in dmg_dot_names:
                     first_tick = self.first_dot_tick(current_time=self.current_time, dmg_name=dmg_name)
 
-                    self.add_events(effect_name=dmg_name, start_time=first_tick)
+                    tar_of_dmg = self._target_of_dmg_by_name(dmg_name=dmg_name)
+                    self.add_events(effect_name=dmg_name, start_time=first_tick, tar_name=tar_of_dmg)
 
     def change_cd_before_buff_removal(self, buff_dct):
         """
@@ -1554,7 +1551,9 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
                 # DMG CAUSED ON HIT.
                 for dmg_name in on_hit_dct['cause_dmg']:
-                    self.add_events(effect_name=dmg_name, start_time=self.current_time)
+
+                    tar_of_dmg = self._target_of_dmg_by_name(dmg_name=dmg_name)
+                    self.add_events(effect_name=dmg_name, start_time=self.current_time, tar_name=tar_of_dmg)
 
                 # BUFFS APPLIED ON HIT.
                 for buff_applied_on_hit in on_hit_dct['apply_buff']:
@@ -1571,8 +1570,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                         del self.active_buffs['player'][buff_removed_on_hit]
 
                     # Checks if the buff exists on current enemy target.
-                    elif buff_removed_on_hit in self.active_buffs[self.current_target]:
-                        del self.active_buffs[self.current_target][buff_removed_on_hit]
+                    elif buff_removed_on_hit in self.active_buffs[self.current_enemy]:
+                        del self.active_buffs[self.current_enemy][buff_removed_on_hit]
 
                 # MODIFIED CDS.
                 cds_modifications_dct = on_hit_dct['cds_modified']
@@ -1591,8 +1590,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         self.apply_on_hit_effects()
 
         # Applies direct dmg.
-        self.switch_to_first_alive_enemy()
-        self.add_events('aa_dmg', current_time)
+        self.add_events('aa_dmg', current_time, tar_name=self.current_enemy)
 
     def apply_ability_actives_on_tar(self, tar_type, eff_dct):
         """
@@ -1606,13 +1604,16 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (None)
         """
 
+        tar_name = self.current_target_or_player(tar_type=tar_type)
+
         # BUFFS
         for buff_name in eff_dct[tar_type]['actives']['buffs']:
-            self.add_buff(buff_name=buff_name, tar_name=self.current_target)
+            self.add_buff(buff_name=buff_name, tar_name=tar_name)
 
         # DMGS
         for dmg_name in eff_dct[tar_type]['actives']['dmg']:
-            self.add_events(effect_name=dmg_name, start_time=self.current_time)
+            tar_of_dmg = self._target_of_dmg_by_name(dmg_name=dmg_name)
+            self.add_events(effect_name=dmg_name, start_time=self.current_time, tar_name=tar_of_dmg)
 
         # BUFF REMOVAL
         for buff_name_to_remove in eff_dct[tar_type]['actives']['remove_buff']:
@@ -1626,24 +1627,15 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         Used for abilities, item actives or summoner actives.
 
-        Chooses the first viable enemy for actives on enemies.
-
-        Modifies:
-            active_buffs
-            event_times
-            current_target
-        Returns:
-            (None)
+        :return: (None)
         """
 
         if 'player' in eff_dct:
 
-            self.current_target = 'player'
             self.apply_ability_actives_on_tar(tar_type='player', eff_dct=eff_dct)
 
         if 'enemy' in eff_dct:
 
-            self.switch_to_first_alive_enemy()
             self.apply_ability_actives_on_tar(tar_type='enemy', eff_dct=eff_dct)
 
     def apply_action_effects(self, action_name):
@@ -1702,17 +1694,25 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                     self.remove_expired_buffs_and_refresh_bonuses()
 
                     # Applies all dmg effects for all targets.
-                    for self.current_target in sorted(self.event_times[self.current_time]):
-                        for dmg_name in self.event_times[self.current_time][self.current_target]:
+                    for examined_tar in sorted(self.event_times[self.current_time]):
+                        if examined_tar == 'player':
+                            # (if all enemies are dead, focuses on last enemy)
+                            self.current_enemy = self.first_alive_enemy() or self.enemy_target_names[-1]
+                        else:
+                            self.current_enemy = examined_tar
+
+                        for dmg_name in self.event_times[self.current_time][examined_tar]:
                             dmg_dct = self.request_dmg(dmg_name=dmg_name)
-                            self.apply_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct, target_name=self.current_target)
-                            self.add_next_periodic_event(tar_name=self.current_target,
-                                                         dmg_name=dmg_name,
-                                                         dmg_dct=dmg_dct,
-                                                         only_temporary=False)
+                            self.apply_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct, target_name=examined_tar)
+
+                            if self.is_alive(tar_name=examined_tar):
+                                self.add_next_periodic_event(tar_name=examined_tar,
+                                                             dmg_name=dmg_name,
+                                                             dmg_dct=dmg_dct,
+                                                             only_temporary=False)
 
                         # After dmg has been applied checks if target has died.
-                        self.apply_death(tar_name=self.current_target)
+                        self.apply_death(tar_name=examined_tar)
 
                     # Deletes the event after it's applied.
                     del self.event_times[self.current_time]
@@ -1728,7 +1728,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
                 # DEATHS
                 self.everyone_dead = True
-                # Checks if alive targets exist.
+                # Checks if alive enemies exist.
                 for tar_name in self.enemy_target_names:
                     if 'dead_buff' not in self.active_buffs[tar_name]:
                         self.everyone_dead = False
@@ -1826,7 +1826,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 # Owner
                 owner_type = trig_dct['owner_type']
                 if owner_type == 'enemy':
-                    owner_name = self.current_target
+                    owner_name = self.current_enemy
                 else:
                     owner_name = owner_type
 
@@ -1989,7 +1989,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
         self.combat_duration = self._last_action_end()
 
-    def apply_events_after_actions(self, fully_apply_dots=True):
+    def apply_events_after_actions(self):
         """
         Applies events after all actions have finished.
 
@@ -2019,18 +2019,23 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 self.remove_expired_buffs_and_refresh_bonuses()
 
                 # Applies all dmg effects to alive targets.
-                for self.current_target in self.event_times[self.current_time]:
-                    if self.current_stats[self.current_target]['current_hp'] > 0:
-                        for dmg_name in self.event_times[self.current_time][self.current_target]:
-                            dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
-                            self.apply_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct, target_name=self.current_target)
+                for examined_tar in self.event_times[self.current_time]:
+                    if examined_tar == 'player':
+                        # (if all enemies are dead, focuses on last enemy)
+                        self.current_enemy = self.first_alive_enemy() or self.enemy_target_names[-1]
+                    else:
+                        self.current_enemy = examined_tar
 
-                            # Extends dots.
-                            if fully_apply_dots:
-                                self.add_next_periodic_event(tar_name=self.current_target,
-                                                             dmg_name=dmg_name,
-                                                             dmg_dct=dmg_dct,
-                                                             only_temporary=True)
+                    for dmg_name in self.event_times[self.current_time][examined_tar]:
+                        dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
+                        self.apply_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct, target_name=examined_tar)
+
+                        # Extends dots.
+                        if self.is_alive(tar_name=examined_tar):
+                            self.add_next_periodic_event(tar_name=examined_tar,
+                                                         dmg_name=dmg_name,
+                                                         dmg_dct=dmg_dct,
+                                                         only_temporary=True)
                 # Deletes the event after it's applied.
                 del self.event_times[self.current_time]
 
@@ -2416,7 +2421,7 @@ class SpecialItems(Actions):
                     lst_applied = self.BLACK_CLEAVER_REDUCTION_BUFFS_NAMES[:black_cleavers_count]
 
                     for black_cleaver_red_buff_name in lst_applied:
-                        self.add_buff(buff_name=black_cleaver_red_buff_name, tar_name=self.current_target)
+                        self.add_buff(buff_name=black_cleaver_red_buff_name, tar_name=self.current_enemy)
 
     # IMMOLATE
     IMMOLATE_BUFF = palette.buff_dct_base_deepcopy()

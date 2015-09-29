@@ -38,7 +38,7 @@ class GeneralCategories(object):
         self.req_stats_func = req_stats_func
         self.req_dmg_dct_func = req_dmg_dct_func
         self.current_stats = current_stats
-        self.current_target = current_target
+        self.current_enemy = current_target
         self.current_target_num = current_target_num
         self.active_buffs = active_buffs
 
@@ -103,7 +103,7 @@ class DmgCategories(BuffCategories):
 
         crit_chance = self.req_stats_func(target_name='player', stat_name='crit_chance')
         crit_mod_val = self.req_stats_func(target_name='player', stat_name='crit_modifier')
-        crit_dmg_reduction = self.req_stats_func(target_name=self.current_target, stat_name='crit_dmg_reduction')
+        crit_dmg_reduction = self.req_stats_func(target_name=self.current_enemy, stat_name='crit_dmg_reduction')
 
         average_crit_dmg_multiplier = (crit_chance*crit_mod_val*crit_dmg_reduction + 1 - crit_chance)
 
@@ -136,7 +136,7 @@ class DmgCategories(BuffCategories):
                 if owner_type == 'player':
                     owner = 'player'
                 else:
-                    owner = self.current_target
+                    owner = self.current_enemy
 
                 owner_dmg_mods_dct = dmg_dct_mods[owner_type]
                 for mod_name in sorted(owner_dmg_mods_dct):

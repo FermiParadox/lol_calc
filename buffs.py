@@ -40,6 +40,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
                                                       player_lvl=self.player_lvl)
 
         targeting.Targeting.__init__(self,
+                                     total_enemies= self.total_enemies,
                                      enemy_target_names=self.enemy_target_names)
 
         # ITEMS
@@ -298,6 +299,7 @@ class Counters(BuffsGeneral):
                     physical={},
                     total={},
                     current_hp={},
+                    dmg_or_heal_taken=[]
                 )})
 
         self.combat_history['player'].update(dict(
@@ -500,7 +502,7 @@ class Counters(BuffsGeneral):
         self.combat_history[target_name]['current_hp'].update(
             {self.current_time: self.current_stats[target_name]['current_hp']})
 
-    def note_player_dmg_taken(self, dmg_name, unmitigated_dmg_value, mitigated_dmg_value):
+    def note_dmg_or_heal_taken(self, dmg_name, tar_name, unmitigated_dmg_value, mitigated_dmg_value):
         """
         Notes in history dmg and heals the player takes.
 
@@ -514,7 +516,7 @@ class Counters(BuffsGeneral):
                         'mitigated_dmg_value': mitigated_dmg_value,
                         'current_time': self.current_time}
 
-        self.combat_history['player']['dmg_or_heal_taken'].append(appended_dct)
+        self.combat_history[tar_name]['dmg_or_heal_taken'].append(appended_dct)
 
     def note_non_hp_resource_in_history(self, curr_resource_str):
         """
@@ -792,7 +794,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                                      req_stats_func=self.request_stat,
                                                      req_dmg_dct_func=req_dmg_dct_func,
                                                      current_stats=self.current_stats,
-                                                     current_target=self.current_target,
+                                                     current_target=self.current_enemy,
                                                      champion_lvls_dct=champion_lvls_dct,
                                                      current_target_num=self.current_target_num,
                                                      active_buffs=self.active_buffs,
@@ -1017,11 +1019,13 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                              final_dmg_value=final_dmg_value,
                                              target_name=target_name)
                     self.note_source_dmg_in_results(dmg_dct=dmg_dct, final_dmg_value=final_dmg_value)
-            if target_name == 'player':
-                self.note_player_dmg_taken(dmg_name=dmg_name,
-                                           unmitigated_dmg_value=unmitigated_dmg_value,
-                                           mitigated_dmg_value=final_dmg_value)
-            else:
+
+            self.note_dmg_or_heal_taken(dmg_name=dmg_name,
+                                        tar_name=target_name,
+                                        unmitigated_dmg_value=unmitigated_dmg_value,
+                                        mitigated_dmg_value=final_dmg_value)
+            if target_name != 'player':
+
                 # Heal-for-dmg-dealt type of dmgs.
                 # (only applies for dmgs that are not on player)
                 if dmg_dct['heal_for_dmg_amount']:

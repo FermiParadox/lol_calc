@@ -9,7 +9,6 @@ class Timers(object):
                  req_abilities_attrs_func):
 
         self.ability_lvls_dct = ability_lvls_dct  # e.g. {'q': 1, }
-        self.current_target = None     # e.g. player, enemy_1, enemy_2
         self.req_dmg_func = req_dmg_dct_func
         self.req_abilities_dct_func = req_abilities_attrs_func
 

@@ -256,6 +256,8 @@ class StatCalculation(StatFilters):
 
         self.enemy_target_names = tuple(tar for tar in sorted(self.all_target_names) if tar != 'player')
 
+        self.total_enemies = len(self.enemy_target_names)
+
         self.initial_active_buffs = initial_active_buffs    # Can contain 0 to all targets and their buffs.
         self.bonuses_dct = {}   # e.g. {target: {stat: {stat type: {buff name: stat val}, }, }, }
 
@@ -482,12 +484,17 @@ class StatCalculation(StatFilters):
         :return: (float)
         """
 
-        try:
-            tar_bonuses = self.bonuses_dct[tar_name]['move_speed_reduction']['multiplicative']
-            return min(tar_bonuses, key=lambda x: tar_bonuses[x])
+        if tar_name in self.bonuses_dct:
+            tar_bonuses = self.bonuses_dct[tar_name]
+
+            if 'move_speed_reduction' in tar_bonuses:
+                # (they are always multiplicative)
+                move_speed_red_bonuses = tar_bonuses['move_speed_reduction']['multiplicative']
+
+                return min(move_speed_red_bonuses.values())
+
         # If no reductions are found.
-        except KeyError:
-            return 0
+        return 0
 
     def att_speed(self, tar_name):
         """

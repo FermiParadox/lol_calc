@@ -22,8 +22,8 @@ ALL_DATA = dict(
 
     max_combat_time=10,
 
-    rotation_lst=['w', 'w', 'w'],
-    chosen_items_dct={'player': ['hextech_gunblade', 'trinity_force', 'dorans_blade', 'sunfire_cape',
+    rotation_lst=[],
+    chosen_items_dct={'player': ['blade_of_the_ruined_king', 'trinity_force', 'dorans_blade', 'sunfire_cape',
                                  'guinsoos_rageblade', 'the_black_cleaver'],
                       'enemy_1': ['hextech_gunblade'],
                       'enemy_2': ['dorans_shield', 'hextech_gunblade'],

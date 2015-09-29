@@ -1,39 +1,16 @@
-# TODO: refactor everything, since it's very old code.
+class NoViableEnemyError(Exception):
+    pass
 
 
 class Targeting(object):
 
     def __init__(self,
+                 total_enemies,
                  enemy_target_names):
 
-        self.current_target = None
         self.targets_already_hit = None
+        self.total_enemies = total_enemies
         self.enemy_target_names = enemy_target_names
-
-    def switch_to_first_alive_enemy(self):
-        """Modifies current_target to first alive enemy.
-        """
-        for tar in self.enemy_target_names:
-            if 'dead_buff' not in self.active_buffs[tar]:
-                self.current_target = tar
-                return
-        else:
-            self.current_target = None
-
-    def switch_target(self, effect_name):
-        """
-        Modifies current_target based on the effect's target and available targets (non dead).
-        """
-
-        tar_type = getattr(self, effect_name)()['target']
-
-        # If the effect targets the player..
-        if tar_type == 'player':
-            # .. it sets current_target to 'player'.
-            self.current_target = 'player'
-        # Otherwise it sets it to the first alive enemy.
-        else:
-            self.switch_to_first_alive_enemy()
 
     def is_alive(self, tar_name):
         if 'dead_buff' in self.active_buffs[tar_name]:
@@ -41,49 +18,67 @@ class Targeting(object):
         else:
             return True
 
-    def next_alive_enemy(self):
+    def first_alive_enemy(self):
         """
-        Modifies current_target,
-        if there are available (and alive) enemy targets.
+        Returns first alive enemy. If all enemies are dead, returns None.
 
-        If there are no valid targets, sets current_target to None.
+        :return: (str) or (None)
         """
-
-        if self.current_target in ('player', None):
-            enemies_seq = self.enemy_target_names
-
-        else:
-            # Slices off current and previous enemies.
-            curr_tar_index = 1 + self.enemy_target_names.index(self.current_target)
-            enemies_seq = self.enemy_target_names[curr_tar_index:]
-
-        for tar in enemies_seq:
+        for tar in self.enemy_target_names:
             if self.is_alive(tar_name=tar):
                 return tar
 
         else:
-            # All enemies are dead.
             return None
 
-    def target_type(self, tar_name=None):
+    def switch_to_first_alive_enemy(self):
         """
-        Returns 'enemy' or 'player' based on the self.current_target.
+        Modifies current_target to first alive enemy. If all enemies are dead, raises exception.
 
-        :param tar_name: If given, it checks its type instead of self.current_target.
-        :return: (str)
+        :return: (None)
+        """
+        tar = self.first_alive_enemy()
+
+        if tar:
+            self.current_enemy = tar
+            return
+        else:
+            raise NoViableEnemyError("Everyone is dead. Can't switch to alive enemy")
+
+    def next_alive_enemy(self, current_tar):
+        """
+        Returns next alive enemy. If all enemies are dead, returns None.
+
+        :return: (str) or (None)
         """
 
-        if tar_name:
-            tar = tar_name
-        else:
-            tar = self.current_target
+        current_index = self.enemy_target_names.index(current_tar)
+        next_index = current_index + 1
 
-        if tar != 'player':
-            return 'enemy'
+        # (max possible index is always smaller than len() by 1)
+        if next_index < self.total_enemies:
+            return self.enemy_target_names[next_index]
         else:
+            return None
+
+    def switch_to_next_alive_enemy(self):
+        self.current_enemy = self.next_alive_enemy(current_tar=self.current_enemy)
+
+    @staticmethod
+    def target_type(tar_name):
+
+        if tar_name == 'player':
             return 'player'
+        else:
+            return 'enemy'
 
-    def reverse_target_type(self, tar_name=None):
+    def target_name_by_owner_type(self, owner_type):
+        if owner_type == 'player':
+            return 'player'
+        else:
+            return self.first_alive_enemy()
+
+    def opposite_target_type(self, tar_name):
         """
         Returns the opposite of given target type.
 
@@ -100,4 +95,4 @@ class Targeting(object):
         if tar_type == 'player':
             return tar_type
         else:
-            return self.current_target
+            return self.current_enemy
