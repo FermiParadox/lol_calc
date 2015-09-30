@@ -195,7 +195,7 @@ class EventsGeneral(buffs.DeathAndRegen):
         buff_name = dmg_dct['dot']['buff_name']
         buff_dct = self.req_buff_dct_func(buff_name=buff_name)
         buff_owner_type = buff_dct['target_type']
-        buff_owner_name = self.current_target_or_player(tar_type=buff_owner_type)
+        buff_owner_name = self.player_or_current_enemy(tar_type=buff_owner_type)
 
         buff_owner_act_buffs = self.active_buffs[buff_owner_name]
 
@@ -1073,7 +1073,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
     def _target_of_dmg_by_name(self, dmg_name):
         tar_type_of_dmg = self.request_dmg(dmg_name=dmg_name)['target_type']
 
-        return self.current_target_or_player(tar_type=tar_type_of_dmg)
+        return self.player_or_current_enemy(tar_type=tar_type_of_dmg)
 
     # COSTS
     def non_toggled_action_cost_dct(self, action_name):
@@ -1558,7 +1558,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                 # BUFFS APPLIED ON HIT.
                 for buff_applied_on_hit in on_hit_dct['apply_buff']:
                     tar_type = self.request_buff(buff_name=buff_applied_on_hit)['target_type']
-                    tar_name = self.current_target_or_player(tar_type=tar_type)
+                    tar_name = self.player_or_current_enemy(tar_type=tar_type)
                     self.add_buff(buff_name=buff_applied_on_hit, tar_name=tar_name)
 
                 # BUFFS REMOVED ON HIT.
@@ -1604,7 +1604,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
             (None)
         """
 
-        tar_name = self.current_target_or_player(tar_type=tar_type)
+        tar_name = self.player_or_current_enemy(tar_type=tar_type)
 
         # BUFFS
         for buff_name in eff_dct[tar_type]['actives']['buffs']:
@@ -1761,6 +1761,8 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         if self.everyone_dead:
             self.__all_dead_or_max_time_exceeded = True
             return
+
+        self.current_enemy = self.first_alive_enemy()
 
         # Sets current_time to current action's cast end.
         last_action_end = self._last_action_end()

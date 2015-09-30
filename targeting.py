@@ -91,8 +91,14 @@ class Targeting(object):
         else:
             return 'player'
 
-    def current_target_or_player(self, tar_type):
+    def player_or_current_enemy(self, tar_type):
         if tar_type == 'player':
             return tar_type
         else:
             return self.current_enemy
+
+    def player_or_first_alive_enemy(self, tar_type):
+        if tar_type == 'player':
+            return tar_type
+        else:
+            return self.first_alive_enemy()
