@@ -440,7 +440,7 @@ class EnemiesDmgToPlayer(EventsGeneral):
         self.combat_results['player'].update({'survivability': self.survivability()})
 
 
-class AttributeBase(EnemiesDmgToPlayer):
+class ConditionalsTranslator(EnemiesDmgToPlayer):
 
     OPERATORS_STR_MAP = {
         '<': operator.lt,
@@ -663,7 +663,6 @@ class AttributeBase(EnemiesDmgToPlayer):
             modified_dct.update(copy.deepcopy(self.ABILITIES_EFFECTS[obj_name]))
 
         # DATA MODIFICATION
-        tar_type = con_eff_dct['tar_type']
         mod_operation = con_eff_dct['mod_operation']
         cat_type = con_eff_dct['lst_category']
         eff_contents = con_eff_dct['names_lst']
@@ -671,10 +670,10 @@ class AttributeBase(EnemiesDmgToPlayer):
         # (it always modifies actives)
 
         if mod_operation == 'append':
-            modified_dct[tar_type]['actives'][cat_type] += eff_contents
+            modified_dct['actives'][cat_type] += eff_contents
         elif mod_operation == 'remove':
-            old_lst = modified_dct[obj_name][tar_type]['actives'][cat_type]
-            modified_dct[tar_type]['actives'][cat_type] = [i for i in old_lst if i not in eff_contents]
+            old_lst = modified_dct[obj_name]['actives'][cat_type]
+            modified_dct['actives'][cat_type] = [i for i in old_lst if i not in eff_contents]
 
     def _on_hit_effect_buff_updater(self, eff_dct, modified_dct, buff_name):
         """
@@ -969,7 +968,7 @@ class AttributeBase(EnemiesDmgToPlayer):
         return self.__castable_spells_shortcuts
 
 
-class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
+class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
 
     AA_COOLDOWN = 0.4   # TODO: replace functionality with 'wind_up'
 
@@ -1002,7 +1001,7 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
                                   player_lvl=champion_lvls_dct['player'],
                                   selected_runes=selected_runes)
 
-        AttributeBase.__init__(self,
+        ConditionalsTranslator.__init__(self,
                                ability_lvls_dct=ability_lvls_dct,
                                champion_lvls_dct=champion_lvls_dct,
                                selected_champions_dct=selected_champions_dct,
@@ -1072,8 +1071,11 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
 
     def _target_of_dmg_by_name(self, dmg_name):
         tar_type_of_dmg = self.request_dmg(dmg_name=dmg_name)['target_type']
-
         return self.player_or_current_enemy(tar_type=tar_type_of_dmg)
+
+    def _target_of_buff_by_name(self, buff_name):
+        tar_type_of_buff = self.request_buff(buff_name=buff_name)['target_type']
+        return self.player_or_current_enemy(tar_type=tar_type_of_buff)
 
     # COSTS
     def non_toggled_action_cost_dct(self, action_name):
@@ -1592,51 +1594,33 @@ class Actions(AttributeBase, timers.Timers, runes.RunesFinal):
         # Applies direct dmg.
         self.add_events('aa_dmg', current_time, tar_name=self.current_enemy)
 
-    def apply_ability_actives_on_tar(self, tar_type, eff_dct):
+    def apply_ability_effects(self, eff_dct):
         """
-        Applies an action's effects on target.
+        Applies an action's (abilities, item actives or summoner actives) effects.
 
         Target is automatically chosen.
 
-        Args:
-            tar_type: (str) 'player' or 'enemy'
-        Returns:
-            (None)
+        :param: tar_type: (str) 'player' or 'enemy'
+        :return: (None)
         """
 
-        tar_name = self.player_or_current_enemy(tar_type=tar_type)
-
         # BUFFS
-        for buff_name in eff_dct[tar_type]['actives']['buffs']:
-            self.add_buff(buff_name=buff_name, tar_name=tar_name)
+        for buff_name in eff_dct['actives']['buffs']:
+            tar_of_buff = self._target_of_buff_by_name(buff_name=buff_name)
+            self.add_buff(buff_name=buff_name, tar_name=tar_of_buff)
 
         # DMGS
-        for dmg_name in eff_dct[tar_type]['actives']['dmg']:
+        for dmg_name in eff_dct['actives']['dmg']:
             tar_of_dmg = self._target_of_dmg_by_name(dmg_name=dmg_name)
             self.add_events(effect_name=dmg_name, start_time=self.current_time, tar_name=tar_of_dmg)
 
         # BUFF REMOVAL
-        for buff_name_to_remove in eff_dct[tar_type]['actives']['remove_buff']:
-            tar_act_buffs = self.active_buffs[tar_type]
+        for buff_name_to_remove in eff_dct['actives']['remove_buff']:
+            tar_of_buff = self._target_of_buff_by_name(buff_name=buff_name_to_remove)
+            tar_act_buffs = self.active_buffs[tar_of_buff]
+
             if buff_name_to_remove in tar_act_buffs:
                 del tar_act_buffs[buff_name_to_remove]
-
-    def apply_ability_effects(self, eff_dct):
-        """
-        Applies an action's effects.
-
-        Used for abilities, item actives or summoner actives.
-
-        :return: (None)
-        """
-
-        if 'player' in eff_dct:
-
-            self.apply_ability_actives_on_tar(tar_type='player', eff_dct=eff_dct)
-
-        if 'enemy' in eff_dct:
-
-            self.apply_ability_actives_on_tar(tar_type='enemy', eff_dct=eff_dct)
 
     def apply_action_effects(self, action_name):
         """

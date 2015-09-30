@@ -155,7 +155,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
                                          tar_name=tar_name,
                                          stack_increment=stack_increment)
 
-    def add_single_ability_passive_buff(self, target_type, effects_dct, tar_name):
+    def add_single_ability_passive_buff(self, effects_dct, tar_name):
         """
         Adds passive buffs of a single ability on a target.
 
@@ -165,10 +165,10 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
         if effects_dct:
 
             # Applies all passive buffs.
-            for buff_name in effects_dct[target_type]['passives']['buffs']:
+            for buff_name in effects_dct['passives']['buffs']:
                 self.add_buff(buff_name, tar_name)
 
-    def add_items_passive_buffs(self, target_type, tar_name):
+    def add_items_passive_buffs(self, tar_name):
         """
         Adds all items' passive buffs on given target.
 
@@ -179,8 +179,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
         if self.player_items:
             for item_name in self.player_items:
                 # (If item is bought multiple times, all stacks are applied)
-                self.add_single_ability_passive_buff(target_type=target_type,
-                                                     effects_dct=items_folder.items_data.ITEMS_EFFECTS[item_name],
+                self.add_single_ability_passive_buff(effects_dct=items_folder.items_data.ITEMS_EFFECTS[item_name],
                                                      tar_name=tar_name)
 
     def add_abilities_and_items_passive_buffs(self, abilities_effects_dct_func, abilities_lvls):
@@ -201,17 +200,15 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
                 if abilities_lvls[ability_name] > 0:
 
                     # .. applies the buffs.
-                    self.add_single_ability_passive_buff(target_type=target_type,
-                                                         effects_dct=abilities_effects_dct_func(ability_name),
+                    self.add_single_ability_passive_buff(effects_dct=abilities_effects_dct_func(ability_name),
                                                          tar_name=tar_name)
 
             # Innate passive buffs.
-            self.add_single_ability_passive_buff(target_type=target_type,
-                                                 effects_dct=abilities_effects_dct_func('inn'),
+            self.add_single_ability_passive_buff(effects_dct=abilities_effects_dct_func('inn'),
                                                  tar_name=tar_name)
 
         # Item passive buffs.
-        self.add_items_passive_buffs(target_type='player', tar_name='player')
+        self.add_items_passive_buffs(tar_name='player')
 
 
 class Counters(BuffsGeneral):

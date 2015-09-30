@@ -4092,44 +4092,43 @@ class EffectsBase(object):
         else:
             app_types_tpl = ('passives',)
 
-        for tar_type in ('enemy', 'player'):
-            for application_type in app_types_tpl:
-                # DMGS
+        for application_type in app_types_tpl:
+            # DMGS
 
-                dmg_msg = '%s\n' % univ_msg
-                dmg_msg += '%s -- %s -- DMG APPLIED\n' % (tar_type, application_type)
-                dmg_msg = dmg_msg.upper()
+            dmg_msg = '%s\n' % univ_msg
+            dmg_msg += '%s -- DMG APPLIED\n' % application_type
+            dmg_msg = dmg_msg.upper()
 
-                suggest_lst_of_attr_values(suggested_values_lst=Fetch().dmgs_names(obj_name=obj_name,
-                                                                                   champ_or_item=champ_or_item),
-                                           modified_lst=modified_eff_dct[tar_type][application_type]['dmg'],
-                                           extra_start_msg=dmg_msg)
+            suggest_lst_of_attr_values(suggested_values_lst=Fetch().dmgs_names(obj_name=obj_name,
+                                                                               champ_or_item=champ_or_item),
+                                       modified_lst=modified_eff_dct[application_type]['dmg'],
+                                       extra_start_msg=dmg_msg)
 
-                pp.pprint(modified_eff_dct[tar_type][application_type]['dmg'])
+            pp.pprint(modified_eff_dct[application_type]['dmg'])
 
-                # BUFFS APPLICATION
-                buffs_applied_msg = '%s\n' % univ_msg
-                buffs_applied_msg += '%s -- %s -- BUFFS APPLIED' % (tar_type, application_type)
-                buffs_applied_msg = buffs_applied_msg.upper()
+            # BUFFS APPLICATION
+            buffs_applied_msg = '%s\n' % univ_msg
+            buffs_applied_msg += '%s -- BUFFS APPLIED' % application_type
+            buffs_applied_msg = buffs_applied_msg.upper()
 
-                suggest_lst_of_attr_values(suggested_values_lst=Fetch().buffs_names(obj_name=obj_name,
-                                                                                    champ_or_item=champ_or_item),
-                                           modified_lst=modified_eff_dct[tar_type][application_type]['buffs'],
-                                           extra_start_msg=buffs_applied_msg)
+            suggest_lst_of_attr_values(suggested_values_lst=Fetch().buffs_names(obj_name=obj_name,
+                                                                                champ_or_item=champ_or_item),
+                                       modified_lst=modified_eff_dct[application_type]['buffs'],
+                                       extra_start_msg=buffs_applied_msg)
 
-                pp.pprint(modified_eff_dct[tar_type][application_type]['buffs'])
+            pp.pprint(modified_eff_dct[application_type]['buffs'])
 
-                # BUFF REMOVAL
-                buff_removal_msg = '%s\n' % univ_msg
-                buff_removal_msg += '%s -- %s -- BUFFS REMOVED' % (tar_type, application_type)
-                buff_removal_msg = buff_removal_msg.upper()
+            # BUFF REMOVAL
+            buff_removal_msg = '%s\n' % univ_msg
+            buff_removal_msg += '%s -- BUFFS REMOVED' % application_type
+            buff_removal_msg = buff_removal_msg.upper()
 
-                suggest_lst_of_attr_values(suggested_values_lst=Fetch().buffs_names(obj_name=obj_name,
-                                                                                    champ_or_item=champ_or_item),
-                                           modified_lst=modified_eff_dct[tar_type][application_type]['remove_buff'],
-                                           extra_start_msg=buff_removal_msg)
+            suggest_lst_of_attr_values(suggested_values_lst=Fetch().buffs_names(obj_name=obj_name,
+                                                                                champ_or_item=champ_or_item),
+                                       modified_lst=modified_eff_dct[application_type]['remove_buff'],
+                                       extra_start_msg=buff_removal_msg)
 
-                pp.pprint(modified_eff_dct[tar_type][application_type]['remove_buff'])
+            pp.pprint(modified_eff_dct[application_type]['remove_buff'])
 
         # CD MODIFICATION
         lst_of_modified = []
@@ -4264,7 +4263,6 @@ class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
         dct = dict(
             ability_effect=dict(
                 obj_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
-                tar_type=('enemy', 'player'),
                 # Contains spell effect categories
                 lst_category=palette.ChampionsStats.spell_effects()['player']['actives'],
                 mod_operation=('append', 'remove'),
