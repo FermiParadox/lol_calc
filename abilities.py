@@ -1594,7 +1594,7 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
         # Applies direct dmg.
         self.add_events('aa_dmg', current_time, tar_name=self.current_enemy)
 
-    def apply_ability_effects(self, eff_dct):
+    def apply_ability_or_item_effects(self, eff_dct):
         """
         Applies an action's (abilities, item actives or summoner actives) effects.
 
@@ -1610,9 +1610,13 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
             self.add_buff(buff_name=buff_name, tar_name=tar_of_buff)
 
         # DMGS
-        for dmg_name in eff_dct['actives']['dmg']:
+        dmg_effects = eff_dct['actives']['dmg']
+        for dmg_name in dmg_effects:
             tar_of_dmg = self._target_of_dmg_by_name(dmg_name=dmg_name)
             self.add_events(effect_name=dmg_name, start_time=self.current_time, tar_name=tar_of_dmg)
+
+        if dmg_effects:
+            self.activate_liandrys()
 
         # BUFF REMOVAL
         for buff_name_to_remove in eff_dct['actives']['remove_buff']:
@@ -1637,11 +1641,11 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
 
         # ABILITY
         elif action_name in self.castable_spells_shortcuts:
-            self.apply_ability_effects(eff_dct=self.abilities_effects(ability_name=action_name))
+            self.apply_ability_or_item_effects(eff_dct=self.abilities_effects(ability_name=action_name))
 
         # ITEM ACTIVE - SUMMONER SPELL
         else:
-            self.apply_ability_effects(eff_dct=self.items_effects(action_name))
+            self.apply_ability_or_item_effects(eff_dct=self.items_effects(action_name))
 
     def apply_pre_action_events(self):
         """
@@ -2458,7 +2462,7 @@ class SpecialItems(Actions):
     IMMOLATE_DMG_BASE['dot'] = {'buff_name': 'immolate_buff'}
     IMMOLATE_DMG_BASE['max_targets'] = 3
     IMMOLATE_DMG_BASE['usual_max_targets'] = 3
-    IMMOLATE_DMG_BASE['delay'] = 0
+    IMMOLATE_DMG_BASE['delay'] = 1
     IMMOLATE_DMG_BASE['heal_for_dmg_amount'] = False
     IMMOLATE_DMG_BASE['crit_type'] = None
     IMMOLATE_DMG_BASE['dmg_type'] = 'magic'
@@ -2486,6 +2490,22 @@ class SpecialItems(Actions):
     def enchantment_cinderhulk(self):
         dmg_values = 15 + 0.6 * self.player_lvl
         return self._immolate_dmg_base(dmg_name='sunfire_cape_immolate_dmg', dmg_values=dmg_values)
+
+    # LIANDRYS TORMENT
+    LIANDRYS_NAME = 'liandrys_torment'
+    items_data.ensure_in_items_names((LIANDRYS_NAME,))
+
+    def activate_liandrys(self):
+        """
+        Applies liandry's dot if item present in player's items.
+
+        Dot is applied on ability or item actives only.
+
+        :return:
+        """
+
+        if self.LIANDRYS_NAME in self.player_items:
+            self.add_buff(buff_name='liandrys_torment_dot_buff', tar_name=self.current_enemy)
 
 
 for i in SpecialItems.BLACK_CLEAVER_REDUCTION_BUFFS_NAMES:

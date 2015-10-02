@@ -94,7 +94,9 @@ class Timers(object):
         dmg_dct = self.req_dmg_func(dmg_name)
 
         start = current_time
-        start += dmg_dct['delay']
+        delay = dmg_dct['delay']
+        if delay:
+            start += dmg_dct['delay']
 
         dmg_source_name = dmg_dct['dmg_source']
         if dmg_source_name in palette.ALL_POSSIBLE_SPELL_SHORTCUTS:

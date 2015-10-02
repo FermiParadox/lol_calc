@@ -496,8 +496,17 @@ class Counters(BuffsGeneral):
         :return: (None)
         """
 
-        self.combat_history[target_name]['current_hp'].update(
-            {self.current_time: self.current_stats[target_name]['current_hp']})
+        tar_hp_history = self.combat_history[target_name]['current_hp']
+
+        tar_hp_history.update({self.current_time: self.current_stats[target_name]['current_hp']})
+
+        # Later times that were stored prematurely need to be removed,
+        # otherwise they create wrong graphs under some conditions.
+        # (that is, if hp at t2 is higher than t1 and t2 is stored before t1,
+        # it would wrongfully show as if hp goes up for no reason)
+        for time in set(tar_hp_history):
+            if time > self.current_time:
+                del tar_hp_history[time]
 
     def note_dmg_or_heal_taken(self, dmg_name, tar_name, unmitigated_dmg_value, mitigated_dmg_value):
         """
@@ -807,9 +816,6 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         excluding AAs and some on hit dmg effects (not marked in their dict).
         """
 
-        if tar_name == 'player':
-            return
-
         # If it's an AA applies lifesteal.
         if dmg_type == 'AA':
             lifesteal_value = dmg_value * self.request_stat(target_name='player', stat_name='lifesteal')
@@ -886,7 +892,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
             self.current_stats[tar_name]['current_hp'] = self.request_stat(target_name=tar_name,
                                                                            stat_name='hp')
 
-    def apply_resource_dmg_or_heal(self, dmg_name, dmg_dct, unmitigated_dmg_value):
+    def apply_resource_dmg_or_heal(self, dmg_dct, unmitigated_dmg_value):
         """
         Reduces or increases player's 'current_'resource and stores it in combat_history.
 
@@ -1002,6 +1008,11 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                              target=target_name,
                                              is_aoe=aoe)
 
+        self.note_dmg_or_heal_taken(dmg_name=dmg_name,
+                                    tar_name=target_name,
+                                    unmitigated_dmg_value=unmitigated_dmg_value,
+                                    mitigated_dmg_value=final_dmg_value)
+
         # VALUE APPLICATION
         # If it's a dmg.
         if final_dmg_value >= 0:
@@ -1017,10 +1028,6 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                              target_name=target_name)
                     self.note_source_dmg_in_results(dmg_dct=dmg_dct, final_dmg_value=final_dmg_value)
 
-            self.note_dmg_or_heal_taken(dmg_name=dmg_name,
-                                        tar_name=target_name,
-                                        unmitigated_dmg_value=unmitigated_dmg_value,
-                                        mitigated_dmg_value=final_dmg_value)
             if target_name != 'player':
 
                 # Heal-for-dmg-dealt type of dmgs.
@@ -1029,20 +1036,21 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                     self.apply_heal_value(tar_name='player',
                                           heal_value=final_dmg_value)
 
-            # LIFESTEAL/SPELLVAMP
-            self.apply_spellvamp_or_lifesteal(tar_name=target_name,
-                                              dmg_dct=dmg_dct,
-                                              dmg_value=final_dmg_value,
-                                              dmg_type=dmg_type)
+                # LIFESTEAL/SPELLVAMP
+                self.apply_spellvamp_or_lifesteal(tar_name=target_name,
+                                                  dmg_dct=dmg_dct,
+                                                  dmg_value=final_dmg_value,
+                                                  dmg_type=dmg_type)
 
             self.activate_black_cleaver_armor_reduction_buff(dmg_type=dmg_type, target_name=target_name)
-            self.note_current_hp_in_history(target_name=target_name)
 
         # Otherwise it's a heal.
         else:
             # (minus used to reverse value)
             self.apply_heal_value(tar_name=target_name,
                                   heal_value=-final_dmg_value)
+
+        self.note_current_hp_in_history(target_name=target_name)
 
     def apply_dmg_or_heal(self, dmg_name, dmg_dct, target_name):
         """
@@ -1064,8 +1072,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                       unmitigated_dmg_value=unmitigated_dmg_val)
 
         else:
-            self.apply_resource_dmg_or_heal(dmg_name=dmg_name,
-                                            dmg_dct=dmg_dct,
+            self.apply_resource_dmg_or_heal(dmg_dct=dmg_dct,
                                             unmitigated_dmg_value=unmitigated_dmg_val)
 
     def times_of_death(self):

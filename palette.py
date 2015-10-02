@@ -372,35 +372,14 @@ class ChampionsStats(object):
     @staticmethod
     def inn_effects():
         return dict(
-            enemy=dict(
-
                 # buffs and effects activated at skill lvl up
                 passives=dict(buffs=[],
-                              remove_buff=[])),
-
-            player=dict(
-
-                # buffs and effects activated at skill lvl up
-                passives=dict(buffs=[],
-                              remove_buff=[]))
+                              remove_buff=[])
         )
 
     @staticmethod
     def spell_effects():
         return dict(
-            enemy=dict(
-
-                # Buffs and effects activated at skill lvl up.
-                passives=dict(buffs=[],
-                              remove_buff=[],
-                              dmg=[]),
-
-                # Buffs and effects activated on cast.
-                actives=dict(buffs=[],
-                             remove_buff=[],
-                             dmg=[])),
-
-            player=dict(
 
                 # Buffs and effects activated at skill lvl up.
                 passives=dict(buffs=[],
@@ -411,12 +390,12 @@ class ChampionsStats(object):
                 actives=dict(buffs=[],
                              remove_buff=[],
                              dmg=[],
-                             cds_modified={}))
+                             cds_modified={})
         )
 
     def item_effects(self):
         dct = self.spell_effects()
-        del dct['player']['actives']['cds_modified']
+        del dct['actives']['cds_modified']
 
         return dct
 

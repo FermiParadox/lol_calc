@@ -40,6 +40,7 @@ CHAMPION_EXTERNAL_VAR_DCT_NAME = 'CHAMPION_EXTERNAL_VARIABLES'
 CHAMP_CLASS_NAME = 'class ChampionAttributes'
 DEFAULT_ACTIONS_PRIORITY_NAME = 'DEFAULT_ACTIONS_PRIORITY'
 CHAMPION_STATS_DEPENDENCIES_NAME = 'CHAMPION_STATS_DEPENDENCIES'
+RESOURCE_USED_NAME = 'RESOURCE_USED'
 SPELL_LVL_UP_PRIORITIES_NAME = 'SPELL_LVL_UP_PRIORITIES'
 CHAMPION_RANGE_TYPE_NAME = 'CHAMPION_RANGE_TYPE'
 CHAMPION_MODULE_OBJECT_NAMES = (ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME,
@@ -446,7 +447,7 @@ def _check_loop_exit(key):
 
 def _check_for_repeat_choice_error(key):
     if key == REPEAT_CHOICE_KEY:
-        print('# Repeating previous choice #')
+        print('### Repeating previous choice ###')
         raise RepeatChoiceErrorError
 
 
@@ -3565,7 +3566,7 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
 
 
 @inner_loop_exit_handler
-def suggest_affected_stats_attributes(str_buff_or_item, obj_name, modified_stats_dct, possible_stat_values_lst,
+def suggest_affected_stats_attributes(obj_name, modified_stats_dct, possible_stat_values_lst,
                                       possible_mod_values_lst, question_msg=''):
     """
     Suggests stats that the buff modifies and
@@ -3574,7 +3575,7 @@ def suggest_affected_stats_attributes(str_buff_or_item, obj_name, modified_stats
     :return: (None)
     """
 
-    msg = '\n{}: {}\n'.format(str_buff_or_item.upper(), obj_name)
+    msg = '\nBuff: {}\n'.format(obj_name)
     if question_msg:
         msg += question_msg
     else:
@@ -3589,7 +3590,7 @@ def suggest_affected_stats_attributes(str_buff_or_item, obj_name, modified_stats
         for stat_modified in modified_stats_names:
             modified_stats_dct.update({stat_modified: {}})
 
-            buff_name_stat_name_msg = '\n{}: {}, STAT: {}'.format(str_buff_or_item.upper(), obj_name, stat_modified)
+            buff_name_stat_name_msg = '\nBuff: {}, STAT: {}'.format(obj_name, stat_modified)
 
             # Stat type
             for stat_type in STAT_TYPES:
@@ -3616,10 +3617,15 @@ def suggest_affected_stats_attributes(str_buff_or_item, obj_name, modified_stats
                     for modifier in stat_modifiers_lst:
 
                         # Suggests mod values.
-                        modifier_vals_question = '\n{}: {}, STAT: {}, MOD: {}'.format(str_buff_or_item.upper(), obj_name, stat_modified, modifier)
+                        modifier_vals_question = '\nBUFF: {}, STAT: {}, MOD: {}'.format(obj_name, stat_modified, modifier)
                         modifier_vals_question += '\nChoose mod values.'
-                        mod_vals = enumerated_question(question_str=modifier_vals_question,
-                                                       choices_seq=possible_mod_values_lst)
+
+                        # (must be a tuple, even if only a single value is selected)
+                        mod_vals = enumerated_lst_creation(suggested_values_lst=possible_mod_values_lst,
+                                                           extra_start_msg=modifier_vals_question,
+                                                           sort_suggested_lst=False)
+
+                        mod_vals = tuple(mod_vals)
 
                         # Inserts mod values.
                         modified_stats_dct[stat_modified][stat_type]['stat_mods'].update(
@@ -3841,8 +3847,7 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation):
             self.buffs_dct[buff_name]['stats'] = {}
 
             stats_dct = self.buffs_dct[buff_name]['stats']
-            suggest_affected_stats_attributes(str_buff_or_item='buff',
-                                              obj_name=buff_name,
+            suggest_affected_stats_attributes(obj_name=buff_name,
                                               modified_stats_dct=stats_dct,
                                               possible_stat_values_lst=self.ability_effects_lst,
                                               possible_mod_values_lst=self.mod_vals_lst)
@@ -4619,7 +4624,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                     break
             else:
                 # No match found.
-                raise palette.UnexpectedValueError('No matching stat found in string: {}'.format(str_fragment))
+                print('WARNING: No matching stat found in string: {}\nNon-unique stats set to empty dict'.format(str_fragment))
 
         return dct
 
@@ -4666,6 +4671,29 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         lst += sorted(self._detected_uniques_names())
         return lst
 
+    @staticmethod
+    def _create_unique_or_non_unique_stats(obj_name, modified_stats_dct, possible_stat_values_lst):
+        modified_stats_names = []
+        suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
+                                   modified_lst=modified_stats_names)
+
+        # Stat name
+        for stat_modified in modified_stats_names:
+
+            stat_name_msg = '\nITEM: {}, STAT: {}'.format(obj_name, stat_modified)
+
+            # Stat type
+            for stat_type in STAT_TYPES:
+                if _y_n_question(stat_name_msg+'\nIs there a {} bonus to the stat?'.format(stat_type.upper())):
+                    # (created here, instead of outside the loop, since some types aren't needed)
+                    modified_stats_dct.setdefault(stat_type, {})
+
+                    # Stat values
+                    stat_vals = enumerated_question(question_str=stat_name_msg+'\nStat values?',
+                                                    choices_seq=possible_stat_values_lst)
+
+                    modified_stats_dct[stat_type].update({stat_modified: stat_vals})
+
     def create_unique_stats_values(self):
         """
         Detects unique stats and their values in an item description, and stores them.
@@ -4685,14 +4713,11 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         for name_of_unique in selected_unique_names_lst:
             self.unique_item_stats.update({name_of_unique: {}})
 
-            msg = 'unique name: {}\nContains stats?'.format(name_of_unique)
+            print('unique name: {}\n'.format(name_of_unique.upper()))
 
-            suggest_affected_stats_attributes(str_buff_or_item='item',
-                                              obj_name=self.item_name,
-                                              modified_stats_dct=self.unique_item_stats[name_of_unique],
-                                              possible_stat_values_lst=self.arithmetic_values_in_description(),
-                                              possible_mod_values_lst=self.arithmetic_values_in_description(),
-                                              question_msg=msg)
+            self._create_unique_or_non_unique_stats(obj_name=self.item_name,
+                                                    modified_stats_dct=self.unique_item_stats[name_of_unique],
+                                                    possible_stat_values_lst=self.arithmetic_values_in_description())
 
         print(delimiter(40))
         print('UNIQUE stats:')
@@ -4757,7 +4782,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                                                   first_synthetic='{}_dmg'.format(self.item_name))
 
         # (msg)
-        print(delimiter(20))
+        print(fat_delimiter(40))
         print('\nDMG NAME: {}'.format(new_dmg_name))
 
         expression_way = enumerated_question("Expressed by: (if expressed by another item, insert item name)",
@@ -4835,6 +4860,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
         for buff_name in self.item_buffs:
             # Expressed by method.
+            print(fat_delimiter(40))
+            print('BUFF: {}'.format(buff_name))
             expression_way = enumerated_question("Expressed by: (if expressed by another item, insert item name)",
                                                  choices_seq=('normally', 'by_method'))
 
@@ -4853,17 +4880,17 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                 # Dot
                 if self.item_buffs[buff_name]['dot']:
                     self.item_buffs[buff_name]['dot'] = {'dmg_names': []}
-                    suggest_attr_values(suggested_values_dct={k: v for k, v in self.BUFF_DOT_ATTRS if k != 'dmg_names'},
+                    suggest_attr_values(suggested_values_dct={k: v for k, v in self.BUFF_DOT_ATTRS.items() if k != 'dmg_names'},
                                         modified_dct=self.item_buffs[buff_name]['dot'],
                                         extra_start_msg='Dot attrs: ')
 
-                    suggest_lst_of_attr_values(suggested_values_lst=(),
-                                               modified_lst=self.item_buffs[buff_name]['dot']['dmgs_names'],
+                    suggest_lst_of_attr_values(suggested_values_lst=list(self.item_dmgs),
+                                               modified_lst=self.item_buffs[buff_name]['dot']['dmg_names'],
                                                extra_start_msg='Dmgs names?')
 
                 # Stats affected by buff.
                 self.item_buffs[buff_name]['stats'] = {}
-                suggest_affected_stats_attributes(str_buff_or_item='buff', obj_name=buff_name,
+                suggest_affected_stats_attributes(obj_name=buff_name,
                                                   modified_stats_dct=self.item_buffs[buff_name]['stats'],
                                                   possible_stat_values_lst=self.arithmetic_values_in_description(),
                                                   possible_mod_values_lst=self.arithmetic_values_in_description())
@@ -4898,7 +4925,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                                            extra_start_msg='REMOVED BUFFS on hit.')
 
             else:
-                buff_on_hit_dct.clear()
+                self.item_buffs[buff_name]['on_hit'] = {}
 
         print('BUFFS:')
         pp.pprint(self.item_buffs)
@@ -5317,6 +5344,10 @@ class SkillsLvlUps(object):
 
         return dct
 
+    @staticmethod
+    def champion_resource_used():
+        return enumerated_question(question_str='Resource used?', choices_seq=stats.ALL_RESOURCE_NAMES)
+
 
 # ===============================================================
 #       MODULE CREATION
@@ -5661,6 +5692,9 @@ class ChampionModuleCreator(ModuleCreatorBase):
         elif obj_name == SPELL_LVL_UP_PRIORITIES_NAME:
             return SkillsLvlUps().lvl_up_priorities()
 
+        elif obj_name == RESOURCE_USED_NAME:
+            return SkillsLvlUps().champion_resource_used()
+
         elif obj_name == CHAMPION_STATS_DEPENDENCIES_NAME:
             return StatsDependencies().champion_stats_dependencies(champion_name=self.champion_name)
 
@@ -5834,9 +5868,16 @@ class ItemsModuleCreator(ModuleCreatorBase):
             creation_instance.create_item()
 
     @staticmethod
-    def create_non_created_items():
+    def create_not_created_items(excluded_str=None):
         for item_name in sorted(ExploreApiItems().usable_items_by_name_dct):
+
+            if excluded_str:
+                if excluded_str.lower() in item_name.lower():
+                    print('Auto skipping {}. (contains string: {})'.format(item_name, excluded_str))
+                    continue
+
             if item_name not in Fetch().items_attrs_dct():
+                print(fat_delimiter(80))
                 if _y_n_question('Create {}?'.format(item_name.upper())):
                     creation_instance = ItemsModuleCreator(item_name=item_name)
                     creation_instance.create_item()
@@ -5951,12 +5992,12 @@ if __name__ == '__main__':
     if 0:
         inst = ItemAttrCreation(item_name='bru')
         pp.pprint(inst.item_secondary_data_dct())
-    if 1:
-        inst = ItemsModuleCreator(item_name='cinderh')
+    if 0:
+        inst = ItemsModuleCreator(item_name='sheen')
         inst.create_item()
     # Create all items.
     if 1:
-        ItemsModuleCreator.create_non_created_items()
+        ItemsModuleCreator.create_not_created_items('enchantment')
 
     # PRETTY FORMAT OBJECT IN MODULE
     if 0:
