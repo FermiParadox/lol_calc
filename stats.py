@@ -43,7 +43,7 @@ _DEFENSE_REDUCING_MR_AND_ARMOR_MAP = dict(
 # (contains deepest dict values from DEFENSE_REDUCING_STATS)
 # Dmg reductions and extra dmg dealt modifiers are both expressed by the same stats, and are always multiplicative.
 DEFENSIVE_NORMAL_STATS = {'percent_dmg_reduction', 'flat_AA_reduction', 'percent_AA_reduction', 'crit_dmg_reduction',
-                          'flat_dmg_reduction', 'flat_physical_dmg_reduction', 'flat_magic_dmg_reduction',
+                          'flat_dmg_reduction', 'flat_physical_dmg_reduction', 'flat_magic_dmg_reduction', 'tenacity',
                           'percent_physical_dmg_reduction', 'percent_magic_dmg_reduction', 'flat_non_aoe_reduction',
                           'flat_aoe_reduction', 'percent_aoe_reduction', 'percent_non_aoe_reduction', 'slow_reduction'}
 for armor_or_mr in _DEFENSE_REDUCING_MR_AND_ARMOR_MAP:

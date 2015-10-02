@@ -4432,6 +4432,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                                             'application_type': 'additive'},
                            'Mana': {'app_name': 'mp',
                                     'application_type': 'additive'},
+                           'Mana per level': {'app_name': 'mp_per_lvl',
+                                              'application_type': 'additive'},
                            'Movement Speed': {'app_name': 'move_speed',
                                               'application_type': 'undefined'},
                            'Spell Vamp': {'app_name': 'spellvamp',
