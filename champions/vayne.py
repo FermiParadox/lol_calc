@@ -1,3 +1,5 @@
+import abilities
+
 ABILITIES_ATTRIBUTES = {
     'buffs': {'e_stun_buff': {'buff_source': 'e',
                               'dot': False,
@@ -11,10 +13,10 @@ ABILITIES_ATTRIBUTES = {
                            'dot': False,
                            'duration': 5,
                            'max_stacks': 1,
-                           'on_hit': {'apply_buff': ['q_dmg'],
-                                      'cause_dmg': [],
+                           'on_hit': {'apply_buff': [],
+                                      'cause_dmg': ['q_dmg_0'],
                                       'cds_modified': {},
-                                      'remove_buff': ['q_buff']},
+                                      'remove_buff': ['q_buff_0']},
                            'prohibit_cd_start': 'q',
                            'stats': None,
                            'target_type': 'player'},
@@ -33,10 +35,7 @@ ABILITIES_ATTRIBUTES = {
                                  'dot': False,
                                  'duration': 3,
                                  'max_stacks': 3,
-                                 'on_hit': {'apply_buff': ['placeholder'],
-                                            'cause_dmg': ['placeholder'],
-                                            'cds_modified': {},
-                                            'remove_buff': ['placeholder']},
+                                 'on_hit': {},
                                  'prohibit_cd_start': None,
                                  'stats': None,
                                  'target_type': 'enemy'},
@@ -59,12 +58,13 @@ ABILITIES_ATTRIBUTES = {
                               'dot': False,
                               'life_conversion_type': 'spellvamp',
                               'max_targets': 1,
-                              'mods': {'enemy': {}, 'player': {'bonus_ad': 0.5}},
+                              'mods': {'enemy': {}, 'player': {'bonus_ad': {'additive': 0.5}}},
                               'radius': None,
                               'resource_type': 'hp',
                               'target_type': 'enemy',
                               'usual_max_targets': 1,
-                              'crit_type': None},
+                              'crit_type': None,
+                              'heal_for_dmg_amount': False},
              'e_stun_dmg': {'delay': 0.1,
                             'dmg_category': 'standard_dmg',
                             'dmg_source': 'e',
@@ -73,12 +73,13 @@ ABILITIES_ATTRIBUTES = {
                             'dot': False,
                             'life_conversion_type': 'spellvamp',
                             'max_targets': 1,
-                            'mods': {'enemy': {}, 'player': {'bonus_ad': 0.5}},
+                            'mods': {'enemy': {}, 'player': {'bonus_ad': {'additive': 0.5}}},
                             'radius': None,
                             'resource_type': 'hp',
                             'target_type': 'enemy',
                             'usual_max_targets': 1,
-                            'crit_type': None},
+                            'crit_type': None,
+                            'heal_for_dmg_amount': False},
              'q_dmg_0': {'delay': None,
                          'dmg_category': 'standard_dmg',
                          'dmg_source': 'q',
@@ -87,12 +88,13 @@ ABILITIES_ATTRIBUTES = {
                          'dot': False,
                          'life_conversion_type': 'lifesteal',
                          'max_targets': 1,
-                         'mods': {'enemy': {}, 'player': {'bonus_ad': (0.3, 0.35, 0.4, 0.45, 0.5)}},
+                         'mods': {'enemy': {}, 'player': {'bonus_ad': {'additive': (0.3, 0.35, 0.4, 0.45, 0.5)}}},
                          'radius': None,
                          'resource_type': 'hp',
                          'target_type': 'enemy',
                          'usual_max_targets': 1,
-                         'crit_type': None},
+                         'crit_type': None,
+                         'heal_for_dmg_amount': False},
              'w_dmg_0': {'delay': None,
                          'dmg_category': 'standard_dmg',
                          'dmg_source': 'w',
@@ -101,12 +103,13 @@ ABILITIES_ATTRIBUTES = {
                          'dot': False,
                          'life_conversion_type': None,
                          'max_targets': 1,
-                         'mods': {'enemy': {'hp': (0.04, 0.05, 0.06, 0.07, 0.08)}, 'player': {}},
+                         'mods': {'enemy': {'hp': {'additive': (0.04, 0.05, 0.06, 0.07, 0.08)}}, 'player': {}},
                          'radius': None,
                          'resource_type': 'hp',
                          'target_type': 'enemy',
                          'usual_max_targets': 1,
-                         'crit_type': None}},
+                         'crit_type': None,
+                         'heal_for_dmg_amount': False}},
     'general_attributes': {'e': {'base_cd': (20.0, 18.0, 16.0, 14.0, 12.0),
                                  'cast_time': 0.25,
                                  'castable': True,
@@ -167,3 +170,88 @@ ABILITIES_ATTRIBUTES = {
                                  'toggled': False,
                                  'travel_time': 0},
                            'w': {'castable': False}}}
+ABILITIES_EFFECTS = {
+    'inn':{},
+    'e': {'actives': {'buffs': ['e_stun_buff'],
+                      'cds_modified': {},
+                      'dmg': ['e_impact_dmg', 'e_stun_dmg'],
+                      'remove_buff': []},
+          'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
+    'q': {'actives': {'buffs': ['q_buff_0'],
+                      'cds_modified': {},
+                      'dmg': [],
+                      'remove_buff': []},
+          'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
+    'r': {'actives': {'buffs': ['r_buff_0'],
+                      'cds_modified': {},
+                      'dmg': [],
+                      'remove_buff': []},
+          'passives': {'buffs': [], 'dmg': [], 'remove_buff': []}},
+    'w': {'actives': {'buffs': [],
+                      'cds_modified': {},
+                      'dmg': [],
+                      'remove_buff': []},
+          'passives': {'buffs': ['w_initiator_buff'],
+                       'dmg': [],
+                       'remove_buff': []}}}
+
+ABILITIES_CONDITIONALS = {
+    'w_nth_hit': {'effects': {'apply_w_dmg': {'obj_name': 'w_initiator_buff',
+                                              'lst_category': 'cause_dmg',
+                                              'effect_type': 'buff_on_hit',
+                                              'mod_operation': 'append',
+                                              'names_lst': ['w_dmg_0']},
+                              'remove_w_counter_stacks': {'obj_name': 'w_initiator_buff',
+                                                          'lst_category': 'remove_buff',
+                                                          'effect_type': 'buff_on_hit',
+                                                          'mod_operation': 'append',
+                                                          'names_lst': ['w_counter_buff']},
+                              'remove_w_counter_application': {'obj_name': 'w_initiator_buff',
+                                                               'lst_category': 'apply_buff',
+                                                               'effect_type': 'buff_on_hit',
+                                                               'mod_operation': 'remove',
+                                                               'names_lst': ['w_counter_buff']}},
+                  'triggers': {'nth_hit_trig': {'buff_name': 'w_counter_buff',
+                                                'operator': '>=',
+                                                'owner_type': 'enemy',
+                                                'stacks': 2,
+                                                'trigger_type': 'buff'}}}}
+
+CHAMPION_EXTERNAL_VARIABLES = {}
+
+DEFAULT_ACTIONS_PRIORITY = ('r', 'e', 'AA', 'q')
+
+SPELL_LVL_UP_PRIORITIES = {
+    'at_least_one_lvl_in_each': True,
+    'automatically_lvled_up': {},
+    'max_spells_lvl_ups': 'standard',
+    'spells_lvl_up_queue': ['r', 'q', 'e', 'w']}
+
+
+ACTION_PRIORITIES_CONDITIONALS = {'q_after_AA': {'effects': {'effect_0': {'effect_type': 'top_priority',
+                                                                          'obj_name': 'q'}},
+                                                 'triggers': {'trigger_0': {'obj_name': 'AA',
+                                                                            'trigger_type': 'previous_action'}}}}
+
+CHAMPION_STATS_DEPENDENCIES = set()
+
+CHAMPION_RANGE_TYPE = 'ranged'
+
+RESOURCE_USED = 'mp'
+
+
+class ChampionAttributes(abilities.VisualRepresentation):
+    ABILITIES_ATTRIBUTES = ABILITIES_ATTRIBUTES
+    ABILITIES_EFFECTS = ABILITIES_EFFECTS
+    ABILITIES_CONDITIONALS = ABILITIES_CONDITIONALS
+    RESOURCE_USED = RESOURCE_USED
+    ACTION_PRIORITIES_CONDITIONALS = ACTION_PRIORITIES_CONDITIONALS
+    DEFAULT_ACTIONS_PRIORITY = DEFAULT_ACTIONS_PRIORITY
+    SPELL_LVL_UP_PRIORITIES = SPELL_LVL_UP_PRIORITIES
+    CHAMPION_STATS_DEPENDENCIES = CHAMPION_STATS_DEPENDENCIES
+
+    def __init__(self, kwargs, external_vars_dct=CHAMPION_EXTERNAL_VARIABLES):
+        self.player_range_type = CHAMPION_RANGE_TYPE
+        abilities.VisualRepresentation.__init__(self, **kwargs)
+        for i in external_vars_dct:
+            setattr(ChampionAttributes, i, external_vars_dct[i])

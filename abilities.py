@@ -565,7 +565,7 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         Returns:
             (str) e.g. 'player', 'enemy_1', ..
         """
-        if trig_dct['owner_type']:
+        if trig_dct['owner_type'] == 'player':
             return 'player'
         else:
             return self.current_enemy
@@ -1002,19 +1002,19 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
                                   selected_runes=selected_runes)
 
         ConditionalsTranslator.__init__(self,
-                               ability_lvls_dct=ability_lvls_dct,
-                               champion_lvls_dct=champion_lvls_dct,
-                               selected_champions_dct=selected_champions_dct,
-                               action_on_cd_func=self.spell_on_cd,
-                               max_targets_dct=max_targets_dct,
-                               max_combat_time=max_combat_time,
-                               initial_active_buffs=initial_active_buffs,
-                               initial_current_stats=initial_current_stats,
-                               chosen_items_dct=chosen_items_dct,
-                               selected_masteries_dct=selected_masteries_dct,
-                               initial_enemies_total_stats=initial_enemies_total_stats,
-                               enemies_originating_dmg_data=enemies_originating_dmg_data,
-                               _reversed_combat_mode=_reversed_combat_mode)
+                                        ability_lvls_dct=ability_lvls_dct,
+                                        champion_lvls_dct=champion_lvls_dct,
+                                        selected_champions_dct=selected_champions_dct,
+                                        action_on_cd_func=self.spell_on_cd,
+                                        max_targets_dct=max_targets_dct,
+                                        max_combat_time=max_combat_time,
+                                        initial_active_buffs=initial_active_buffs,
+                                        initial_current_stats=initial_current_stats,
+                                        chosen_items_dct=chosen_items_dct,
+                                        selected_masteries_dct=selected_masteries_dct,
+                                        initial_enemies_total_stats=initial_enemies_total_stats,
+                                        enemies_originating_dmg_data=enemies_originating_dmg_data,
+                                        _reversed_combat_mode=_reversed_combat_mode)
 
         timers.Timers.__init__(self,
                                ability_lvls_dct=ability_lvls_dct,
@@ -1389,10 +1389,6 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
 
         # (cast_start is the moment the action is 'clicked')
         cast_start = self.action_cast_start(given_action_name=action_name)
-
-        # Skips action if exceeds max combat time.
-        if cast_start > self.max_combat_time:
-            return
 
         self.apply_action_cost(action_name=action_name)
 
@@ -2099,7 +2095,7 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
 
     def _run_reversed_combat(self):
         """
-        Stores enemy's "base" stats, reverted player's buffs and dmg taken,
+        Stores enemy's "base" stats and dmg taken,
         in when combat is reversed.
 
         That is, 'enemy_x' has become 'player' in order to determine enemy-originating buffs.
@@ -2114,14 +2110,9 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
         self.run_combat_preparation_without_regen()
 
         stats_dct = {i: self.request_stat(target_name='player', stat_name=i) for i in self.ENEMY_BASE_STATS_NAMES}
-        all_enemy_active_buffs = self.active_buffs['enemy_1']
-
-        non_dead_buff_enemy_buffs = {key: val for key, val in all_enemy_active_buffs.items()}
 
         # Stores stats player's (that is, 'enemy_x' for normal combat) stats
-        # and 'enemy_1' (that is, 'player' for normal combat) active buffs, before the combat starts.
         self.reversed_precombat_player_stats = stats_dct
-        self.reversed_precombat_enemy_buffs = non_dead_buff_enemy_buffs
 
         self._main_combat()
         self.note_dmg_totals_movement_and_heals_in_results()

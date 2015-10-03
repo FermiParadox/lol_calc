@@ -42,15 +42,12 @@ class UserSession(object):
 
         return instance
 
-    def all_enemy_stats_and_final_player_buffs(self, input_dct):
+    def all_enemy_stats(self, input_dct):
         """
-        Combines all enemy induced buffs on player into a single dict,
-        and creates enemies' base stats dict.
+        Combines all enemy induced dmg, and enemies' stats on player into a single dict.
 
         :return: (dict)
         """
-
-        player_buffs = {}
         enemies_base_stats = {}
         dmg_data = {}
 
@@ -63,15 +60,11 @@ class UserSession(object):
             stats_dct = instance.reversed_precombat_player_stats
             enemies_base_stats.update({enemy_name: stats_dct})
 
-            # Buffs
-            buffs_dct = instance.reversed_precombat_enemy_buffs
-            player_buffs.update(buffs_dct)
-
             # Dmg
             enemy_dmg_results = instance.combat_results
             dmg_data.update({enemy_name: enemy_dmg_results})
 
-        return {'all_stats': enemies_base_stats, 'all_player_buffs': player_buffs, 'all_dmg_results': dmg_data}
+        return {'all_stats': enemies_base_stats, 'all_dmg_results': dmg_data}
 
     def finalized_input_dct(self, input_dct):
         """
@@ -82,15 +75,11 @@ class UserSession(object):
 
         dct = {}
 
-        stats_and_buffs_dct = self.all_enemy_stats_and_final_player_buffs(input_dct=input_dct)
+        stats_and_buffs_dct = self.all_enemy_stats(input_dct=input_dct)
         enemies_stats_dct = stats_and_buffs_dct['all_stats']
-        player_buffs_dct = stats_and_buffs_dct['all_player_buffs']
         dmg_data_dct = stats_and_buffs_dct['all_dmg_results']
 
-        dct.update({'initial_active_buffs': {'player': player_buffs_dct}})
-
         dct.update({'initial_enemies_total_stats': enemies_stats_dct})
-
         dct.update({'enemies_originating_dmg_data': dmg_data_dct})
 
         for key in input_dct:

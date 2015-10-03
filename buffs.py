@@ -88,7 +88,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
 
             # ..creates and inserts its duration.
             self.active_buffs[tar_name][buff_name].update(dict(
-                ending_time=self.current_time + buff_dct['duration']))
+                ending_time=self.current_time + self.buff_duration(buff_dct=buff_dct)))
 
         else:
             # ..otherwise sets its duration to 'permanent'.
@@ -191,7 +191,6 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
 
         for tar_name in self.all_target_names:
             # (player or enemy)
-            target_type = self.target_type(tar_name=tar_name)
 
             # For Q,W,E and R...
             for ability_name in self.castable_spells_shortcuts:

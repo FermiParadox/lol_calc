@@ -44,9 +44,9 @@ RESOURCE_USED_NAME = 'RESOURCE_USED'
 SPELL_LVL_UP_PRIORITIES_NAME = 'SPELL_LVL_UP_PRIORITIES'
 CHAMPION_RANGE_TYPE_NAME = 'CHAMPION_RANGE_TYPE'
 CHAMPION_MODULE_OBJECT_NAMES = (ABILITIES_ATTRS_DCT_NAME, ABILITIES_EFFECT_DCT_NAME,
-                                ABILITIES_CONDITIONALS_DCT_NAME, CHAMPION_EXTERNAL_VAR_DCT_NAME, CHAMP_CLASS_NAME,
+                                ABILITIES_CONDITIONALS_DCT_NAME, CHAMPION_EXTERNAL_VAR_DCT_NAME,
                                 DEFAULT_ACTIONS_PRIORITY_NAME, SPELL_LVL_UP_PRIORITIES_NAME,
-                                CHAMPION_STATS_DEPENDENCIES_NAME, CHAMPION_RANGE_TYPE_NAME)
+                                CHAMPION_STATS_DEPENDENCIES_NAME, CHAMPION_RANGE_TYPE_NAME, CHAMP_CLASS_NAME,)
 
 CHAMPION_BASE_STATS_DCT_NAME = 'CHAMPION_BASE_STATS'
 CHAMPION_BASE_STATS_MODULE = 'app_champions_base_stats.py'
@@ -816,7 +816,7 @@ def suggest_attr_values(suggested_values_dct, modified_dct, restrict_choices=Fal
     if mute_exit_key_msgs is False:
         start_msg += '\n(type "%s" to exit inner loops)' % _exception_keys()['stop_key']
         start_msg += '\n(type "%s" to exit outer loops)' % _exception_keys()['error_key']
-        start_msg += '\n(type "%s" to repeat previous choices)\n' % _exception_keys()['repeat_key']
+        start_msg += '\n(type "%s" to repeat previous choices)\n\n' % _exception_keys()['repeat_key']
     start_msg += extra_start_msg
     print(start_msg)
 
@@ -966,7 +966,7 @@ def suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_m
     # MSG
     start_msg = '\n' + delimiter(40)
     start_msg += '\n(type "%s" to exit inner loops)\n' % stop_key
-    start_msg += '\n(type "%s" to exit outer loops)\n' % error_key
+    start_msg += '\n(type "%s" to exit outer loops)\n\n' % error_key
     start_msg += extra_start_msg
     print(start_msg)
 
@@ -4085,17 +4085,10 @@ class EffectsBase(object):
             modified_eff_dct.clear()
             return
 
-        has_actives = Fetch().castable(champ_or_item=champ_or_item,
-                                       spell_or_item_name=obj_name,
-                                       champ_name=champ_name)
-
         print(fat_delimiter(100))
         print('\nEFFECTS DICT')
 
-        if has_actives is True:
-            app_types_tpl = ('passives', 'actives')
-        else:
-            app_types_tpl = ('passives',)
+        app_types_tpl = ('passives', 'actives')
 
         for application_type in app_types_tpl:
             # DMGS
@@ -4104,8 +4097,14 @@ class EffectsBase(object):
             dmg_msg += '%s -- DMG APPLIED\n' % application_type
             dmg_msg = dmg_msg.upper()
 
-            suggest_lst_of_attr_values(suggested_values_lst=Fetch().dmgs_names(obj_name=obj_name,
-                                                                               champ_or_item=champ_or_item),
+            if champ_or_item == 'champion':
+                dmg_names = Fetch().dmgs_names(obj_name=champ_name, champ_or_item=champ_or_item)
+                buffs_names = Fetch().buffs_names(obj_name=champ_name, champ_or_item=champ_or_item)
+            else:
+                dmg_names = Fetch().dmgs_names(obj_name=obj_name, champ_or_item=champ_or_item)
+                buffs_names = Fetch().buffs_names(obj_name=obj_name, champ_or_item=champ_or_item)
+
+            suggest_lst_of_attr_values(suggested_values_lst=dmg_names,
                                        modified_lst=modified_eff_dct[application_type]['dmg'],
                                        extra_start_msg=dmg_msg)
 
@@ -4116,8 +4115,7 @@ class EffectsBase(object):
             buffs_applied_msg += '%s -- BUFFS APPLIED' % application_type
             buffs_applied_msg = buffs_applied_msg.upper()
 
-            suggest_lst_of_attr_values(suggested_values_lst=Fetch().buffs_names(obj_name=obj_name,
-                                                                                champ_or_item=champ_or_item),
+            suggest_lst_of_attr_values(suggested_values_lst=buffs_names,
                                        modified_lst=modified_eff_dct[application_type]['buffs'],
                                        extra_start_msg=buffs_applied_msg)
 
@@ -4128,8 +4126,7 @@ class EffectsBase(object):
             buff_removal_msg += '%s -- BUFFS REMOVED' % application_type
             buff_removal_msg = buff_removal_msg.upper()
 
-            suggest_lst_of_attr_values(suggested_values_lst=Fetch().buffs_names(obj_name=obj_name,
-                                                                                champ_or_item=champ_or_item),
+            suggest_lst_of_attr_values(suggested_values_lst=buffs_names,
                                        modified_lst=modified_eff_dct[application_type]['remove_buff'],
                                        extra_start_msg=buff_removal_msg)
 
@@ -5369,13 +5366,15 @@ class ModuleCreatorBase(object):
         """
 
         if type(new_object_as_dct_or_str) is dict:
-            obj_as_str = dct_to_pretty_formatted_str(obj_name=obj_name, obj_body_as_dct=new_object_as_dct_or_str,
-                                                     width=width)
+            final_str = dct_to_pretty_formatted_str(obj_name=obj_name,
+                                                    obj_body_as_dct=new_object_as_dct_or_str,
+                                                    width=width)
         else:
             obj_as_str = new_object_as_dct_or_str
+            final_str = '\n' + obj_name + ' = ' + obj_as_str + '\n'
 
         with open(targeted_module, 'a') as read_file:
-            read_file.write(obj_as_str)
+            read_file.write(final_str)
 
     @staticmethod
     def _replace_obj_in_module(obj_name, new_object_as_dct_or_str, targeted_module_path_str, width):
@@ -5399,7 +5398,7 @@ class ModuleCreatorBase(object):
     @staticmethod
     def _obj_existence(obj_name, targeted_module_path_str):
         """
-        Checks start of each line in a module for obj existence, ignoring starting preceding whitespaces.
+        Checks start of each line in a module for obj existence.
 
         :param obj_name: (str)
         :param targeted_module_path_str: (str)
@@ -5411,7 +5410,7 @@ class ModuleCreatorBase(object):
                 r_as_lst = read_file.readlines()
 
                 for line in r_as_lst:
-                    if re.match(r'\s*{}'.format(obj_name), line):
+                    if re.match(r'{}'.format(obj_name), line):
                         return True
                 # If no match has been found, returns False.
                 else:
@@ -5450,7 +5449,7 @@ class ModuleCreatorBase(object):
         else:
             modified_dct[obj_name] = data_creation_func()
 
-    def insert_object_in_module(self, obj_name, targeted_module_path_str, new_obj_as_dct_or_str,
+    def insert_object_in_module(self, obj_name, targeted_module_path_str, new_obj_as_dct_or_str_or_func, func_args=(),
                                 replacement_question_msg='', width=None, verify_replacement=True):
         """
         Inserts object in module after verifying replacement if needed.
@@ -5468,6 +5467,11 @@ class ModuleCreatorBase(object):
             # (if verify_replacement is False short-circuits)
             if (not verify_replacement) or _y_n_question(question_str=replacement_question_msg):
 
+                if type(new_obj_as_dct_or_str_or_func) in (dict, str):
+                    new_obj_as_dct_or_str = new_obj_as_dct_or_str_or_func
+                else:
+                    new_obj_as_dct_or_str = new_obj_as_dct_or_str_or_func(*func_args)
+
                 self._replace_obj_in_module(obj_name=obj_name,
                                             new_object_as_dct_or_str=new_obj_as_dct_or_str,
                                             targeted_module_path_str=targeted_module_path_str, width=width)
@@ -5476,6 +5480,12 @@ class ModuleCreatorBase(object):
 
         # If object doesn't exist, appends object.
         else:
+
+            if type(new_obj_as_dct_or_str_or_func) in (dict, str):
+                    new_obj_as_dct_or_str = new_obj_as_dct_or_str_or_func
+            else:
+                new_obj_as_dct_or_str = new_obj_as_dct_or_str_or_func(*func_args)
+
             self._append_obj_in_module(obj_name=obj_name,
                                        new_object_as_dct_or_str=new_obj_as_dct_or_str,
                                        targeted_module=targeted_module_path_str, width=width)
@@ -5602,7 +5612,7 @@ class ChampionsBaseStats(ModuleCreatorBase):
 
         self.insert_object_in_module(obj_name=CHAMPION_BASE_STATS_DCT_NAME,
                                      targeted_module_path_str=CHAMPION_BASE_STATS_MODULE,
-                                     new_obj_as_dct_or_str=dct)
+                                     new_obj_as_dct_or_str_or_func=dct)
 
 
 class ChampionModuleCreator(ModuleCreatorBase):
@@ -5695,10 +5705,11 @@ class ChampionModuleCreator(ModuleCreatorBase):
             return SkillsLvlUps().lvl_up_priorities()
 
         elif obj_name == RESOURCE_USED_NAME:
-            return SkillsLvlUps().champion_resource_used()
+            return str(SkillsLvlUps().champion_resource_used())
 
         elif obj_name == CHAMPION_STATS_DEPENDENCIES_NAME:
-            return StatsDependencies().champion_stats_dependencies(champion_name=self.champion_name)
+            deps = StatsDependencies().champion_stats_dependencies(champion_name=self.champion_name)
+            return str(deps)
 
         elif obj_name == CHAMPION_RANGE_TYPE_NAME:
             if _y_n_question('Is {} ranged?'.format(self.champion_name.upper())):
@@ -5713,7 +5724,8 @@ class ChampionModuleCreator(ModuleCreatorBase):
         replacement_question_msg = '\nCHAMPION: {}, OBJECT NAME: {}'.format(self.champion_name, obj_name)
 
         self.insert_object_in_module(obj_name=obj_name,
-                                     new_obj_as_dct_or_str=self._champ_obj_as_dct_or_str(obj_name),
+                                     new_obj_as_dct_or_str_or_func=self._champ_obj_as_dct_or_str,
+                                     func_args=(obj_name,),
                                      replacement_question_msg=replacement_question_msg,
                                      targeted_module_path_str=self.champion_module_path_str, width=None)
         # Delay used to ensure file is "refreshed" after being writen on. (might be redundant)
@@ -5834,7 +5846,7 @@ class ItemsModuleCreator(ModuleCreatorBase):
                                   auto_replace=auto_replace, property_name=property_name,
                                   data_creation_func=creation_func)
 
-        self.insert_object_in_module(obj_name=property_name, new_obj_as_dct_or_str=existing_data_dct,
+        self.insert_object_in_module(obj_name=property_name, new_obj_as_dct_or_str_or_func=existing_data_dct,
                                      replacement_question_msg='', width=1,
                                      targeted_module_path_str='/'.join((ITEMS_MODULES_FOLDER_NAME,
                                                                         ITEMS_DATA_MODULE_NAME)) + '.py',
@@ -5922,7 +5934,7 @@ class MasteryModuleCreator(ModuleCreatorBase):
                                       auto_replace=False, property_name=property_name,
                                       data_creation_func=mastery_creation_func)
 
-            self.insert_object_in_module(obj_name=property_name, new_obj_as_dct_or_str=existing_data_dct,
+            self.insert_object_in_module(obj_name=property_name, new_obj_as_dct_or_str_or_func=existing_data_dct,
                                          replacement_question_msg='', width=1,
                                          targeted_module_path_str='/'.join((MASTERIES_MODULES_FOLDER_NAME,
                                                                             MASTERIES_DATA_MODULE_NAME)) + '.py',
@@ -5992,10 +6004,7 @@ if __name__ == '__main__':
 
     # ITEM ATTRS, EFFECTS AND CONDITIONALS CREATION AND INSERTION
     if 0:
-        inst = ItemAttrCreation(item_name='bru')
-        pp.pprint(inst.item_secondary_data_dct())
-    if 0:
-        inst = ItemsModuleCreator(item_name='sheen')
+        inst = ItemsModuleCreator(item_name='blood')
         inst.create_item()
     # Create all items.
     if 1:

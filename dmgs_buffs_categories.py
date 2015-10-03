@@ -42,12 +42,23 @@ class GeneralCategories(object):
         self.current_target_num = current_target_num
         self.active_buffs = active_buffs
 
+    def effect_lvl_by_champ_lvl(self, seq_of_values):
+        """
+        Determines the value of a buff or dmg based on champion lvl.
+        e.g. jax inn, darius inn, etc
+
+        :param seq_of_values:
+        :return: (int)
+        """
+        lvl_partition_size = 18 // len(seq_of_values)
+        return (self.player_lvl - 1) // lvl_partition_size
+
     def innate_value(self, list_of_values):
         """
         Returns the value of the player's innate, based on the current champion lvl.
         """
-        lvl_partition_size = 18 // len(list_of_values)
-        return list_of_values[(self.player_lvl - 1) // lvl_partition_size]
+
+        return list_of_values[self.effect_lvl_by_champ_lvl(seq_of_values=list_of_values)]
 
 
 class BuffCategories(GeneralCategories):
@@ -109,6 +120,28 @@ class DmgCategories(BuffCategories):
 
         return average_crit_dmg_multiplier * self.req_stats_func(target_name='player', stat_name='ad')
 
+    def dmg_mod_value(self, given_mod_seq_or_val, dmg_dct):
+        """
+        Returns the value of a mod.
+
+        The mod can scale with lvl or have a stable value.
+
+        :return: (num)
+        """
+        if isinstance(given_mod_seq_or_val, (float, int)):
+            return given_mod_seq_or_val
+
+        else:
+            dmg_source = dmg_dct['dmg_source']
+
+            if dmg_source in palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS:
+                ability_lvl = self.ability_lvls_dct[dmg_source]
+                return given_mod_seq_or_val[ability_lvl-1]
+
+            else:
+                index = self.effect_lvl_by_champ_lvl(seq_of_values=given_mod_seq_or_val)
+                return given_mod_seq_or_val[index]
+
     def standard_dmg_value(self, dmg_dct):
         """
         Calculates raw dmg value of given dmg name, by applying all stat-caused mods to base value.
@@ -143,13 +176,17 @@ class DmgCategories(BuffCategories):
                     mod_dct = owner_dmg_mods_dct[mod_name]
 
                     if 'additive' in mod_dct:
-                        val += mod_dct['additive'] * self.req_stats_func(target_name=owner, stat_name=mod_name)
+                        additive_mod_val = mod_dct['additive']
+                        additive_mod_val = self.dmg_mod_value(given_mod_seq_or_val=additive_mod_val, dmg_dct=dmg_dct)
+                        val += additive_mod_val * self.req_stats_func(target_name=owner, stat_name=mod_name)
 
                 for mod_name in sorted(owner_dmg_mods_dct):
                     mod_dct = owner_dmg_mods_dct[mod_name]
 
                     if 'multiplicative' in owner_dmg_mods_dct:
-                        val *= mod_dct['multiplicative'] * self.req_stats_func(target_name=owner, stat_name=mod_name)
+                        mult_mod_val = mod_dct['multiplicative']
+                        mult_mod_val = self.dmg_mod_value(given_mod_seq_or_val=mult_mod_val, dmg_dct=dmg_dct)
+                        val *= mult_mod_val * self.req_stats_func(target_name=owner, stat_name=mod_name)
 
         return val
 

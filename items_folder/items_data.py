@@ -378,7 +378,7 @@ ITEMS_ATTRIBUTES = {
                                          'sell_price': 1890,
                                          'total_price': 2700},
                       'stats_dependencies': set(),
-                      'unique_stats': {}},
+                      'unique_stats': {'unnamed': {'additive': {'flat_survivability': 2}}}},
     'berserkers_greaves': {'buffs': {},
                            'dmgs': {},
                            'general_attributes': {'castable': False},

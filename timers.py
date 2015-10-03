@@ -104,3 +104,18 @@ class Timers(object):
 
         return start
 
+    def buff_duration(self, buff_dct):
+        duration_tpl_or_num = buff_dct['duration']
+
+        if isinstance(duration_tpl_or_num, (int, float)):
+            return duration_tpl_or_num
+
+        else:
+            buff_source = buff_dct['buff_source']
+
+            if buff_source in palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS:
+                ability_lvl = self.ability_lvls_dct[buff_source]
+
+                return duration_tpl_or_num[ability_lvl-1]
+
+        raise palette.UnexpectedValueError()
