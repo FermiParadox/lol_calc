@@ -219,7 +219,7 @@ ABILITIES_CONDITIONALS = {
 
 CHAMPION_EXTERNAL_VARIABLES = {}
 
-DEFAULT_ACTIONS_PRIORITY = ('r', 'e', 'AA', 'q')
+DEFAULT_ACTIONS_PRIORITY = ('r', 'e', 'q', 'AA')
 
 SPELL_LVL_UP_PRIORITIES = {
     'at_least_one_lvl_in_each': True,
@@ -228,10 +228,7 @@ SPELL_LVL_UP_PRIORITIES = {
     'spells_lvl_up_queue': ['r', 'q', 'e', 'w']}
 
 
-ACTION_PRIORITIES_CONDITIONALS = {'q_after_AA': {'effects': {'effect_0': {'effect_type': 'top_priority',
-                                                                          'obj_name': 'q'}},
-                                                 'triggers': {'trigger_0': {'obj_name': 'AA',
-                                                                            'trigger_type': 'previous_action'}}}}
+ACTION_PRIORITIES_CONDITIONALS = {}
 
 CHAMPION_STATS_DEPENDENCIES = set()
 

@@ -1482,9 +1482,9 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
                     if self.actions_dct[action_time]['action_name'] == prohibit_cd_start_val:
 
                         # .. and applies the new cd.
-                        self.actions_dct[action_time]['cd_end'] = self.ability_cooldown(
-                            ability_name=self.actions_dct[action_time]['action_name'],
-                            stats_function=self.request_stat)
+                        ability_cd = self.ability_cooldown(ability_name=self.actions_dct[action_time]['action_name'],
+                                                           stats_function=self.request_stat)
+                        self.actions_dct[action_time]['cd_end'] = ability_cd + self.current_time
 
                         break
 
