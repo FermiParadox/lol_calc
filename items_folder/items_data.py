@@ -2006,7 +2006,46 @@ ITEMS_ATTRIBUTES = {
                                     'sell_price': 1820,
                                     'total_price': 2600},
                  'stats_dependencies': set(),
-                 'unique_stats': {}}}
+                 'unique_stats': {}},
+    'youmuus_ghostblade': {'buffs': {'youmuus_ghostblade_buff_0': {'buff_source': 'youmuus_ghostblade',
+                                                                   'dot': False,
+                                                                   'duration': 6.0,
+                                                                   'max_stacks': 1,
+                                                                   'on_hit': {},
+                                                                   'stats': {'att_speed': {'percent': {'stat_mods': {},
+                                                                                                       'stat_values': 0.4}},
+                                                                             'move_speed': {'percent': {'stat_mods': {},
+                                                                                                        'stat_values': 0.2}}},
+                                                                   'target_type': 'player'}},
+                           'dmgs': {},
+                           'general_attributes': {'base_cd': 45,
+                                                  'cast_time': 0,
+                                                  'castable': True,
+                                                  'channel_time': None,
+                                                  'dashed_distance': None,
+                                                  'independent_cast': True,
+                                                  'move_while_casting': True,
+                                                  'range': 0,
+                                                  'resets_aa': False,
+                                                  'toggled': False,
+                                                  'travel_time': 0},
+                           'non_unique_stats': {'additive': {'ad': 30},
+                                                'percent': {'cdr': 0.1,
+                                                            'crit_chance': 0.15}},
+                           'secondary_data': {'build_from': {'avarice_blade': 1,
+                                                             'the_brutalizer': 1},
+                                              'builds_into': set(),
+                                              'id': 3142,
+                                              'leafs': set(),
+                                              'recipe_price': 563,
+                                              'roots': {'avarice_blade',
+                                                        'brawlers_gloves',
+                                                        'long_sword',
+                                                        'the_brutalizer'},
+                                              'sell_price': 1890,
+                                              'total_price': 2700},
+                           'stats_dependencies': set(),
+                           'unique_stats': {'unnamed': {'additive': {'flat_armor_penetration': 20}}}}}
 
 ITEMS_EFFECTS = {
     'abyssal_scepter': {'actives': {'buffs': [],
@@ -2199,7 +2238,13 @@ ITEMS_EFFECTS = {
                              'remove_buff': []},
                  'passives': {'buffs': ['wits_end_initiator_buff'],
                               'dmg': [],
-                              'remove_buff': []}}}
+                              'remove_buff': []}},
+    'youmuus_ghostblade': {'actives': {'buffs': ['youmuus_ghostblade_buff_0'],
+                                       'dmg': [],
+                                       'remove_buff': []},
+                           'passives': {'buffs': [],
+                                        'dmg': [],
+                                        'remove_buff': []}}}
 
 ITEMS_CONDITIONALS = {
     'abyssal_scepter': {},
@@ -2272,7 +2317,8 @@ ITEMS_CONDITIONALS = {
     'the_black_cleaver': {},
     'trinity_force': {},
     'will_of_the_ancients': {},
-    'wits_end': {}}
+    'wits_end': {},
+    'youmuus_ghostblade': {}}
 
 
 ITEMS_NAMES = ITEMS_ATTRIBUTES.keys()

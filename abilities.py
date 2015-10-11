@@ -1426,9 +1426,70 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
                 cd_end=360,
                 action_name=action_name)})
 
+    def _add_new_buff(self, buff_name, buff_dct, tar_name, initial_stacks_increment=1):
+        """
+        Inserts a new buff in active_buffs dictionary.
+
+        :return: (None)
+        """
+
+        # Inserts the new buff.
+        self.active_buffs[tar_name].update(
+            {buff_name: dict(
+                starting_time=self.current_time)})
+
+        # DURATION
+        # If non permanent buff.
+        if buff_dct['duration'] != 'permanent':
+
+            # ..creates and inserts its duration.
+            self.active_buffs[tar_name][buff_name].update(dict(
+                ending_time=self.current_time + self.buff_duration(buff_dct=buff_dct)))
+
+        else:
+            # ..otherwise sets its duration to 'permanent'.
+            self.active_buffs[tar_name][buff_name].update(dict(
+                ending_time='permanent'))
+
+        # STACKS
+        self.active_buffs[tar_name][buff_name].update(dict(current_stacks=initial_stacks_increment))
+
+    def _add_already_active_buff(self, buff_name, buff_dct, tar_name, stack_increment=1):
+        """
+        Changes an existing buff in active_buffs dictionary,
+        by refreshing its duration and increasing its stacks.
+
+        Modifies:
+            active_buffs
+        Returns:
+            (None)
+        """
+
+        tar_buff_dct_in_act_buffs = self.active_buffs[tar_name][buff_name]
+
+        # DURATION
+        # If non permanent buff, refreshes its duration.
+        if buff_dct['duration'] != 'permanent':
+
+            tar_buff_dct_in_act_buffs['ending_time'] = self.current_time + buff_dct['duration']
+
+        # STACKS
+        # If max_stacks have not been reached..
+        if tar_buff_dct_in_act_buffs['current_stacks'] < buff_dct['max_stacks']:
+
+            # ..adds +1 to the stacks (unless increment is different).
+            tar_buff_dct_in_act_buffs['current_stacks'] += stack_increment
+
+            # Ensures max_stacks aren't exceeded for stack_increments larger than 1.
+            if stack_increment > 1:
+
+                if tar_buff_dct_in_act_buffs['current_stacks'] > buff_dct['max_stacks']:
+                    # If max_stacks exceeded, set to max_stacks.
+                    tar_buff_dct_in_act_buffs['current_stacks'] = buff_dct['max_stacks']
+
     def add_buff(self, buff_name, tar_name, stack_increment=1, initial_stacks_increment=1):
         """
-        (Overrides previous method)
+        Inserts a new buff or refreshes an existing buff (duration and stacks).
 
         Additionally, checks if buff applied is a dot buff and adds periodic event (unless dot already active).
 
@@ -1441,12 +1502,25 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
         if buff_name in self.active_buffs[tar_name]:
             is_new = False
 
-        super().add_buff(buff_name=buff_name, tar_name=tar_name,
-                         stack_increment=stack_increment, initial_stacks_increment=initial_stacks_increment)
+        buff_dct = self.req_buff_dct_func(buff_name=buff_name)
+
+        # NEW BUFF
+        if buff_name not in self.active_buffs[tar_name]:
+
+            self._add_new_buff(buff_name=buff_name,
+                               buff_dct=buff_dct,
+                               tar_name=tar_name,
+                               initial_stacks_increment=initial_stacks_increment)
+
+        # EXISTING BUFF
+        else:
+            self._add_already_active_buff(buff_name=buff_name,
+                                          buff_dct=buff_dct,
+                                          tar_name=tar_name,
+                                          stack_increment=stack_increment)
 
         # If it's a new dot..
         if is_new:
-            buff_dct = self.req_buff_dct_func(buff_name=buff_name)
             buff_dot_dct = buff_dct['dot']
 
             # If the buff is a dot, applies dmg event as well.

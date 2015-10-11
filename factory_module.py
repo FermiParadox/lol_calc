@@ -6003,8 +6003,8 @@ if __name__ == '__main__':
         print(inst.non_unique_item_stats)
 
     # ITEM ATTRS, EFFECTS AND CONDITIONALS CREATION AND INSERTION
-    if 0:
-        inst = ItemsModuleCreator(item_name='blood')
+    if 1:
+        inst = ItemsModuleCreator(item_name='you')
         inst.create_item()
     # Create all items.
     if 1:

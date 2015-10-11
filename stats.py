@@ -387,7 +387,10 @@ class StatCalculation(StatFilters):
         base_stat_per_lvl_name = stat_name + '_per_lvl'
         if base_stat_per_lvl_name in tar_base_stats_dct:
             # .. it adds it to the value.
-            value += (self.champion_lvls_dct[tar_name]-1) * tar_base_stats_dct[base_stat_per_lvl_name]
+            tar_lvl = self.champion_lvls_dct[tar_name]
+            per_lvl_bonus = tar_base_stats_dct[base_stat_per_lvl_name]
+            # TODO: replace copyrighted function below (use non linear fitting)
+            value += per_lvl_bonus * (7/400*(tar_lvl**2-1) + 267/400*(tar_lvl-1))
 
         return value
 

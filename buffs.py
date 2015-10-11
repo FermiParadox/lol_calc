@@ -70,90 +70,9 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
         """
         pass
 
-    def add_new_buff(self, buff_name, buff_dct, tar_name, initial_stacks_increment=1):
-        """
-        Inserts a new buff in active_buffs dictionary.
-
-        :return: (None)
-        """
-
-        # Inserts the new buff.
-        self.active_buffs[tar_name].update(
-            {buff_name: dict(
-                starting_time=self.current_time)})
-
-        # DURATION
-        # If non permanent buff.
-        if buff_dct['duration'] != 'permanent':
-
-            # ..creates and inserts its duration.
-            self.active_buffs[tar_name][buff_name].update(dict(
-                ending_time=self.current_time + self.buff_duration(buff_dct=buff_dct)))
-
-        else:
-            # ..otherwise sets its duration to 'permanent'.
-            self.active_buffs[tar_name][buff_name].update(dict(
-                ending_time='permanent'))
-
-        # STACKS
-        self.active_buffs[tar_name][buff_name].update(dict(current_stacks=initial_stacks_increment))
-
-    def add_already_active_buff(self, buff_name, buff_dct, tar_name, stack_increment=1):
-        """
-        Changes an existing buff in active_buffs dictionary,
-        by refreshing its duration and increasing its stacks.
-
-        Modifies:
-            active_buffs
-        Returns:
-            (None)
-        """
-
-        tar_buff_dct_in_act_buffs = self.active_buffs[tar_name][buff_name]
-
-        # DURATION
-        # If non permanent buff, refreshes its duration.
-        if buff_dct['duration'] != 'permanent':
-
-            tar_buff_dct_in_act_buffs['ending_time'] = self.current_time + buff_dct['duration']
-
-        # STACKS
-        # If max_stacks have not been reached..
-        if tar_buff_dct_in_act_buffs['current_stacks'] < buff_dct['max_stacks']:
-
-            # ..adds +1 to the stacks (unless increment is different).
-            tar_buff_dct_in_act_buffs['current_stacks'] += stack_increment
-
-            # Ensures max_stacks aren't exceeded for stack_increments larger than 1.
-            if stack_increment > 1:
-
-                if tar_buff_dct_in_act_buffs['current_stacks'] > buff_dct['max_stacks']:
-                    # If max_stacks exceeded, set to max_stacks.
-                    tar_buff_dct_in_act_buffs['current_stacks'] = buff_dct['max_stacks']
-
+    @abc.abstractmethod
     def add_buff(self, buff_name, tar_name, stack_increment=1, initial_stacks_increment=1):
-        """
-        Inserts a new buff or refreshes an existing buff (duration and stacks).
-
-        :return: (None)
-        """
-
-        buff_dct = self.req_buff_dct_func(buff_name=buff_name)
-
-        # NEW BUFF
-        if buff_name not in self.active_buffs[tar_name]:
-
-            self.add_new_buff(buff_name=buff_name,
-                              buff_dct=buff_dct,
-                              tar_name=tar_name,
-                              initial_stacks_increment=initial_stacks_increment)
-
-        # EXISTING BUFF
-        else:
-            self.add_already_active_buff(buff_name=buff_name,
-                                         buff_dct=buff_dct,
-                                         tar_name=tar_name,
-                                         stack_increment=stack_increment)
+        return
 
     def add_single_ability_passive_buff(self, effects_dct, tar_name):
         """
@@ -945,12 +864,15 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         """
         Calculates the dmg value based on its type (magic, physical, AA, true) and various reductions.
 
-        :return: (float)
+        In-game stats are rounded before displayed, but inflicted dmg is NOT rounded;
+        only the integer part of the value is used.
+
+        :return: (int)
         """
 
         # True dmg remains unmitigated.
         if dmg_type == 'true':
-            return dmg_value
+            return int(dmg_value)
 
         if is_aoe:
             dmg_value *= 1-self.request_stat(target_name=target, stat_name='percent_aoe_reduction')
@@ -989,7 +911,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                 self.request_stat(target_name='player', stat_name='bonus_ad')
                 dmg_value -= self.request_stat(target_name=target, stat_name='flat_AA_reduction')
 
-        return max(dmg_value, 0.)
+        return int(max(dmg_value, 0))
 
     def apply_hp_dmg_or_heal(self, dmg_name, target_name, unmitigated_dmg_value):
         """
