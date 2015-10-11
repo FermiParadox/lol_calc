@@ -46,7 +46,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
         # ITEMS
         self.chosen_items_dct = chosen_items_dct
         self.fill_up_tars_and_empty_obj_in_dct(given_dct=self.chosen_items_dct, obj_type='list')
-        self.player_items = self.chosen_items_dct['player']
+        self.player_items = sorted(self.chosen_items_dct['player'])
 
         self._items_static_stats_buff_dct = {}
         self.player_items_instance = items_module.ItemsProperties(chosen_items_lst=self.player_items)
@@ -377,14 +377,8 @@ class Counters(BuffsGeneral):
         """
         Notes spellvamp or lifesteal of an effect, on a particular time in history.
 
-        Modifies:
-            combat_history
-        Args:
-            heal_type: (string)
-                'lifesteal'
-                'spellvamp'
-        Returns:
-            None
+        :param: heal_type: (string) 'lifesteal' or 'spellvamp'
+        :return: None
         """
 
         # Checks if time already exists in history.
@@ -781,10 +775,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         """
         Applies a heal to a target.
 
-        Modifies:
-            current_stats
-        Returns:
-            (None)
+        :return: (None)
         """
 
         if heal_value < 0:
@@ -818,11 +809,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
 
         This method is NOT used for ability cost.
 
-        Modifies:
-            current_stats
-            combat_history
-        Returns:
-            (None)
+        :return: (None)
         """
 
         resource_type = dmg_dct['resource_type']
@@ -1022,8 +1009,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
         Healing and regeneration of enemy targets, not taken into account
         (might want to take into account to make dots after death have more "correct" effect on dps).
 
-        Returns:
-            (float)
+        :return: (float)
         """
 
         last_action_time = max(self.actions_dct)
@@ -1048,6 +1034,8 @@ _DEAD_BUFF_DCT_BASE['max_stacks'] = 1
 _DEAD_BUFF_DCT_BASE['stats'] = None
 _DEAD_BUFF_DCT_BASE['on_hit'] = None
 _DEAD_BUFF_DCT_BASE['prohibit_cd_start'] = None
+_DEAD_BUFF_DCT_BASE['usual_max_targets'] = 1
+_DEAD_BUFF_DCT_BASE['max_targets'] = 1
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1063,7 +1051,8 @@ REGEN_BUFF_DCT_BASE['duration'] = 'permanent'
 # (adds dot data)
 REGEN_BUFF_DCT_BASE['dot'] = {'period': None, 'dmg_names': []}
 REGEN_BUFF_DCT_BASE['dot']['period'] = NATURAL_REGEN_PERIOD
-
+REGEN_BUFF_DCT_BASE['usual_max_targets'] = 1
+REGEN_BUFF_DCT_BASE['max_targets'] = 1
 
 # PLAYER hp5 buff base.
 _HP5_BUFF_DCT_BASE_PLAYER = copy.deepcopy(REGEN_BUFF_DCT_BASE)

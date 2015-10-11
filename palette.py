@@ -247,6 +247,8 @@ BUFF_DCT_BASE = dict(
     prohibit_cd_start=Placeholder(),
     buff_source=Placeholder(),
     dot=False,
+    max_targets=Placeholder(),      # Refers to max number of targets that can get the effect from a single application
+    usual_max_targets=Placeholder(),
 )
 
 
@@ -267,10 +269,10 @@ DMG_DCT_BASE = dict(
     dmg_values=Placeholder(),
     dmg_source=Placeholder(),
     mods=Placeholder(),     # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
-    life_conversion_type=Placeholder(), # (None or lifesteal or spellvamp)
+    life_conversion_type=Placeholder(),     # (None or lifesteal or spellvamp)
     radius=Placeholder(),
     dot=Placeholder(),
-    max_targets=Placeholder(),
+    max_targets=Placeholder(),  # Refers to max number of targets that can get the effect from a single application
     usual_max_targets=Placeholder(),
     delay=Placeholder(),
     crit_type=Placeholder(),

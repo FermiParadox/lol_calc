@@ -243,6 +243,8 @@ _DPS_BY_ENEMIES_BUFF_BASE['target_type'] = 'player'
 _DPS_BY_ENEMIES_BUFF_BASE['duration'] = 'permanent'
 _DPS_BY_ENEMIES_BUFF_BASE['dot']['period'] = buffs.NATURAL_REGEN_PERIOD
 _DPS_BY_ENEMIES_BUFF_BASE['buff_source'] = 'enemies_dps'
+_DPS_BY_ENEMIES_BUFF_BASE['usual_max_targets'] = 1
+_DPS_BY_ENEMIES_BUFF_BASE['max_targets'] = 1
 
 # Adds all dmgs' names in dot buff.
 for dps_dmg_name in _DPS_BY_ENEMIES_DMGS_NAMES:
@@ -1487,22 +1489,11 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
                     # If max_stacks exceeded, set to max_stacks.
                     tar_buff_dct_in_act_buffs['current_stacks'] = buff_dct['max_stacks']
 
-    def add_buff(self, buff_name, tar_name, stack_increment=1, initial_stacks_increment=1):
-        """
-        Inserts a new buff or refreshes an existing buff (duration and stacks).
-
-        Additionally, checks if buff applied is a dot buff and adds periodic event (unless dot already active).
-
-        Returns:
-            (None)
-        """
-
+    def _add_buff_on_single_target(self, buff_name, buff_dct, tar_name, initial_stacks_increment, stack_increment):
         # Checks if (dot) event already applied.
         is_new = True
         if buff_name in self.active_buffs[tar_name]:
             is_new = False
-
-        buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
         # NEW BUFF
         if buff_name not in self.active_buffs[tar_name]:
@@ -1531,6 +1522,60 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
 
                     tar_of_dmg = self._target_of_dmg_by_name(dmg_name=dmg_name)
                     self.add_events(effect_name=dmg_name, start_time=first_tick, tar_name=tar_of_dmg)
+
+    def add_buff(self, buff_name, tar_name, stack_increment=1, initial_stacks_increment=1):
+        """
+        Adds a new buff or refreshes an existing buff (duration and stacks), on all targets.
+
+        Additionally, checks if buff applied is a dot buff and adds periodic event (unless dot already active).
+
+
+        Returns:
+            (None)
+        """
+
+        buff_dct = self.req_buff_dct_func(buff_name=buff_name)
+
+        self._add_buff_on_single_target(buff_name=buff_name,
+                                        buff_dct=buff_dct,
+                                        tar_name=tar_name,
+                                        initial_stacks_increment=initial_stacks_increment,
+                                        stack_increment=stack_increment)
+        self.targets_already_buffed = 1
+
+        # AOE BUFF
+        # (Aoe is always applied to enemies.)
+
+        # No aoe will be applied by dmgs originating from reverse combat mode.
+        if self._reversed_combat_mode:
+            return
+
+        # External max targets.
+        if buff_name in self.max_targets_dct:
+            max_tars_val = self.max_targets_dct[buff_name]
+
+        # (Aoe buff has 'max_targets' in buff dct. It can also additionally have externally set max_targets.)
+        else:
+            max_tars_val = buff_dct['usual_max_targets']
+            if max_tars_val == 'unlimited':
+                # If targets are unlimited applies to everyone.
+                max_tars_val = len(self.enemy_target_names)
+
+        # While the last target number is less than max targets, adds event.
+        prev_enemy = tar_name
+        while self.targets_already_buffed < max_tars_val:
+
+            next_enemy = self.next_alive_enemy(current_tar=prev_enemy)
+            if next_enemy is None:
+                break
+
+            self._add_buff_on_single_target(buff_name=buff_name,
+                                            buff_dct=buff_dct,
+                                            tar_name=next_enemy,
+                                            initial_stacks_increment=initial_stacks_increment,
+                                            stack_increment=stack_increment)
+
+            prev_enemy = next_enemy
 
     def change_cd_before_buff_removal(self, buff_dct):
         """
@@ -1925,7 +1970,8 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
             if items_attrs_dct[item_name]['general_attributes']['castable']:
                 queue_set.add(item_name)
 
-        return list(queue_set)
+        # (didn't use a list from the beginning to remove duplicates)
+        return sorted(queue_set)
 
     def _action_priorities_after_effects(self):
         """
@@ -2267,6 +2313,8 @@ class SpecialItems(Actions):
                                    'dot': False,
                                    'duration': 'permanent',
                                    'max_stacks': 1,
+                                   'max_targets': 1,
+                                   'usual_max_targets': 1,
                                    'on_hit': {},
                                    'stats': {'att_speed': {'percent': {'stat_mods': {},
                                                                        'stat_values': 0.2}},
@@ -2312,6 +2360,8 @@ class SpecialItems(Actions):
     SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['max_stacks'] = 1
     SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['stats'] = {}
     SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['prohibit_cd_start'] = {}
+    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['usual_max_targets'] = 1
+    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['max_targets'] = 1
 
     # (they are used purely as tags)
     SPELLBLADE_INHIBITOR_BUFF = palette.buff_dct_base_deepcopy()
@@ -2323,6 +2373,8 @@ class SpecialItems(Actions):
     SPELLBLADE_INHIBITOR_BUFF['stats'] = {}
     SPELLBLADE_INHIBITOR_BUFF['on_hit'] = {}
     SPELLBLADE_INHIBITOR_BUFF['prohibit_cd_start'] = {}
+    SPELLBLADE_INHIBITOR_BUFF['usual_max_targets'] = 1
+    SPELLBLADE_INHIBITOR_BUFF['max_targets'] = 1
 
     SPELLBLADE_TRIGGERED_BUFF = palette.buff_dct_base_deepcopy()
     SPELLBLADE_TRIGGERED_BUFF['buff_source'] = 'sheen'
@@ -2333,6 +2385,8 @@ class SpecialItems(Actions):
     SPELLBLADE_TRIGGERED_BUFF['stats'] = {}
     SPELLBLADE_TRIGGERED_BUFF['on_hit'] = {}
     SPELLBLADE_TRIGGERED_BUFF['prohibit_cd_start'] = {}
+    SPELLBLADE_TRIGGERED_BUFF['usual_max_targets'] = 1
+    SPELLBLADE_TRIGGERED_BUFF['max_targets'] = 1
 
     # TODO: single call memo
     def spellblade_dmgs_lst(self):
@@ -2398,6 +2452,8 @@ class SpecialItems(Actions):
     RAGE_SPEED_BUFF_MELEE['stats'] = {'move_speed': {'additive': {'stat_mods': {}, 'stat_values': 20}}}
     RAGE_SPEED_BUFF_MELEE['on_hit'] = {}
     RAGE_SPEED_BUFF_MELEE['prohibit_cd_start'] = {}
+    RAGE_SPEED_BUFF_MELEE['usual_max_targets'] = 1
+    RAGE_SPEED_BUFF_MELEE['max_targets'] = 1
 
     RAGE_SPEED_BUFF_RANGED = copy.deepcopy(RAGE_SPEED_BUFF_MELEE)
     RAGE_SPEED_BUFF_RANGED['stats']['move_speed']['additive']['stat_values'] /= 2
@@ -2422,6 +2478,8 @@ class SpecialItems(Actions):
     RAGE_INITIATOR_BUFF['max_stacks'] = 1
     RAGE_INITIATOR_BUFF['stats'] = {}
     RAGE_INITIATOR_BUFF['prohibit_cd_start'] = {}
+    RAGE_INITIATOR_BUFF['usual_max_targets'] = 1
+    RAGE_INITIATOR_BUFF['max_targets'] = 1
     for i in RAGE_INITIATOR_BUFF['on_hit']:
         RAGE_INITIATOR_BUFF['on_hit'][i] = []
     RAGE_INITIATOR_BUFF['on_hit']['apply_buff'] = ['rage_speed_buff']
@@ -2440,6 +2498,8 @@ class SpecialItems(Actions):
                                                                                             'stat_values': 0.05}}}
     BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['on_hit'] = {}
     BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['prohibit_cd_start'] = {}
+    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['usual_max_targets'] = 1
+    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['max_targets'] = 1
 
     def black_cleaver_armor_reduction_buff(self):
         return self.BLACK_CLEAVER_ARMOR_REDUCTION_BUFF
@@ -2455,6 +2515,8 @@ class SpecialItems(Actions):
     BLACK_CLEAVER_INITIATOR_BUFF['stats'] = {}
     BLACK_CLEAVER_INITIATOR_BUFF['prohibit_cd_start'] = {}
     BLACK_CLEAVER_INITIATOR_BUFF['on_hit'] = {}
+    BLACK_CLEAVER_INITIATOR_BUFF['usual_max_targets'] = 1
+    BLACK_CLEAVER_INITIATOR_BUFF['max_targets'] = 1
 
     def black_cleaver_initiator_buff(self):
         return self.BLACK_CLEAVER_INITIATOR_BUFF
@@ -2487,6 +2549,8 @@ class SpecialItems(Actions):
     IMMOLATE_BUFF['stats'] = {}
     IMMOLATE_BUFF['prohibit_cd_start'] = {}
     IMMOLATE_BUFF['on_hit'] = {}
+    IMMOLATE_BUFF['usual_max_targets'] = 1
+    IMMOLATE_BUFF['max_targets'] = 1
     del IMMOLATE_BUFF['dot']
 
     ORDERED_IMMOLATE_ITEMS = ('sunfire_cape', 'enchantment_cinderhulk', 'bamis_cinder',)  # (highest to lowest priority)

@@ -49,6 +49,8 @@ _RUNE_BUFF_DCT_BASE['on_hit'] = None
 _RUNE_BUFF_DCT_BASE['prohibit_cd_start'] = False
 _RUNE_BUFF_DCT_BASE['dot'] = False
 _RUNE_BUFF_DCT_BASE['buff_source'] = 'runes'
+_RUNE_BUFF_DCT_BASE['max_targets'] = 1
+_RUNE_BUFF_DCT_BASE['usual_max_targets'] = 1
 del _RUNE_BUFF_DCT_BASE['stats']
 
 

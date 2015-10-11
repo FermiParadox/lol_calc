@@ -9,6 +9,7 @@ class Targeting(object):
                  enemy_target_names):
 
         self.targets_already_hit = None
+        self.targets_already_buffed = None
         self.total_enemies = total_enemies
         self.enemy_target_names = enemy_target_names
 

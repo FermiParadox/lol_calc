@@ -10,6 +10,8 @@ CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['max_stacks'] = 1
 CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['on_hit'] = None
 CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['prohibit_cd_start'] = None
 CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['dot'] = None
+CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['max_targets'] = 1
+CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['usual_max_targets'] = 1
 # (deleted so that a dict can be created later on that will have this dict updated in it as a reference)
 del CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['stats']
 del CHOSEN_ITEMS_AND_MASTERIES_BUFF_BASE['target_type']
