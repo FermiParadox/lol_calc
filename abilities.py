@@ -2,6 +2,7 @@ import operator
 import copy
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import abc
 
 import buffs
 import timers
@@ -279,7 +280,7 @@ class EnemiesDmgToPlayer(EventsGeneral):
     """
 
     DPS_BY_ENEMIES_DMG_BASE = _DPS_BY_ENEMIES_DMG_BASE
-    DPS_ENHANCER_COEF = 2   # (used to make player take dmg of e.g. 2 enemies)
+    DPS_ENHANCER_COEF = 3   # (used to make player take dmg of e.g. 2 enemies)
 
     FLAT_SURVIVABILITY_FACTORS = dict(
         flash=1
@@ -483,7 +484,6 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
                  _reversed_combat_mode
                  ):
 
-        self.ability_lvls_dct = ability_lvls_dct
         self.current_target_num = None
         self.action_on_cd_func = action_on_cd_func
 
@@ -970,7 +970,7 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         return self.__castable_spells_shortcuts
 
 
-class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
+class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal, metaclass=abc.ABCMeta):
 
     AA_COOLDOWN = 0.4   # TODO: replace functionality with 'wind_up'
 
@@ -1022,6 +1022,18 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
                                ability_lvls_dct=ability_lvls_dct,
                                req_dmg_dct_func=self.request_dmg,
                                req_abilities_attrs_func=self.abilities_attributes)
+
+    @abc.abstractmethod
+    def activate_rage_speed_buff(self):
+        pass
+
+    @abc.abstractmethod
+    def activate_liandrys(self):
+        pass
+
+    @abc.abstractmethod
+    def activate_spellblade(self):
+        pass
 
     # TODO: single call memo
     def stats_dependencies(self):

@@ -40,7 +40,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
                                                       player_lvl=self.player_lvl)
 
         targeting.Targeting.__init__(self,
-                                     total_enemies= self.total_enemies,
+                                     total_enemies=self.total_enemies,
                                      enemy_target_names=self.enemy_target_names)
 
         # ITEMS
@@ -670,7 +670,15 @@ class Counters(BuffsGeneral):
         return self.__note_active_buffs(str_pre_or_post='postcombat_active_buffs')
 
 
-class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
+class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories, metaclass=abc.ABCMeta):
+
+    @abc.abstractmethod
+    def activate_guinsoos_rageblade_low_hp_buff(self):
+        pass
+
+    @abc.abstractmethod
+    def activate_black_cleaver_armor_reduction_buff(self):
+        pass
 
     IGNORED_DMG_NAMES = ['regen', ]
 
@@ -711,7 +719,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                                      active_buffs=self.active_buffs,
                                                      ability_lvls_dct=ability_lvls_dct)
 
-    def apply_spellvamp_or_lifesteal(self, tar_name, dmg_dct, dmg_value, dmg_type):
+    def apply_spellvamp_or_lifesteal(self, dmg_dct, dmg_value, dmg_type):
         """
         Applies lifesteal or spellvamp to the player and notes it in history.
 
@@ -938,8 +946,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                           heal_value=final_dmg_value)
 
                 # LIFESTEAL/SPELLVAMP
-                self.apply_spellvamp_or_lifesteal(tar_name=target_name,
-                                                  dmg_dct=dmg_dct,
+                self.apply_spellvamp_or_lifesteal(dmg_dct=dmg_dct,
                                                   dmg_value=final_dmg_value,
                                                   dmg_type=dmg_type)
 
