@@ -25,13 +25,13 @@ ALL_DATA = dict(
     rotation_lst=[],
     chosen_items_dct={'player': ['blade_of_the_ruined_king', 'trinity_force', 'youmuus_ghostblade', 'sunfire_cape',
                                  'guinsoos_rageblade', 'the_black_cleaver'],
-                      'enemy_1': ['hextech_gunblade', 'chain_vest', 'chain_vest'],
-                      'enemy_2': ['dorans_shield', 'hextech_gunblade'],
-                      'enemy_3': ['dorans_shield', 'hextech_gunblade'], },
+                      'enemy_1': ['blade_of_the_ruined_king', 'chain_vest', 'chain_vest'],
+                      'enemy_2': ['dorans_shield', 'blade_of_the_ruined_king'],
+                      'enemy_3': ['dorans_shield', 'blade_of_the_ruined_king'], },
     initial_enemies_total_stats=None,
     initial_active_buffs=None,
-    initial_current_stats={'player': {'current_hp': 1600}},
-    
+    initial_current_stats={'player': {'current_hp': 600}},
+
     _reversed_combat_mode=False,
 
     selected_summoner_spells=[],

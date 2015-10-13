@@ -410,15 +410,8 @@ class Counters(BuffsGeneral):
 
         tar_hp_history = self.combat_history[target_name]['current_hp']
 
+        # (when events occur simultaneously any previous note for given time is replaced)
         tar_hp_history.update({self.current_time: self.current_stats[target_name]['current_hp']})
-
-        # Later times that were stored prematurely need to be removed,
-        # otherwise they create wrong graphs under some conditions.
-        # (that is, if hp at t2 is higher than t1 and t2 is stored before t1,
-        # it would wrongfully show as if hp goes up for no reason)
-        for time in set(tar_hp_history):
-            if time > self.current_time:
-                del tar_hp_history[time]
 
     def note_dmg_or_heal_taken(self, dmg_name, tar_name, unmitigated_dmg_value, mitigated_dmg_value):
         """
@@ -949,6 +942,10 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories):
                                                   dmg_dct=dmg_dct,
                                                   dmg_value=final_dmg_value,
                                                   dmg_type=dmg_type)
+
+            else:
+                # When player takes dmg, checks if rageblade's low hp buff should be applied.
+                self.activate_guinsoos_rageblade_low_hp_buff()
 
             self.activate_black_cleaver_armor_reduction_buff(dmg_type=dmg_type, target_name=target_name)
 

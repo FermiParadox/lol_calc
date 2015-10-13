@@ -279,7 +279,7 @@ class EnemiesDmgToPlayer(EventsGeneral):
     """
 
     DPS_BY_ENEMIES_DMG_BASE = _DPS_BY_ENEMIES_DMG_BASE
-    DPS_ENHANCER_COEF = 1
+    DPS_ENHANCER_COEF = 2   # (used to make player take dmg of e.g. 2 enemies)
 
     FLAT_SURVIVABILITY_FACTORS = dict(
         flash=1
@@ -1173,6 +1173,9 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
                 # TODO make it remove only one stack
                 raise NotImplementedError
 
+    def _last_action_cast_start(self):
+        return max(self.actions_dct)
+
     def _last_action_name(self):
         """
         Returns name of last action casted. If no action has been casted yet, it returns None.
@@ -1181,9 +1184,7 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
         """
 
         if self.actions_dct:
-
-            last_action_time = max(self.actions_dct)
-            last_action_name = self.actions_dct[last_action_time]['action_name']
+            last_action_name = self.actions_dct[self._last_action_cast_start()]['action_name']
 
             return last_action_name
 
@@ -1808,7 +1809,9 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
                             dmg_dct = self.request_dmg(dmg_name=dmg_name)
                             self.apply_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct, target_name=examined_tar)
 
-                            if self.is_alive(tar_name=examined_tar):
+                            # (periodic events are refreshed only on alive targets;
+                            # player periodic events are always refreshed to ensure enemies' dps is fully applied)
+                            if self.is_alive(tar_name=examined_tar) or examined_tar == 'player':
                                 self.add_next_periodic_event(tar_name=examined_tar,
                                                              dmg_name=dmg_name,
                                                              dmg_dct=dmg_dct,
@@ -1860,8 +1863,10 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
 
         self.apply_pre_action_events()
 
-        # If everyone died, stops applying actions as well.
+        # If everyone died, stops applying actions as well
+        # (and removes last action, otherwise it would falsely appear as if last action was fully applied)
         if self.everyone_dead:
+            del self.actions_dct[self._last_action_cast_start()]
             self.__all_dead_or_max_time_exceeded = True
             return
 
@@ -2259,6 +2264,7 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal):
             self._run_reversed_combat()
         else:
             self._run_normal_combat()
+            return
 
     def rotation_followed(self):
         rot = []
@@ -2323,19 +2329,30 @@ class SpecialItems(Actions):
                                              'spellvamp': {'additive': {'stat_mods': {},
                                                                         'stat_values': 0.1}}},
                                    'target_type': 'player'}
-    GUINSOOS_ABOVE_HALF_HP_BUFF = {k: v for k, v in GUINSOOS_BELOW_HALF_HP_BUFF.items() if k != 'stats'}
-    GUINSOOS_ABOVE_HALF_HP_BUFF.update({'stats': {}})
 
-    def guinsoos_rageblade_low_hp_buff(self):
-        # BELOW 50%
+    GUINSOOS_RAGEBLADE_ITEM_NAME = 'guinsoos_rageblade'
+    items_data.ensure_in_items_names((GUINSOOS_RAGEBLADE_ITEM_NAME,))
+
+    def activate_guinsoos_rageblade_low_hp_buff(self):
+
+        if self.GUINSOOS_RAGEBLADE_ITEM_NAME not in self.player_items:
+            # (player doesn't have the item)
+            return
+
+        if 'guinsoos_rageblade_low_hp_buff' in self.active_buffs['player']:
+            # (already active)
+            return
+
         # (when initially called during item passives application current stats aren't created yet)
         if 'player' in self.current_stats:
+
             half_max_hp = self.request_stat(target_name='player', stat_name='hp') / 2
             if self.current_stats['player']['current_hp'] < half_max_hp:
-                return self.GUINSOOS_BELOW_HALF_HP_BUFF
 
-        # ABOVE 50%
-        return self.GUINSOOS_ABOVE_HALF_HP_BUFF
+                self.add_buff(buff_name='guinsoos_rageblade_low_hp_buff', tar_name='player')
+
+    def guinsoos_rageblade_low_hp_buff(self):
+        return self.GUINSOOS_BELOW_HALF_HP_BUFF
 
     # SPELLBLADE
     SPELLBLADE_ITEMS_PRIORITY_SORTED = ('lich_bane', 'trinity_force', 'iceborn_gauntlet', 'sheen')
@@ -2832,10 +2849,10 @@ class VisualRepresentation(Presets):
         plt.ylabel('hp')
 
         color_counter_var = 0
-        color_lst = ('b', 'g', 'y', 'orange', 'red')
+        color_lst = ('black', 'b', 'g', 'y', 'orange', 'red')
 
         # Creates graph for each target.
-        for tar_name in self.enemy_target_names:
+        for tar_name in ('player',) + self.enemy_target_names:
 
             hp_change_times = sorted(self.combat_history[tar_name]['current_hp'])
             max_hp = self.request_stat(target_name=tar_name, stat_name='hp')
