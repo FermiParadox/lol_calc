@@ -6,6 +6,15 @@ import pprint
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+class UnexpectedValueError(Exception):
+    """
+    NOT TO BE HANDLED!
+    Exception indicating that an unexpected value has been given to a variable.
+    """
+    pass
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # PLACEHOLDER
 
 class PlaceholderUsedError(Exception):
@@ -203,7 +212,6 @@ def compare_complex_object(obj_1, obj_2):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# SAFE DICT
 class SafeDict(dict):
     """
     Disallows creation of a non existing key through d[new_key] = val.
@@ -246,14 +254,64 @@ BUFF_DCT_BASE = dict(
     ),
     prohibit_cd_start=Placeholder(),
     buff_source=Placeholder(),
-    dot=False,
+    dot=Placeholder(),
     max_targets=Placeholder(),      # Refers to max number of targets that can get the effect from a single application
     usual_max_targets=Placeholder(),
 )
 
+OPTIONAL_BUFF_KEYS = ('shield',)
+
 
 def buff_dct_base_deepcopy():
     return copy.deepcopy(BUFF_DCT_BASE)
+
+
+class SafeBuff(SafeDict):
+    """
+    Allows creation of a buff dict only with specified keys.
+    Keys can be removed or reinserted but only if they are within the allowed.
+    """
+
+    MANDATORY_KEYS = set(BUFF_DCT_BASE.keys())
+    OPTIONAL_KEYS = set(OPTIONAL_BUFF_KEYS)
+    ALLOWED_KEYS = MANDATORY_KEYS | OPTIONAL_KEYS
+
+    EXTRA_KEY_DETECTED_MSG = 'Extra keys given. Keys are restricted only to "ALLOWED_KEYS".'
+
+    def __init__(self, given_dct):
+        given_dct_keys = given_dct.keys()
+
+        # Disallows extra keys.
+        if given_dct_keys - self.ALLOWED_KEYS:
+            raise UnexpectedValueError(self.EXTRA_KEY_DETECTED_MSG)
+
+        # Disallows omitting mandatory keys.
+        self.mandatory_keys_omitted = self.MANDATORY_KEYS - given_dct_keys
+        if self.mandatory_keys_omitted:
+            raise UnexpectedValueError('Mandatory keys omitted: {}'.format(self.mandatory_keys_omitted))
+
+        # Auto inserts optional keys with False-type value.
+        full_dct = {i: False for i in self.OPTIONAL_KEYS}
+        full_dct.update(given_dct)
+        super().__init__(**full_dct)
+
+    def __setitem__(self, key, value):
+        if key not in self.ALLOWED_KEYS:
+            raise KeyError('Trying to insert new key ({}) in a SafeDict.'.format(key))
+        dict.__setitem__(self, key, value)
+
+    def delete_keys(self, sequence):
+        for i in sequence:
+            del self[i]
+
+    def update(self, *args, **kwargs):
+        if (set(kwargs) - self.ALLOWED_KEYS) or (set(*args) - self.ALLOWED_KEYS):
+            raise UnexpectedValueError(self.EXTRA_KEY_DETECTED_MSG)
+        dict.update(*args, **kwargs)
+
+SHIELD_ATTRS = {'shield_type': Placeholder(),
+                'shield_value': Placeholder()}
+
 
 BUFF_DOT_ATTRS = {'period': Placeholder(),
                   'dmg_names': PlaceholderList(),
@@ -316,14 +374,6 @@ ON_ACTION_TRIGGERS = dict(
 
 def dmg_dct_base_deepcopy():
     return copy.deepcopy(DMG_DCT_BASE)
-
-
-class UnexpectedValueError(Exception):
-    """
-    NOT TO BE HANDLED!
-    Exception indicating that an unexpected value has been given to a variable.
-    """
-    pass
 
 
 class DuplicateNameError(Exception):

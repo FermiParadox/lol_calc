@@ -2325,7 +2325,9 @@ class BuffsBase(object):
         duration=(1, 2, 3, 4, 5, 'permanent'),
         prohibit_cd_start=(None, ),
         buff_source=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS,
-        dot=(False, True)
+        dot=(False, True),
+        max_targets=(1, 2, 3, 4, 5, 'infinite'),
+        usual_max_targets=(1, 2, 3, 4, 5),
     )
 
     @staticmethod

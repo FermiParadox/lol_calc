@@ -964,12 +964,16 @@ class DmgReductionStats(StatRequest):
         if percent_reduction_name in tar_bonuses:
             percent_reduction = self.request_stat(target_name=target,
                                                   stat_name=percent_reduction_name)
+            # (Max value is 1)
+            percent_reduction = min(1, percent_reduction)
         else:
             percent_reduction = 0
 
         # percent_penetration calculation
         percent_penetration_name = self.DEFENSE_REDUCING_MR_AND_ARMOR_MAP[stat]['_percent_penetration']
         percent_penetration = self.request_stat(target_name='player', stat_name=percent_penetration_name)
+        # (Max value is 1)
+        percent_penetration = min(1, percent_penetration)
 
         armor_after_reductions = self.request_stat(target_name=target,
                                                    stat_name=stat)
@@ -977,19 +981,19 @@ class DmgReductionStats(StatRequest):
         flat_reduction_name = self.DEFENSE_REDUCING_MR_AND_ARMOR_MAP[stat]['_flat_reduction']
         armor_after_reductions -= self.request_stat(target_name=target, stat_name=flat_reduction_name)
 
-        # Applies percent reduction and percent penetration
         # (Armor can't be reduced further if negative)
         if armor_after_reductions <= 0:
             return armor_after_reductions
         else:
+            # Applies percent reduction and percent penetration
             armor_after_reductions *= (1-percent_reduction) * (1-percent_penetration)
 
             # flat_penetration
             flat_penetration_name = self.DEFENSE_REDUCING_MR_AND_ARMOR_MAP[stat]['_flat_penetration']
-            if armor_after_reductions > self.request_stat(target_name='player',
-                                                          stat_name=flat_penetration_name):
-                return armor_after_reductions - self.request_stat(target_name='player',
-                                                                  stat_name=flat_penetration_name)
+            flat_penetration_val = self.request_stat(target_name='player',
+                                                     stat_name=flat_penetration_name)
+            if armor_after_reductions > flat_penetration_val:
+                return armor_after_reductions - flat_penetration_val
 
             else:
                 return 0.

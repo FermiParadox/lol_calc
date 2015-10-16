@@ -103,27 +103,28 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
 
     def add_abilities_and_items_passive_buffs(self, abilities_effects_dct_func, abilities_lvls):
         """
-        Adds passive buffs from champion abilities (that apply on ability lvling) on all targets.
+        Adds passive buffs from champion abilities (that apply on ability lvling) on player.
+        Other targets don't get any buffs from items or abilities
+        (stats from buffs are already applied through reverse combat mode).
 
         :returns: (None)
         """
 
-        for tar_name in self.all_target_names:
-            # (player or enemy)
+        # (player or enemy)
 
-            # For Q,W,E and R...
-            for ability_name in self.castable_spells_shortcuts:
+        # For Q,W,E and R...
+        for ability_name in self.castable_spells_shortcuts:
 
-                # ..if the ability has at least one lvl...
-                if abilities_lvls[ability_name] > 0:
+            # ..if the ability has at least one lvl...
+            if abilities_lvls[ability_name] > 0:
 
-                    # .. applies the buffs.
-                    self.add_single_ability_passive_buff(effects_dct=abilities_effects_dct_func(ability_name),
-                                                         tar_name=tar_name)
+                # .. applies the buffs.
+                self.add_single_ability_passive_buff(effects_dct=abilities_effects_dct_func(ability_name),
+                                                     tar_name='player')
 
-            # Innate passive buffs.
-            self.add_single_ability_passive_buff(effects_dct=abilities_effects_dct_func('inn'),
-                                                 tar_name=tar_name)
+        # Innate passive buffs.
+        self.add_single_ability_passive_buff(effects_dct=abilities_effects_dct_func('inn'),
+                                             tar_name='player')
 
         # Item passive buffs.
         self.add_items_passive_buffs(tar_name='player')
@@ -677,7 +678,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories, metaclass=ab
         pass
 
     @abc.abstractmethod
-    def activate_black_cleaver_armor_reduction_buff(self):
+    def activate_black_cleaver_armor_reduction_buff(self, dmg_type, target_name):
         pass
 
     IGNORED_DMG_NAMES = ['regen', ]
@@ -802,6 +803,8 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories, metaclass=ab
             self.current_stats[tar_name]['current_hp'] = self.request_stat(target_name=tar_name,
                                                                            stat_name='hp')
 
+        self.note_current_hp_in_history(target_name=tar_name)
+
     def apply_resource_dmg_or_heal(self, dmg_dct, unmitigated_dmg_value):
         """
         Reduces or increases player's 'current_'resource and stores it in combat_history.
@@ -901,6 +904,59 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories, metaclass=ab
 
         return int(max(dmg_value, 0))
 
+    def dmg_value_after_shields(self, tar_name, dmg_val, dmg_type):
+        """
+        Applies dmg to appropriate shields and returns remaining dmg that will affect the hp.
+
+        Destroyed shields are removed from active buffs.
+
+        :return: (float)
+        """
+
+        # (physical and AA are handled by the same shields)
+        if dmg_type == 'AA':
+            dmg_type = 'physical'
+
+        # STORES ALL SHIELDS
+        shields_dcts_dct = {}
+        tar_active_buffs = self.active_buffs[tar_name]
+
+        for buff_name in tar_active_buffs:
+            buff_dct = tar_active_buffs[buff_name]
+            if 'shield' not in buff_dct:
+                continue
+
+            shield_dct = buff_dct['shield']
+
+            if shield_dct:
+                shields_dcts_dct.update({buff_name: shield_dct})
+
+        # APPLY DMG ON SHIELDS
+        # (name-sorted to avoid rare inconsistencies e.g. morgana shield + maw of malmortius shield;)
+        # (might need a different sort, e.g. time-sort)
+        for buff_name in sorted(shields_dcts_dct):
+            shield_dct = shields_dcts_dct[buff_name]
+            shield_type = shield_dct['shield_type']
+            shield_value = shield_dct['shield_value']
+
+            if shield_type not in ('any', dmg_type):
+                continue
+
+            # Shield exceeds dmg.
+            if shield_value > dmg_val:
+                shield_dct[shield_value] = shield_value - dmg_val
+                return 0
+
+            # Dmg exceeds shields.
+            else:
+                remaining_dmg = dmg_val - shield_value
+                del tar_active_buffs[buff_name]
+
+                return remaining_dmg
+
+        else:
+            return dmg_val
+
     def apply_hp_dmg_or_heal(self, dmg_name, target_name, unmitigated_dmg_value):
         """
         Applies a dmg or heal value to a target, along with lifesteal or spellvamp, and notes in history.
@@ -925,7 +981,6 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories, metaclass=ab
         # VALUE APPLICATION
         # If it's a dmg.
         if final_dmg_value >= 0:
-            self.current_stats[target_name]['current_hp'] -= final_dmg_value
 
             if dmg_name not in self.IGNORED_DMG_NAMES:
                 # DMG COUNTERS
@@ -955,6 +1010,13 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories, metaclass=ab
                 self.activate_guinsoos_rageblade_low_hp_buff()
 
             self.activate_black_cleaver_armor_reduction_buff(dmg_type=dmg_type, target_name=target_name)
+
+            # Shields
+            remaining_dmg = self.dmg_value_after_shields(tar_name=target_name,
+                                                         dmg_val=final_dmg_value,
+                                                         dmg_type=dmg_type)
+            if remaining_dmg:
+                self.current_stats[target_name]['current_hp'] -= remaining_dmg
 
         # Otherwise it's a heal.
         else:
@@ -1040,6 +1102,7 @@ _DEAD_BUFF_DCT_BASE['on_hit'] = None
 _DEAD_BUFF_DCT_BASE['prohibit_cd_start'] = None
 _DEAD_BUFF_DCT_BASE['usual_max_targets'] = 1
 _DEAD_BUFF_DCT_BASE['max_targets'] = 1
+_DEAD_BUFF_DCT_BASE['dot'] = False
 
 
 # ----------------------------------------------------------------------------------------------------------------------

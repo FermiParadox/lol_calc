@@ -1974,7 +1974,6 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal, metaclass
         """
 
         queue_set = set()
-        items_attrs_dct = items_data.ITEMS_ATTRIBUTES
 
         # SUMMONER'S SPELLS
         for spell_name in sorted(self.selected_summoner_spells):
@@ -1984,7 +1983,7 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal, metaclass
 
         # ITEMS
         for item_name in self.player_items:
-            if items_attrs_dct[item_name]['general_attributes']['castable']:
+            if item_name in items_data.CASTABLE_ITEMS:
                 queue_set.add(item_name)
 
         # (didn't use a list from the beginning to remove duplicates)
@@ -2517,35 +2516,37 @@ class SpecialItems(Actions):
         return self.RAGE_INITIATOR_BUFF
 
     # BLACK CLEAVER
-    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF = palette.buff_dct_base_deepcopy()
-    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['buff_source'] = 'the_black_cleaver'
-    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['dot'] = False
-    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['duration'] = 5
-    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['target_type'] = 'enemy'
-    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['max_stacks'] = 6
-    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['stats'] = {'percent_armor_reduction': {'additive': {'stat_mods': {},
-                                                                                            'stat_values': 0.05}}}
-    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['on_hit'] = {}
-    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['prohibit_cd_start'] = {}
-    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['usual_max_targets'] = 1
-    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF['max_targets'] = 1
+    BLACK_CLEAVER_ARMOR_REDUCTION_BUFF = palette.SafeBuff(dict(
+        target_type='enemy',
+        duration=5,
+        max_stacks=6,
+        stats={'percent_armor_reduction': {'additive': {'stat_mods': {},
+                                                        'stat_values': 0.05}}},
+        on_hit={},
+        prohibit_cd_start={},
+        buff_source='the_black_cleaver',
+        max_targets=1,
+        usual_max_targets=1,
+        dot=False
+    ))
 
     def black_cleaver_armor_reduction_buff(self):
         return self.BLACK_CLEAVER_ARMOR_REDUCTION_BUFF
 
     BLACK_CLEAVER_REDUCTION_BUFFS_NAMES = ['black_cleaver_armor_reduction_'+str(i) for i in range(1, 7)]
 
-    BLACK_CLEAVER_INITIATOR_BUFF = palette.buff_dct_base_deepcopy()
-    BLACK_CLEAVER_INITIATOR_BUFF['buff_source'] = 'the_black_cleaver'
-    BLACK_CLEAVER_INITIATOR_BUFF['dot'] = False
-    BLACK_CLEAVER_INITIATOR_BUFF['duration'] = 'permanent'
-    BLACK_CLEAVER_INITIATOR_BUFF['target_type'] = 'player'
-    BLACK_CLEAVER_INITIATOR_BUFF['max_stacks'] = 1
-    BLACK_CLEAVER_INITIATOR_BUFF['stats'] = {}
-    BLACK_CLEAVER_INITIATOR_BUFF['prohibit_cd_start'] = {}
-    BLACK_CLEAVER_INITIATOR_BUFF['on_hit'] = {}
-    BLACK_CLEAVER_INITIATOR_BUFF['usual_max_targets'] = 1
-    BLACK_CLEAVER_INITIATOR_BUFF['max_targets'] = 1
+    BLACK_CLEAVER_INITIATOR_BUFF = palette.SafeBuff(dict(
+        target_type='player',
+        duration='permanent',
+        max_stacks=1,
+        stats={},
+        on_hit={},
+        prohibit_cd_start={},
+        buff_source='the_black_cleaver',
+        max_targets=1,
+        usual_max_targets=1,
+        dot=False
+    ))
 
     def black_cleaver_initiator_buff(self):
         return self.BLACK_CLEAVER_INITIATOR_BUFF
@@ -2570,17 +2571,19 @@ class SpecialItems(Actions):
                         self.add_buff(buff_name=black_cleaver_red_buff_name, tar_name=self.current_enemy)
 
     # IMMOLATE
-    IMMOLATE_BUFF = palette.buff_dct_base_deepcopy()
-    IMMOLATE_BUFF['buff_source'] = 'sunfire'
-    IMMOLATE_BUFF['duration'] = 'permanent'
-    IMMOLATE_BUFF['target_type'] = 'player'
-    IMMOLATE_BUFF['max_stacks'] = 1
-    IMMOLATE_BUFF['stats'] = {}
-    IMMOLATE_BUFF['prohibit_cd_start'] = {}
-    IMMOLATE_BUFF['on_hit'] = {}
-    IMMOLATE_BUFF['usual_max_targets'] = 1
-    IMMOLATE_BUFF['max_targets'] = 1
-    del IMMOLATE_BUFF['dot']
+    IMMOLATE_BUFF = palette.SafeBuff(dict(
+        target_type='player',
+        duration='permanent',
+        max_stacks=1,
+        stats={},
+        on_hit={},
+        prohibit_cd_start={},
+        buff_source=palette.Placeholder(),
+        max_targets=1,
+        usual_max_targets=1,
+        dot=palette.Placeholder()
+    ))
+    IMMOLATE_BUFF.delete_keys({'dot', 'buff_source'})
 
     ORDERED_IMMOLATE_ITEMS = ('sunfire_cape', 'enchantment_cinderhulk', 'bamis_cinder',)  # (highest to lowest priority)
     IMMOLATE_ITEMS_TO_DMG_NAME_MAP = {i: i+'_immolate_dmg' for i in ORDERED_IMMOLATE_ITEMS}
@@ -2607,6 +2610,7 @@ class SpecialItems(Actions):
                 dmg_name = self.IMMOLATE_ITEMS_TO_DMG_NAME_MAP[immolate_item]
 
                 buff_dct['dot']['dmg_names'].append(dmg_name)
+                buff_dct.update(buff_source=immolate_item)
 
                 return buff_dct
 
