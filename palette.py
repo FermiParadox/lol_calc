@@ -240,12 +240,11 @@ ALL_POSSIBLE_ABILITIES_SHORTCUTS = ABILITY_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
 
 # BUFF
 BUFF_DCT_BASE = dict(
-    target_type=Placeholder(),
+    buff_source=Placeholder(),
+    dot=Placeholder(),
     duration=Placeholder(),
     max_stacks=Placeholder(),
-    stats=dict(
-        placeholder_stat_1=Placeholder()
-    ),
+    max_targets=Placeholder(),      # Refers to max number of targets that can get the effect from a single application
     on_hit=dict(
         apply_buff=[Placeholder(), ],
         cause_dmg=[Placeholder(), ],
@@ -253,13 +252,14 @@ BUFF_DCT_BASE = dict(
         remove_buff=[Placeholder(), ]
     ),
     prohibit_cd_start=Placeholder(),
-    buff_source=Placeholder(),
-    dot=Placeholder(),
-    max_targets=Placeholder(),      # Refers to max number of targets that can get the effect from a single application
+    stats=dict(
+        placeholder_stat_1=Placeholder()
+    ),
+    target_type=Placeholder(),
     usual_max_targets=Placeholder(),
 )
 
-OPTIONAL_BUFF_KEYS = ('shield',)
+OPTIONAL_BUFF_KEYS = ('shield', 'aura')
 
 
 def buff_dct_base_deepcopy():
@@ -309,6 +309,7 @@ class SafeBuff(SafeDict):
             raise UnexpectedValueError(self.EXTRA_KEY_DETECTED_MSG)
         dict.update(*args, **kwargs)
 
+
 SHIELD_ATTRS = {'shield_type': Placeholder(),
                 'shield_value': Placeholder()}
 
@@ -318,24 +319,34 @@ BUFF_DOT_ATTRS = {'period': Placeholder(),
                   'always_on_x_targets': Placeholder()}     # False or int.
 
 
+# ----------------------------------------------------------------------------------------------------------------------
 # DMG
 DMG_DCT_BASE = dict(
-    target_type=Placeholder(),
+    crit_type=Placeholder(),
+    delay=Placeholder(),
     dmg_category=Placeholder(),
-    resource_type=Placeholder(),
+    dmg_source=Placeholder(),
     dmg_type=Placeholder(),
     dmg_values=Placeholder(),
-    dmg_source=Placeholder(),
-    mods=Placeholder(),     # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
-    life_conversion_type=Placeholder(),     # (None or lifesteal or spellvamp)
-    radius=Placeholder(),
     dot=Placeholder(),
+    heal_for_dmg_amount=PlaceholderBool(),
+    life_conversion_type=Placeholder(),     # (None or lifesteal or spellvamp)
+    resource_type=Placeholder(),
     max_targets=Placeholder(),  # Refers to max number of targets that can get the effect from a single application
+    mods=Placeholder(),     # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
+    radius=Placeholder(),
+    target_type=Placeholder(),
     usual_max_targets=Placeholder(),
-    delay=Placeholder(),
-    crit_type=Placeholder(),
-    heal_for_dmg_amount=PlaceholderBool()
 )
+
+
+OPTIONAL_DMG_KEYS = ()
+
+
+class SafeDmg(SafeBuff):
+    MANDATORY_KEYS = set(DMG_DCT_BASE.keys())
+    OPTIONAL_KEYS = set(OPTIONAL_DMG_KEYS)
+    ALLOWED_KEYS = MANDATORY_KEYS | OPTIONAL_KEYS
 
 
 DMG_DOT_ATTRS = {'dot_buff': PlaceholderStr(),

@@ -5,6 +5,7 @@ import items_folder.items_data
 import palette
 import dmgs_buffs_categories
 import masteries_module
+from palette import Placeholder
 
 import copy
 import abc
@@ -1093,33 +1094,36 @@ PER_5_DIVISOR = 5 / NATURAL_REGEN_PERIOD  # Divides "per 5" stats. Used to creat
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-# REGEN BUFF BASE
-_DEAD_BUFF_DCT_BASE = palette.buff_dct_base_deepcopy()
-_DEAD_BUFF_DCT_BASE['duration'] = 'permanent'
-_DEAD_BUFF_DCT_BASE['max_stacks'] = 1
-_DEAD_BUFF_DCT_BASE['stats'] = None
-_DEAD_BUFF_DCT_BASE['on_hit'] = None
-_DEAD_BUFF_DCT_BASE['prohibit_cd_start'] = None
-_DEAD_BUFF_DCT_BASE['usual_max_targets'] = 1
-_DEAD_BUFF_DCT_BASE['max_targets'] = 1
-_DEAD_BUFF_DCT_BASE['dot'] = False
+_DEAD_BUFF_DCT_BASE = palette.SafeBuff(dict(
+        target_type='player',
+        duration='permanent',
+        max_stacks=1,
+        stats={},
+        on_hit={},
+        prohibit_cd_start={},
+        buff_source='Nothing',
+        max_targets=1,
+        usual_max_targets=1,
+        dot=False
+    ))
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # REGEN BUFF BASE
 
 # Creates base dict for regenerations (hp, mp, energy, etc).
-REGEN_BUFF_DCT_BASE = palette.buff_dct_base_deepcopy()
-# Sets values correctly for regenerations.
-for regen_buff_base_key in ('on_hit', 'prohibit_cd_start', 'stats'):
-    REGEN_BUFF_DCT_BASE[regen_buff_base_key] = None
-REGEN_BUFF_DCT_BASE['max_stacks'] = 1
-REGEN_BUFF_DCT_BASE['duration'] = 'permanent'
-# (adds dot data)
-REGEN_BUFF_DCT_BASE['dot'] = {'period': None, 'dmg_names': []}
-REGEN_BUFF_DCT_BASE['dot']['period'] = NATURAL_REGEN_PERIOD
-REGEN_BUFF_DCT_BASE['usual_max_targets'] = 1
-REGEN_BUFF_DCT_BASE['max_targets'] = 1
+REGEN_BUFF_DCT_BASE = palette.SafeBuff(dict(
+        target_type=Placeholder(),
+        duration='permanent',
+        max_stacks=1,
+        stats={},
+        on_hit={},
+        prohibit_cd_start={},
+        buff_source=Placeholder(),
+        max_targets=1,
+        usual_max_targets=1,
+        dot={'period': NATURAL_REGEN_PERIOD, 'dmg_names': []}
+    ))
 
 # PLAYER hp5 buff base.
 _HP5_BUFF_DCT_BASE_PLAYER = copy.deepcopy(REGEN_BUFF_DCT_BASE)
@@ -1143,19 +1147,24 @@ _REGEN_BUFF_DCT_BASE_ENEMY['dot']['dmg_names'] = ['enemy_hp5_dmg']
 # mod*mod_val + base_dmg_val
 
 # Creates base dict for regenerations' dmg dicts.
-_REGEN_DMG_DCT_BASE = palette.dmg_dct_base_deepcopy()
-_REGEN_DMG_DCT_BASE['dmg_category'] = 'standard_dmg'
-_REGEN_DMG_DCT_BASE['dmg_type'] = 'true'
-# Regen is "healing" a stat so it has to be negative.
-_REGEN_DMG_DCT_BASE['dmg_values'] = -1/PER_5_DIVISOR
-_REGEN_DMG_DCT_BASE['dmg_source'] = 'regen'
-_REGEN_DMG_DCT_BASE['life_conversion_type'] = None
-_REGEN_DMG_DCT_BASE['radius'] = None
-_REGEN_DMG_DCT_BASE['max_targets'] = 1
-_REGEN_DMG_DCT_BASE['usual_max_targets'] = 1
-_REGEN_DMG_DCT_BASE['delay'] = NATURAL_REGEN_START_DELAY
-_REGEN_DMG_DCT_BASE['heal_for_dmg_amount'] = False
-_REGEN_DMG_DCT_BASE['crit_type'] = None
+_REGEN_DMG_DCT_BASE = palette.SafeDmg(dict(
+    target_type=Placeholder(),
+    dmg_category='standard_dmg',
+    resource_type=Placeholder(),
+    dmg_type='true',
+    dmg_values=-1/PER_5_DIVISOR,
+    dmg_source='regen',
+    mods=Placeholder(),
+    life_conversion_type=None,
+    radius=None,
+    dot=Placeholder(),
+    max_targets=1,
+    usual_max_targets=1,
+    delay=NATURAL_REGEN_START_DELAY,
+    crit_type=None,
+    heal_for_dmg_amount=False
+))
+
 
 # HEALTH
 _HP5_DMG_DCT_BASE = copy.deepcopy(_REGEN_DMG_DCT_BASE)

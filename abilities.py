@@ -11,6 +11,7 @@ from champions import app_champions_base_stats
 import palette
 import skills_points
 import items_folder.items_data as items_data
+from palette import Placeholder
 
 
 # Sets font size on all plt graphs.
@@ -238,33 +239,44 @@ class EventsGeneral(buffs.DeathAndRegen):
 
 _DPS_BY_ENEMIES_DMGS_NAMES = [dmg_type + '_dps_by_enemy_dmg' for dmg_type in ('true', 'magic', 'non_aa_physical', 'aa')]
 
-_DPS_BY_ENEMIES_BUFF_BASE = copy.deepcopy(buffs.REGEN_BUFF_DCT_BASE)
-_DPS_BY_ENEMIES_BUFF_BASE['target_type'] = 'player'
-# obsolete comment: (duration set a non 'permanent', stable value, to ensure independence of initial current hp)
-_DPS_BY_ENEMIES_BUFF_BASE['duration'] = 'permanent'
-_DPS_BY_ENEMIES_BUFF_BASE['dot']['period'] = buffs.NATURAL_REGEN_PERIOD
-_DPS_BY_ENEMIES_BUFF_BASE['buff_source'] = 'enemies_dps'
-_DPS_BY_ENEMIES_BUFF_BASE['usual_max_targets'] = 1
-_DPS_BY_ENEMIES_BUFF_BASE['max_targets'] = 1
+_DPS_BY_ENEMIES_BUFF_BASE = palette.SafeBuff(dict(
+        target_type='player',
+        duration='permanent',
+        max_stacks=1,
+        stats={},
+        on_hit={},
+        prohibit_cd_start={},
+        buff_source='enemies_dps',
+        max_targets=1,
+        usual_max_targets=1,
+        dot=palette.BUFF_DOT_ATTRS
+    ))
 
+_DPS_BY_ENEMIES_BUFF_BASE['dot']['period'] = buffs.NATURAL_REGEN_PERIOD
+_DPS_BY_ENEMIES_BUFF_BASE['dot']['always_on_x_targets'] = False
+_DPS_BY_ENEMIES_BUFF_BASE['dot']['dmg_names'] = []
 # Adds all dmgs' names in dot buff.
 for dps_dmg_name in _DPS_BY_ENEMIES_DMGS_NAMES:
     _DPS_BY_ENEMIES_BUFF_BASE['dot']['dmg_names'].append(dps_dmg_name)
 
-_DPS_BY_ENEMIES_DMG_BASE = {i: None for i in palette.dmg_dct_base_deepcopy() if i not in ('dmg_type', 'dmg_values')}
-_DPS_BY_ENEMIES_DMG_BASE['target_type'] = 'player'
-_DPS_BY_ENEMIES_DMG_BASE['dmg_category'] = 'standard_dmg'
-_DPS_BY_ENEMIES_DMG_BASE['resource_type'] = 'hp'
-_DPS_BY_ENEMIES_DMG_BASE['dmg_source'] = 'dps_by_enemies'
-_DPS_BY_ENEMIES_DMG_BASE['mods'] = {}
-_DPS_BY_ENEMIES_DMG_BASE['life_conversion_type'] = None
-_DPS_BY_ENEMIES_DMG_BASE['radius'] = None
-_DPS_BY_ENEMIES_DMG_BASE['dot'] = {'buff_name': 'dps_by_enemies_dot_buff'}
-_DPS_BY_ENEMIES_DMG_BASE['max_targets'] = 1
-_DPS_BY_ENEMIES_DMG_BASE['usual_max_targets'] = 1
-_DPS_BY_ENEMIES_DMG_BASE['delay'] = 0
-_DPS_BY_ENEMIES_DMG_BASE['heal_for_dmg_amount'] = False
-_DPS_BY_ENEMIES_DMG_BASE['crit_type'] = None
+_DPS_BY_ENEMIES_DMG_BASE = palette.SafeDmg(dict(
+    target_type='player',
+    dmg_category='standard_dmg',
+    resource_type='hp',
+    dmg_type=Placeholder(),
+    dmg_values=Placeholder(),
+    dmg_source='dps_by_enemies',
+    mods={},
+    life_conversion_type=None,
+    radius=None,
+    dot={'buff_name': 'dps_by_enemies_dot_buff'},
+    max_targets=1,
+    usual_max_targets=1,
+    delay=0,
+    crit_type=None,
+    heal_for_dmg_amount=False
+))
+_DPS_BY_ENEMIES_DMG_BASE.delete_keys(['dmg_type', 'dmg_values'])
 
 
 class EnemiesDmgToPlayer(EventsGeneral):
@@ -2326,20 +2338,21 @@ class SpecialItems(Actions):
                          enemies_originating_dmg_data=enemies_originating_dmg_data)
 
     # GUINSOOS RAGEBLADE
-    GUINSOOS_BELOW_HALF_HP_BUFF = {'buff_source': 'guinsoos_rageblade',
-                                   'dot': False,
-                                   'duration': 'permanent',
-                                   'max_stacks': 1,
-                                   'max_targets': 1,
-                                   'usual_max_targets': 1,
-                                   'on_hit': {},
-                                   'stats': {'att_speed': {'percent': {'stat_mods': {},
-                                                                       'stat_values': 0.2}},
-                                             'lifesteal': {'additive': {'stat_mods': {},
-                                                                        'stat_values': 0.1}},
-                                             'spellvamp': {'additive': {'stat_mods': {},
-                                                                        'stat_values': 0.1}}},
-                                   'target_type': 'player'}
+    GUINSOOS_BELOW_HALF_HP_BUFF = palette.SafeBuff({'buff_source': 'guinsoos_rageblade',
+                                                    'dot': False,
+                                                    'duration': 'permanent',
+                                                    'max_stacks': 1,
+                                                    'max_targets': 1,
+                                                    'usual_max_targets': 1,
+                                                    'on_hit': {},
+                                                    'stats': {'att_speed': {'percent': {'stat_mods': {},
+                                                                                        'stat_values': 0.2}},
+                                                              'lifesteal': {'additive': {'stat_mods': {},
+                                                                                         'stat_values': 0.1}},
+                                                              'spellvamp': {'additive': {'stat_mods': {},
+                                                                                         'stat_values': 0.1}}},
+                                                    'target_type': 'player',
+                                                    'prohibit_cd_start': {}})
 
     GUINSOOS_RAGEBLADE_ITEM_NAME = 'guinsoos_rageblade'
     items_data.ensure_in_items_names((GUINSOOS_RAGEBLADE_ITEM_NAME,))
@@ -2380,41 +2393,46 @@ class SpecialItems(Actions):
                                  'triggered': 'spellblade_triggered'}
     items_data.ensure_in_items_buffs(SPELLBLADE_BUFF_NAMES_MAP.values())
 
-    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF = palette.buff_dct_base_deepcopy()
-    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['buff_source'] = 'sheen'
-    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['dot'] = False
-    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['duration'] = 'permanent'
-    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['target_type'] = 'player'
-    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['max_stacks'] = 1
-    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['stats'] = {}
-    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['prohibit_cd_start'] = {}
-    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['usual_max_targets'] = 1
-    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF['max_targets'] = 1
+    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF = palette.SafeBuff(dict(
+        target_type='player',
+        duration='permanent',
+        max_stacks=1,
+        stats={},
+        on_hit={},
+        prohibit_cd_start={},
+        buff_source='sheen',
+        max_targets=1,
+        usual_max_targets=1,
+        dot=False
+    ))
+    SPELLBLADE_INITIATOR_WITHOUT_ON_HIT_BUFF.delete_keys(('on_hit',))
 
     # (they are used purely as tags)
-    SPELLBLADE_INHIBITOR_BUFF = palette.buff_dct_base_deepcopy()
-    SPELLBLADE_INHIBITOR_BUFF['buff_source'] = 'sheen'
-    SPELLBLADE_INHIBITOR_BUFF['dot'] = False
-    SPELLBLADE_INHIBITOR_BUFF['duration'] = 1.5
-    SPELLBLADE_INHIBITOR_BUFF['target_type'] = 'player'
-    SPELLBLADE_INHIBITOR_BUFF['max_stacks'] = 1
-    SPELLBLADE_INHIBITOR_BUFF['stats'] = {}
-    SPELLBLADE_INHIBITOR_BUFF['on_hit'] = {}
-    SPELLBLADE_INHIBITOR_BUFF['prohibit_cd_start'] = {}
-    SPELLBLADE_INHIBITOR_BUFF['usual_max_targets'] = 1
-    SPELLBLADE_INHIBITOR_BUFF['max_targets'] = 1
+    SPELLBLADE_INHIBITOR_BUFF = palette.SafeBuff(dict(
+        target_type='player',
+        duration=1.5,
+        max_stacks=1,
+        stats={},
+        on_hit={},
+        prohibit_cd_start={},
+        buff_source='sheen',
+        max_targets=1,
+        usual_max_targets=1,
+        dot=False
+    ))
 
-    SPELLBLADE_TRIGGERED_BUFF = palette.buff_dct_base_deepcopy()
-    SPELLBLADE_TRIGGERED_BUFF['buff_source'] = 'sheen'
-    SPELLBLADE_TRIGGERED_BUFF['dot'] = False
-    SPELLBLADE_TRIGGERED_BUFF['duration'] = 7
-    SPELLBLADE_TRIGGERED_BUFF['target_type'] = 'player'
-    SPELLBLADE_TRIGGERED_BUFF['max_stacks'] = 1
-    SPELLBLADE_TRIGGERED_BUFF['stats'] = {}
-    SPELLBLADE_TRIGGERED_BUFF['on_hit'] = {}
-    SPELLBLADE_TRIGGERED_BUFF['prohibit_cd_start'] = {}
-    SPELLBLADE_TRIGGERED_BUFF['usual_max_targets'] = 1
-    SPELLBLADE_TRIGGERED_BUFF['max_targets'] = 1
+    SPELLBLADE_TRIGGERED_BUFF = palette.SafeBuff(dict(
+        target_type='player',
+        duration=7,
+        max_stacks=1,
+        stats={},
+        on_hit={},
+        prohibit_cd_start={},
+        buff_source='sheen',
+        max_targets=1,
+        usual_max_targets=1,
+        dot=False
+    ))
 
     # TODO: single call memo
     def spellblade_dmgs_lst(self):
@@ -2471,17 +2489,19 @@ class SpecialItems(Actions):
                 self.add_buff(buff_name='spellblade_triggered', tar_name='player')
 
     # RAGE BUFF
-    RAGE_SPEED_BUFF_MELEE = palette.buff_dct_base_deepcopy()
-    RAGE_SPEED_BUFF_MELEE['buff_source'] = 'phage'
-    RAGE_SPEED_BUFF_MELEE['dot'] = False
-    RAGE_SPEED_BUFF_MELEE['duration'] = 2
-    RAGE_SPEED_BUFF_MELEE['target_type'] = 'player'
-    RAGE_SPEED_BUFF_MELEE['max_stacks'] = 1
-    RAGE_SPEED_BUFF_MELEE['stats'] = {'move_speed': {'additive': {'stat_mods': {}, 'stat_values': 20}}}
-    RAGE_SPEED_BUFF_MELEE['on_hit'] = {}
-    RAGE_SPEED_BUFF_MELEE['prohibit_cd_start'] = {}
-    RAGE_SPEED_BUFF_MELEE['usual_max_targets'] = 1
-    RAGE_SPEED_BUFF_MELEE['max_targets'] = 1
+    RAGE_SPEED_BUFF_MELEE = palette.SafeBuff(dict(
+        target_type='player',
+        duration=2,
+        max_stacks=1,
+        stats={'move_speed': {'additive': {'stat_mods': {},
+                                           'stat_values': 20}}},
+        on_hit={},
+        prohibit_cd_start={},
+        buff_source='phage',
+        max_targets=1,
+        usual_max_targets=1,
+        dot=False
+    ))
 
     RAGE_SPEED_BUFF_RANGED = copy.deepcopy(RAGE_SPEED_BUFF_MELEE)
     RAGE_SPEED_BUFF_RANGED['stats']['move_speed']['additive']['stat_values'] /= 2
@@ -2498,16 +2518,23 @@ class SpecialItems(Actions):
 
             self.add_buff(buff_name='rage_speed_buff', tar_name='player')
 
-    RAGE_INITIATOR_BUFF = palette.buff_dct_base_deepcopy()
-    RAGE_INITIATOR_BUFF['buff_source'] = 'phage'
-    RAGE_INITIATOR_BUFF['dot'] = False
-    RAGE_INITIATOR_BUFF['duration'] = 'permanent'
-    RAGE_INITIATOR_BUFF['target_type'] = 'player'
-    RAGE_INITIATOR_BUFF['max_stacks'] = 1
-    RAGE_INITIATOR_BUFF['stats'] = {}
-    RAGE_INITIATOR_BUFF['prohibit_cd_start'] = {}
-    RAGE_INITIATOR_BUFF['usual_max_targets'] = 1
-    RAGE_INITIATOR_BUFF['max_targets'] = 1
+    RAGE_INITIATOR_BUFF = palette.SafeBuff(dict(
+        target_type='player',
+        duration='permanent',
+        max_stacks=1,
+        stats={},
+        on_hit=dict(
+            apply_buff=[Placeholder(), ],
+            cause_dmg=[Placeholder(), ],
+            cds_modified={},
+            remove_buff=[Placeholder(), ]
+        ),
+        prohibit_cd_start={},
+        buff_source='phage',
+        max_targets=1,
+        usual_max_targets=1,
+        dot=False
+    ))
     for i in RAGE_INITIATOR_BUFF['on_hit']:
         RAGE_INITIATOR_BUFF['on_hit'][i] = []
     RAGE_INITIATOR_BUFF['on_hit']['apply_buff'] = ['rage_speed_buff']
@@ -2578,10 +2605,10 @@ class SpecialItems(Actions):
         stats={},
         on_hit={},
         prohibit_cd_start={},
-        buff_source=palette.Placeholder(),
+        buff_source=Placeholder(),
         max_targets=1,
         usual_max_targets=1,
-        dot=palette.Placeholder()
+        dot=Placeholder()
     ))
     IMMOLATE_BUFF.delete_keys({'dot', 'buff_source'})
 
@@ -2614,22 +2641,24 @@ class SpecialItems(Actions):
 
                 return buff_dct
 
-    IMMOLATE_DMG_BASE = palette.dmg_dct_base_deepcopy()
-    IMMOLATE_DMG_BASE['target_type'] = 'enemy'
-    IMMOLATE_DMG_BASE['dmg_category'] = 'standard_dmg'
-    IMMOLATE_DMG_BASE['resource_type'] = 'hp'
-    IMMOLATE_DMG_BASE['mods'] = {}
-    IMMOLATE_DMG_BASE['life_conversion_type'] = None
-    IMMOLATE_DMG_BASE['radius'] = 500
-    IMMOLATE_DMG_BASE['dot'] = {'buff_name': 'immolate_buff'}
-    IMMOLATE_DMG_BASE['max_targets'] = 3
-    IMMOLATE_DMG_BASE['usual_max_targets'] = 3
-    IMMOLATE_DMG_BASE['delay'] = 1
-    IMMOLATE_DMG_BASE['heal_for_dmg_amount'] = False
-    IMMOLATE_DMG_BASE['crit_type'] = None
-    IMMOLATE_DMG_BASE['dmg_type'] = 'magic'
-    del IMMOLATE_DMG_BASE['dmg_source']
-    del IMMOLATE_DMG_BASE['dmg_values']
+    IMMOLATE_DMG_BASE = palette.SafeDmg(dict(
+        target_type='enemy',
+        dmg_category='standard_dmg',
+        resource_type='hp',
+        dmg_type='magic',
+        dmg_values=Placeholder(),
+        dmg_source=Placeholder(),
+        mods={},
+        life_conversion_type=None,
+        radius=500,
+        dot={'buff_name': 'immolate_buff'},
+        max_targets=3,
+        usual_max_targets=3,
+        delay=1,
+        crit_type=None,
+        heal_for_dmg_amount=False
+    ))
+    IMMOLATE_DMG_BASE.delete_keys(['dmg_values', 'dmg_source'])
 
     def _immolate_dmg_base(self, dmg_name, dmg_values):
         dmg_source = self.REVERSED_IMMOLATE_ITEMS_TO_DMG_NAME_MAP[dmg_name]
