@@ -2612,7 +2612,7 @@ class SpecialItems(Actions):
     ))
     IMMOLATE_BUFF.delete_keys({'dot', 'buff_source'})
 
-    ORDERED_IMMOLATE_ITEMS = ('sunfire_cape', 'enchantment_cinderhulk', 'bamis_cinder',)  # (highest to lowest priority)
+    ORDERED_IMMOLATE_ITEMS = ('sunfire_cape', 'enchantment_cinderhulk_dmg', 'bamis_cinder',)  # (highest to lowest priority)
     IMMOLATE_ITEMS_TO_DMG_NAME_MAP = {i: i+'_immolate_dmg' for i in ORDERED_IMMOLATE_ITEMS}
     items_data.ensure_in_items_names(set(ORDERED_IMMOLATE_ITEMS) | set(IMMOLATE_ITEMS_TO_DMG_NAME_MAP))
 
@@ -2676,11 +2676,11 @@ class SpecialItems(Actions):
 
     def bamis_cinder_immolate_dmg(self):
         dmg_values = 5 + self.player_lvl
-        return self._immolate_dmg_base(dmg_name='sunfire_cape_immolate_dmg', dmg_values=dmg_values)
+        return self._immolate_dmg_base(dmg_name='bamis_cinder_immolate_dmg', dmg_values=dmg_values)
 
-    def enchantment_cinderhulk(self):
+    def enchantment_cinderhulk_dmg(self):
         dmg_values = 15 + 0.6 * self.player_lvl
-        return self._immolate_dmg_base(dmg_name='sunfire_cape_immolate_dmg', dmg_values=dmg_values)
+        return self._immolate_dmg_base(dmg_name='enchantment_cinderhulk_dmg', dmg_values=dmg_values)
 
     # LIANDRYS TORMENT
     LIANDRYS_NAME = 'liandrys_torment'

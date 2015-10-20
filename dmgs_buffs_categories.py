@@ -120,7 +120,7 @@ class DmgCategories(BuffCategories):
 
         return average_crit_dmg_multiplier * self.req_stats_func(target_name='player', stat_name='ad')
 
-    def dmg_mod_value(self, given_mod_seq_or_val, dmg_dct):
+    def _dmg_or_shield_mod_value(self, given_mod_seq_or_val, dmg_or_shield_dct):
         """
         Returns the value of a mod.
 
@@ -132,22 +132,51 @@ class DmgCategories(BuffCategories):
             return given_mod_seq_or_val
 
         else:
-            dmg_source = dmg_dct['dmg_source']
+            source_name = dmg_or_shield_dct['dmg_source']
 
-            if dmg_source in palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS:
-                ability_lvl = self.ability_lvls_dct[dmg_source]
+            if source_name in palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS:
+                ability_lvl = self.ability_lvls_dct[source_name]
                 return given_mod_seq_or_val[ability_lvl-1]
 
             else:
                 index = self.effect_lvl_by_champ_lvl(seq_of_values=given_mod_seq_or_val)
                 return given_mod_seq_or_val[index]
 
+    def _value_after_mods(self, dmg_or_shield_dct, mods_dct, value):
+        if mods_dct:
+
+            for owner_type in mods_dct:
+                if owner_type == 'player':
+                    owner = 'player'
+                else:
+                    owner = self.current_enemy
+
+                owner_mods_dct = mods_dct[owner_type]
+                for mod_name in sorted(owner_mods_dct):
+                    mod_dct = owner_mods_dct[mod_name]
+
+                    if 'additive' in mod_dct:
+                        additive_mod_val = mod_dct['additive']
+                        additive_mod_val = self._dmg_or_shield_mod_value(given_mod_seq_or_val=additive_mod_val,
+                                                                         dmg_or_shield_dct=dmg_or_shield_dct)
+                        value += additive_mod_val * self.req_stats_func(target_name=owner, stat_name=mod_name)
+
+                for mod_name in sorted(owner_mods_dct):
+                    mod_dct = owner_mods_dct[mod_name]
+
+                    if 'multiplicative' in owner_mods_dct:
+                        mult_mod_val = mod_dct['multiplicative']
+                        mult_mod_val = self._dmg_or_shield_mod_value(given_mod_seq_or_val=mult_mod_val,
+                                                                     dmg_or_shield_dct=dmg_or_shield_dct)
+                        value *= mult_mod_val * self.req_stats_func(target_name=owner, stat_name=mod_name)
+
+        return value
+
     def standard_dmg_value(self, dmg_dct):
         """
         Calculates raw dmg value of given dmg name, by applying all stat-caused mods to base value.
 
-        Returns:
-            (float)
+        :return: (float)
         """
 
         # Checks if it dependents on ability-lvl.
@@ -162,33 +191,10 @@ class DmgCategories(BuffCategories):
             val = dmg_vals
 
         # MODS
-        dmg_dct_mods = dmg_dct['mods']
-        if dmg_dct_mods:
+        mods_dct = dmg_dct['mods']
+        val_after_mods = self._value_after_mods(dmg_or_shield_dct=dmg_dct, mods_dct=mods_dct, value=val)
 
-            for owner_type in dmg_dct_mods:
-                if owner_type == 'player':
-                    owner = 'player'
-                else:
-                    owner = self.current_enemy
-
-                owner_dmg_mods_dct = dmg_dct_mods[owner_type]
-                for mod_name in sorted(owner_dmg_mods_dct):
-                    mod_dct = owner_dmg_mods_dct[mod_name]
-
-                    if 'additive' in mod_dct:
-                        additive_mod_val = mod_dct['additive']
-                        additive_mod_val = self.dmg_mod_value(given_mod_seq_or_val=additive_mod_val, dmg_dct=dmg_dct)
-                        val += additive_mod_val * self.req_stats_func(target_name=owner, stat_name=mod_name)
-
-                for mod_name in sorted(owner_dmg_mods_dct):
-                    mod_dct = owner_dmg_mods_dct[mod_name]
-
-                    if 'multiplicative' in owner_dmg_mods_dct:
-                        mult_mod_val = mod_dct['multiplicative']
-                        mult_mod_val = self.dmg_mod_value(given_mod_seq_or_val=mult_mod_val, dmg_dct=dmg_dct)
-                        val *= mult_mod_val * self.req_stats_func(target_name=owner, stat_name=mod_name)
-
-        return val
+        return val_after_mods
 
     def raw_dmg_value(self, dmg_name):
         """
@@ -223,4 +229,3 @@ class DmgCategories(BuffCategories):
     @staticmethod
     def aa_dmg():
         return _AA_DMG_DCT
-

@@ -2328,6 +2328,7 @@ class BuffsBase(object):
         dot=(False, True),
         max_targets=(1, 2, 3, 4, 5, 'infinite'),
         usual_max_targets=(1, 2, 3, 4, 5),
+        shield=(False, True)
     )
 
     @staticmethod
@@ -2591,6 +2592,56 @@ class DmgsBase(object):
         return dict(
             abbr_in_effects='placeholder',
         )
+
+    def _create_shield_or_dmg_mods(self, mods_dct):
+
+        if _y_n_question(question_str='Dmg has mods?'):
+            mods_dct.update(self.dmg_mod_contents())
+
+            # OWNER
+            for owner_type in mods_dct:
+
+                # NAMES
+                mods_names = []
+                suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES, modified_lst=mods_names,
+                                           extra_start_msg='Mods belonging to {}\n'.format(owner_type.upper()))
+
+                if mods_names:
+                    for mod_name in mods_names:
+                        mods_dct[owner_type].update({mod_name: {}})
+
+                        # APPLICATION TYPE
+                        for mod_type in ('additive', 'multiplicative'):
+                            if _y_n_question("{}'s mod: {}, is {}".format(owner_type, mod_name.upper(), mod_type.upper())):
+
+                                # VALUE
+                                mod_value = restricted_input('{} mod value?'.format(mod_name.upper()), input_type='num')
+
+                                mods_dct[owner_type][mod_name].update({mod_type: mod_value})
+
+        pp.pprint(mods_dct)
+
+    def _create_shield(self, shield_dct, description_to_print):
+        if shield_dct:
+            shield_dct = {}
+
+            # Type
+            shield_type = enumerated_question(question_str='Shield type?',
+                                              choices_seq=palette.SHIELD_TYPES,
+                                              restrict_choices=True)
+
+            shield_dct.update({'shield_type': shield_type})
+
+            # Values
+            shield_val = restricted_input('Shield value?', input_type='num', characteristic='non_negative')
+            shield_dct.update({'shield_values': shield_val})
+
+            # Mods
+            shield_dct.update({'shield_mods': {}})
+            shield_mods_dct = shield_dct['shield_mods']
+
+            pp.pprint(description_to_print)
+            self._create_shield_or_dmg_mods(mods_dct=shield_mods_dct)
 
 
 class AbilitiesAttributesBase(GenAttrsBase):
@@ -3638,7 +3689,7 @@ def suggest_affected_stats_attributes(obj_name, modified_stats_dct, possible_sta
         modified_stats_dct.clear()
 
 
-class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation):
+class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation, DmgsBase):
     """
     Each instance of this class is used for a single ability.
 
@@ -3859,6 +3910,10 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation):
             suggest_attr_values(suggested_values_dct=self.USUAL_BUFF_ATTR_VALUES,
                                 modified_dct=self.buffs_dct[buff_name],
                                 extra_start_msg=usual_attrs_msg)
+
+            shield_dct = self.buffs_dct[buff_name]['shield']
+            if shield_dct:
+                self._create_shield(shield_dct=shield_dct, description_to_print=self.sanitized_tooltip)
 
     @repeat_cluster_decorator(cluster_name='BUFFS')
     def run_buff_attr_creation(self):
@@ -4742,39 +4797,10 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
     @repeat_cluster_decorator(cluster_name='ITEM DMG MODS')
     def _create_dmg_mods(self, dmg_name):
-
-        self.item_dmgs[dmg_name]['mods'] = self.dmg_mod_contents()
-
-        # MODS
         self.pprint_item_description()
 
-        # Ask if dmg has mods.
-        if _y_n_question(question_str='Dmg has mods?'):
-            self.item_dmgs[dmg_name]['mods'].update(self.dmg_mod_contents())
-            self.pprint_item_description()
-
-            # OWNER
-            for owner_type in self.item_dmgs[dmg_name]['mods']:
-
-                # NAMES
-                mods_names = []
-                suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES, modified_lst=mods_names,
-                                           extra_start_msg='Mods belonging to {}\n'.format(owner_type.upper()))
-
-                if mods_names:
-                    for mod_name in mods_names:
-                        self.item_dmgs[dmg_name]['mods'][owner_type].update({mod_name: {}})
-
-                        # APPLICATION TYPE
-                        for mod_type in ('additive', 'multiplicative'):
-                            if _y_n_question("{}'s mod: {}, is {}".format(owner_type, mod_name.upper(), mod_type.upper())):
-
-                                # VALUE
-                                mod_value = restricted_input('{} mod value?'.format(mod_name.upper()), input_type='num')
-
-                                self.item_dmgs[dmg_name]['mods'][owner_type][mod_name].update({mod_type: mod_value})
-
-        pp.pprint(self.item_dmgs[dmg_name]['mods'])
+        mods_dct = self.item_dmgs[dmg_name]['mods']
+        self._create_shield_or_dmg_mods(mods_dct=mods_dct)
 
     @inner_loop_exit_handler
     def _create_item_single_dmg(self):
@@ -4878,7 +4904,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                 suggest_attr_values(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
                                     modified_dct=self.item_buffs[buff_name], extra_start_msg=buff_msg)
 
-                # Dot
+                # DOT
                 if self.item_buffs[buff_name]['dot']:
                     self.item_buffs[buff_name]['dot'] = {'dmg_names': []}
                     suggest_attr_values(suggested_values_dct={k: v for k, v in self.BUFF_DOT_ATTRS.items() if k != 'dmg_names'},
@@ -4888,6 +4914,10 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                     suggest_lst_of_attr_values(suggested_values_lst=list(self.item_dmgs),
                                                modified_lst=self.item_buffs[buff_name]['dot']['dmg_names'],
                                                extra_start_msg='Dmgs names?')
+
+                # SHIELD
+                shield_dct = self.item_buffs[buff_name]['shield']
+                self._create_shield(shield_dct=shield_dct, description_to_print=self._item_description_str)
 
                 # Stats affected by buff.
                 self.item_buffs[buff_name]['stats'] = {}

@@ -360,6 +360,9 @@ SHIELDS_DATA = {'shield_type': Placeholder(),
                 'mods': {},
                 'shield_value': Placeholder()}
 
+# (currently no other types exist in-game)
+SHIELD_TYPES = ('any', 'magic')
+
 
 ON_HIT_EFFECTS = dict(
     cause_dmg=[],
