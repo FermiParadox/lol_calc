@@ -142,7 +142,7 @@ class DmgCategories(BuffCategories):
                 index = self.effect_lvl_by_champ_lvl(seq_of_values=given_mod_seq_or_val)
                 return given_mod_seq_or_val[index]
 
-    def _value_after_mods(self, dmg_or_shield_dct, mods_dct, value):
+    def shield_or_dmg_value_after_mods(self, dmg_or_shield_dct, mods_dct, value):
         if mods_dct:
 
             for owner_type in mods_dct:
@@ -192,7 +192,7 @@ class DmgCategories(BuffCategories):
 
         # MODS
         mods_dct = dmg_dct['mods']
-        val_after_mods = self._value_after_mods(dmg_or_shield_dct=dmg_dct, mods_dct=mods_dct, value=val)
+        val_after_mods = self.shield_or_dmg_value_after_mods(dmg_or_shield_dct=dmg_dct, mods_dct=mods_dct, value=val)
 
         return val_after_mods
 
