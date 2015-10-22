@@ -1170,15 +1170,26 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal, metaclass
 
         return sufficiency
 
+    def remove_one_stack_from_buff(self, buff_owner, buff_name):
+        """
+        Removes a buff's stack. If it's stacks are to become 0, it removes the buff instead.
+
+        :return: (None)
+        """
+
+        current_stacks = self.active_buffs[buff_owner][buff_name]['current_stacks']
+        if current_stacks > 1:
+            self.active_buffs[buff_owner][buff_name]['current_stacks'] = current_stacks - 1
+        else:
+            del self.active_buffs[buff_owner][buff_name]
+
     def apply_action_cost(self, action_name):
         """
         Deducts the cost of an action (resource and/or buff stack).
 
-        Modifies:
-            current_stats['player']
-            active_buffs
-        Returns:
-            (None)
+        WARNING: Costs are applied separately from the rest of the events. This might potentially cause bugs!
+
+        :return: (None)
         """
 
         for cost_name in self.non_toggled_action_cost_dct(action_name):
@@ -1193,9 +1204,7 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal, metaclass
 
             # STACK COST
             else:
-                del self.active_buffs['player'][cost_name]
-                # TODO make it remove only one stack
-                raise NotImplementedError
+                self.remove_one_stack_from_buff(buff_owner='player', buff_name=cost_name)
 
     def _last_action_cast_start(self):
         return max(self.actions_dct)
@@ -1220,8 +1229,7 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal, metaclass
         """
         Calculates movement between actions and adds them to distance player moved.
 
-        Returns:
-            (None)
+        :return: (None)
         """
 
         sorted_action_times = sorted(self.actions_dct, reverse=True)
@@ -1800,11 +1808,11 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal, metaclass
         else:
             self.apply_ability_or_item_effects(eff_dct=self.items_effects(action_name))
 
-    def apply_pre_action_events(self):
+    def apply_events_before_given_time(self, given_time):
         """
-        Applies all events preceding last action's application start.
+        Applies all events preceding given_time.
 
-        If a periodic event is refreshed and ticks before the last action,
+        If a periodic event is refreshed and ticks before given_time,
         then event_times changes and is checked again.
         If all targets die, the loop stops.
 
@@ -1827,7 +1835,7 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal, metaclass
             for event in initial_events:
                 # Checks if event's application time exceeds last action's application start.
                 # (cast_end and application start are different for channelled abilities)
-                if event <= self.actions_dct[max(self.actions_dct)]['cast_end']:
+                if event <= given_time:
 
                     # (must change to ensure buffs are checked)
                     self.current_time = event
@@ -1898,7 +1906,7 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal, metaclass
         # (movement distance)
         self.between_action_walking()
 
-        self.apply_pre_action_events()
+        self.apply_events_before_given_time(given_time=self._last_action_end())
 
         # If everyone died, stops applying actions as well
         # (and removes last action, otherwise it would falsely appear as if last action was fully applied)
@@ -2117,6 +2125,7 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal, metaclass
             # If no action was available, adds a set amount of time before retrying.
             else:
                 self.current_time += 0.1
+                self.apply_events_before_given_time(given_time=self.current_time)
 
     def _apply_all_actions(self):
         """

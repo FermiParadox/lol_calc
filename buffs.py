@@ -403,9 +403,7 @@ class Counters(BuffsGeneral):
 
     def note_current_hp_in_history(self, target_name):
         """
-        Stores current_hp of a target.
-
-        Replaces previous value for specific time if events occur simultaneously.
+        Stores current_hp of a target. Replaces previous value for specific time if events occur simultaneously.
 
         :return: (None)
         """
@@ -434,25 +432,21 @@ class Counters(BuffsGeneral):
     def note_non_hp_resource_in_history(self, curr_resource_str):
         """
         Stores player's 'current_'resource value in history.
+        Replaces previous value for specific time if events occur simultaneously.
 
-        Args:
-            current_resource_name: (str) e.g. "current_rage"
-        Returns:
-            (None)
+        :param curr_resource_str: (str) e.g. "current_rage"
+        :return: (None)
         """
 
         new_val = self.current_stats['player'][curr_resource_str]
-        self.combat_history['player']['resource'][self.current_time] = new_val
+        self.combat_history['player']['resource'].update({self.current_time: new_val})
 
     def note_dmg_in_history(self, dmg_type, final_dmg_value, target_name):
         """
         Calculates and stores total dmg of a particular type, at a moment,
         and stores current_hp at each moment for a target.
 
-        Modifies:
-            combat_history
-        Returns:
-            (None)
+        :return: (None)
         """
 
         # Filters out heals.
