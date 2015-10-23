@@ -134,7 +134,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
 class Counters(BuffsGeneral):
 
     AOE_SPELLVAMP_MOD = 30/100
-    EXTRA_STATS_SET = {'lifesteal', 'spellvamp', 'ap'}
+    EXTRA_STATS_SET = {'lifesteal', 'spellvamp', 'ap', 'cdr'}
 
     def __init__(self,
                  selected_champions_dct,

@@ -12,6 +12,7 @@ import palette
 import skills_points
 import items_folder.items_data as items_data
 from palette import Placeholder
+import summoner_spells
 
 
 # Sets font size on all plt graphs.
@@ -1287,7 +1288,7 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal, metaclass
     def add_kalista_dash(self):
         """
         Adds Kalista's dash after an AA.
-        
+
         Returns:
             (None)
         """
@@ -1827,7 +1828,7 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal, metaclass
 
             # If for loop ends with new events being added,
             # then intermediate_events_changed will be set to true,
-            # and the for loop will repeat.          
+            # and the for loop will repeat.
 
             initial_events = sorted(self.event_times)
 
@@ -2321,7 +2322,14 @@ class Actions(ConditionalsTranslator, timers.Timers, runes.RunesFinal, metaclass
         return rot
 
 
-class SpecialItems(Actions):
+class SummonerSpells(Actions):
+
+    @staticmethod
+    def ignite_grievous_wounds_buff():
+        return summoner_spells.IGNITE_GRIEVOUS_WOUNDS_BUFF
+
+
+class SpecialItems(SummonerSpells):
 
     def __init__(self,
                  rotation_lst,

@@ -95,11 +95,10 @@ BONUS_STAT_NAME_TO_BASE_NAME_MAP = {
 SPECIAL_STATS_SET = frozenset({'base_ad',
                                'att_speed',
                                'move_speed',
-                               'crit_chance',
-                               'cdr',
                                'move_speed_reduction',
                                'missing_hp',
                                'missing_mp',
+                               'champion_lvl',
                                } | DEFENSIVE_SPECIAL_STATS)
 
 
@@ -120,6 +119,32 @@ def ensure_allowed_stats_names(iterable):
             raise palette.UnexpectedValueError(i)
 
 
+STATS_UPPER_LIMITS = {'percent_AA_reduction': 1,
+                      'percent_healing_reduction': 1,
+                      'percent_magic_reduction_by_mr': 1,
+                      'crit_dmg_reduction': 1,
+                      'slow_reduction': 1,
+                      'percent_non_aoe_reduction': 1,
+                      'percent_magic_dmg_reduction': 1,
+                      'att_speed': 2.5,
+                      'percent_mr_penetration': 1,
+                      'tenacity': 1,
+                      'percent_physical_reduction_by_armor': 1,
+                      'percent_aoe_reduction': 1,
+                      'percent_armor_reduction': 1,
+                      'death_time_reduction': 1,
+                      'crit_chance': 1,
+                      'percent_dmg_reduction': 1,
+                      'percent_survivability': 1,
+                      'percent_armor_penetration': 1,
+                      'percent_physical_dmg_reduction': 1,
+                      'percent_mr_reduction': 1,
+                      'magic_dmg_taken': 1,
+                      'cdr': 0.4,
+                      'move_speed_reduction': 1}
+ensure_allowed_stats_names(STATS_UPPER_LIMITS)
+
+
 # Enemy base stats' names.
 _ENEMY_BASE_STATS_NAMES = {'hp', 'ap', 'armor', 'mr', 'hp5'}
 # (ensure they are allowed)
@@ -136,96 +161,7 @@ class NonExistingNormalStatError(Exception):
     pass
 
 
-class StatFilters(object):
-
-    """
-    Contains functions that filter stats to prevent them exceeding their thresholds,
-    and functions that reduce stat values that exceed their soft-caps.
-    """
-
-    @staticmethod
-    def filtered_crit_chance(unfiltered_stat):
-        """
-        Applies threshold on crit_chance.
-
-        Args:
-            unfiltered_stat: (float)
-        Returns:
-            (float) final stat value
-
-        >>> StatFilters().filtered_crit_chance(1.2)
-        1.0
-        >>> StatFilters().filtered_crit_chance(0.1)
-        0.1
-
-        """
-
-        return min(1., unfiltered_stat)
-
-    @staticmethod
-    def filtered_att_speed(unfiltered_stat):
-        """
-        Applies threshold on att_speed.
-
-        Args:
-            unfiltered_stat: (float)
-        Returns:
-            (float) final stat value
-
-        >>> StatFilters().filtered_att_speed(3.2)
-        2.5
-        >>> StatFilters().filtered_att_speed(0.1)
-        0.1
-
-        """
-
-        return min(2.5, unfiltered_stat)
-
-    @staticmethod
-    def filtered_move_speed(unfiltered_stat):
-        """
-        Applies threshold on move_speed.
-
-        Args:
-            unfiltered_stat: (float)
-        Returns:
-            (float) final stat value
-
-        >>> StatFilters().filtered_move_speed(300)
-        300
-
-        """
-        # TODO avoid copyrighted formula
-        if (415 < unfiltered_stat) and (unfiltered_stat < 490):
-            return unfiltered_stat*0.8 + 83
-        elif unfiltered_stat > 490:
-            return unfiltered_stat*0.5 + 230
-        elif unfiltered_stat < 220:
-            return unfiltered_stat*0.5 + 110
-        else:
-            return unfiltered_stat
-
-    @staticmethod
-    def filtered_cdr(unfiltered_stat):
-        """
-        Applies threshold on cdr.
-
-        Args:
-            unfiltered_stat: (float)
-        Returns:
-            (float) final stat value
-
-        >>> StatFilters().filtered_cdr(0.1)
-        0.1
-        >>> StatFilters().filtered_cdr(0.7)
-        0.4
-
-        """
-
-        return min(0.4, unfiltered_stat)
-
-
-class StatCalculation(StatFilters):
+class StatCalculation(object):
 
     """
     Contains methods for the calculation of some stats' values.
@@ -409,11 +345,11 @@ class StatCalculation(StatFilters):
         stat_name = stat_name[6:]
 
         base_stat_value = self._base_stat(stat_name=stat_name, tar_name=tar_name)
-        total_stat_val = self.standard_stat(requested_stat=stat_name, tar_name=tar_name)
+        total_stat_val = self._standard_stat(requested_stat=stat_name, tar_name=tar_name)
 
         return total_stat_val - base_stat_value
 
-    def standard_stat(self, requested_stat, tar_name):
+    def _standard_stat(self, requested_stat, tar_name):
         """
         Calculates the value of a stat after applying all its bonuses to its base value found in base_stats_dct.
 
@@ -555,20 +491,41 @@ class StatCalculation(StatFilters):
 
         return 1-slow_mod
 
+    @staticmethod
+    def move_speed_after_soft_caps(unfiltered_stat):
+        """
+        Applies threshold on move_speed.
+
+        :param unfiltered_stat: (float)
+        :return: (float) final stat value
+
+        >>> StatFilters().move_speed_after_soft_caps(300)
+        300
+
+        """
+        # TODO avoid copyrighted formula
+        if (415 < unfiltered_stat) and (unfiltered_stat < 490):
+            return unfiltered_stat*0.8 + 83
+        elif unfiltered_stat > 490:
+            return unfiltered_stat*0.5 + 230
+        elif unfiltered_stat < 220:
+            return unfiltered_stat*0.5 + 110
+        else:
+            return unfiltered_stat
+
     def move_speed(self, tar_name):
         """
         Calculates final value of movement speed, after all bonuses and soft caps are applied.
 
         -Additive bonuses are applied.
         -Multiplicative bonuses are applied by a single modifier for all bonuses.
-        -Strongest speed reduction effected is fully applied.
-        -The other speed reductions are applied at 35% of their max.
+        -Strongest speed reduction effected is fully applied, while the rest are ignored
 
         :return: (float)
         """
 
         # BASE VALUE AND BONUSES
-        value = self.standard_stat(requested_stat='move_speed',
+        value = self._standard_stat(requested_stat='move_speed',
                                    tar_name=tar_name)
 
         # SLOW REDUCTIONS
@@ -578,27 +535,7 @@ class StatCalculation(StatFilters):
         # SPEED REDUCTIONS
         value *= 1 - (slow_mod * self.move_speed_reduction(tar_name=tar_name))
 
-        return self.filtered_move_speed(unfiltered_stat=value)
-
-    def crit_chance(self, tar_name):
-        """
-        Returns filtered value of crit_chance.
-
-        :return: (float)
-        """
-
-        return self.filtered_crit_chance(self.standard_stat(requested_stat='crit_chance',
-                                                            tar_name=tar_name))
-
-    def cdr(self, tar_name):
-        """
-        Returns filtered value of cdr.
-
-        :return: (float)
-        """
-
-        return self.filtered_cdr(self.standard_stat(requested_stat='cdr',
-                                                    tar_name=tar_name))
+        return self.move_speed_after_soft_caps(unfiltered_stat=value)
 
     def innate_special_lvl(self, values_tpl):
         """
@@ -614,6 +551,9 @@ class StatCalculation(StatFilters):
         divisor = 18 // len(values_tpl)
 
         return (self.player_lvl - 1) // divisor + 1
+
+    def champion_lvl(self, tar_name):
+        return self.champion_lvls_dct[tar_name]
 
 
 class StatRequest(StatCalculation):
@@ -642,26 +582,40 @@ class StatRequest(StatCalculation):
     def stats_dependencies(self):
         raise NotImplementedError
 
+    @staticmethod
+    def stat_after_filters(stat_value, stat_name):
+        """
+        Applies upper stat limit.
+
+        :return: (num)
+        """
+
+        if stat_name in STATS_UPPER_LIMITS:
+            return min(STATS_UPPER_LIMITS[stat_name], stat_value)
+        else:
+            return stat_value
+
     def request_stat(self, target_name, stat_name):
         """
         Calculates a target's final stat value and stores it.
         Then notes that it has not changed since last calculation.
 
-        Returns:
-            (None)
+        :return: (None)
         """
 
         # Special stats have their own methods.
         if stat_name in ALLOWED_BONUS_STATS:
-            return self._bonus_stat(stat_name=stat_name, tar_name=target_name)
+            val = self._bonus_stat(stat_name=stat_name, tar_name=target_name)
         elif stat_name in self.SPECIAL_STATS_SET:
-            return getattr(self, stat_name)(target_name)
+            val = getattr(self, stat_name)(target_name)
         elif stat_name in CURRENT_TYPE_STATS:
-            return self.current_stats[target_name][stat_name]
+            val = self.current_stats[target_name][stat_name]
 
-        # Most stats can be calculated using the 'standard_stat' method.
+        # Most stats can be calculated using the '_standard_stat' method.
         else:
-            return self.standard_stat(requested_stat=stat_name, tar_name=target_name)
+            val = self._standard_stat(requested_stat=stat_name, tar_name=target_name)
+
+        return self.stat_after_filters(stat_value=val, stat_name=stat_name)
 
     def _insert_bonus_to_tar_bonuses(self, stat_name, bonus_type, buff_dct, tar_name, buff_name, buff_stats_dct):
         """
