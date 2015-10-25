@@ -2317,7 +2317,15 @@ class BuffsBase(object):
 
     @staticmethod
     def buff_attributes():
-        return palette.buff_dct_base_deepcopy()
+        """
+        Buff attrs include optional keys when suggested for creation, in order not to forget considering them as well.
+
+        :return: (dict)
+        """
+        dct = palette.buff_dct_base_deepcopy()
+        dct.update({i: palette.Placeholder() for i in palette.OPTIONAL_BUFF_KEYS})
+
+        return dct
 
     USUAL_BUFF_ATTR_VALUES = dict(
         target_type=('player', 'enemy'),
@@ -2491,27 +2499,7 @@ class GenAttrsBase(object):
 
     @staticmethod
     def general_attributes():
-        return dict(
-            cast_time='placeholder',
-            range='placeholder',
-            travel_time='placeholder',
-            base_cd='placeholder',
-            cost=[
-                # Main type auto inserted. Secondary manually.
-                dict(
-                    resource_type='placeholder',
-                    values='values_tpl_placeholder',
-                    cost_category='placeholder'
-                ), ],
-            independent_cast='placeholder',
-            move_while_casting='placeholder',
-            dashed_distance='placeholder',
-            channel_time='placeholder',
-            resets_aa='placeholder',
-            cds_modified=dict(
-                name_placeholder='duration_placeholder'
-            )
-        )
+        return palette.GENERAL_ATTRIBUTES
 
 
 class DmgsBase(object):
@@ -2527,7 +2515,15 @@ class DmgsBase(object):
 
     @staticmethod
     def dmg_attributes():
-        return palette.dmg_dct_base_deepcopy()
+        """
+        Dmg attrs include optional keys when suggested for creation, in order not to forget considering them as well.
+
+        :return: (dict)
+        """
+        dct = palette.dmg_dct_base_deepcopy()
+        dct.update({i: palette.Placeholder() for i in palette.OPTIONAL_DMG_KEYS})
+
+        return dct
 
     def usual_values_dmg_attrs(self):
 
@@ -4227,7 +4223,7 @@ class AbilitiesEffects(EffectsBase):
         dct = {}
 
         for spell_name in palette.SPELL_SHORTCUTS:
-            dct.update({spell_name: palette.ChampionsStats.spell_effects()})
+            dct.update({spell_name: palette.spell_effects()})
 
         return dct
 
@@ -4323,7 +4319,7 @@ class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
             ability_effect=dict(
                 obj_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
                 # Contains spell effect categories
-                lst_category=palette.ChampionsStats.spell_effects()['player']['actives'],
+                lst_category=palette.spell_effects()['player']['actives'],
                 mod_operation=('append', 'remove'),
             ),
 
@@ -4964,7 +4960,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
     @repeat_cluster_decorator(cluster_name='ITEM EFFECTS')
     def create_item_effects(self):
 
-        self.item_effects = palette.ChampionsStats().item_effects()
+        self.item_effects = palette.item_effects()
         msg = 'ITEM: {}'.format(self.item_name)
 
         self._create_single_obj_effects_dct(obj_name=self.item_name,
@@ -6036,7 +6032,7 @@ if __name__ == '__main__':
 
     # ITEM ATTRS, EFFECTS AND CONDITIONALS CREATION AND INSERTION
     if 1:
-        inst = ItemsModuleCreator(item_name='you')
+        inst = ItemsModuleCreator(item_name='enchantment_dist')
         inst.create_item()
     # Create all items.
     if 1:

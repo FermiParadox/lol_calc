@@ -15,6 +15,19 @@ class UnexpectedValueError(Exception):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+class NotAllowedOperationError(Exception):
+    """
+    NOT TO BE HANDLED!
+    Exception indicating that an operation that is not allowed was performed.
+    """
+    pass
+
+
+def _not_allowed_operation_error_func(*args, **kwargs):
+    raise NotAllowedOperationError()
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # PLACEHOLDER
 
 class PlaceholderUsedError(Exception):
@@ -212,7 +225,21 @@ def compare_complex_object(obj_1, obj_2):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-class SafeDict(dict):
+class FrozenKeysDict(dict):
+    """Disallows insertion of new keys and deletion of existing keys once the dict has been created. """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __delitem__(self, *args, **kwargs):
+        raise NotAllowedOperationError
+
+    def __setitem__(self, key, value):
+        raise NotAllowedOperationError
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+class SafeValueInsertionDict(dict):
     """
     Disallows creation of a non existing key through d[new_key] = val.
     """
@@ -221,6 +248,57 @@ class SafeDict(dict):
             raise KeyError('{}'.format(key))
         dict.__setitem__(self, key, value)
 
+
+class SpecifiedKeysDict(SafeValueInsertionDict):
+    """
+    Allows creation of a dict only with specified keys.
+    Keys can be removed or reinserted but only if they are within the allowed.
+    """
+
+    MANDATORY_KEYS = set()
+    OPTIONAL_KEYS = set()
+    ALLOWED_KEYS = MANDATORY_KEYS | OPTIONAL_KEYS
+
+    EXTRA_KEY_DETECTED_MSG = 'Extra keys given ({}). Keys are restricted only to "ALLOWED_KEYS".'
+
+    def __init__(self, given_dct):
+        given_dct_keys = given_dct.keys()
+
+        # Disallows extra keys.
+        extra_keys = given_dct_keys - self.ALLOWED_KEYS
+        if extra_keys:
+            raise UnexpectedValueError(self.EXTRA_KEY_DETECTED_MSG.format(extra_keys))
+
+        # Disallows omitting mandatory keys.
+        self.mandatory_keys_omitted = self.MANDATORY_KEYS - given_dct_keys
+        if self.mandatory_keys_omitted:
+            raise UnexpectedValueError('Mandatory keys omitted: {}'.format(self.mandatory_keys_omitted))
+
+        # Auto inserts optional keys with False-type value.
+        full_dct = {i: False for i in self.OPTIONAL_KEYS}
+        full_dct.update(given_dct)
+        super().__init__(**full_dct)
+
+    def __setitem__(self, key, value):
+        if key not in self.ALLOWED_KEYS:
+            raise KeyError('Trying to insert new key ({}) in a SafeDict.'.format(key))
+        dict.__setitem__(self, key, value)
+
+    def delete_keys(self, sequence):
+        """
+        Deletes all keys in given sequence.
+
+        Used to make deletion of multiple keys less verbose.
+
+        :return: (None)
+        """
+        for i in sequence:
+            del self[i]
+
+    def update(self, *args, **kwargs):
+        if (set(kwargs) - self.ALLOWED_KEYS) or (set(*args) - self.ALLOWED_KEYS):
+            raise UnexpectedValueError(self.EXTRA_KEY_DETECTED_MSG)
+        dict.update(*args, **kwargs)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -251,7 +329,6 @@ BUFF_DCT_BASE = dict(
         cds_modified={},
         remove_buff=[Placeholder(), ]
     ),
-    prohibit_cd_start=Placeholder(),
     stats=dict(
         placeholder_stat_1=Placeholder()
     ),
@@ -259,14 +336,14 @@ BUFF_DCT_BASE = dict(
     usual_max_targets=Placeholder(),
 )
 
-OPTIONAL_BUFF_KEYS = ('shield', 'aura')
+OPTIONAL_BUFF_KEYS = ('shield', 'aura', 'prohibit_cd_start')
 
 
 def buff_dct_base_deepcopy():
     return copy.deepcopy(BUFF_DCT_BASE)
 
 
-class SafeBuff(SafeDict):
+class SafeBuff(SpecifiedKeysDict):
     """
     Allows creation of a buff dict only with specified keys.
     Keys can be removed or reinserted but only if they are within the allowed.
@@ -275,39 +352,6 @@ class SafeBuff(SafeDict):
     MANDATORY_KEYS = set(BUFF_DCT_BASE.keys())
     OPTIONAL_KEYS = set(OPTIONAL_BUFF_KEYS)
     ALLOWED_KEYS = MANDATORY_KEYS | OPTIONAL_KEYS
-
-    EXTRA_KEY_DETECTED_MSG = 'Extra keys given. Keys are restricted only to "ALLOWED_KEYS".'
-
-    def __init__(self, given_dct):
-        given_dct_keys = given_dct.keys()
-
-        # Disallows extra keys.
-        if given_dct_keys - self.ALLOWED_KEYS:
-            raise UnexpectedValueError(self.EXTRA_KEY_DETECTED_MSG)
-
-        # Disallows omitting mandatory keys.
-        self.mandatory_keys_omitted = self.MANDATORY_KEYS - given_dct_keys
-        if self.mandatory_keys_omitted:
-            raise UnexpectedValueError('Mandatory keys omitted: {}'.format(self.mandatory_keys_omitted))
-
-        # Auto inserts optional keys with False-type value.
-        full_dct = {i: False for i in self.OPTIONAL_KEYS}
-        full_dct.update(given_dct)
-        super().__init__(**full_dct)
-
-    def __setitem__(self, key, value):
-        if key not in self.ALLOWED_KEYS:
-            raise KeyError('Trying to insert new key ({}) in a SafeDict.'.format(key))
-        dict.__setitem__(self, key, value)
-
-    def delete_keys(self, sequence):
-        for i in sequence:
-            del self[i]
-
-    def update(self, *args, **kwargs):
-        if (set(kwargs) - self.ALLOWED_KEYS) or (set(*args) - self.ALLOWED_KEYS):
-            raise UnexpectedValueError(self.EXTRA_KEY_DETECTED_MSG)
-        dict.update(*args, **kwargs)
 
 
 SHIELD_ATTRS = {'shield_type': Placeholder(),
@@ -343,7 +387,7 @@ DMG_DCT_BASE = dict(
 OPTIONAL_DMG_KEYS = ()
 
 
-class SafeDmg(SafeBuff):
+class SafeDmg(SpecifiedKeysDict):
     MANDATORY_KEYS = set(DMG_DCT_BASE.keys())
     OPTIONAL_KEYS = set(OPTIONAL_DMG_KEYS)
     ALLOWED_KEYS = MANDATORY_KEYS | OPTIONAL_KEYS
@@ -384,6 +428,84 @@ ON_ACTION_TRIGGERS = dict(
     sources_names_ignored={'placeholder_source_category': 'placeholder_source_name', },
     sources_categories_ignored=('items', 'masteries', 'summoner_spells', 'champion_spells'),
 )
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+GENERAL_ATTRIBUTES = dict(
+    cast_time=Placeholder(),
+    range=Placeholder(),
+    travel_time=Placeholder(),
+    base_cd=Placeholder(),
+    cost=[
+        dict(
+            resource_type=Placeholder(),
+            values=Placeholder(),
+            cost_category=Placeholder()
+        ), ],
+    independent_cast=Placeholder(),
+    move_while_casting=Placeholder(),
+    dashed_distance=Placeholder(),
+    channel_time=Placeholder(),
+    resets_aa=Placeholder(),
+    cds_modified=dict(
+        name_placeholder=Placeholder()
+    )
+)
+
+
+class SafeGeneralAttributes(SpecifiedKeysDict):
+    MANDATORY_KEYS = set(GENERAL_ATTRIBUTES.keys())
+    OPTIONAL_KEYS = set()
+    ALLOWED_KEYS = MANDATORY_KEYS | OPTIONAL_KEYS
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+def inn_effects():
+    return dict(
+            # buffs and effects activated at skill lvl up
+            passives=dict(buffs=[],
+                          remove_buff=[])
+    )
+
+
+def spell_effects():
+    return dict(
+
+            # Buffs and effects activated at skill lvl up.
+            passives=dict(buffs=[],
+                          remove_buff=[],
+                          dmg=[]),
+
+            # Buffs and effects activated on cast.
+            actives=dict(buffs=[],
+                         remove_buff=[],
+                         dmg=[],
+                         cds_modified={})
+    )
+
+
+def frozen_keys_spell_effects():
+    return FrozenKeysDict(
+
+        # Buffs and effects activated at skill lvl up.
+        passives=FrozenKeysDict(buffs=[],
+                                remove_buff=[],
+                                dmg=[]),
+
+        # Buffs and effects activated on cast.
+        actives=FrozenKeysDict(buffs=[],
+                               remove_buff=[],
+                               dmg=[],
+                               cds_modified={})
+    )
+
+
+def item_effects():
+    dct = spell_effects()
+    del dct['actives']['cds_modified']
+
+    return dct
 
 
 def dmg_dct_base_deepcopy():
@@ -433,39 +555,6 @@ def champion_buffs_or_dmgs_names_lst(champion_name, str_buffs_or_dmgs):
     return lst
 
 
-class ChampionsStats(object):
-
-    @staticmethod
-    def inn_effects():
-        return dict(
-                # buffs and effects activated at skill lvl up
-                passives=dict(buffs=[],
-                              remove_buff=[])
-        )
-
-    @staticmethod
-    def spell_effects():
-        return dict(
-
-                # Buffs and effects activated at skill lvl up.
-                passives=dict(buffs=[],
-                              remove_buff=[],
-                              dmg=[]),
-
-                # Buffs and effects activated on cast.
-                actives=dict(buffs=[],
-                             remove_buff=[],
-                             dmg=[],
-                             cds_modified={})
-        )
-
-    def item_effects(self):
-        dct = self.spell_effects()
-        del dct['actives']['cds_modified']
-
-        return dct
-
-
 # ---------------------------------------------------------------
 def delimiter(num_of_lines, line_type='-'):
     """
@@ -485,3 +574,7 @@ def delimiter(num_of_lines, line_type='-'):
 
 def fat_delimiter(num_of_lines):
     return delimiter(num_of_lines=num_of_lines, line_type='=')
+
+
+if __name__ == '__main__':
+    print()

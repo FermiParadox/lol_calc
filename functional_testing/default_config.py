@@ -34,7 +34,7 @@ ALL_DATA = dict(
 
     _reversed_combat_mode=False,
 
-    selected_summoner_spells=[],
+    selected_summoner_spells=['ignite', 'flash'],
 
     selected_runes=dict(
         red=dict(
