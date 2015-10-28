@@ -928,9 +928,13 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
             return getattr(self, buff_name)()
 
         elif buff_name in items_data_module.ITEMS_BUFFS_NAMES:
-            item_name = items_data_module.ITEMS_BUFFS_NAMES[buff_name]
+            item_name = items_data_module.ITEMS_BUFFS_NAMES_TO_ITEMS_NAMES_MAP[buff_name]
             initial_dct = items_data_module.ITEMS_ATTRIBUTES[item_name]
             conditionals_dct = items_data_module.ITEMS_CONDITIONALS[item_name]
+
+        elif buff_name in SUMMONER_SPELLS_BUFFS_NAMES_TO_SPELL_MAP:
+            spell_name = SUMMONER_SPELLS_BUFFS_NAMES_TO_SPELL_MAP[buff_name]
+            return SummonerSpells.SUMMONER_SPELLS_ATTRIBUTES_BASE[spell_name]['buffs'][buff_name]
 
         else:
             return getattr(self, buff_name)()
@@ -958,9 +962,13 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
             return getattr(self, dmg_name)()
 
         elif dmg_name in items_data_module.ITEMS_DMGS_NAMES:
-            item_name = items_data_module.ITEMS_DMGS_NAMES[dmg_name]
+            item_name = items_data_module.ITEMS_DMGS_NAMES_TO_ITEMS_NAMES_MAP[dmg_name]
             initial_dct = items_data_module.ITEMS_ATTRIBUTES[item_name]
             conditionals_dct = items_data_module.ITEMS_CONDITIONALS[item_name]
+
+        elif dmg_name in SUMMONER_SPELLS_DMGS_NAMES_TO_SPELL_MAP:
+            spell_name = SUMMONER_SPELLS_DMGS_NAMES_TO_SPELL_MAP[dmg_name]
+            return SummonerSpells.SUMMONER_SPELLS_ATTRIBUTES_BASE[spell_name]['dmgs'][dmg_name]
 
         else:
             return getattr(self, dmg_name)()
@@ -984,19 +992,44 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
 
 class SummonerSpells(ConditionalsTranslator):
 
+    def __init__(self,
+                 ability_lvls_dct,
+                 champion_lvls_dct,
+                 selected_champions_dct,
+                 action_on_cd_func,
+                 max_targets_dct,
+                 max_combat_time,
+                 initial_enemies_total_stats,
+                 initial_active_buffs,
+                 initial_current_stats,
+                 chosen_items_dct,
+                 selected_masteries_dct,
+                 enemies_originating_dmg_data,
+                 _reversed_combat_mode):
+
+        ConditionalsTranslator.__init__(self,
+                                        ability_lvls_dct=ability_lvls_dct,
+                                        champion_lvls_dct=champion_lvls_dct,
+                                        selected_champions_dct=selected_champions_dct,
+                                        action_on_cd_func=action_on_cd_func,
+                                        max_targets_dct=max_targets_dct,
+                                        max_combat_time=max_combat_time,
+                                        initial_enemies_total_stats=initial_enemies_total_stats,
+                                        initial_active_buffs=initial_active_buffs,
+                                        initial_current_stats=initial_current_stats,
+                                        chosen_items_dct=chosen_items_dct,
+                                        selected_masteries_dct=selected_masteries_dct,
+                                        enemies_originating_dmg_data=enemies_originating_dmg_data,
+                                        _reversed_combat_mode=_reversed_combat_mode)
+
+        self.summoner_spell_effects = None
+        self._create_summoner_spell_effects()
+
     ALL_SUMMONER_SPELL_NAMES = ('smite', 'exhaust', 'ignite', 'heal', 'flash', 'ghost', 'teleport',
                                 'clairvoyance', 'cleanse')
 
-    # (used to ensure changes to the items' names will not go unnoticed)
-    _ITEMS_AFFECTING_SUMMONER_SPELLS_NAMES_MAP = {
-        'enchantment_distortion': 'enchantment_distortion',
-        'enchantment_homeguards': 'enchantment_homeguards',
-        'stalkers_blade': 'stalkers_blade',
-        'skirmishers_sabre': 'skirmishers_sabre',
-    }
-    items_data_module.ensure_in_items_names(_ITEMS_AFFECTING_SUMMONER_SPELLS_NAMES_MAP)
-
-    ITEMS_MAKING_SMITE_CASTABLE = {'stalkers_blade', 'skirmishers_sabre'}
+    ITEMS_MAKING_SMITE_CASTABLE = {items_data_module.ITEMS_NAMES['stalkers_blade'],
+                                   items_data_module.ITEMS_NAMES['skirmishers_sabre']}
 
     _CASTABLE_SUMMONER_SPELLS_BASE = frozenset({'exhaust', 'ignite', 'heal', 'flash', 'ghost', 'teleport'})
 
@@ -1027,7 +1060,7 @@ class SummonerSpells(ConditionalsTranslator):
     GHOST_SPEED_BUFF_WITH_ENCHANTMENT['stats']['move_speed']['percent']['stat_values'] = 0.4
 
     def ghost_speed_buff(self):
-        if self._ITEMS_AFFECTING_SUMMONER_SPELLS_NAMES_MAP['enchantment_distortion'] in self.player_items:
+        if items_data_module.ITEMS_NAMES['enchantment_distortion'] in self.player_items:
             return self.GHOST_SPEED_BUFF_WITH_ENCHANTMENT
         else:
             return self.GHOST_SPEED_BUFF_NO_ENCHANTMENT
@@ -1053,7 +1086,7 @@ class SummonerSpells(ConditionalsTranslator):
         return self.MOVE_SPEED_AFTER_FLASH_BUFF
 
     def _flash_effects_dct(self):
-        if self._ITEMS_AFFECTING_SUMMONER_SPELLS_NAMES_MAP['enchantment_distortion'] in self.player_items:
+        if items_data_module.ITEMS_NAMES['enchantment_distortion'] in self.player_items:
             return self._FLASH_EFFECTS_WITH_DISTORTION_ENCHANTMENT
         else:
             return {}
@@ -1061,31 +1094,31 @@ class SummonerSpells(ConditionalsTranslator):
     # -----------------------------------------------------------------------------------------------------------------
     # Teleport
     _TELEPORT_EFFECTS_WITH_DISTORTION_ENCHANTMENT = {
-        {'actives': {'buffs': ['teleport_distortion_speed_buff'],
+        'actives': {'buffs': ['teleport_distortion_speed_buff'],
+                    'dmg': [],
+                    'remove_buff': []},
+        'passives': {'buffs': [],
                      'dmg': [],
-                     'remove_buff': []},
-         'passives': {'buffs': [],
-                      'dmg': [],
-                      'remove_buff': []}}
+                     'remove_buff': []}
     }
 
     _TELEPORT_EFFECTS_WITH_HOMEGUARD_ENCHANTMENT = {
-        {'actives': {'buffs': ['teleport_homeguard_speed_buff'],
+        'actives': {'buffs': ['teleport_homeguard_speed_buff'],
+                    'dmg': [],
+                    'remove_buff': []},
+        'passives': {'buffs': [],
                      'dmg': [],
-                     'remove_buff': []},
-         'passives': {'buffs': [],
-                      'dmg': [],
-                      'remove_buff': []}}
+                     'remove_buff': []}
     }
 
     _TELEPORT_EFFECTS_NO_ENCHANTMENT = {}
 
     def _teleport_effects_dct(self):
 
-        if self._ITEMS_AFFECTING_SUMMONER_SPELLS_NAMES_MAP['enchantment_homeguards'] in self.player_items:
+        if items_data_module.ITEMS_NAMES['enchantment_homeguard'] in self.player_items:
             return self._TELEPORT_EFFECTS_WITH_HOMEGUARD_ENCHANTMENT
 
-        elif self._ITEMS_AFFECTING_SUMMONER_SPELLS_NAMES_MAP['enchantment_distortion'] in self.player_items:
+        elif items_data_module.ITEMS_NAMES['enchantment_distortion'] in self.player_items:
             return self._TELEPORT_EFFECTS_WITH_DISTORTION_ENCHANTMENT
 
         else:
@@ -1094,31 +1127,31 @@ class SummonerSpells(ConditionalsTranslator):
     # -----------------------------------------------------------------------------------------------------------------
     # Smite
     _SMITE_EFFECTS_WITH_SKIRMISHER_ITEM = {
-        {'actives': {'buffs': [''],
-                     'dmg': [''],
-                     'remove_buff': []},
-         'passives': {'buffs': [],
-                      'dmg': [],
-                      'remove_buff': []}}
+        'actives': {'buffs': ['smite_skirmisher_initiator_buff', 'smite_skirmisher_mark_buff'],
+                    'dmg': [],
+                    'remove_buff': []},
+        'passives': {'buffs': [],
+                     'dmg': [],
+                     'remove_buff': []}
     }
 
     _SMITE_EFFECTS_WITH_STALKER_ITEM = {
-        {'actives': {'buffs': [''],
-                     'dmg': [''],
-                     'remove_buff': []},
-         'passives': {'buffs': [],
-                      'dmg': [],
-                      'remove_buff': []}}
+        'actives': {'buffs': ['chilling_smite_slow_buff'],
+                    'dmg': ['chilling_smite_dmg'],
+                    'remove_buff': []},
+        'passives': {'buffs': [],
+                     'dmg': [],
+                     'remove_buff': []}
     }
 
     _SMITE_EFFECTS_NO_AFFECTING_ITEM = {}
 
     def _smite_effects_dct(self):
 
-        if self._ITEMS_AFFECTING_SUMMONER_SPELLS_NAMES_MAP['skirmishers_sabre'] in self.player_items:
+        if items_data_module.ITEMS_NAMES['skirmishers_sabre'] in self.player_items:
             return self._SMITE_EFFECTS_WITH_SKIRMISHER_ITEM
 
-        elif self._ITEMS_AFFECTING_SUMMONER_SPELLS_NAMES_MAP['stalkers_blade'] in self.player_items:
+        elif items_data_module.ITEMS_NAMES['stalkers_blade'] in self.player_items:
             return self._SMITE_EFFECTS_WITH_STALKER_ITEM
 
         else:
@@ -1151,36 +1184,10 @@ class SummonerSpells(ConditionalsTranslator):
     def ignite_grievous_wounds_buff(self):
         return self.IGNITE_GRIEVOUS_WOUNDS_BUFF
 
-    def ignite_dmg_value(self):
-        return 50 + 20 * self.player_lvl
-
-    IGNITE_DMG_BASE = palette.SafeDmg({'crit_type': None,
-                                       'delay': None,
-                                       'dmg_category': 'standard_dmg',
-                                       'dmg_source': 'ignite',
-                                       'dmg_type': 'true',
-                                       'dmg_values': Placeholder(),
-                                       'dot': {'buff_name': 'ignite_dot_buff'},
-                                       'heal_for_dmg_amount': False,
-                                       'life_conversion_type': None,
-                                       'max_targets': 1,
-                                       'mods': {},
-                                       'radius': None,
-                                       'resource_type': 'hp',
-                                       'target_type': 'enemy',
-                                       'usual_max_targets': 1})
-    IGNITE_DMG_BASE.delete_keys(['dmg_values', ])
-
-    def ignite_dmg(self):
-        dct = {'dmg_values': self.ignite_dmg_value()}
-        dct.update(self.IGNITE_DMG_BASE)
-
-        return dct
-
     # -----------------------------------------------------------------------------------------------------------------
     # ATTRIBUTES
 
-    _SUMMONER_SPELLS_ATTRIBUTES_BASE = {
+    SUMMONER_SPELLS_ATTRIBUTES_BASE = {
             'ignite': {'general_attributes': {'base_cd': 210,
                                               'cast_time': 0,
                                               'castable': True,
@@ -1204,7 +1211,22 @@ class SummonerSpells(ConditionalsTranslator):
                                                      'stats': {},
                                                      'target_type': 'enemy'},
                                  'ignite_grievous_wounds_buff': 'expressed_by_method'},
-                       'dmgs': {'ignite_dmg': 'expressed_by_method'}},
+                       'dmgs': {'ignite_dmg': {'crit_type': None,
+                                               'delay': None,
+                                               'dmg_category': 'standard_dmg',
+                                               'dmg_source': 'ignite',
+                                               'dmg_type': 'true',
+                                               'dmg_values': 50,
+                                               'dot': {'buff_name': 'ignite_dot_buff'},
+                                               'heal_for_dmg_amount': False,
+                                               'life_conversion_type': None,
+                                               'max_targets': 1,
+                                               'mods': {'enemy': {},
+                                                        'player': {'champion_lvl': {'additive': 20}}},
+                                               'radius': None,
+                                               'resource_type': 'hp',
+                                               'target_type': 'enemy',
+                                               'usual_max_targets': 1}}},
             'exhaust': {'general_attributes': {'base_cd': 210,
                                                'cast_time': 0,
                                                'castable': True,
@@ -1233,8 +1255,63 @@ class SummonerSpells(ConditionalsTranslator):
                              'dmgs': {},
                              'buffs': {}},
             'smite': {'general_attributes': {'castable': False},
-                      'dmgs': {},
-                      'buffs': {}},
+                      'dmgs': {'chilling_smite_dmg': {'crit_type': None,
+                                                      'delay': None,
+                                                      'dmg_category': 'standard_dmg',
+                                                      'dmg_source': 'smite',
+                                                      'dmg_type': 'true',
+                                                      'dmg_values': 20,
+                                                      'dot': {},
+                                                      'heal_for_dmg_amount': False,
+                                                      'life_conversion_type': 'lifesteal',
+                                                      'max_targets': 1,
+                                                      'mods': {'enemy': {},
+                                                               'player': {'champion_lvl': {'additive': 8}}},
+                                                      'radius': None,
+                                                      'resource_type': 'hp',
+                                                      'target_type': 'enemy',
+                                                      'usual_max_targets': 1},
+                               'challenging_smite_dot_dmg': {'crit_type': None,
+                                                             'delay': None,
+                                                             'dmg_category': 'standard_dmg',
+                                                             'dmg_source': 'smite',
+                                                             'dmg_type': 'true',
+                                                             'dmg_values': 18,
+                                                             'dot': {'buff_name': 'challenging_smite_dot_buff'},
+                                                             'heal_for_dmg_amount': False,
+                                                             'life_conversion_type': 'lifesteal',
+                                                             'max_targets': 1,
+                                                             'mods': {'enemy': {},
+                                                                      'player': {'champion_lvl': {'additive': 2}}},
+                                                             'radius': None,
+                                                             'resource_type': 'hp',
+                                                             'target_type': 'enemy',
+                                                             'usual_max_targets': 1}},
+                      'buffs': {'challenging_smite_mark_buff': {'buff_source': 'smite',
+                                                                'dot': False,
+                                                                'duration': 4,
+                                                                'max_stacks': 1,
+                                                                'max_targets': 1,
+                                                                'usual_max_targets': 1,
+                                                                'on_hit': {},
+                                                                'stats': {},
+                                                                'target_type': 'enemy',
+                                                                'prohibit_cd_start': {},
+                                                                'on_being_hit': {'apply_buff': ['challenging_smite_dot_buff'],
+                                                                                 'cause_dmg': [],
+                                                                                 'cds_modified': {},
+                                                                                 'remove_buff': []}},
+                                'challenging_smite_dot_buff': {'buff_source': 'smite',
+                                                               'dot': False,
+                                                               'duration': 4,
+                                                               'max_stacks': 1,
+                                                               'max_targets': 1,
+                                                               'usual_max_targets': 1,
+                                                               'on_hit': {},
+                                                               'stats': {},
+                                                               'target_type': 'enemy',
+                                                               'prohibit_cd_start': {}
+                                                               }}},
             'cleanse': {'general_attributes': {'castable': False},
                         'dmgs': {},
                         'buffs': {}},
@@ -1297,6 +1374,15 @@ class SummonerSpells(ConditionalsTranslator):
                       'dmgs': {}},
         }
 
+    SUMMONER_SPELLS_BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS = set()
+    for item_name in SUMMONER_SPELLS_ATTRIBUTES_BASE:
+        for buff_name in SUMMONER_SPELLS_ATTRIBUTES_BASE[item_name]['buffs']:
+            if SUMMONER_SPELLS_ATTRIBUTES_BASE[item_name]['buffs'][buff_name] == 'expressed_by_method':
+                SUMMONER_SPELLS_BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS.add(buff_name)
+        for dmg_name in SUMMONER_SPELLS_ATTRIBUTES_BASE[item_name]['dmgs']:
+            if SUMMONER_SPELLS_ATTRIBUTES_BASE[item_name]['dmgs'][dmg_name] == 'expressed_by_method':
+                SUMMONER_SPELLS_BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS.add(dmg_name)
+
     # ---------------------------------------------------------------------------------------------------------------------
     # EFFECTS
 
@@ -1328,16 +1414,24 @@ class SummonerSpells(ConditionalsTranslator):
                                'remove_buff': []}},
     }
 
-    def summoner_spell_effects(self):
-        dct = {
+    def _create_summoner_spell_effects(self):
+        self.summoner_spell_effects = {
             'teleport': self._teleport_effects_dct(),
             'smite': self._smite_effects_dct(),
             'flash': self._flash_effects_dct(),
         }
 
-        dct.update(self._SUMMONER_SPELLS_EFFECTS_BASE)
+        self.summoner_spell_effects.update(self._SUMMONER_SPELLS_EFFECTS_BASE)
 
-        return dct
+BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS.update(SummonerSpells.SUMMONER_SPELLS_BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS)
+
+SUMMONER_SPELLS_BUFFS_NAMES_TO_SPELL_MAP = palette.items_or_masteries_buffs_or_dmgs_names_dct(
+    str_buffs_or_dmgs='buffs', attrs_dct=SummonerSpells.SUMMONER_SPELLS_ATTRIBUTES_BASE)
+SUMMONER_SPELLS_BUFFS_NAMES = palette.x_to_x_dct(seq=SUMMONER_SPELLS_BUFFS_NAMES_TO_SPELL_MAP)
+
+SUMMONER_SPELLS_DMGS_NAMES_TO_SPELL_MAP = palette.items_or_masteries_buffs_or_dmgs_names_dct(
+    str_buffs_or_dmgs='dmgs', attrs_dct=SummonerSpells.SUMMONER_SPELLS_ATTRIBUTES_BASE)
+SUMMONER_SPELLS_DMGS_NAMES = palette.x_to_x_dct(seq=SUMMONER_SPELLS_DMGS_NAMES_TO_SPELL_MAP)
 
 
 class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABCMeta):
@@ -1528,6 +1622,27 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         return sufficiency
 
+    def remove_buff(self, tar_name, buff_name, buff_dct=None):
+        """
+        Removes a buff from target's active buffs.
+
+        :param tar_name:
+        :param buff_name:
+        :param buff_dct: Optional argument, used for performance when buff dict has been previously called.
+        :return: (None)
+        """
+
+        # CD CHANGES BEFORE REMOVAL
+        if tar_name == 'player':
+            # (requests buff dict if not given)
+            if not buff_dct:
+                buff_dct = self.request_buff(buff_name=buff_name)
+
+            self.change_cd_before_buff_removal(buff_dct=buff_dct)
+
+        # REMOVAL
+        del self.active_buffs[tar_name][buff_name]
+
     def remove_one_stack_from_buff(self, buff_owner, buff_name):
         """
         Removes a buff's stack. If it's stacks are to become 0, it removes the buff instead.
@@ -1539,7 +1654,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         if current_stacks > 1:
             self.active_buffs[buff_owner][buff_name]['current_stacks'] = current_stacks - 1
         else:
-            del self.active_buffs[buff_owner][buff_name]
+            self.remove_buff(tar_name=buff_owner, buff_name=buff_name)
 
     def apply_action_cost(self, action_name):
         """
@@ -1816,7 +1931,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             # (summoner spells have too high cooldowns, so they are set to a high value)
             self.actions_dct.update({cast_start: dict(
                 cast_end=cast_start,
-                cd_end=360,
+                cd_end=300,
                 action_name=action_name)})
 
     def _add_new_buff(self, buff_name, buff_dct, tar_name, initial_stacks_increment=1):
@@ -2031,13 +2146,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                     continue
 
                 elif tar_buff_dct_in_act_buffs['ending_time'] < self.current_time:
-
-                    # Applies cd before removing.
-                    buff_dct = self.request_buff(buff_name=buff_name)
-                    self.change_cd_before_buff_removal(buff_dct=buff_dct)
-
-                    # Removes the buff.
-                    del tar_act_buffs[buff_name]
+                    self.remove_buff(tar_name=tar_name, buff_name=buff_name)
 
     def remove_expired_buffs_and_refresh_bonuses(self):
         """
@@ -2049,69 +2158,57 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         self._remove_expired_buffs()
         self.refresh_stats_bonuses()
 
-    def apply_on_hit_effects(self):
+    def _apply_on_taking_or_dealing_hit_effects_base(self, str_on_hit_or_on_being_hit):
         """
-        Applies on hit effects.
+        Applies on hit or on being hit effects.
 
-        On hit effects can be dmg and buffs application, or buff removal.
+        Effects can be dmg and buffs application, buff removal, or cd modification.
 
         Iterates throughout all active buffs, and applies:
             -on_hit dmg (e.g. Warwick's innate dmg),
             -on_hit buffs (e.g. Black Cleaver armor reduction),
             -and finally removes buffs that are removed on hit.
 
-
+        :param str_on_hit_or_on_being_hit: (str) 'on_hit' or 'on_being_hit'
         :return: (None)
         """
-
         for buff_name in sorted(self.active_buffs['player']):
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
-            on_hit_dct = buff_dct['on_hit']
 
-            if on_hit_dct:
+            if str_on_hit_or_on_being_hit not in buff_dct:
+                continue
 
-                # DMG CAUSED ON HIT.
-                for dmg_name in on_hit_dct['cause_dmg']:
+            on_hit_or_being_hit_dct = buff_dct[str_on_hit_or_on_being_hit]
+            if not on_hit_or_being_hit_dct:
+                continue
 
-                    tar_of_dmg = self._target_of_dmg_by_name(dmg_name=dmg_name)
-                    self.add_events(effect_name=dmg_name, start_time=self.current_time, tar_name=tar_of_dmg)
+            # DMG CAUSED ON HIT.
+            for dmg_name in on_hit_or_being_hit_dct['cause_dmg']:
 
-                # BUFFS APPLIED ON HIT.
-                for buff_applied_on_hit in on_hit_dct['apply_buff']:
-                    tar_type = self.request_buff(buff_name=buff_applied_on_hit)['target_type']
-                    tar_name = self.player_or_current_enemy(tar_type=tar_type)
-                    self.add_buff(buff_name=buff_applied_on_hit, tar_name=tar_name)
+                tar_of_dmg = self._target_of_dmg_by_name(dmg_name=dmg_name)
+                self.add_events(effect_name=dmg_name, start_time=self.current_time, tar_name=tar_of_dmg)
 
-                # BUFFS REMOVED ON HIT.
-                for buff_removed_on_hit in on_hit_dct['remove_buff']:
+            # BUFFS APPLIED ON HIT.
+            for buff_applied_on_hit in on_hit_or_being_hit_dct['apply_buff']:
+                tar_type = self.request_buff(buff_name=buff_applied_on_hit)['target_type']
+                tar_name = self.player_or_current_enemy(tar_type=tar_type)
+                self.add_buff(buff_name=buff_applied_on_hit, tar_name=tar_name)
 
-                    # Checks if the buff exists on the player.
-                    if buff_removed_on_hit in self.active_buffs['player']:
-                        self.change_cd_before_buff_removal(buff_dct=buff_dct)
-                        del self.active_buffs['player'][buff_removed_on_hit]
+            # BUFFS REMOVED ON HIT.
+            for buff_removed_on_hit in on_hit_or_being_hit_dct['remove_buff']:
+                removed_buff_dct = self.request_buff(buff_name=buff_removed_on_hit)
+                tar_type = removed_buff_dct['target_type']
+                tar_name = self.player_or_current_enemy(tar_type=tar_type)
+                self.remove_buff(tar_name=tar_name, buff_name=buff_removed_on_hit, buff_dct=removed_buff_dct)
 
-                    # Checks if the buff exists on current enemy target.
-                    elif buff_removed_on_hit in self.active_buffs[self.current_enemy]:
-                        del self.active_buffs[self.current_enemy][buff_removed_on_hit]
+            # MODIFIED CDS.
+            cds_modifications_dct = on_hit_or_being_hit_dct['cds_modified']
+            for modified_action_cd_name in cds_modifications_dct:
+                reduction_value = cds_modifications_dct[modified_action_cd_name]
+                self.reduce_action_cd(action_name=modified_action_cd_name, reduction_value=reduction_value)
 
-                # MODIFIED CDS.
-                cds_modifications_dct = on_hit_dct['cds_modified']
-                for modified_action_cd_name in cds_modifications_dct:
-                    reduction_value = cds_modifications_dct[modified_action_cd_name]
-                    self.reduce_action_cd(action_name=modified_action_cd_name, reduction_value=reduction_value)
-
-    def apply_on_hit_effects_and_aa(self, current_time):
-        """
-        Applies AA effects from buffs and adds AA dmg event.
-
-        :return: (None)
-        """
-
-        # Applies on_hit effects.
-        self.apply_on_hit_effects()
-
-        # Applies direct dmg.
-        self.add_events('aa_dmg', current_time, tar_name=self.current_enemy)
+    def apply_on_hit_effects(self):
+        self._apply_on_taking_or_dealing_hit_effects_base(str_on_hit_or_on_being_hit='on_hit')
 
     def apply_ability_or_item_effects(self, eff_dct):
         """
@@ -2122,6 +2219,9 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         :param: tar_type: (str) 'player' or 'enemy'
         :return: (None)
         """
+
+        if not eff_dct:
+            return
 
         # BUFFS
         for buff_name in eff_dct['actives']['buffs']:
@@ -2156,7 +2256,11 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         if action_name == 'AA':
             # ..applies AA physical dmg, and applies (or removes) on_hit buffs and dmg.
             self.activate_rage_speed_buff()
-            self.apply_on_hit_effects_and_aa(current_time=self.current_time)
+            # Applies on_hit effects.
+            self.apply_on_hit_effects()
+
+            # Applies direct dmg.
+            self.add_events(effect_name='aa_dmg', start_time=self.current_time, tar_name=self.current_enemy)
 
         # ABILITY
         elif action_name in self.castable_spells_shortcuts:
@@ -2164,7 +2268,12 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         # ITEM ACTIVE - SUMMONER SPELL
         else:
-            self.apply_ability_or_item_effects(eff_dct=self.items_effects(action_name))
+            if action_name in self.ALL_SUMMONER_SPELL_NAMES:
+                eff_dct = self.summoner_spell_effects[action_name]
+            else:
+                eff_dct = self.items_effects(action_name)
+
+            self.apply_ability_or_item_effects(eff_dct=eff_dct)
 
     def apply_events_before_given_time(self, given_time):
         """
@@ -2733,12 +2842,9 @@ class SpecialItems(Actions):
                                                     'target_type': 'player',
                                                     'prohibit_cd_start': {}})
 
-    GUINSOOS_RAGEBLADE_ITEM_NAME = 'guinsoos_rageblade'
-    items_data_module.ensure_in_items_names((GUINSOOS_RAGEBLADE_ITEM_NAME,))
-
     def activate_guinsoos_rageblade_low_hp_buff(self):
 
-        if self.GUINSOOS_RAGEBLADE_ITEM_NAME not in self.player_items:
+        if items_data_module.ITEMS_NAMES['guinsoos_rageblade'] not in self.player_items:
             # (player doesn't have the item)
             return
 
@@ -2761,12 +2867,6 @@ class SpecialItems(Actions):
     SPELLBLADE_ITEMS_PRIORITY_SORTED = ('lich_bane', 'trinity_force', 'iceborn_gauntlet', 'sheen')
     items_data_module.ensure_in_items_names(SPELLBLADE_ITEMS_PRIORITY_SORTED)
     # (ensures names used exist, otherwise methods below will function incorrectly)
-
-    SPELLBLADE_ITEMS_NAMES_MAP = {'iceborn_gauntlet': 'iceborn_gauntlet',
-                                  'sheen': 'sheen',
-                                  'lich_bane': 'lich_bane',
-                                  'trinity_force': 'trinity_force'}
-    items_data_module.ensure_in_items_names(SPELLBLADE_ITEMS_NAMES_MAP.values())
 
     SPELLBLADE_BUFF_NAMES_MAP = {'inhibitor': 'spellblade_inhibitor',
                                  'triggered': 'spellblade_triggered'}
@@ -2817,7 +2917,7 @@ class SpecialItems(Actions):
     def spellblade_dmgs_lst(self):
         dmgs_lst = []
         # Ring dmg is applied regardless of other items.
-        if self.SPELLBLADE_ITEMS_NAMES_MAP['iceborn_gauntlet'] in self.player_items:
+        if items_data_module.ITEMS_NAMES['iceborn_gauntlet'] in self.player_items:
             dmgs_lst.append('iceborn_gauntlet_ring_dmg')
 
         # Spellblade is applied only once, by prioritized item.
@@ -2991,7 +3091,8 @@ class SpecialItems(Actions):
     ))
     IMMOLATE_BUFF.delete_keys({'dot', 'buff_source'})
 
-    ORDERED_IMMOLATE_ITEMS = ('sunfire_cape', 'enchantment_cinderhulk_dmg', 'bamis_cinder',)  # (highest to lowest priority)
+    # (highest to lowest priority)
+    ORDERED_IMMOLATE_ITEMS = ('sunfire_cape', 'enchantment_cinderhulk_dmg', 'bamis_cinder',)
     IMMOLATE_ITEMS_TO_DMG_NAME_MAP = {i: i+'_immolate_dmg' for i in ORDERED_IMMOLATE_ITEMS}
     items_data_module.ensure_in_items_names(set(ORDERED_IMMOLATE_ITEMS) | set(IMMOLATE_ITEMS_TO_DMG_NAME_MAP))
 

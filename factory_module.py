@@ -75,7 +75,12 @@ child_class_as_str = """class ChampionAttributes(abilities.VisualRepresentation)
             setattr(ChampionAttributes, i, external_vars_dct[i])"""
 
 
-ALL_POSSIBLE_ACTIONS = ('AA', ) + palette.ALL_POSSIBLE_SPELL_SHORTCUTS + items_folder.items_data.CASTABLE_ITEMS + ('summoner_spell', )
+ALL_POSSIBLE_ACTIONS = (
+    ('AA', ) +
+    palette.ALL_POSSIBLE_SPELL_SHORTCUTS +
+    tuple(items_folder.items_data.CASTABLE_ITEMS) +
+    ('summoner_spell', )
+)
 
 STAT_TYPES = ('additive', 'percent', 'multiplicative')
 
@@ -6032,7 +6037,7 @@ if __name__ == '__main__':
 
     # ITEM ATTRS, EFFECTS AND CONDITIONALS CREATION AND INSERTION
     if 1:
-        inst = ItemsModuleCreator(item_name='enchantment_dist')
+        inst = ItemsModuleCreator(item_name='skirmishers_sabre')
         inst.create_item()
     # Create all items.
     if 1:

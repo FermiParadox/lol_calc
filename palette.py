@@ -225,6 +225,23 @@ def compare_complex_object(obj_1, obj_2):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+def x_to_x_dct(seq):
+    """
+    Used to ensure change to a string is forced in distant locations in code as well.
+
+    Allows replacing:
+        `if 'x' in some_iterable:`
+
+    with this:
+        `if name.x in some_iterable:`
+
+    :return: (dict) Each value is the same as its key, that is k1==v1, k2==v2 etc.
+    """
+
+    return {i: i for i in seq}
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 class FrozenKeysDict(dict):
     """Disallows insertion of new keys and deletion of existing keys once the dict has been created. """
 
@@ -336,7 +353,7 @@ BUFF_DCT_BASE = dict(
     usual_max_targets=Placeholder(),
 )
 
-OPTIONAL_BUFF_KEYS = ('shield', 'aura', 'prohibit_cd_start')
+OPTIONAL_BUFF_KEYS = ('shield', 'aura', 'prohibit_cd_start', 'on_being_hit')
 
 
 def buff_dct_base_deepcopy():
@@ -414,6 +431,8 @@ ON_HIT_EFFECTS = dict(
     remove_buff=[],
     cds_modified={},
 )
+
+ON_BEING_HIT = ON_HIT_EFFECTS
 
 
 ON_ACTION_EFFECTS = {

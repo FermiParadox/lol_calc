@@ -969,6 +969,22 @@ ITEMS_ATTRIBUTES = {
                                                   'total_price': 1475},
                                'stats_dependencies': set(),
                                'unique_stats': {}},
+    'enchantment_homeguard': {'buffs': {},
+                              'dmgs': {},
+                              'general_attributes': {'castable': False},
+                              'non_unique_stats': {},
+                              'secondary_data': {'build_from': {'berserkers_greaves': 1},
+                                                 'builds_into': set(),
+                                                 'id': 1304,
+                                                 'leafs': set(),
+                                                 'recipe_price': 475,
+                                                 'roots': {'berserkers_greaves',
+                                                           'boots_of_speed',
+                                                           'dagger'},
+                                                 'sell_price': 1033,
+                                                 'total_price': 1475},
+                              'stats_dependencies': set(),
+                              'unique_stats': {}},
     'faerie_charm': {'buffs': {},
                      'dmgs': {},
                      'general_attributes': {'castable': False},
@@ -1883,6 +1899,42 @@ ITEMS_ATTRIBUTES = {
                                  'total_price': 1200},
               'stats_dependencies': None,
               'unique_stats': {}},
+    'skirmishers_sabre': {'buffs': {},
+                          'dmgs': {},
+                          'general_attributes': {'castable': False},
+                          'non_unique_stats': {},
+                          'secondary_data': {'build_from': {'hunters_machete': 1},
+                                             'builds_into': {'enchantment_cinderhulk',
+                                                             'enchantment_devourer',
+                                                             'enchantment_runeglaive'},
+                                             'id': 3715,
+                                             'leafs': {None,
+                                                       'enchantment_cinderhulk',
+                                                       'enchantment_devourer',
+                                                       'enchantment_runeglaive'},
+                                             'recipe_price': 450,
+                                             'roots': {'hunters_machete'},
+                                             'sell_price': 595,
+                                             'total_price': 850},
+                          'stats_dependencies': set(),
+                          'unique_stats': {}},
+    'stalkers_blade': {'buffs': {},
+                       'dmgs': {},
+                       'general_attributes': {'castable': False},
+                       'non_unique_stats': {},
+                       'secondary_data': {'build_from': {'hunters_machete': 1},
+                                          'builds_into': {'enchantment_cinderhulk',
+                                                          'enchantment_devourer'},
+                                          'id': 3706,
+                                          'leafs': {None,
+                                                    'enchantment_cinderhulk',
+                                                    'enchantment_devourer'},
+                                          'recipe_price': 450,
+                                          'roots': {'hunters_machete'},
+                                          'sell_price': 595,
+                                          'total_price': 850},
+                       'stats_dependencies': set(),
+                       'unique_stats': {}},
     'sunfire_cape': {'buffs': {'immolate_buff': 'expressed_by_method'},
                      'dmgs': {'sunfire_cape_immolate_dmg': 'expressed_by_method'},
                      'general_attributes': {'castable': False},
@@ -2190,6 +2242,7 @@ ITEMS_EFFECTS = {
                                                 'dmg': [],
                                                 'remove_buff': []}},
     'enchantment_distortion': {},
+    'enchantment_homeguard': {},
     'faerie_charm': {},
     'fiendish_codex': {},
     'frozen_heart': {},
@@ -2262,6 +2315,8 @@ ITEMS_EFFECTS = {
               'passives': {'buffs': ['spellblade_initiator'],
                            'dmg': [],
                            'remove_buff': []}},
+    'skirmishers_sabre': {},
+    'stalkers_blade': {},
     'sunfire_cape': {'actives': {'buffs': [],
                                  'dmg': [],
                                  'remove_buff': []},
@@ -2337,6 +2392,7 @@ ITEMS_CONDITIONALS = {
     'enchantment_captain': {},
     'enchantment_cinderhulk_dmg': {},
     'enchantment_distortion': {},
+    'enchantment_homeguard': {},
     'faerie_charm': {},
     'fiendish_codex': {},
     'frozen_heart': {},
@@ -2369,6 +2425,8 @@ ITEMS_CONDITIONALS = {
     'phantom_dancer': {},
     'pickaxe': {},
     'sheen': {},
+    'skirmishers_sabre': {},
+    'stalkers_blade': {},
     'sunfire_cape': {},
     'the_black_cleaver': {},
     'trinity_force': {},
@@ -2378,12 +2436,15 @@ ITEMS_CONDITIONALS = {
 
 
 ITEMS_NAMES = ITEMS_ATTRIBUTES.keys()
+ITEMS_NAMES = palette.x_to_x_dct(seq=ITEMS_NAMES)
 TOTAL_ITEMS = len(ITEMS_ATTRIBUTES)
 
-ITEMS_BUFFS_NAMES = palette.items_or_masteries_buffs_or_dmgs_names_dct(str_buffs_or_dmgs='buffs',
-                                                                       attrs_dct=ITEMS_ATTRIBUTES)
-ITEMS_DMGS_NAMES = palette.items_or_masteries_buffs_or_dmgs_names_dct(str_buffs_or_dmgs='dmgs',
-                                                                      attrs_dct=ITEMS_ATTRIBUTES)
+ITEMS_BUFFS_NAMES_TO_ITEMS_NAMES_MAP = palette.items_or_masteries_buffs_or_dmgs_names_dct(str_buffs_or_dmgs='buffs', attrs_dct=ITEMS_ATTRIBUTES)
+ITEMS_BUFFS_NAMES = palette.x_to_x_dct(seq=ITEMS_BUFFS_NAMES_TO_ITEMS_NAMES_MAP)
+
+
+ITEMS_DMGS_NAMES_TO_ITEMS_NAMES_MAP = palette.items_or_masteries_buffs_or_dmgs_names_dct(str_buffs_or_dmgs='dmgs', attrs_dct=ITEMS_ATTRIBUTES)
+ITEMS_DMGS_NAMES = palette.x_to_x_dct(seq=ITEMS_DMGS_NAMES_TO_ITEMS_NAMES_MAP)
 
 ITEMS_ACTIVE_DMGS_NAMES = set()
 for i in ITEMS_EFFECTS:
@@ -2395,8 +2456,8 @@ for i in ITEMS_EFFECTS:
         ITEMS_ACTIVE_DMGS_NAMES.update(set(item_active_dmgs))
 
 
-CASTABLE_ITEMS = [item_name for item_name in ITEMS_ATTRIBUTES if ITEMS_ATTRIBUTES[item_name]['general_attributes']['castable']]
-CASTABLE_ITEMS = tuple(sorted(CASTABLE_ITEMS))
+CASTABLE_ITEMS = {item_name for item_name in ITEMS_ATTRIBUTES if ITEMS_ATTRIBUTES[item_name]['general_attributes']['castable']}
+CASTABLE_ITEMS = palette.x_to_x_dct(seq=CASTABLE_ITEMS)
 
 # Buffs and dmgs expressed by method.
 ITEMS_BUFFS_AND_DMGS_EXPRESSED_BY_METHOD = set()
