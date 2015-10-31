@@ -24,7 +24,7 @@ ALL_DATA = dict(
 
     rotation_lst=[],
     chosen_items_dct={'player': ['blade_of_the_ruined_king', 'trinity_force', 'youmuus_ghostblade', 'sunfire_cape',
-                                 'guinsoos_rageblade', 'the_black_cleaver'],
+                                 'guinsoos_rageblade', 'the_black_cleaver', 'last_whisper'],
                       'enemy_1': ['blade_of_the_ruined_king', 'chain_vest', 'chain_vest'],
                       'enemy_2': ['dorans_shield', 'blade_of_the_ruined_king'],
                       'enemy_3': ['dorans_shield', 'blade_of_the_ruined_king'], },
@@ -35,7 +35,7 @@ ALL_DATA = dict(
     _reversed_combat_mode=False,
 
     selected_summoner_spells=[
-        'ignite', 'flash'
+        'exhaust', 'ignite'
     ],
 
     selected_runes=dict(

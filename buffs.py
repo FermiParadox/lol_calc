@@ -41,6 +41,7 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
                                                       player_lvl=self.player_lvl)
 
         targeting.Targeting.__init__(self,
+                                     active_buffs=self.active_buffs,
                                      total_enemies=self.total_enemies,
                                      enemy_target_names=self.enemy_target_names)
 

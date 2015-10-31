@@ -50,7 +50,6 @@ class EventsGeneral(buffs.DeathAndRegen):
         self.max_targets_dct = max_targets_dct
         self.event_times = {}
         # (first examined target is always 'enemy_1')
-        self.current_enemy = 'enemy_1'
         # (Used to note that a periodic event might have been added between current events and last action.)
         self.intermediate_events_changed = None
 
@@ -292,7 +291,7 @@ class EnemiesDmgToPlayer(EventsGeneral):
     """
 
     DPS_BY_ENEMIES_DMG_BASE = _DPS_BY_ENEMIES_DMG_BASE
-    DPS_ENHANCER_COEF = 3   # (used to make player take dmg of e.g. 2 enemies)
+    DPS_ENHANCER_COEF = 2   # (used to make player take dmg of e.g. 2 enemies)
 
     FLAT_SURVIVABILITY_FACTORS = dict(
         flash=1
@@ -1216,13 +1215,13 @@ class SummonerSpells(ConditionalsTranslator):
                                                'dmg_category': 'standard_dmg',
                                                'dmg_source': 'ignite',
                                                'dmg_type': 'true',
-                                               'dmg_values': 50,
+                                               'dmg_values': 50/IGNITE_TICKS,
                                                'dot': {'buff_name': 'ignite_dot_buff'},
                                                'heal_for_dmg_amount': False,
                                                'life_conversion_type': None,
                                                'max_targets': 1,
                                                'mods': {'enemy': {},
-                                                        'player': {'champion_lvl': {'additive': 20}}},
+                                                        'player': {'champion_lvl': {'additive': 20/IGNITE_TICKS}}},
                                                'radius': None,
                                                'resource_type': 'hp',
                                                'target_type': 'enemy',
@@ -1458,8 +1457,6 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         self._reversed_combat_mode = _reversed_combat_mode
         self.rotation_lst = rotation_lst
         self.selected_summoner_spells = selected_summoner_spells
-        self.everyone_dead = None
-        self.__all_dead_or_max_time_exceeded = False
         self.reversed_precombat_player_stats = {}
         self.reversed_precombat_enemy_buffs = {}
 
@@ -1554,6 +1551,18 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
     def _target_of_buff_by_name(self, buff_name):
         tar_type_of_buff = self.request_buff(buff_name=buff_name)['target_type']
         return self.player_or_current_enemy(tar_type=tar_type_of_buff)
+
+    def max_time_exceeded(self):
+        if self.current_time > self.max_combat_time:
+            return True
+        else:
+            return False
+
+    def all_dead_or_max_time_exceeded(self):
+        if self.all_enemies_dead() or self.max_time_exceeded():
+            return True
+        else:
+            return False
 
     # COSTS
     def non_toggled_action_cost_dct(self, action_name):
@@ -2345,16 +2354,10 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                     break
 
                 # DEATHS
-                self.everyone_dead = True
-                # Checks if alive enemies exist.
-                for tar_name in self.enemy_target_names:
-                    if 'dead_buff' not in self.active_buffs[tar_name]:
-                        self.everyone_dead = False
-                        break
 
                 # EXIT METHOD
                 # If everyone has died, stops applying following events.
-                if self.everyone_dead:
+                if self.all_enemies_dead():
                     return
 
     def apply_single_action(self, new_action):
@@ -2377,9 +2380,8 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         # If everyone died, stops applying actions as well
         # (and removes last action, otherwise it would falsely appear as if last action was fully applied)
-        if self.everyone_dead:
+        if self.all_enemies_dead():
             del self.actions_dct[self._last_action_cast_start()]
-            self.__all_dead_or_max_time_exceeded = True
             return
 
         self.current_enemy = self.first_alive_enemy()
@@ -2391,7 +2393,6 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         # If max time exceeded, exits loop.
         if self.max_combat_time:
             if self.current_time > self.max_combat_time:
-                self.__all_dead_or_max_time_exceeded = True
                 return
 
         # After previous events are applied, applies action effects.
@@ -2414,7 +2415,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
             self.apply_single_action(new_action=new_action)
 
-            if self.__all_dead_or_max_time_exceeded:
+            if self.all_dead_or_max_time_exceeded():
                 return
 
     def _actions_priorities_triggers_state(self, triggers_dct):
@@ -2586,7 +2587,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
                 self.apply_single_action(new_action=action_name)
 
-                if self.__all_dead_or_max_time_exceeded:
+                if self.all_dead_or_max_time_exceeded():
                     return
 
             # If no action was available, adds a set amount of time before retrying.

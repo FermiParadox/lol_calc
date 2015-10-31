@@ -42,16 +42,24 @@ _DEFENSE_REDUCING_MR_AND_ARMOR_MAP = dict(
 # Defensive stats that normally exist without need of special function to create
 # (contains deepest dict values from DEFENSE_REDUCING_STATS)
 # Dmg reductions and extra dmg dealt modifiers are both expressed by the same stats, and are always multiplicative.
-DEFENSIVE_NORMAL_STATS = {'percent_dmg_reduction', 'flat_AA_reduction', 'percent_AA_reduction', 'crit_dmg_reduction',
+DEFENSIVE_NORMAL_STATS = {'flat_AA_reduction', 'crit_dmg_reduction',
                           'flat_dmg_reduction', 'flat_physical_dmg_reduction', 'flat_magic_dmg_reduction', 'tenacity',
-                          'percent_physical_dmg_reduction', 'percent_magic_dmg_reduction', 'flat_non_aoe_reduction',
-                          'flat_aoe_reduction', 'percent_aoe_reduction', 'percent_non_aoe_reduction', 'slow_reduction',
-                          'flat_survivability', 'percent_survivability', }
+                          'flat_non_aoe_reduction', 'flat_aoe_reduction', 'slow_reduction', 'flat_survivability',
+                          'percent_survivability', }
 # (flat and percent survivability must have ONLY additive bonuses)
 for armor_or_mr in _DEFENSE_REDUCING_MR_AND_ARMOR_MAP:
     for _key in _DEFENSE_REDUCING_MR_AND_ARMOR_MAP[armor_or_mr]:
         DEFENSIVE_NORMAL_STATS.update({_DEFENSE_REDUCING_MR_AND_ARMOR_MAP[armor_or_mr][_key]})
 
+PERCENT_SPECIAL_STATS_SET = frozenset({'percent_armor_penetration',
+                                       'percent_AA_reduction',
+                                       'percent_aoe_reduction',
+                                       'percent_non_aoe_reduction',
+                                       'percent_magic_penetration',
+                                       'percent_dmg_reduction',
+                                       'percent_physical_dmg_reduction',
+                                       'percent_mr_penetration',
+                                       'percent_magic_dmg_reduction'})
 
 # Contains all champions' base stats names.
 BASE_STATS = set()
@@ -61,7 +69,7 @@ for _champ_name in app_champions_base_stats.CHAMPION_BASE_STATS:
 
 
 # Stats by items or buffs that are not calculated by their own (special) method.
-NORMAL_STAT_NAMES = {'percent_healing_reduction', 'dmg_taken'}
+NORMAL_STAT_NAMES = {'percent_healing_reduction'}
 
 # Extracted from rune_stat_names_map with: re.findall(r'\'(\w+)\'', s)
 RUNE_STAT_NAMES = frozenset({'ap', 'mr', 'mr_per_lvl', 'armor_per_lvl', 'crit_chance', 'ap_per_lvl', 'hp_per_lvl',
@@ -73,8 +81,7 @@ RUNE_STAT_NAMES = frozenset({'ap', 'mr', 'mr_per_lvl', 'armor_per_lvl', 'crit_ch
 
 
 ALL_STANDARD_STAT_NAMES = frozenset(
-    (NORMAL_STAT_NAMES | BASE_STATS | RUNE_STAT_NAMES | RESOURCE_CURRENT_STAT_NAMES | DEFENSIVE_NORMAL_STATS)
-    - ALL_RESOURCE_NAMES)
+    (NORMAL_STAT_NAMES | BASE_STATS | RUNE_STAT_NAMES | RESOURCE_CURRENT_STAT_NAMES | DEFENSIVE_NORMAL_STATS | PERCENT_SPECIAL_STATS_SET) - ALL_RESOURCE_NAMES)
 
 
 # All bonus_ stats can be calculated through corresponding method, but only those noted below are allowed.
@@ -119,29 +126,23 @@ def ensure_allowed_stats_names(iterable):
             raise palette.UnexpectedValueError(i)
 
 
-STATS_UPPER_LIMITS = {'percent_AA_reduction': 1,
-                      'percent_healing_reduction': 1,
-                      'percent_magic_reduction_by_mr': 1,
+# Some stats are already limited by the way they are calculated and the checks performed using dict below are redundant.
+# However, they should remain in this dict to ensure bugs aren't created if their calculation changes.
+# (e.g. percent_armor_reduction, percent_magic_reduction etc):
+STATS_UPPER_LIMITS = {'percent_healing_reduction': 1,
                       'crit_dmg_reduction': 1,
                       'slow_reduction': 1,
-                      'percent_non_aoe_reduction': 1,
-                      'percent_magic_dmg_reduction': 1,
                       'att_speed': 2.5,
-                      'percent_mr_penetration': 1,
                       'tenacity': 1,
-                      'percent_physical_reduction_by_armor': 1,
-                      'percent_aoe_reduction': 1,
                       'percent_armor_reduction': 1,
                       'death_time_reduction': 1,
                       'crit_chance': 1,
-                      'percent_dmg_reduction': 1,
                       'percent_survivability': 1,
-                      'percent_armor_penetration': 1,
-                      'percent_physical_dmg_reduction': 1,
                       'percent_mr_reduction': 1,
                       'magic_dmg_taken': 1,
                       'cdr': 0.4,
                       'move_speed_reduction': 1}
+STATS_UPPER_LIMITS.update({i: 1 for i in PERCENT_SPECIAL_STATS_SET})
 ensure_allowed_stats_names(STATS_UPPER_LIMITS)
 
 
@@ -555,6 +556,22 @@ class StatCalculation(object):
     def champion_lvl(self, tar_name):
         return self.champion_lvls_dct[tar_name]
 
+    def _percent_reductions_base(self, tar_name, stat_name):
+        """
+        Used for "percent_"-named stats that are applied multiplicatively.
+        """
+        tar_bonuses = self.bonuses_dct[tar_name]
+
+        val = 1
+
+        if stat_name in tar_bonuses:
+            stat_bonuses = tar_bonuses[stat_name]['additive']
+
+            for buff_name in stat_bonuses:
+                val *= 1 - stat_bonuses[buff_name]
+
+        return 1-val
+
 
 class StatRequest(StatCalculation):
 
@@ -608,6 +625,8 @@ class StatRequest(StatCalculation):
             val = self._bonus_stat(stat_name=stat_name, tar_name=target_name)
         elif stat_name in self.SPECIAL_STATS_SET:
             val = getattr(self, stat_name)(target_name)
+        elif stat_name in PERCENT_SPECIAL_STATS_SET:
+            val = self._percent_reductions_base(tar_name=target_name, stat_name=stat_name)
         elif stat_name in CURRENT_TYPE_STATS:
             val = self.current_stats[target_name][stat_name]
 
@@ -902,11 +921,9 @@ class DmgReductionStats(StatRequest):
 
         Reductions are target based bonuses. Penetrations are player based.
 
-        Args:
-            target: (str)
-            stat: (str) 'armor' or 'mr'. Used for creation of mr-equivalent method.
-        Returns:
-            (float) final value of armor that attacker sees
+        :param target: (str)
+        :param (str) 'armor' or 'mr'. Used for creation of mr-equivalent method.
+        :return: (float) final value of armor that attacker sees
         """
 
         # Checks if stat is inside target's bonuses dict
@@ -1004,7 +1021,7 @@ class DmgReductionStats(StatRequest):
 
         # If there are any bonuses to physical reduction..
         if 'percent_physical_dmg_reduction' in self.bonuses_dct[tar_name]:
-            tar_percent_red_bonuses = self.bonuses_dct[tar_name]['percent_physical_dmg_reduction']['percent']
+            tar_percent_red_bonuses = self.bonuses_dct[tar_name]['percent_physical_dmg_reduction']['additive']
 
             for bonus_name in tar_percent_red_bonuses:
                 # .. they are multiplied.
@@ -1027,7 +1044,7 @@ class DmgReductionStats(StatRequest):
 
         # If there are any bonuses to magic dmg reduction..
         if 'percent_magic_dmg_reduction' in self.bonuses_dct[tar_name]:
-            tar_percent_red_bonuses = self.bonuses_dct[tar_name]['percent_magic_dmg_reduction']['percent']
+            tar_percent_red_bonuses = self.bonuses_dct[tar_name]['percent_magic_dmg_reduction']['additive']
 
             for bonus_name in tar_percent_red_bonuses:
                 # .. they are multiplied.

@@ -5,13 +5,17 @@ class NoViableEnemyError(Exception):
 class Targeting(object):
 
     def __init__(self,
+                 active_buffs,
                  total_enemies,
                  enemy_target_names):
 
+        self.active_buffs = active_buffs
         self.targets_already_hit = None
         self.targets_already_buffed = None
         self.total_enemies = total_enemies
         self.enemy_target_names = enemy_target_names
+
+        self.current_enemy = 'enemy_1'
 
     def is_alive(self, tar_name):
         if 'dead_buff' in self.active_buffs[tar_name]:
@@ -31,6 +35,13 @@ class Targeting(object):
 
         else:
             return None
+
+    def all_enemies_dead(self):
+        if self.first_alive_enemy():
+            return False
+        # If no alive enemy is found, then everyone is dead.
+        else:
+            return True
 
     def switch_to_first_alive_enemy(self):
         """
