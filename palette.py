@@ -28,6 +28,13 @@ def _not_allowed_operation_error_func(*args, **kwargs):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# NON-ITERABLE STR
+class NonIterableStr(str):
+    def __iter__(self):
+        raise NotAllowedOperationError('Iteration attempted on non iterable string.')
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # PLACEHOLDER
 
 class PlaceholderUsedError(Exception):
@@ -42,27 +49,44 @@ def _placeholder_error_func(*args, **kwargs):
     raise PlaceholderUsedError
 
 
-class Placeholder(object):
+class PlaceholderClass(object):
     """
     Used to add an extra layer of bug preventions when accidentally placeholders have not been removed.
 
-    It is not bulletproof, some accidental uses of a placeholder will not raise an exception as they should.
-    Only most common usages are covered.
+    WARNING: Some accidental uses of a placeholder will not raise an exception as they should.
+        Only most common usages are covered.
     """
 
-    def __init__(self, optional_value=None):
-        self.__optional_value = optional_value
+    def __init__(self, allowed_values=None, data_type=None):
+        self.__allowed_values = allowed_values
+        self.__data_type = data_type
 
     @property
-    def value(self):
-        return self.__optional_value
+    def allowed_values(self):
+        if self.__allowed_values:
+            return self.__allowed_values
+        else:
+            return NonIterableStr('Non given.')
+
+    @property
+    def allowed_type(self):
+        if self.__data_type:
+            return type(self.__data_type)
+        else:
+            return NonIterableStr('Non given.')
 
 
 SUPPRESSED_MAGIC_METHODS = ('__bool__', '__eq__', '__ge__', '__gt__', '__le__', '__lt__', '__ne__')
 for magic_method in SUPPRESSED_MAGIC_METHODS:
-    setattr(Placeholder, magic_method, _placeholder_error_func)
+    setattr(PlaceholderClass, magic_method, _placeholder_error_func)
 
-PlaceholderList = PlaceholderDict = PlaceholderInt = PlaceholderBool = PlaceholderSet = PlaceholderStr = Placeholder
+placeholder = PlaceholderClass()
+placeholder_list = PlaceholderClass(data_type=list)
+placeholder_dict = PlaceholderClass(data_type=dict)
+placeholder_int = PlaceholderClass(data_type=int)
+placeholder_bool = PlaceholderClass(data_type=bool)
+placeholder_set = PlaceholderClass(data_type=set)
+placeholder_str = PlaceholderClass(data_type=str)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -335,22 +359,22 @@ ALL_POSSIBLE_ABILITIES_SHORTCUTS = ABILITY_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
 
 # BUFF
 BUFF_DCT_BASE = dict(
-    buff_source=Placeholder(),
-    dot=Placeholder(),
-    duration=Placeholder(),
-    max_stacks=Placeholder(),
-    max_targets=Placeholder(),      # Refers to max number of targets that can get the effect from a single application
+    buff_source=placeholder,
+    dot=placeholder,
+    duration=placeholder,
+    max_stacks=placeholder,
+    max_targets=placeholder,      # Refers to max number of targets that can get the effect from a single application
     on_hit=dict(
-        apply_buff=[Placeholder(), ],
-        cause_dmg=[Placeholder(), ],
+        apply_buff=[placeholder, ],
+        cause_dmg=[placeholder, ],
         cds_modified={},
-        remove_buff=[Placeholder(), ]
+        remove_buff=[placeholder, ]
     ),
     stats=dict(
-        placeholder_stat_1=Placeholder()
+        placeholder_stat_1=placeholder
     ),
-    target_type=Placeholder(),
-    usual_max_targets=Placeholder(),
+    target_type=placeholder,
+    usual_max_targets=placeholder,
 )
 
 OPTIONAL_BUFF_KEYS = ('shield', 'aura', 'prohibit_cd_start', 'on_being_hit')
@@ -371,33 +395,33 @@ class SafeBuff(SpecifiedKeysDict):
     ALLOWED_KEYS = MANDATORY_KEYS | OPTIONAL_KEYS
 
 
-SHIELD_ATTRS = {'shield_type': Placeholder(),
-                'shield_value': Placeholder()}
+SHIELD_ATTRS = {'shield_type': placeholder,
+                'shield_value': placeholder}
 
 
-BUFF_DOT_ATTRS = {'period': Placeholder(),
-                  'dmg_names': PlaceholderList(),
-                  'always_on_x_targets': Placeholder()}     # False or int.
+BUFF_DOT_ATTRS = {'period': placeholder,
+                  'dmg_names': placeholder_list,
+                  'always_on_x_targets': placeholder}     # False or int.
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # DMG
 DMG_DCT_BASE = dict(
-    crit_type=Placeholder(),
-    delay=Placeholder(),
-    dmg_category=Placeholder(),
-    dmg_source=Placeholder(),
-    dmg_type=Placeholder(),
-    dmg_values=Placeholder(),
-    dot=Placeholder(),
-    heal_for_dmg_amount=PlaceholderBool(),
-    life_conversion_type=Placeholder(),     # (None or lifesteal or spellvamp)
-    resource_type=Placeholder(),
-    max_targets=Placeholder(),  # Refers to max number of targets that can get the effect from a single application
-    mods=Placeholder(),     # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
-    radius=Placeholder(),
-    target_type=Placeholder(),
-    usual_max_targets=Placeholder(),
+    crit_type=placeholder,
+    delay=placeholder,
+    dmg_category=placeholder,
+    dmg_source=placeholder,
+    dmg_type=placeholder,
+    dmg_values=placeholder,
+    dot=placeholder,
+    heal_for_dmg_amount=placeholder_bool,
+    life_conversion_type=placeholder,     # (None or lifesteal or spellvamp)
+    resource_type=placeholder,
+    max_targets=placeholder,  # Refers to max number of targets that can get the effect from a single application
+    mods=placeholder,     # (None or 'normal': {stat1: coeff1,} or 'by_ability_lvl': {stat1: (coeff_lvl1,),})
+    radius=placeholder,
+    target_type=placeholder,
+    usual_max_targets=placeholder,
 )
 
 
@@ -410,36 +434,43 @@ class SafeDmg(SpecifiedKeysDict):
     ALLOWED_KEYS = MANDATORY_KEYS | OPTIONAL_KEYS
 
 
-DMG_DOT_ATTRS = {'dot_buff': PlaceholderStr(),
-                 'jumps_on_death': PlaceholderBool()}
+DMG_DOT_ATTRS = {'dot_buff': placeholder_str,
+                 'jumps_on_death': placeholder_bool}
 
 
 CRIT_TYPES = (None, 'normal', 'always')
 
 
-SHIELDS_DATA = {'shield_type': Placeholder(),
+SHIELDS_DATA = {'shield_type': placeholder,
                 'mods': {},
-                'shield_value': Placeholder()}
+                'shield_value': placeholder}
 
 # (currently no other types exist in-game)
 SHIELD_TYPES = ('any', 'magic')
 
 
-ON_HIT_EFFECTS = dict(
+_ON_X_EFFECTS_BASE = dict(
     cause_dmg=[],
     apply_buff=[],
     remove_buff=[],
     cds_modified={},
 )
 
-ON_BEING_HIT = ON_HIT_EFFECTS
+ON_HIT_EFFECTS = _ON_X_EFFECTS_BASE
+ON_BEING_HIT = _ON_X_EFFECTS_BASE
+ON_ENEMY_DEATH = _ON_X_EFFECTS_BASE
 
+ON_DEALING_DMG = {
+    'dmg_types': PlaceholderClass(['any', 'physical', 'magic', 'true']),
+    'source_type': PlaceholderClass(['any', 'champion_abilities', 'champion_spells', 'summoner_spells'])
+}
+ON_DEALING_DMG.update(_ON_X_EFFECTS_BASE)
 
 ON_ACTION_EFFECTS = {
     'increase_counter_stat':
-        {'counter_stat_name': Placeholder(),
-         'value_increase': Placeholder()}}
-ON_ACTION_EFFECTS.update(ON_HIT_EFFECTS)
+        {'counter_stat_name': placeholder,
+         'value_increase': placeholder}}
+ON_ACTION_EFFECTS.update(_ON_X_EFFECTS_BASE)
 
 
 ON_ACTION_TRIGGERS = dict(
@@ -451,23 +482,23 @@ ON_ACTION_TRIGGERS = dict(
 
 # ----------------------------------------------------------------------------------------------------------------------
 GENERAL_ATTRIBUTES = dict(
-    cast_time=Placeholder(),
-    range=Placeholder(),
-    travel_time=Placeholder(),
-    base_cd=Placeholder(),
+    cast_time=placeholder,
+    range=placeholder,
+    travel_time=placeholder,
+    base_cd=placeholder,
     cost=[
         dict(
-            resource_type=Placeholder(),
-            values=Placeholder(),
-            cost_category=Placeholder()
+            resource_type=placeholder,
+            values=placeholder,
+            cost_category=placeholder
         ), ],
-    independent_cast=Placeholder(),
-    move_while_casting=Placeholder(),
-    dashed_distance=Placeholder(),
-    channel_time=Placeholder(),
-    resets_aa=Placeholder(),
+    independent_cast=placeholder,
+    move_while_casting=placeholder,
+    dashed_distance=placeholder,
+    channel_time=placeholder,
+    resets_aa=placeholder,
     cds_modified=dict(
-        name_placeholder=Placeholder()
+        name_placeholder=placeholder
     )
 )
 

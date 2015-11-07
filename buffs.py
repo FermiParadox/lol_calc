@@ -5,7 +5,7 @@ import items_folder.items_data
 import palette
 import dmgs_buffs_categories
 import masteries_module
-from palette import Placeholder
+from palette import placeholder
 
 import copy
 import abc
@@ -1108,13 +1108,13 @@ _DEAD_BUFF_DCT_BASE = palette.SafeBuff(dict(
 
 # Creates base dict for regenerations (hp, mp, energy, etc).
 REGEN_BUFF_DCT_BASE = palette.SafeBuff(dict(
-        target_type=Placeholder(),
+        target_type=placeholder,
         duration='permanent',
         max_stacks=1,
         stats={},
         on_hit={},
         prohibit_cd_start={},
-        buff_source=Placeholder(),
+        buff_source=placeholder,
         max_targets=1,
         usual_max_targets=1,
         dot={'period': NATURAL_REGEN_PERIOD, 'dmg_names': []}
@@ -1143,16 +1143,16 @@ _REGEN_BUFF_DCT_BASE_ENEMY['dot']['dmg_names'] = ['enemy_hp5_dmg']
 
 # Creates base dict for regenerations' dmg dicts.
 _REGEN_DMG_DCT_BASE = palette.SafeDmg(dict(
-    target_type=Placeholder(),
+    target_type=placeholder,
     dmg_category='standard_dmg',
-    resource_type=Placeholder(),
+    resource_type=placeholder,
     dmg_type='true',
     dmg_values=-1/PER_5_DIVISOR,
     dmg_source='regen',
-    mods=Placeholder(),
+    mods=placeholder,
     life_conversion_type=None,
     radius=None,
-    dot=Placeholder(),
+    dot=placeholder,
     max_targets=1,
     usual_max_targets=1,
     delay=NATURAL_REGEN_START_DELAY,

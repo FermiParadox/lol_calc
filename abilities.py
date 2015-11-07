@@ -11,7 +11,7 @@ from champions import app_champions_base_stats
 import palette
 import skills_points
 import items_folder.items_data as items_data_module
-from palette import Placeholder
+from palette import placeholder
 
 
 # Sets font size on all plt graphs.
@@ -262,8 +262,8 @@ _DPS_BY_ENEMIES_DMG_BASE = palette.SafeDmg(dict(
     target_type='player',
     dmg_category='standard_dmg',
     resource_type='hp',
-    dmg_type=Placeholder(),
-    dmg_values=Placeholder(),
+    dmg_type=placeholder,
+    dmg_values=placeholder,
     dmg_source='dps_by_enemies',
     mods={},
     life_conversion_type=None,
@@ -1032,6 +1032,9 @@ class SummonerSpells(ConditionalsTranslator):
 
     _CASTABLE_SUMMONER_SPELLS_BASE = frozenset({'exhaust', 'ignite', 'heal', 'flash', 'ghost', 'teleport'})
 
+    # Summoner spells that must ALWAYS be casted at the start of combat (ordered from highest to lowest priority)
+    SUMMONER_SPELLS_AT_COMBAT_START_BY_PRIORITY = ('teleport',)
+
     def castable_summoner_spells(self):
 
         castable_summoner_spells = set()
@@ -1162,9 +1165,9 @@ class SummonerSpells(ConditionalsTranslator):
     IGNITE_DURATION = 5
 
     # Duration is set independently for each usage of it, since multiple effects can cause this buff.
-    _GRIEVOUS_WOUNDS_BUFF_BASE = palette.SafeBuff({'buff_source': Placeholder(),
+    _GRIEVOUS_WOUNDS_BUFF_BASE = palette.SafeBuff({'buff_source': placeholder,
                                                    'dot': False,
-                                                   'duration': Placeholder(),
+                                                   'duration': placeholder,
                                                    'max_stacks': 1,
                                                    'max_targets': 1,
                                                    'usual_max_targets': 1,
@@ -1533,6 +1536,9 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         """
         Reduces an action's cd.
 
+        Cd_end can be set to a value lower than cast_start which is incorrect,
+        but should have no effect at all.
+
         :return: (None)
         """
 
@@ -1542,7 +1548,14 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
                 # (if the spell has been casted before, the loop ends)
                 if action_dct['cd_end'] > self.current_time:
-                    action_dct['cd_end'] -= reduction_value
+
+                    # (it will reduce or "reset" cd end)
+                    if reduction_value == 'reset':
+                        action_dct['cd_end'] = 0
+                    else:
+                        action_dct['cd_end'] -= reduction_value
+
+                    return
 
     def _target_of_dmg_by_name(self, dmg_name):
         tar_type_of_dmg = self.request_dmg(dmg_name=dmg_name)['target_type']
@@ -2474,11 +2487,11 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         :return: (list)
         """
 
+        # (not using a list from the beginning to remove duplicates)
         queue_set = set()
 
         # SUMMONER'S SPELLS
         for spell_name in sorted(self.selected_summoner_spells):
-            # TODO: Create 'castable_summoner_spells' and 'summoner_spells_at_combat_start' in a new class
             if spell_name in self.castable_summoner_spells():
                 queue_set.add(spell_name)
 
@@ -2487,8 +2500,18 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             if item_name in items_data_module.CASTABLE_ITEMS:
                 queue_set.add(item_name)
 
-        # (didn't use a list from the beginning to remove duplicates)
-        return sorted(queue_set)
+        queue_lst = []
+        # (Selected summoner spells are highest priority)
+        # (They are inserted based on their top priority order)
+        for summoner_spell_name in self.SUMMONER_SPELLS_AT_COMBAT_START_BY_PRIORITY:
+            if summoner_spell_name in queue_set:
+                queue_lst.append(summoner_spell_name)
+
+        for action_name in sorted(queue_set):
+            if action_name not in queue_lst:
+                queue_lst.append(action_name)
+
+        return queue_lst
 
     def _action_priorities_after_effects(self):
         """
@@ -3004,10 +3027,10 @@ class SpecialItems(Actions):
         max_stacks=1,
         stats={},
         on_hit=dict(
-            apply_buff=[Placeholder(), ],
-            cause_dmg=[Placeholder(), ],
+            apply_buff=[placeholder, ],
+            cause_dmg=[placeholder, ],
             cds_modified={},
-            remove_buff=[Placeholder(), ]
+            remove_buff=[placeholder, ]
         ),
         prohibit_cd_start={},
         buff_source='phage',
@@ -3085,10 +3108,10 @@ class SpecialItems(Actions):
         stats={},
         on_hit={},
         prohibit_cd_start={},
-        buff_source=Placeholder(),
+        buff_source=placeholder,
         max_targets=1,
         usual_max_targets=1,
-        dot=Placeholder()
+        dot=placeholder
     ))
     IMMOLATE_BUFF.delete_keys({'dot', 'buff_source'})
 
@@ -3127,8 +3150,8 @@ class SpecialItems(Actions):
         dmg_category='standard_dmg',
         resource_type='hp',
         dmg_type='magic',
-        dmg_values=Placeholder(),
-        dmg_source=Placeholder(),
+        dmg_values=placeholder,
+        dmg_source=placeholder,
         mods={},
         life_conversion_type=None,
         radius=500,

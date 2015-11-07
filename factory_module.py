@@ -2328,7 +2328,7 @@ class BuffsBase(object):
         :return: (dict)
         """
         dct = palette.buff_dct_base_deepcopy()
-        dct.update({i: palette.Placeholder() for i in palette.OPTIONAL_BUFF_KEYS})
+        dct.update({i: palette.placeholder() for i in palette.OPTIONAL_BUFF_KEYS})
 
         return dct
 
@@ -2526,7 +2526,7 @@ class DmgsBase(object):
         :return: (dict)
         """
         dct = palette.dmg_dct_base_deepcopy()
-        dct.update({i: palette.Placeholder() for i in palette.OPTIONAL_DMG_KEYS})
+        dct.update({i: palette.placeholder() for i in palette.OPTIONAL_DMG_KEYS})
 
         return dct
 
@@ -2988,6 +2988,10 @@ class _ConditionalsBase(metaclass=abc.ABCMeta):
 
 class GeneralAbilityAttributes(AbilitiesAttributesBase):
 
+    USUAL_VALUES_SPELLS_GEN_ATTRS = copy.deepcopy(GenAttrsBase.USUAL_VALUES_GEN_ATTR)
+    # (spells get their base cd set automatically, unlike items)
+    del USUAL_VALUES_SPELLS_GEN_ATTRS['base_cd']
+
     def __init__(self, ability_name, champion_name):
         AbilitiesAttributesBase.__init__(self,
                                          ability_name=ability_name,
@@ -3171,7 +3175,7 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
         extra_msg = '\nGENERAL ATTRIBUTE CREATION\n'
         extra_msg += self._champion_and_ability_msg()
 
-        suggest_attr_values(suggested_values_dct=self.USUAL_VALUES_GEN_ATTR,
+        suggest_attr_values(suggested_values_dct=self.USUAL_VALUES_SPELLS_GEN_ATTRS,
                             modified_dct=self.general_attr_dct,
                             extra_start_msg=extra_msg)
 
@@ -6021,8 +6025,8 @@ if __name__ == '__main__':
         print(ExploreApiAbilities().champion_id('dariu'))
 
     # CHAMPION MODULE CREATION
-    if 0:
-        ChampionModuleCreator(champion_name='vayne').run_champ_module_creation()
+    if 1:
+        ChampionModuleCreator(champion_name='pantheon').run_champ_module_creation()
 
     # FETCHING CASTABLE ABILITIES
     if 0:
