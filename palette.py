@@ -51,7 +51,7 @@ def _placeholder_error_func(*args, **kwargs):
 
 class PlaceholderClass(object):
     """
-    Used to add an extra layer of bug preventions when accidentally placeholders have not been removed.
+    Used for adding an extra layer of bug preventions when accidentally placeholders have not been removed.
 
     WARNING: Some accidental uses of a placeholder will not raise an exception as they should.
         Only most common usages are covered.
@@ -61,19 +61,21 @@ class PlaceholderClass(object):
         self.__allowed_values = allowed_values
         self.__data_type = data_type
 
-    @property
-    def allowed_values(self):
-        if self.__allowed_values:
-            return self.__allowed_values
+    @staticmethod
+    def _property_val_base(class_arg_name):
+        # If a value was given..
+        if class_arg_name:
+            return type(class_arg_name)
         else:
             return NonIterableStr('Non given.')
 
     @property
+    def allowed_values(self):
+        return self._property_val_base(class_arg_name=self.__allowed_values)
+
+    @property
     def allowed_type(self):
-        if self.__data_type:
-            return type(self.__data_type)
-        else:
-            return NonIterableStr('Non given.')
+        return self._property_val_base(class_arg_name=self.__data_type)
 
 
 SUPPRESSED_MAGIC_METHODS = ('__bool__', '__eq__', '__ge__', '__gt__', '__le__', '__lt__', '__ne__')
@@ -84,6 +86,7 @@ placeholder = PlaceholderClass()
 placeholder_list = PlaceholderClass(data_type=list)
 placeholder_dict = PlaceholderClass(data_type=dict)
 placeholder_int = PlaceholderClass(data_type=int)
+placeholder_float = PlaceholderClass(data_type=float)
 placeholder_bool = PlaceholderClass(data_type=bool)
 placeholder_set = PlaceholderClass(data_type=set)
 placeholder_str = PlaceholderClass(data_type=str)
@@ -449,6 +452,7 @@ SHIELDS_DATA = {'shield_type': placeholder,
 SHIELD_TYPES = ('any', 'magic')
 
 
+# ----------------------------------------------------------
 _ON_X_EFFECTS_BASE = dict(
     cause_dmg=[],
     apply_buff=[],
@@ -456,21 +460,32 @@ _ON_X_EFFECTS_BASE = dict(
     cds_modified={},
 )
 
-ON_HIT_EFFECTS = _ON_X_EFFECTS_BASE
-ON_BEING_HIT = _ON_X_EFFECTS_BASE
-ON_ENEMY_DEATH = _ON_X_EFFECTS_BASE
+
+def on_x_effects_base_deepcopy():
+    return copy.deepcopy(_ON_X_EFFECTS_BASE)
+
+
+# ----------------------------------------------------------
+ON_HIT_EFFECTS = on_x_effects_base_deepcopy()
+ON_BEING_HIT = on_x_effects_base_deepcopy()
+
+ON_ENEMY_DEATH = {
+    # (that is, dmgs names; NOT categories)
+    'causes_of_death': PlaceholderClass(allowed_values=['any'])
+}
+ON_ENEMY_DEATH.update(on_x_effects_base_deepcopy())
 
 ON_DEALING_DMG = {
     'dmg_types': PlaceholderClass(['any', 'physical', 'magic', 'true']),
-    'source_type': PlaceholderClass(['any', 'champion_abilities', 'champion_spells', 'summoner_spells'])
+    'source_types_or_names': PlaceholderClass(['any', 'champion_abilities', 'champion_spells', 'summoner_spells'])
 }
-ON_DEALING_DMG.update(_ON_X_EFFECTS_BASE)
+ON_DEALING_DMG.update(on_x_effects_base_deepcopy())
 
 ON_ACTION_EFFECTS = {
     'increase_counter_stat':
         {'counter_stat_name': placeholder,
          'value_increase': placeholder}}
-ON_ACTION_EFFECTS.update(_ON_X_EFFECTS_BASE)
+ON_ACTION_EFFECTS.update(on_x_effects_base_deepcopy())
 
 
 ON_ACTION_TRIGGERS = dict(
@@ -482,9 +497,9 @@ ON_ACTION_TRIGGERS = dict(
 
 # ----------------------------------------------------------------------------------------------------------------------
 GENERAL_ATTRIBUTES = dict(
-    cast_time=placeholder,
+    cast_time=placeholder_float,
     range=placeholder,
-    travel_time=placeholder,
+    travel_time=placeholder_float,
     base_cd=placeholder,
     cost=[
         dict(
@@ -492,11 +507,12 @@ GENERAL_ATTRIBUTES = dict(
             values=placeholder,
             cost_category=placeholder
         ), ],
-    independent_cast=placeholder,
-    move_while_casting=placeholder,
-    dashed_distance=placeholder,
+    independent_cast=placeholder_bool,
+    move_while_casting=placeholder_bool,
+    dashed_distance=placeholder_int,
     channel_time=placeholder,
-    resets_aa=placeholder,
+    resets_aa=placeholder_bool,
+    apply_on_hit_effects=placeholder_bool,
     cds_modified=dict(
         name_placeholder=placeholder
     )

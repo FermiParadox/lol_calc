@@ -2070,9 +2070,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         Additionally, checks if buff applied is a dot buff and adds periodic event (unless dot already active).
 
-
-        Returns:
-            (None)
+        :return: (None)
         """
 
         buff_dct = self.req_buff_dct_func(buff_name=buff_name)
@@ -2124,11 +2122,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         (e.g. Jax w_buff delays start of W cd)
 
-        Modifies:
-            active_buffs
-            actions_dict
-        Return:
-            (None)
+        :return: (None)
         """
 
         if 'prohibit_cd_start' in buff_dct:
@@ -2180,65 +2174,149 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         self._remove_expired_buffs()
         self.refresh_stats_bonuses()
 
-    def _apply_on_taking_or_dealing_hit_effects_base(self, str_on_hit_or_on_being_hit):
+    # ON_X_EFFECTS
+    def _apply_on_x_effects_of_single_buff(self, buff_dct, x_eff_name):
         """
-        Applies on hit or on being hit effects.
+        Applies on x effects. X can be "on_action", "on_hit", "on_being_hit", "on_dealing_dmg" etc.
 
-        Effects can be dmg and buffs application, buff removal, or cd modification.
+        Effects applied can be dmg and buffs application, buff removal, or cd modification.
 
         Iterates throughout all active buffs, and applies:
             -on_hit dmg (e.g. Warwick's innate dmg),
             -on_hit buffs (e.g. Black Cleaver armor reduction),
             -and finally removes buffs that are removed on hit.
 
-        :param str_on_hit_or_on_being_hit: (str) 'on_hit' or 'on_being_hit'
         :return: (None)
         """
+
+        if x_eff_name in buff_dct:
+
+            on_hit_or_being_hit_dct = buff_dct[x_eff_name]
+            if on_hit_or_being_hit_dct:
+
+                # DMG CAUSED ON HIT.
+                for dmg_name in on_hit_or_being_hit_dct['cause_dmg']:
+
+                    tar_of_dmg = self._target_of_dmg_by_name(dmg_name=dmg_name)
+                    self.add_events(effect_name=dmg_name, start_time=self.current_time, tar_name=tar_of_dmg)
+
+                # BUFFS APPLIED ON HIT.
+                for buff_applied_on_hit in on_hit_or_being_hit_dct['apply_buff']:
+                    tar_type = self.request_buff(buff_name=buff_applied_on_hit)['target_type']
+                    tar_name = self.player_or_current_enemy(tar_type=tar_type)
+                    self.add_buff(buff_name=buff_applied_on_hit, tar_name=tar_name)
+
+                # BUFFS REMOVED ON HIT.
+                for buff_removed_on_hit in on_hit_or_being_hit_dct['remove_buff']:
+                    removed_buff_dct = self.request_buff(buff_name=buff_removed_on_hit)
+                    tar_type = removed_buff_dct['target_type']
+                    tar_name = self.player_or_current_enemy(tar_type=tar_type)
+                    self.remove_buff(tar_name=tar_name, buff_name=buff_removed_on_hit, buff_dct=removed_buff_dct)
+
+                # MODIFIED CDS.
+                cds_modifications_dct = on_hit_or_being_hit_dct['cds_modified']
+                for modified_action_cd_name in cds_modifications_dct:
+                    reduction_value = cds_modifications_dct[modified_action_cd_name]
+                    self.reduce_action_cd(action_name=modified_action_cd_name, reduction_value=reduction_value)
+
+    def apply_on_hit_effects(self):
         for buff_name in sorted(self.active_buffs['player']):
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
-            if str_on_hit_or_on_being_hit not in buff_dct:
-                continue
+            self._apply_on_x_effects_of_single_buff(buff_dct=buff_dct, x_eff_name='on_hit')
 
-            on_hit_or_being_hit_dct = buff_dct[str_on_hit_or_on_being_hit]
-            if not on_hit_or_being_hit_dct:
-                continue
+    def apply_on_being_hit_effects(self, target_name):
+        for buff_name in sorted(self.active_buffs[target_name]):
+            buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
-            # DMG CAUSED ON HIT.
-            for dmg_name in on_hit_or_being_hit_dct['cause_dmg']:
+            self._apply_on_x_effects_of_single_buff(buff_dct=buff_dct, x_eff_name='on_being_hit')
 
-                tar_of_dmg = self._target_of_dmg_by_name(dmg_name=dmg_name)
-                self.add_events(effect_name=dmg_name, start_time=self.current_time, tar_name=tar_of_dmg)
+    @staticmethod
+    def _dmg_type_matches_expected_type(given_dmg_type, on_dealing_dmg_dct):
+        dmg_type_expected = on_dealing_dmg_dct['dmg_type']
 
-            # BUFFS APPLIED ON HIT.
-            for buff_applied_on_hit in on_hit_or_being_hit_dct['apply_buff']:
-                tar_type = self.request_buff(buff_name=buff_applied_on_hit)['target_type']
-                tar_name = self.player_or_current_enemy(tar_type=tar_type)
-                self.add_buff(buff_name=buff_applied_on_hit, tar_name=tar_name)
+        if dmg_type_expected == 'any':
+            return True
+        elif dmg_type_expected == given_dmg_type:
+            return True
+        # If type doesn't match expected, skips this buff.
+        else:
+            return False
 
-            # BUFFS REMOVED ON HIT.
-            for buff_removed_on_hit in on_hit_or_being_hit_dct['remove_buff']:
-                removed_buff_dct = self.request_buff(buff_name=buff_removed_on_hit)
-                tar_type = removed_buff_dct['target_type']
-                tar_name = self.player_or_current_enemy(tar_type=tar_type)
-                self.remove_buff(tar_name=tar_name, buff_name=buff_removed_on_hit, buff_dct=removed_buff_dct)
+    @staticmethod
+    def _dmg_source_matches_expected_source(given_source, on_dealing_dmg_dct):
+        sources_expected_lst = on_dealing_dmg_dct['source_types_or_names']
 
-            # MODIFIED CDS.
-            cds_modifications_dct = on_hit_or_being_hit_dct['cds_modified']
-            for modified_action_cd_name in cds_modifications_dct:
-                reduction_value = cds_modifications_dct[modified_action_cd_name]
-                self.reduce_action_cd(action_name=modified_action_cd_name, reduction_value=reduction_value)
+        for expected_source_name in sources_expected_lst:
 
-    def apply_on_hit_effects(self):
-        self._apply_on_taking_or_dealing_hit_effects_base(str_on_hit_or_on_being_hit='on_hit')
+            if expected_source_name == 'any':
+                return True
+            elif expected_source_name == given_source:
+                return True
+            elif (expected_source_name == 'champion_ability') and (given_source in palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS):
+                return True
+            elif (expected_source_name == 'champion_spell') and (given_source in palette.ALL_POSSIBLE_SPELL_SHORTCUTS):
+                return True
+            elif (expected_source_name == 'item') and (given_source in palette.ALL_POSSIBLE_SPELL_SHORTCUTS):
+                return True
 
+        # If non of the expected sources matches given source:
+        return False
+
+    def apply_on_dealing_dmg_effects(self, given_dmg_type, given_source):
+
+        for buff in self.active_buffs['player']:
+            buff_dct = self.request_buff(buff_name=buff)
+
+            if 'on_dealing_dmg' in buff_dct:
+                on_dealing_dmg_dct = buff_dct['on_dealing_dmg']
+
+                if on_dealing_dmg_dct:
+                    # DMG TYPE
+                    if not self._dmg_type_matches_expected_type(given_dmg_type=given_dmg_type, on_dealing_dmg_dct=on_dealing_dmg_dct):
+                        continue
+
+                    # DMG SOURCE
+                    if not self._dmg_source_matches_expected_source(given_source=given_source, on_dealing_dmg_dct=on_dealing_dmg_dct):
+                        continue
+
+    @staticmethod
+    def _causes_of_death_match_expected(dmgs_that_caused_death, on_enemy_death_dct):
+        expected_causes_of_death = on_enemy_death_dct['causes_of_death']
+
+        if 'any' in expected_causes_of_death:
+            return True
+
+        for expected_cause in expected_causes_of_death:
+            if expected_cause in dmgs_that_caused_death:
+                return True
+
+        return False
+
+    def on_enemy_death_effects(self, dmgs_that_caused_death):
+        """
+        Applies all effects that are triggered by enemy death.
+
+        :param dmgs_that_caused_death: Dmg names that occurred on time of target's death.
+        :return: (None)
+        """
+        for buff_name in self.active_buffs['player']:
+            buff_dct = self.request_buff(buff_name=buff_name)
+
+            if 'on_enemy_death' in buff_dct:
+                on_enemy_death_dct = buff_dct['on_enemy_death']
+
+                if self._causes_of_death_match_expected(dmgs_that_caused_death=dmgs_that_caused_death, on_enemy_death_dct=on_enemy_death_dct):
+
+                    self._apply_on_x_effects_of_single_buff(buff_dct=buff_dct, x_eff_name='on_enemy_death')
+
+    # -----------------------------------------------------
     def apply_ability_or_item_effects(self, eff_dct):
         """
         Applies an action's (abilities, item actives or summoner actives) effects.
 
         Target is automatically chosen.
 
-        :param: tar_type: (str) 'player' or 'enemy'
         :return: (None)
         """
 
@@ -2339,7 +2417,8 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                         else:
                             self.current_enemy = examined_tar
 
-                        for dmg_name in self.event_times[self.current_time][examined_tar]:
+                        dmgs_occurring_at_given_time = self.event_times[self.current_time][examined_tar]
+                        for dmg_name in dmgs_occurring_at_given_time:
                             dmg_dct = self.request_dmg(dmg_name=dmg_name)
                             self.apply_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct, target_name=examined_tar)
 
@@ -2353,6 +2432,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
                         # After dmg has been applied checks if target has died.
                         self.apply_death(tar_name=examined_tar)
+                        self.on_enemy_death_effects(dmgs_that_caused_death=dmgs_occurring_at_given_time)
 
                     # Deletes the event after it's applied.
                     del self.event_times[self.current_time]
@@ -2365,8 +2445,6 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                 # Exits loop after all events prior to an action are applied.
                 else:
                     break
-
-                # DEATHS
 
                 # EXIT METHOD
                 # If everyone has died, stops applying following events.
