@@ -397,6 +397,7 @@ class SafeBuff(SpecifiedKeysDict):
     OPTIONAL_KEYS = set(OPTIONAL_BUFF_KEYS)
     ALLOWED_KEYS = MANDATORY_KEYS | OPTIONAL_KEYS
 
+BUFF_ATTRS_NAMES = x_to_x_dct(SafeBuff.ALLOWED_KEYS)
 
 SHIELD_ATTRS = {'shield_type': placeholder,
                 'shield_value': placeholder}
@@ -428,7 +429,7 @@ DMG_DCT_BASE = dict(
 )
 
 
-OPTIONAL_DMG_KEYS = ()
+OPTIONAL_DMG_KEYS = ('on_kill',)
 
 
 class SafeDmg(SpecifiedKeysDict):
@@ -436,6 +437,7 @@ class SafeDmg(SpecifiedKeysDict):
     OPTIONAL_KEYS = set(OPTIONAL_DMG_KEYS)
     ALLOWED_KEYS = MANDATORY_KEYS | OPTIONAL_KEYS
 
+DMG_ATTRS_NAMES = x_to_x_dct(SafeDmg.ALLOWED_KEYS)
 
 DMG_DOT_ATTRS = {'dot_buff': placeholder_str,
                  'jumps_on_death': placeholder_bool}
@@ -518,15 +520,18 @@ GENERAL_ATTRIBUTES = dict(
     )
 )
 
+OPTIONAL_GENERAL_ATTRIBUTES_NAMES = (
+    'apply_on_hit_effects'
+)
+
 
 class SafeGeneralAttributes(SpecifiedKeysDict):
     MANDATORY_KEYS = set(GENERAL_ATTRIBUTES.keys())
     OPTIONAL_KEYS = set()
     ALLOWED_KEYS = MANDATORY_KEYS | OPTIONAL_KEYS
 
+
 # ----------------------------------------------------------------------------------------------------------------------
-
-
 def inn_effects():
     return dict(
             # buffs and effects activated at skill lvl up
