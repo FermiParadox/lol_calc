@@ -48,7 +48,7 @@ class EventsGeneral(buffs.DeathAndRegen):
 
         # (User defined dict containing number of targets affected by abilities.)
         self.max_targets_dct = max_targets_dct
-        self.event_times = {}
+        self.events = {}
         # (first examined target is always 'enemy_1')
         # (Used to note that a periodic event might have been added between current events and last action.)
         self.intermediate_events_changed = None
@@ -75,17 +75,17 @@ class EventsGeneral(buffs.DeathAndRegen):
         """
 
         # If the event's time doesn't exist it creates it.
-        if start_time not in self.event_times:
-            self.event_times.update({start_time: {target_name: [effect_name]}})
+        if start_time not in self.events:
+            self.events.update({start_time: {target_name: [effect_name]}})
 
         else:
             # If the time exists in the dictionary,
             # checks if the target is inside the time.
-            if target_name in self.event_times[start_time]:
-                self.event_times[start_time][target_name].append(effect_name)
+            if target_name in self.events[start_time]:
+                self.events[start_time][target_name].append(effect_name)
             else:
                 # If not, it adds the target as well.
-                self.event_times[start_time].update({target_name: [effect_name]})
+                self.events[start_time].update({target_name: [effect_name]})
 
     def add_regenerations(self):
         """
@@ -121,10 +121,10 @@ class EventsGeneral(buffs.DeathAndRegen):
 
         # ADD EVENT
         # Checks if the target is inside the time.
-        if tar_name in self.event_times[start_time]:
-            self.event_times[start_time][tar_name].append(effect_name)
+        if tar_name in self.events[start_time]:
+            self.events[start_time][tar_name].append(effect_name)
         else:
-            self.event_times[start_time].update({tar_name: [effect_name]})
+            self.events[start_time].update({tar_name: [effect_name]})
 
     def add_events(self, effect_name, start_time, tar_name):
         """
@@ -2396,7 +2396,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             # then intermediate_events_changed will be set to true,
             # and the for loop will repeat.
 
-            initial_events = sorted(self.event_times)
+            initial_events = sorted(self.events)
 
             # EVENTS BEFORE ACTION
             for event in initial_events:
@@ -2410,14 +2410,14 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                     self.remove_expired_buffs_and_refresh_bonuses()
 
                     # Applies all dmg effects for all targets.
-                    for examined_tar in sorted(self.event_times[self.current_time]):
+                    for examined_tar in sorted(self.events[self.current_time]):
                         if examined_tar == 'player':
                             # (if all enemies are dead, focuses on last enemy)
                             self.current_enemy = self.first_alive_enemy() or self.enemy_target_names[-1]
                         else:
                             self.current_enemy = examined_tar
 
-                        dmgs_occurring_at_given_time = self.event_times[self.current_time][examined_tar]
+                        dmgs_occurring_at_given_time = self.events[self.current_time][examined_tar]
                         for dmg_name in dmgs_occurring_at_given_time:
                             dmg_dct = self.request_dmg(dmg_name=dmg_name)
                             self.apply_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct, target_name=examined_tar)
@@ -2435,7 +2435,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                         self.on_enemy_death_effects(dmgs_that_caused_death=dmgs_occurring_at_given_time)
 
                     # Deletes the event after it's applied.
-                    del self.event_times[self.current_time]
+                    del self.events[self.current_time]
 
                     # If new events are added it exits and checks them all over again.
                     if self.intermediate_events_changed:
@@ -2734,7 +2734,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             # Above process will repeat until all events have been marked as applied.
             self.intermediate_events_changed = False
 
-            initial_events = sorted(self.event_times)
+            initial_events = sorted(self.events)
 
             for event in initial_events:
 
@@ -2744,14 +2744,14 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                 self.remove_expired_buffs_and_refresh_bonuses()
 
                 # Applies all dmg effects to alive targets.
-                for examined_tar in self.event_times[self.current_time]:
+                for examined_tar in self.events[self.current_time]:
                     if examined_tar == 'player':
                         # (if all enemies are dead, focuses on last enemy)
                         self.current_enemy = self.first_alive_enemy() or self.enemy_target_names[-1]
                     else:
                         self.current_enemy = examined_tar
 
-                    for dmg_name in self.event_times[self.current_time][examined_tar]:
+                    for dmg_name in self.events[self.current_time][examined_tar]:
                         dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
                         self.apply_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct, target_name=examined_tar)
 
@@ -2762,7 +2762,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                                                          dmg_dct=dmg_dct,
                                                          only_temporary=True)
                 # Deletes the event after it's applied.
-                del self.event_times[self.current_time]
+                del self.events[self.current_time]
 
         # DEATHS
         for tar_name in self.enemy_target_names:
