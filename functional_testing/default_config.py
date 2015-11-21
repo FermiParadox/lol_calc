@@ -23,7 +23,7 @@ ALL_DATA = dict(
     max_combat_time=10,
 
     rotation_lst=[],
-    chosen_items_dct={'player': ['blade_of_the_ruined_king', 'trinity_force', 'youmuus_ghostblade', 'sunfire_cape',
+    chosen_items_dct={'player': ['blade_of_the_ruined_king', 'trinity_force', 'youmuus_ghostblade', #'sunfire_cape',
                                  'guinsoos_rageblade', 'the_black_cleaver', 'last_whisper'],
                       'enemy_1': ['blade_of_the_ruined_king', 'chain_vest', 'chain_vest'],
                       'enemy_2': ['dorans_shield', 'blade_of_the_ruined_king'],

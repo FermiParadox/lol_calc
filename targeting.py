@@ -17,11 +17,11 @@ class Targeting(object):
 
         self.current_enemy = 'enemy_1'
 
+    def is_dead(self, tar_name):
+        return 'dead_buff' in self.active_buffs[tar_name]
+
     def is_alive(self, tar_name):
-        if 'dead_buff' in self.active_buffs[tar_name]:
-            return False
-        else:
-            return True
+        return not self.is_dead(tar_name=tar_name)
 
     def first_alive_enemy(self):
         """
@@ -114,3 +114,18 @@ class Targeting(object):
             return tar_type
         else:
             return self.first_alive_enemy()
+
+    def set_current_enemy(self, examined_tar):
+        """
+        Sets current_enemy based on examined target.
+        If examined target is 'player' it sets it to first alive enemy.
+        If no enemy is alive, it sets it to last (dead) enemy.
+
+        :param examined_tar:
+        :return:
+        """
+        if examined_tar == 'player':
+            # (if all enemies are dead, focuses on last enemy)
+            self.current_enemy = self.first_alive_enemy() or self.enemy_target_names[-1]
+        else:
+            self.current_enemy = examined_tar

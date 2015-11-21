@@ -535,9 +535,13 @@ class Counters(BuffsGeneral):
         self.combat_results['player']['heals'] = tot_regen_val
 
     def _last_action_end(self):
+        """
+        Returns the time the last action's cast (or channel) ended. If no action has been casted, returns 0.
 
+        :return: (float)
+        """
         if not self.actions_dct:
-            return 0
+            return 0.
         else:
             last_action_time = max(self.actions_dct)
             last_action_dct = self.actions_dct[last_action_time]
@@ -609,10 +613,8 @@ class Counters(BuffsGeneral):
 
         Stats must be stored after application of passive effects.
 
-        Args:
-            stats_category_name: (str) 'pre_combat_stats', 'post_combat_stats'
-        Returns:
-            (None)
+        :param stats_category_name: (str) 'pre_combat_stats', 'post_combat_stats'
+        :return: (None)
         """
 
         for tar_name in self.all_target_names:
@@ -1211,12 +1213,11 @@ class DeathAndRegen(DmgApplication):
         # WARNING: do NOT change name (other methods use this name for checks)
         return _DEAD_BUFF_DCT_BASE
 
-    def apply_death(self, tar_name):
+    def apply_death_and_bool(self, tar_name):
         """
         If target is dead, he is marked in buffs.
 
-        Returns:
-            (None)
+        :return: (bool)
         """
 
         # Checks if target has already died (earlier).
@@ -1226,6 +1227,22 @@ class DeathAndRegen(DmgApplication):
 
                 # Adds 'dead_buff'.
                 self.add_buff(buff_name='dead_buff', tar_name=tar_name)
+
+                return True
+
+        return False
+
+    def _apply_death_to_all_viable_enemies(self):
+        """
+        Applies death to all viable enemies, and returns whether it applied at least one death or not.
+        :return: (bool)
+        """
+        applied_death = False
+        for enemy_name in self.enemy_target_names:
+            if self.apply_death_and_bool(tar_name=enemy_name):
+                applied_death = True
+
+        return applied_death
 
     def enemy_hp5_dmg(self):
         return self.ENEMY_HP5_DMG_DCT_BASE

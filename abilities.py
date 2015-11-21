@@ -67,25 +67,12 @@ class EventsGeneral(buffs.DeathAndRegen):
                                      initial_enemies_total_stats=initial_enemies_total_stats,
                                      _reversed_combat_mode=_reversed_combat_mode)
 
-    def add_event_to_single_tar(self, target_name, effect_name, start_time):
-        """
-        Applies a dmg event to the first target.
+    def add_single_event(self, event_time, event_name, event_type, event_target):
+        self.events.setdefault(event_time, [])
 
-        :return: (None)
-        """
-
-        # If the event's time doesn't exist it creates it.
-        if start_time not in self.events:
-            self.events.update({start_time: {target_name: [effect_name]}})
-
-        else:
-            # If the time exists in the dictionary,
-            # checks if the target is inside the time.
-            if target_name in self.events[start_time]:
-                self.events[start_time][target_name].append(effect_name)
-            else:
-                # If not, it adds the target as well.
-                self.events[start_time].update({target_name: [effect_name]})
+        self.events[event_time].append({'event_name': event_name,
+                                        'event_type': event_type,
+                                        'target_name': event_target})
 
     def add_regenerations(self):
         """
@@ -110,22 +97,6 @@ class EventsGeneral(buffs.DeathAndRegen):
         else:
             raise NotImplementedError('Other resources need to be added as well.')
 
-    def add_aoe_event(self, effect_name, start_time, tar_name):
-        """
-        Adds an aoe dmg event to affected target.
-
-        :return: (None)
-        """
-
-        self.targets_already_hit += 1
-
-        # ADD EVENT
-        # Checks if the target is inside the time.
-        if tar_name in self.events[start_time]:
-            self.events[start_time][tar_name].append(effect_name)
-        else:
-            self.events[start_time].update({tar_name: [effect_name]})
-
     def add_events(self, effect_name, start_time, tar_name):
         """
         Adds a dmg event (e.g. Brand W) to all affected targets.
@@ -145,13 +116,13 @@ class EventsGeneral(buffs.DeathAndRegen):
 
         if dmg_cat != 'ring_dmg':
             # Adds event to first target.
-            self.add_event_to_single_tar(target_name=tar_name, effect_name=effect_name, start_time=start_time)
-            self.targets_already_hit = 1
+            self.add_single_event(event_time=start_time, event_name=effect_name, event_type='dmg', event_target=tar_name)
+            targets_already_hit = 1
         else:
-            self.targets_already_hit = 0
+            targets_already_hit = 0
 
         # AOE DMG
-        # (Aoe is always applied to enemies.)
+        # (Aoe can only be applied to enemies.)
 
         # No aoe will be applied by dmgs originating from reverse combat mode.
         if self._reversed_combat_mode:
@@ -170,14 +141,15 @@ class EventsGeneral(buffs.DeathAndRegen):
 
         # While the last target number is less than max targets, adds event.
         prev_enemy = self.current_enemy
-        while self.targets_already_hit < max_tars_val:
+        while targets_already_hit < max_tars_val:
 
             next_enemy = self.next_alive_enemy(current_tar=prev_enemy)
             if next_enemy is None:
                 break
 
             self.current_enemy = next_enemy
-            self.add_aoe_event(effect_name=effect_name, start_time=start_time, tar_name=next_enemy)
+            self.add_single_event(event_time=start_time, event_name=effect_name, event_type='dmg', event_target=next_enemy)
+            targets_already_hit += 1
 
             prev_enemy = next_enemy
 
@@ -206,9 +178,10 @@ class EventsGeneral(buffs.DeathAndRegen):
             if (buff_ending_time == 'permanent') or (buff_ending_time > self.current_time):
 
                 start_time = self.current_time + buff_dct['dot']['period']
-                self.add_event_to_single_tar(target_name=dmg_owner_name,
-                                             effect_name=dmg_name,
-                                             start_time=start_time)
+                self.add_single_event(event_time=start_time,
+                                      event_name=dmg_name,
+                                      event_type='dmg',
+                                      event_target=dmg_owner_name)
 
                 self.intermediate_events_changed = True
 
@@ -1439,6 +1412,7 @@ SUMMONER_SPELLS_DMGS_NAMES = palette.x_to_x_dct(seq=SUMMONER_SPELLS_DMGS_NAMES_T
 class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABCMeta):
 
     AA_COOLDOWN = 0.4   # TODO: replace functionality with 'wind_up'
+    ACTION_DELAY = 0.1
 
     def __init__(self,
                  rotation_lst,
@@ -1462,6 +1436,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         self.selected_summoner_spells = selected_summoner_spells
         self.reversed_precombat_player_stats = {}
         self.reversed_precombat_enemy_buffs = {}
+        self._applied_dmgs = {}
 
         runes.RunesFinal.__init__(self,
                                   player_lvl=champion_lvls_dct['player'],
@@ -1660,7 +1635,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             if not buff_dct:
                 buff_dct = self.request_buff(buff_name=buff_name)
 
-            self.change_cd_before_buff_removal(buff_dct=buff_dct)
+            self.change_action_cd_before_buff_removal(buff_dct=buff_dct)
 
         # REMOVAL
         del self.active_buffs[tar_name][buff_name]
@@ -1865,6 +1840,53 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         return cast_start
 
+    def add_action_cast_end_in_events(self, event_time, event_name):
+        self.add_single_event(event_time=event_time,
+                              event_name=event_name,
+                              event_type='action_cast_end',
+                              event_target='player')
+
+    def add_action_channel_end_in_events(self, event_time, event_name):
+        self.add_single_event(event_time=event_time,
+                              event_name=event_name,
+                              event_type='action_channel_end',
+                              event_target='player')
+
+    def add_buff_end_in_events(self, buff_end_time, buff_name, tar_name):
+        self.add_single_event(event_time=buff_end_time,
+                              event_name=buff_name,
+                              event_type='buff_end',
+                              event_target=tar_name)
+
+    def old_buff_end_in_events(self, buff_name, tar_name):
+        """
+        Searches events for given buff's end time.
+
+        :return: (float) Buff end time.
+        """
+
+        for event_time in self.events:
+            events_lst = self.events[event_time]
+
+            for event_dct in events_lst:
+                if (event_dct['event_name'] == buff_name) and (event_dct['target_name'] == tar_name):
+                    return event_time
+
+    def change_buff_duration_in_events(self, new_end_time, buff_name, tar_name):
+        """
+        Detects and removes old buff end event, and creates a new event.
+        """
+
+        # DEL OLD EVENT
+        list_with_old_buff_end = self.events[self.old_buff_end_in_events(buff_name=buff_name, tar_name=tar_name)]
+
+        for event_dct_num, event_dct in enumerate(list_with_old_buff_end):
+            if (event_dct['event_name'] == buff_name) and (event_dct['target_name'] == tar_name):
+                del list_with_old_buff_end[event_dct_num]
+
+        # INSERT NEW EVENT
+        self.add_buff_end_in_events(buff_end_time=new_end_time, buff_name=buff_name, tar_name=tar_name)
+
     def _add_new_spell_or_item_action(self, action_name, action_attrs_dct, cast_start, str_spell_or_item):
         """
         Inserts new action when action is spell or item active.
@@ -1899,7 +1921,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         if channel_val:
             channel_end_time = self.actions_dct[cast_start]['cast_end'] + channel_val
 
-            self.actions_dct[cast_start].update({"channel_end": channel_end_time})
+            self.actions_dct[cast_start].update({'channel_end': channel_end_time})
 
         # Checks if ability resets AA's cd_end, and applies it.
         self.check_and_reset_aa_cd(action_attrs_dct=action_attrs_dct)
@@ -1947,6 +1969,11 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             self._add_new_spell_or_item_action(action_name=action_name, action_attrs_dct=item_attrs_dct,
                                                cast_start=cast_start, str_spell_or_item='item')
 
+        elif action_name == 'action_delayer':
+            self.add_action_cast_end_in_events(event_time=self.current_time + self.ACTION_DELAY, event_name=action_name)
+            # (rest of method is redundant since only cast end in events is needed as a marker to retry action cast)
+            return
+
         # SUMMONER SPELLS
         else:
             # (cast_end is the same as cast_start)
@@ -1955,6 +1982,16 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                 cast_end=cast_start,
                 cd_end=300,
                 action_name=action_name)})
+
+        # MODIFIES EVENTS
+        action_dct = self.actions_dct[cast_start]
+
+        # (if it is channeled, cast_end is ignored,
+        # since only the time after which the action is castable again is needed in events)
+        if 'channel_end' in action_dct:
+            self.add_action_channel_end_in_events(event_time=action_dct['channel_end'], event_name=action_name)
+        else:
+            self.add_action_cast_end_in_events(event_time=action_dct['cast_end'], event_name=action_name)
 
     def _add_new_buff(self, buff_name, buff_dct, tar_name, initial_stacks_increment=1):
         """
@@ -1977,9 +2014,13 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         # If non permanent buff.
         if buff_dct['duration'] != 'permanent':
 
+            buff_end = self.current_time + self.buff_duration(buff_dct=buff_dct)
             # ..creates and inserts its duration.
             buff_dct_in_active_buffs.update(dict(
-                ending_time=self.current_time + self.buff_duration(buff_dct=buff_dct)))
+                ending_time=buff_end))
+
+            # (non permanent buff's end is also noted in events)
+            self.add_buff_end_in_events(buff_end_time=buff_end, buff_name=buff_name, tar_name=tar_name)
 
         else:
             # ..otherwise sets its duration to 'permanent'.
@@ -2003,15 +2044,12 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                 buff_dct_in_active_buffs.update({'shield': {'shield_type': shield_type,
                                                             'shield_value': initial_shield_value}})
 
-    def _add_already_active_buff(self, buff_name, buff_dct, tar_name, stack_increment=1):
+    def _refresh_already_active_buff(self, buff_name, buff_dct, tar_name, stack_increment=1):
         """
         Changes an existing buff in active_buffs dictionary,
         by refreshing its duration and increasing its stacks.
 
-        Modifies:
-            active_buffs
-        Returns:
-            (None)
+        :return: (None)
         """
 
         tar_buff_dct_in_act_buffs = self.active_buffs[tar_name][buff_name]
@@ -2021,6 +2059,10 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         if buff_dct['duration'] != 'permanent':
 
             tar_buff_dct_in_act_buffs['ending_time'] = self.current_time + buff_dct['duration']
+
+            self.change_buff_duration_in_events(new_end_time=tar_buff_dct_in_act_buffs['ending_time'],
+                                                buff_name=buff_name,
+                                                tar_name=tar_name)
 
         # STACKS
         # If max_stacks have not been reached..
@@ -2059,10 +2101,10 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         # EXISTING BUFF
         else:
-            self._add_already_active_buff(buff_name=buff_name,
-                                          buff_dct=buff_dct,
-                                          tar_name=tar_name,
-                                          stack_increment=stack_increment)
+            self._refresh_already_active_buff(buff_name=buff_name,
+                                              buff_dct=buff_dct,
+                                              tar_name=tar_name,
+                                              stack_increment=stack_increment)
 
     def add_buff(self, buff_name, tar_name, stack_increment=1, initial_stacks_increment=1):
         """
@@ -2083,7 +2125,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         self.targets_already_buffed = 1
 
         # AOE BUFF
-        # (Aoe is always applied to enemies.)
+        # (Aoe can only be applied to enemies.)
 
         # No aoe will be applied by dmgs originating from reverse combat mode.
         if self._reversed_combat_mode:
@@ -2116,7 +2158,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
             prev_enemy = next_enemy
 
-    def change_cd_before_buff_removal(self, buff_dct):
+    def change_action_cd_before_buff_removal(self, buff_dct):
         """
         Refreshes the cd expiration of corresponding action if given buff prohibits its cd.
 
@@ -2146,10 +2188,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         """
         Removes all expired buffs.
 
-        Modifies:
-            active_buffs
-        Return:
-            (None)
+        :return: (None)
         """
 
         for tar_name in self.all_target_names:
@@ -2212,6 +2251,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                     tar_type = removed_buff_dct['target_type']
                     tar_name = self.player_or_current_enemy(tar_type=tar_type)
                     self.remove_buff(tar_name=tar_name, buff_name=buff_removed_on_hit, buff_dct=removed_buff_dct)
+                    self.remove_event(tar_name=tar_name, event_name=buff_removed_on_hit)
 
                 # MODIFIED CDS.
                 cds_modifications_dct = on_hit_or_being_hit_dct['cds_modified']
@@ -2310,6 +2350,13 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
                     self._apply_on_x_effects_of_single_buff(buff_dct=buff_dct, x_eff_name='on_enemy_death')
 
+    def apply_deaths_and_on_death_effects(self, examined_time):
+        if examined_time in self._applied_dmgs:
+            dmgs_that_caused_death = self._applied_dmgs[examined_time]
+
+            if self._apply_death_to_all_viable_enemies():
+                self.on_enemy_death_effects(dmgs_that_caused_death=dmgs_that_caused_death)
+
     # -----------------------------------------------------
     def apply_ability_or_item_effects(self, eff_dct):
         """
@@ -2374,6 +2421,15 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                 eff_dct = self.items_effects(action_name)
 
             self.apply_ability_or_item_effects(eff_dct=eff_dct)
+
+    def remove_event(self, tar_name, event_name):
+        for event_time in self.events:
+
+            events_lst = self.events[event_time]
+
+            for dct_num, event_dct in enumerate(events_lst):
+                if (event_dct['event_name'] == event_name) and (event_dct['target_name'] == tar_name):
+                    del events_lst[dct_num]
 
     def apply_events_before_given_time(self, given_time):
         """
@@ -2452,62 +2508,10 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                     return
 
     def apply_single_action(self, new_action):
-        """
-        Applies a single new action, and events in between,
-        until everyone is dead or the max_time is exceeded.
-
-        :param new_action: (str)
-        :return: (bool)
-        """
-
-        self.remove_expired_buffs_and_refresh_bonuses()
-
         self.add_new_action(new_action)
 
         # (movement distance)
         self.between_action_walking()
-
-        self.apply_events_before_given_time(given_time=self._last_action_end())
-
-        # If everyone died, stops applying actions as well
-        # (and removes last action, otherwise it would falsely appear as if last action was fully applied)
-        if self.all_enemies_dead():
-            del self.actions_dct[self._last_action_cast_start()]
-            return
-
-        self.current_enemy = self.first_alive_enemy()
-
-        # Sets current_time to current action's cast end.
-        last_action_end = self._last_action_end()
-        self.current_time = last_action_end
-
-        # If max time exceeded, exits loop.
-        if self.max_combat_time:
-            if self.current_time > self.max_combat_time:
-                return
-
-        # After previous events are applied, applies action effects.
-        self.apply_action_effects(action_name=self.actions_dct[max(self.actions_dct)]['action_name'])
-
-    def _apply_all_actions_by_rotation(self):
-        """
-        Applies all actions when a rotation (instead of priorities) is used.
-
-        :return: (None)
-        """
-
-        for new_action in self.rotation_lst:
-
-            # COST REQUIREMENTS
-            # (more costly to run this before cd check)
-            if not self.cost_sufficiency(action_name=new_action):
-                # If the cost is too high, action is skipped.
-                continue
-
-            self.apply_single_action(new_action=new_action)
-
-            if self.all_dead_or_max_time_exceeded():
-                return
 
     def _actions_priorities_triggers_state(self, triggers_dct):
         """
@@ -2662,111 +2666,53 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         return new_priorities_lst
 
-    def _apply_all_actions_by_priority(self):
+    def rotation_followed(self):
+        rot = []
+
+        for action_time in sorted(self.actions_dct):
+            action_name = self.actions_dct[action_time]['action_name']
+            rot.append(action_name)
+
+        return rot
+
+    def _next_action_name_by_priority(self):
         """
-        Applies all actions when no rotation is given, meaning priorities are to be used.
+        Determines next action based on actions' priorities.
 
-        :return: (None)
-        """
-
-        while self.current_time <= self.max_combat_time:
-            # After each action application, priority is recalculated.
-            current_priority_sequence = self._action_priorities_after_effects()
-
-            # Tries all actions until it manages to apply one (then recalculates priority).
-            for action_name in current_priority_sequence:
-
-                # CD
-                if self._action_cd_end(action_name=action_name) > self.current_time:
-                    continue
-
-                # COST REQUIREMENTS
-                # (more costly to run this before cd check)
-                if not self.cost_sufficiency(action_name=action_name):
-                    # If the cost is too high, action is skipped.
-                    continue
-
-                self.apply_single_action(new_action=action_name)
-
-                if self.all_dead_or_max_time_exceeded():
-                    return
-
-            # If no action was available, adds a set amount of time before retrying.
-            else:
-                self.current_time += 0.1
-                self.apply_events_before_given_time(given_time=self.current_time)
-
-    def _apply_all_actions(self):
-        """
-        Applies all actions, and events in between,
-        until everyone is dead or the max_time is exceeded.
-
-        NOTE: To be overridden by a method that chooses "preferred" action.
-
-        Returns:
-            (None)
+        :return:
         """
 
+        # After each action application, priority is recalculated.
+        current_priority_sequence = self._action_priorities_after_effects()
+
+        # Tries all actions until it manages to apply one (then recalculates priority).
+        for action_name in current_priority_sequence:
+
+            # CD
+            if self._action_cd_end(action_name=action_name) > self.current_time:
+                continue
+
+            # COST REQUIREMENTS
+            # (more costly to run this before cd check)
+            if not self.cost_sufficiency(action_name=action_name):
+                # If the cost is too high, action is skipped.
+                continue
+
+            return action_name
+
+        # No action was available.
+        return 'action_delayer'
+
+    def next_action_name(self):
         if self.rotation_lst:
-            self._apply_all_actions_by_rotation()
+            rot_followed = self.rotation_followed()
+            rot_len = len(rot_followed)
+
+            # Returns the next action in the rotation list.
+            return self.rotation_lst[rot_len]
+
         else:
-            self._apply_all_actions_by_priority()
-
-        self.combat_duration = self._last_action_end()
-
-    def apply_events_after_actions(self):
-        """
-        Applies events after all actions have finished.
-
-        Non permanent dots are refreshed and their events fully applied.
-        Applies death to each viable target.
-
-        :return: (None)
-        """
-
-        self.intermediate_events_changed = True
-
-        while self.intermediate_events_changed:
-
-            # If for loop ends with new events being added,
-            # then 'self.intermediate_events_changed' will be set to true,
-            # and the for loop will repeat.
-            # Above process will repeat until all events have been marked as applied.
-            self.intermediate_events_changed = False
-
-            initial_events = sorted(self.events)
-
-            for event in initial_events:
-
-                # (must change to ensure buffs are checked)
-                self.current_time = event
-
-                self.remove_expired_buffs_and_refresh_bonuses()
-
-                # Applies all dmg effects to alive targets.
-                for examined_tar in self.events[self.current_time]:
-                    if examined_tar == 'player':
-                        # (if all enemies are dead, focuses on last enemy)
-                        self.current_enemy = self.first_alive_enemy() or self.enemy_target_names[-1]
-                    else:
-                        self.current_enemy = examined_tar
-
-                    for dmg_name in self.events[self.current_time][examined_tar]:
-                        dmg_dct = self.req_dmg_dct_func(dmg_name=dmg_name)
-                        self.apply_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct, target_name=examined_tar)
-
-                        # Extends dots.
-                        if self.is_alive(tar_name=examined_tar):
-                            self.add_next_periodic_event(tar_name=examined_tar,
-                                                         dmg_name=dmg_name,
-                                                         dmg_dct=dmg_dct,
-                                                         only_temporary=True)
-                # Deletes the event after it's applied.
-                del self.events[self.current_time]
-
-        # DEATHS
-        for tar_name in self.enemy_target_names:
-            self.apply_death(tar_name=tar_name)
+            return self._next_action_name_by_priority()
 
     def _apply_runes_static_buff(self):
         if self.selected_runes:
@@ -2825,12 +2771,110 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         self.note_pre_combat_stats_in_results()
         self.note_precombat_active_buffs()
 
-    def _main_combat(self):
-        # Applies actions or events based on which occurs first.
-        self._apply_all_actions()
+    def add_next_action(self):
 
-        # Applies events after all actions have finished.
-        self.apply_events_after_actions()
+        self.add_new_action(action_name=self.next_action_name())
+
+    def apply_single_event(self, event_dct, only_temporary_dots):
+        event_type = event_dct['event_type']
+        event_name = event_dct['event_name']
+        event_target = event_dct['target_name']
+
+        self.set_current_enemy(examined_tar=event_target)
+
+        if event_type == 'dmg':
+            dmg_dct = self.request_dmg(dmg_name=event_name)
+            self.apply_dmg_or_heal(dmg_name=event_name, dmg_dct=dmg_dct, target_name=event_target)
+
+            self._applied_dmgs.setdefault(self.current_time, set())
+            self._applied_dmgs[self.current_time].add(event_name)
+
+            # (periodic events are refreshed only on alive targets;
+            # player periodic events are always refreshed to ensure enemies' dps is fully applied)
+            if self.is_alive(tar_name=event_target) or event_target == 'player':
+                self.add_next_periodic_event(tar_name=event_target,
+                                             dmg_name=event_name,
+                                             dmg_dct=dmg_dct,
+                                             only_temporary=only_temporary_dots)
+
+        elif event_type == 'buff_end':
+            self.remove_buff(tar_name=event_target, buff_name=event_name)
+
+        elif event_type == 'action_cast_end':
+            if event_name != 'action_delayer':
+                self.apply_action_effects(action_name=event_name)
+
+            self.add_next_action()
+
+        elif event_type == 'action_channel_end':
+            self.add_next_action()
+
+        else:
+            raise palette.UnexpectedValueError()
+
+    def apply_events_on_given_time(self, examined_time, only_temporary_dots=False):
+        """
+        Applies all events that occur on given time.
+
+        :param examined_time: (float)
+        :param only_temporary_dots: (bool)
+        :return: (None)
+        """
+        events_lst_on_examined_time = self.events[examined_time]
+
+        while events_lst_on_examined_time:
+            self.refresh_stats_bonuses()
+
+            event_dct = events_lst_on_examined_time.pop(0)
+            self.apply_single_event(event_dct=event_dct, only_temporary_dots=only_temporary_dots)
+
+    def all_actions_in_rotation_applied(self):
+        """
+        Checks if all actions in given rotation have been applied.
+        If no rotation is given, returns False.
+
+        :return: (bool)
+        """
+        if self.rotation_lst:
+            return self.rotation_lst == self.rotation_followed()
+        else:
+            return False
+
+    def determine_combat_duration(self):
+        """
+        Checks and stores how long the combat lasted. Combat end is defined as "when the last action's cast ended".
+
+        :return: (None)
+        """
+
+        self.combat_duration = self._last_action_end()
+
+    def _main_combat(self):
+
+        # Inserts first action.
+        self.add_next_action()
+
+        while self.events:
+            self.current_time = min(self.events)
+
+            self.apply_events_on_given_time(examined_time=self.current_time)
+
+            # (Deaths are applied after events at given time are fully applied,
+            # so that dps is estimated more accurately.)
+            self.apply_deaths_and_on_death_effects(examined_time=self.current_time)
+
+            del self.events[self.current_time]
+
+            # After all actions are applied, permanent dots are not applied,
+            # so that the combat ends.
+            if self.all_actions_in_rotation_applied():
+                self.apply_events_on_given_time(examined_time=self.current_time, only_temporary_dots=True)
+                break
+
+            if self.all_dead_or_max_time_exceeded():
+                break
+
+        self.determine_combat_duration()
 
     def _run_reversed_combat(self):
         """
@@ -2879,15 +2923,6 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         else:
             self._run_normal_combat()
             return
-
-    def rotation_followed(self):
-        rot = []
-
-        for action_time in sorted(self.actions_dct):
-            action_name = self.actions_dct[action_time]['action_name']
-            rot.append(action_name)
-
-        return rot
 
 
 class SpecialItems(Actions):

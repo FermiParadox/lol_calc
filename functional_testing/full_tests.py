@@ -441,7 +441,7 @@ if __name__ == '__main__':
 
     # RUN DURATION
     if 1:
-        test_run_time(repetitions=100, sort_by='tottime', count_of_shown_functions=0)
+        test_run_time(repetitions=100, sort_by='tottime', count_of_shown_functions=20)
 
     # CONSISTENCY
     # Different instances
