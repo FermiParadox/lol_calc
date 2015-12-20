@@ -1,5 +1,6 @@
 import copy
 import palette
+import functools
 
 from champions import app_champions_base_stats
 
@@ -198,8 +199,6 @@ class StatCalculation(object):
         self.total_enemies = len(self.enemy_target_names)
 
         self.initial_active_buffs = initial_active_buffs    # Can contain 0 to all targets and their buffs.
-        self.bonuses_dct = {}   # e.g. {target: {stat: {stat type: {buff name: stat val}, }, }, }
-
         self.initial_current_stats = initial_current_stats  # Can contain 0 to all targets and their stats.
 
         self.active_buffs = {}
@@ -214,7 +213,6 @@ class StatCalculation(object):
 
         self.current_stats = {}
 
-        self.place_tars_and_empty_dct_in_dct(self.bonuses_dct)
         self.set_active_buffs()
         self.set_player_current_resource_name()
 
@@ -350,295 +348,9 @@ class StatCalculation(object):
 
         return total_stat_val - base_stat_value
 
-    def _standard_stat(self, requested_stat, tar_name):
+    def _bonus_value_for_given_type(self, stat_name, bonus_type, buff_dct, tar_name, buff_name, buff_stats_dct):
         """
-        Calculates the value of a stat after applying all its bonuses to its base value found in base_stats_dct.
-
-        Not to be used for special stats like att_speed, or ad.
-        Not to be used for filtered stats.
-
-        If stat doesnt exist it returns 0 since some stats (e.g. lifesteal)
-        might not always be present in base_stats_dct.
-
-        :param requested_stat: (str)
-        :param tar_name: (str)
-        :return: (float) unfiltered stat value after bonuses
-        """
-
-        if requested_stat not in ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE:
-            raise NotImplementedError(requested_stat)
-
-        # BASE VALUE PLUS BASE PER LVL
-        value = self._base_stat(stat_name=requested_stat, tar_name=tar_name)
-
-        tar_bonuses = self.bonuses_dct[tar_name]
-        if requested_stat in tar_bonuses:
-
-            tar_bonuses_stat_dct = tar_bonuses[requested_stat]
-
-            # .. if there are additive bonuses..
-            if 'additive' in tar_bonuses_stat_dct:
-                # .. adds each bonus.
-                for bonus_name in tar_bonuses_stat_dct['additive']:
-                    value += tar_bonuses_stat_dct['additive'][bonus_name]
-
-            # if there are percent bonuses..
-            if 'percent' in tar_bonuses_stat_dct:
-                multiplication_mod = 1
-                # .. adds each bonus modifier..
-                for bonus_name in tar_bonuses_stat_dct['percent']:
-                    multiplication_mod += tar_bonuses_stat_dct['percent'][bonus_name]
-
-                # .. and applies the modifier to the value.
-                value *= multiplication_mod
-
-            if 'multiplicative' in tar_bonuses_stat_dct:
-                multiplication_mod = 1
-                # .. adds each bonus modifier..
-                for bonus_name in tar_bonuses_stat_dct['multiplicative']:
-                    multiplication_mod *= 1 + tar_bonuses_stat_dct['multiplicative'][bonus_name]
-
-                # .. and applies the modifier to the value.
-                value *= multiplication_mod
-
-        return value
-
-    def base_ad(self, tar_name):
-        """
-        Calculates the value of base ad.
-
-        Base ad is the champion's ad at lvl 1 without any bonuses,
-        plus the per lvl bonus.
-
-        :return: (float)
-        """
-
-        return self._base_stat(stat_name='ad', tar_name=tar_name)
-
-    def move_speed_reduction(self, tar_name):
-        """
-        Calculates final move speed reduction.
-
-        Highest magnitude slow reduction is applied first.
-
-
-        :param tar_name:
-        :return: (float)
-        """
-
-        if tar_name in self.bonuses_dct:
-            tar_bonuses = self.bonuses_dct[tar_name]
-
-            if 'move_speed_reduction' in tar_bonuses:
-                # (they are always multiplicative)
-                move_speed_red_bonuses = tar_bonuses['move_speed_reduction']['multiplicative']
-
-                return min(move_speed_red_bonuses.values())
-
-        # If no reductions are found.
-        return 0
-
-    def att_speed(self, tar_name):
-        """
-        Calculates final value of att_speed, after all bonuses and filters have been applied.
-
-        Bonuses to att_speed are always percent, including the '_per_lvl' bonus.
-        Therefor they are applied simultaneously (to preserve base value until calculation).
-        Unlike other stats, _per_lvl bonus is applied at lvl 2.
-
-        Filter applies att_speed's hard cap.
-
-        Each reduction of att_speed is applied after all other bonuses have been applied,
-        by multiplying the pre-final value with each reduction.
-
-        :return: (float)
-        """
-
-        value = self.basic_stats_dct[tar_name]['base_att_speed']
-
-        # _PER_LVL
-        # Adds _per_lvl bonus of att_speed to the modifier.
-        # TODO change 50% in base stats to 0.5 and adapt below code
-        # (champion att speed is in the form of 50%)
-        multiplication_mod = 100
-        multiplication_mod += self.basic_stats_dct[tar_name]['att_speed_per_lvl'] * (self.champion_lvls_dct[tar_name]-1)
-
-        # ITEM AND BUFF BONUSES
-        # Adds item and buff bonuses of att_speed to the modifier.
-        tar_bonuses = self.bonuses_dct[tar_name]
-        if 'att_speed' in tar_bonuses:       # 'percent..' not checked since it can only be that.
-            tar_percent_att_speed_bonuses = tar_bonuses['att_speed']['percent']
-            for bonus_name in tar_percent_att_speed_bonuses:
-                # (att speed in non champion base stats is in the form 0.02)
-                multiplication_mod += tar_percent_att_speed_bonuses[bonus_name] * 100
-
-        value *= multiplication_mod / 100
-
-        # REDUCTIONS
-        if 'att_speed_reduction' in tar_bonuses:
-            tar_percent_att_speed_reduction_bonuses = tar_bonuses['att_speed_reduction']['percent']
-            for bonus_name in tar_percent_att_speed_reduction_bonuses:
-                value *= 1 - tar_percent_att_speed_reduction_bonuses[bonus_name]
-
-        return value
-
-    def slow_reduction(self, tar_name):
-
-        tar_bonuses = self.bonuses_dct[tar_name]
-        slow_mod = 1
-        if 'slow_reduction' in tar_bonuses:
-            for slow_red_bonus in tar_bonuses['slow_reduction']['multiplicative']:
-                slow_mod *= 1 - slow_red_bonus
-
-        return 1-slow_mod
-
-    @staticmethod
-    def move_speed_after_soft_caps(unfiltered_stat):
-        """
-        Applies threshold on move_speed.
-
-        :param unfiltered_stat: (float)
-        :return: (float) final stat value
-
-        >>> StatFilters().move_speed_after_soft_caps(300)
-        300
-
-        """
-        # TODO avoid copyrighted formula
-        if (415 < unfiltered_stat) and (unfiltered_stat < 490):
-            return unfiltered_stat*0.8 + 83
-        elif unfiltered_stat > 490:
-            return unfiltered_stat*0.5 + 230
-        elif unfiltered_stat < 220:
-            return unfiltered_stat*0.5 + 110
-        else:
-            return unfiltered_stat
-
-    def move_speed(self, tar_name):
-        """
-        Calculates final value of movement speed, after all bonuses and soft caps are applied.
-
-        -Additive bonuses are applied.
-        -Multiplicative bonuses are applied by a single modifier for all bonuses.
-        -Strongest speed reduction effected is fully applied, while the rest are ignored
-
-        :return: (float)
-        """
-
-        # BASE VALUE AND BONUSES
-        value = self._standard_stat(requested_stat='move_speed',
-                                   tar_name=tar_name)
-
-        # SLOW REDUCTIONS
-        # Calculates the modifier that dampens slow effects (e.g. boots of swiftness)
-        slow_mod = 1 - self.slow_reduction(tar_name=tar_name)
-
-        # SPEED REDUCTIONS
-        value *= 1 - (slow_mod * self.move_speed_reduction(tar_name=tar_name))
-
-        return self.move_speed_after_soft_caps(unfiltered_stat=value)
-
-    def innate_special_lvl(self, values_tpl):
-        """
-        Returns the innate "lvl" of given tuple, which may vary depending on the length of it.
-
-        For example a tuple with 6 values would divide champion lvl by 6,
-        and each value in the tuple would correspond to 3 consecutive lvls.
-
-        :param values_tpl: (tuple)
-        :return: (int) Index of tuple
-        """
-
-        divisor = 18 // len(values_tpl)
-
-        return (self.player_lvl - 1) // divisor + 1
-
-    def champion_lvl(self, tar_name):
-        return self.champion_lvls_dct[tar_name]
-
-    def _percent_reductions_base(self, tar_name, stat_name):
-        """
-        Used for "percent_"-named stats that are applied multiplicatively.
-        """
-        tar_bonuses = self.bonuses_dct[tar_name]
-
-        val = 1
-
-        if stat_name in tar_bonuses:
-            stat_bonuses = tar_bonuses[stat_name]['additive']
-
-            for buff_name in stat_bonuses:
-                val *= 1 - stat_bonuses[buff_name]
-
-        return 1-val
-
-
-class StatRequest(StatCalculation):
-
-    def __init__(self,
-                 champion_lvls_dct,
-                 selected_champions_dct,
-                 req_buff_dct_func,
-                 initial_active_buffs,
-                 initial_current_stats,
-                 initial_enemies_total_stats,
-                 _reversed_combat_mode):
-
-        self.req_buff_dct_func = req_buff_dct_func
-        self._reversed_combat_mode = _reversed_combat_mode
-
-        StatCalculation.__init__(self,
-                                 champion_lvls_dct=champion_lvls_dct,
-                                 selected_champions_dct=selected_champions_dct,
-                                 initial_active_buffs=initial_active_buffs,
-                                 initial_current_stats=initial_current_stats,
-                                 initial_enemies_total_stats=initial_enemies_total_stats)
-
-    SPECIAL_STATS_SET = SPECIAL_STATS_SET
-
-    def stats_dependencies(self):
-        raise NotImplementedError
-
-    @staticmethod
-    def stat_after_filters(stat_value, stat_name):
-        """
-        Applies upper stat limit.
-
-        :return: (num)
-        """
-
-        if stat_name in STATS_UPPER_LIMITS:
-            return min(STATS_UPPER_LIMITS[stat_name], stat_value)
-        else:
-            return stat_value
-
-    def request_stat(self, target_name, stat_name):
-        """
-        Calculates a target's final stat value and stores it.
-        Then notes that it has not changed since last calculation.
-
-        :return: (None)
-        """
-
-        # Special stats have their own methods.
-        if stat_name in ALLOWED_BONUS_STATS:
-            val = self._bonus_stat(stat_name=stat_name, tar_name=target_name)
-        elif stat_name in self.SPECIAL_STATS_SET:
-            val = getattr(self, stat_name)(target_name)
-        elif stat_name in PERCENT_SPECIAL_STATS_SET:
-            val = self._percent_reductions_base(tar_name=target_name, stat_name=stat_name)
-        elif stat_name in CURRENT_TYPE_STATS:
-            val = self.current_stats[target_name][stat_name]
-
-        # Most stats can be calculated using the '_standard_stat' method.
-        else:
-            val = self._standard_stat(requested_stat=stat_name, tar_name=target_name)
-
-        return self.stat_after_filters(stat_value=val, stat_name=stat_name)
-
-    def _insert_bonus_to_tar_bonuses(self, stat_name, bonus_type, buff_dct, tar_name, buff_name, buff_stats_dct):
-        """
-        Updates a target's bonuses_dct by adding the name and value of a bonus.
+        Calculates and returns the value of given
 
         :return: (None)
         """
@@ -689,93 +401,21 @@ class StatRequest(StatCalculation):
         # Stacks.
         stat_val *= self.active_buffs[tar_name][buff_name]['current_stacks']
 
-        # Inserts bonus_name and its value in bonuses_dct.
-        self.bonuses_dct[tar_name][stat_name][bonus_type].update({buff_name: stat_val})
+        return stat_val
 
-    # TODO: single call memo
-    @staticmethod
-    def _stats_priorities_tiers(dependencies_dct):
+    def stat_bonuses(self, tar_name, stat_name, requested_type=None):
         """
-        Groups stats' names into tiers, based on which should be calculated first.
-        Highest priority is tier 0.
+        Creates bonus for given stat and target.
 
-        >>> dep_dct = dict(i={('a1', 'b1'), ('a2', 'b2'), ('a3', 'b3'), ('b1', 'c1'), ('b2', 'c1'), ('c1', 'd1'), ('b3', 'd1')})
-        >>> StatRequest._stats_priorities_tiers() == {0: {'a1', 'a2', 'a3'}, 1: {'b1', 'b2', 'b3'}, 2: {'c1'}, 3: {'d1'}}
-        True
-
-
-        :return: (dict)
+        :param requested_type: 'multiplicative', 'additive' or 'percent'
+            Optional; used when only one of the types is needed to avoid repeatative 'ifs'.
+        :return: (dict) Keys: bonus types, values: corresponding values.
         """
 
-        controllers = set()
-        slaves = set()
+        bonuses_dct = {}
 
-        # Unpacks all stat-pairs into a single set.
-        all_tuples = set()
-        for dependency_name in dependencies_dct:
-            dependency_tuples_lst = dependencies_dct[dependency_name]
-
-            for tup in dependency_tuples_lst:
-                all_tuples.add(tup)
-
-        # TIERS CREATION
-        for t in all_tuples:
-            first = t[0]
-            second = t[1]
-
-            controllers.add(first)
-            slaves.add(second)
-
-        tiers_dct = {}
-        # Tier 0
-        # (tier 0 are controllers that are not slaves at the same time.)
-        tier_0 = controllers - slaves
-        tiers_dct.update({0: tier_0})
-
-        # Other tiers.
-        previous_tier_value = 0
-        while 1:
-            new_tier_stats = set()
-            new_tier_value = previous_tier_value + 1
-
-            # Previous controllers
-            all_previous_controllers = set()
-            for i in tiers_dct:
-                if i >= new_tier_value:
-                    break
-                all_previous_controllers |= tiers_dct[i]
-
-            # (new tier is consisted of slaves dependent only on previous tier)
-            for stat_name in slaves-all_previous_controllers:
-                for t in all_tuples:
-                    # Searches all controllers of examined stat's controllers.
-                    if t[1] == stat_name:
-
-                        # (if a single controller is not in , the stat's loop is interrupted,
-                        # since the stat is even higher tier)
-                        controller_name = t[0]
-                        if controller_name not in all_previous_controllers:
-                            break
-                else:
-                    # (if loop is complete without any controller of non previous tier being found, stat is added)
-                    new_tier_stats.add(stat_name)
-
-            if new_tier_stats:
-                tiers_dct.update({new_tier_value: new_tier_stats})
-                previous_tier_value = new_tier_value
-            else:
-                return tiers_dct
-
-    def _apply_prioritized_bonuses_by_buffs(self, tar_name, prioritized_stats_names, sorted_active_buffs,
-                                            must_in_priority_seq):
-        """
-        Creates bonuses based on which stats are prioritized.
-
-        :param must_in_priority_seq: (bool)
-        :return: (None)
-        """
-
-        for buff_name in sorted_active_buffs:
+        # (sorted to avoid non determinism)
+        for buff_name in sorted(self.active_buffs[tar_name]):
 
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
             # (All buff stats dict)
@@ -783,76 +423,302 @@ class StatRequest(StatCalculation):
             # Checks if the buff has stat bonuses.
             if buff_stats_dct:
 
-                for stat_name in sorted(buff_stats_dct):
+                if stat_name in sorted(buff_stats_dct):
 
-                    # Priorities
-                    if must_in_priority_seq and (stat_name in prioritized_stats_names):
-                        pass
-                    elif not must_in_priority_seq and (stat_name not in prioritized_stats_names):
-                        pass
-
-                    else:
-                        # (Skips this stat)
-                        continue
-
-                    # (single stat dict)
                     stat_dct = buff_stats_dct[stat_name]
 
                     for bonus_type in sorted(stat_dct):
                         if not stat_dct[bonus_type]:
                             continue
 
-                        tar_bonuses = self.bonuses_dct[tar_name]
+                        type_val = self._bonus_value_for_given_type(stat_name=stat_name, bonus_type=bonus_type,
+                                                                    buff_dct=buff_dct, tar_name=tar_name,
+                                                                    buff_name=buff_name, buff_stats_dct=buff_stats_dct)
 
-                        tar_bonuses.setdefault(stat_name, {})
-                        tar_bonuses[stat_name].setdefault(bonus_type, {})
+                        bonuses_dct.setdefault(bonus_type, {})
+                        bonuses_dct[bonus_type].update({buff_name: type_val})
 
-                        self._insert_bonus_to_tar_bonuses(stat_name=stat_name, bonus_type=bonus_type,
-                                                          buff_dct=buff_dct, tar_name=tar_name,
-                                                          buff_name=buff_name, buff_stats_dct=buff_stats_dct)
+        if requested_type in bonuses_dct:
+            return bonuses_dct[requested_type]
+        else:
+            return bonuses_dct
 
-    def apply_bonuses_by_buffs(self, tar_name):
+    def total_stat_bonus(self, tar_name, stat_name, bonus_type):
         """
-        Creates all bonuses to stats caused by buffs.
+        Returns total bonus of a given target's stat.
+
+        :return: (float)
+        """
+        return sum(self.stat_bonuses(tar_name=tar_name, stat_name=stat_name, requested_type=bonus_type).values())
+
+    def _standard_stat(self, requested_stat, tar_name):
+        """
+        Calculates the value of a stat after applying all its bonuses to its base value found in base_stats_dct.
+
+        Not to be used for special stats like att_speed, or ad.
+        Not to be used for filtered stats.
+
+        If stat doesnt exist it returns 0 since some stats (e.g. lifesteal)
+        might not always be present in base_stats_dct.
+
+        :param requested_stat: (str)
+        :param tar_name: (str)
+        :return: (float) unfiltered stat value after bonuses
+        """
+
+        if requested_stat not in ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE:
+            raise NotImplementedError(requested_stat)
+
+        # BASE VALUE PLUS BASE PER LVL
+        value = self._base_stat(stat_name=requested_stat, tar_name=tar_name)
+
+        tar_bonuses_stat_dct = self.stat_bonuses(tar_name=tar_name, stat_name=requested_stat)
+
+        # If there are any bonuses at all..
+        if tar_bonuses_stat_dct:
+
+            if 'additive' in tar_bonuses_stat_dct:
+                value += sum(tar_bonuses_stat_dct['additive'].values())
+
+            if 'percent' in tar_bonuses_stat_dct:
+                multiplication_mod = 1
+                multiplication_mod += sum(tar_bonuses_stat_dct['percent'].values())
+
+                value *= multiplication_mod
+
+            if 'multiplicative' in tar_bonuses_stat_dct:
+                multiplication_mod = 1
+
+                for multiplicative_bonus_value in tar_bonuses_stat_dct['multiplicative'].values():
+                    multiplication_mod *= 1 + multiplicative_bonus_value
+
+                value *= multiplication_mod
+
+        return value
+
+    def base_ad(self, tar_name):
+        """
+        Calculates the value of base ad.
+
+        Base ad is the champion's ad at lvl 1 without any bonuses,
+        plus the per lvl bonus.
+
+        :return: (float)
+        """
+
+        return self._base_stat(stat_name='ad', tar_name=tar_name)
+
+    def move_speed_reduction(self, tar_name):
+        """
+        Returns final move speed reduction.
+
+        Highest magnitude slow reduction is the only reduction applied.
+
+        :return: (float)
+        """
+
+        # (they are always multiplicative)
+        multiplicative_bonuses = self.stat_bonuses(tar_name=tar_name, stat_name='move_speed_reduction', requested_type='multiplicative').values()
+        if multiplicative_bonuses:
+            return min(multiplicative_bonuses)
+        else:
+            return 0
+
+    def att_speed(self, tar_name):
+        """
+        Calculates final value of att_speed, after all bonuses and filters have been applied.
+
+        Bonuses to att_speed are always percent, including the '_per_lvl' bonus.
+        Therefor they are applied simultaneously (to preserve base value until calculation).
+        Unlike other stats, _per_lvl bonus is applied at lvl 2.
+
+        Filter applies att_speed's hard cap.
+
+        Each reduction of att_speed is applied after all other bonuses have been applied,
+        by multiplying the pre-final value with each reduction.
+
+        :return: (float)
+        """
+
+        value = self.basic_stats_dct[tar_name]['base_att_speed']
+
+        # _PER_LVL
+        # Adds _per_lvl bonus of att_speed to the modifier.
+        # TODO change 50% in base stats to 0.5 and adapt below code
+        # (champion att speed is in the form of 50%)
+        multiplication_mod = 100
+        multiplication_mod += self.basic_stats_dct[tar_name]['att_speed_per_lvl'] * (self.champion_lvls_dct[tar_name]-1)
+
+        # ITEM AND BUFF BONUSES
+        # Adds item and buff bonuses of att_speed to the modifier.
+        percent_att_speed_bonuses = self.stat_bonuses(tar_name=tar_name, stat_name='att_speed', requested_type='percent')
+        for bonus_name in percent_att_speed_bonuses:
+            # (att speed in non champion base stats is in the form 0.02)
+            multiplication_mod += percent_att_speed_bonuses[bonus_name] * 100
+
+        value *= multiplication_mod / 100
+
+        # REDUCTIONS
+        tar_percent_att_speed_reduction_bonuses = self.stat_bonuses(tar_name=tar_name, stat_name='att_speed_reduction', requested_type='percent')
+        for bonus_name in tar_percent_att_speed_reduction_bonuses:
+            value *= 1 - tar_percent_att_speed_reduction_bonuses[bonus_name]
+
+        return value
+
+    def slow_reduction(self, tar_name):
+        """
+        Calculates how much slows are reduced.
+
+        :return: (float)
+        """
+        slow_mod = 1
+        for slow_red_bonus_val in self.stat_bonuses(tar_name=tar_name, stat_name='slow_reduction', requested_type='multiplicative').values():
+            slow_mod *= 1 - slow_red_bonus_val
+
+        return 1-slow_mod
+
+    @staticmethod
+    def move_speed_after_soft_caps(unfiltered_stat):
+        """
+        Applies threshold on move_speed.
+
+        :param unfiltered_stat: (float)
+        :return: (float) final stat value
+
+        >>> StatCalculation().move_speed_after_soft_caps(300)
+        300
+
+        """
+        # TODO avoid copyrighted formula
+        if (415 < unfiltered_stat) and (unfiltered_stat < 490):
+            return unfiltered_stat*0.8 + 83
+        elif unfiltered_stat > 490:
+            return unfiltered_stat*0.5 + 230
+        elif unfiltered_stat < 220:
+            return unfiltered_stat*0.5 + 110
+        else:
+            return unfiltered_stat
+
+    def move_speed(self, tar_name):
+        """
+        Calculates final value of movement speed, after all bonuses and soft caps are applied.
+
+        -Additive bonuses are applied.
+        -Multiplicative bonuses are applied by a single modifier for all bonuses.
+        -Strongest speed reduction effected is fully applied, while the rest are ignored
+
+        :return: (float)
+        """
+
+        # BASE VALUE AND BONUSES
+        value = self._standard_stat(requested_stat='move_speed',
+                                    tar_name=tar_name)
+
+        # SLOW REDUCTIONS
+        # Calculates the modifier that dampens slow effects (e.g. boots of swiftness)
+        slow_mod = 1 - self.slow_reduction(tar_name=tar_name)
+
+        # SPEED REDUCTIONS
+        value *= 1 - (slow_mod * self.move_speed_reduction(tar_name=tar_name))
+
+        return self.move_speed_after_soft_caps(unfiltered_stat=value)
+
+    def innate_special_lvl(self, values_tpl):
+        """
+        Returns the innate "lvl" of given tuple, which may vary depending on the length of it.
+
+        For example a tuple with 6 values would divide champion lvl by 6,
+        and each value in the tuple would correspond to 3 consecutive lvls.
+
+        :param values_tpl: (tuple)
+        :return: (int) Index of tuple
+        """
+
+        divisor = 18 // len(values_tpl)
+
+        return (self.player_lvl - 1) // divisor + 1
+
+    def champion_lvl(self, tar_name):
+        return self.champion_lvls_dct[tar_name]
+
+    def _percent_reductions_base(self, tar_name, stat_name):
+        """
+        Used for "percent_"-named stats that are applied multiplicatively.
+
+        :return: (float)
+        """
+
+        val = 1
+
+        stat_bonuses = self.stat_bonuses(tar_name=tar_name, stat_name=stat_name, requested_type='additive')
+
+        for buff_name in stat_bonuses:
+            val *= 1 - stat_bonuses[buff_name]
+
+        return 1-val
+
+
+class StatRequest(StatCalculation):
+
+    def __init__(self,
+                 champion_lvls_dct,
+                 selected_champions_dct,
+                 req_buff_dct_func,
+                 initial_active_buffs,
+                 initial_current_stats,
+                 initial_enemies_total_stats,
+                 _reversed_combat_mode):
+
+        self.req_buff_dct_func = req_buff_dct_func
+        self._reversed_combat_mode = _reversed_combat_mode
+
+        StatCalculation.__init__(self,
+                                 champion_lvls_dct=champion_lvls_dct,
+                                 selected_champions_dct=selected_champions_dct,
+                                 initial_active_buffs=initial_active_buffs,
+                                 initial_current_stats=initial_current_stats,
+                                 initial_enemies_total_stats=initial_enemies_total_stats)
+
+    SPECIAL_STATS_SET = SPECIAL_STATS_SET
+
+    def stats_dependencies(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def stat_after_filters(stat_value, stat_name):
+        """
+        Applies upper stat limit.
+
+        :return: (num)
+        """
+
+        if stat_name in STATS_UPPER_LIMITS:
+            return min(STATS_UPPER_LIMITS[stat_name], stat_value)
+        else:
+            return stat_value
+
+    def request_stat(self, target_name, stat_name):
+        """
+        Calculates a target's final stat value.
 
         :return: (None)
         """
 
-        tar_active_buffs = self.active_buffs[tar_name]
+        # Special stats have their own methods.
+        if stat_name in ALLOWED_BONUS_STATS:
+            val = self._bonus_stat(stat_name=stat_name, tar_name=target_name)
+        elif stat_name in self.SPECIAL_STATS_SET:
+            val = getattr(self, stat_name)(target_name)
+        elif stat_name in PERCENT_SPECIAL_STATS_SET:
+            val = self._percent_reductions_base(tar_name=target_name, stat_name=stat_name)
+        elif stat_name in CURRENT_TYPE_STATS:
+            val = self.current_stats[target_name][stat_name]
 
-        all_prioritized_stats = set()
+        # Most stats can be calculated using the '_standard_stat' method.
+        else:
+            val = self._standard_stat(requested_stat=stat_name, tar_name=target_name)
 
-        # Prioritized stats.
-        priorities_tiers = self._stats_priorities_tiers(self.stats_dependencies())
-        for tier_num in sorted(priorities_tiers)[:-1]:
-            prioritized_stats_names = priorities_tiers[tier_num]
-            all_prioritized_stats.update(prioritized_stats_names)
-
-            self._apply_prioritized_bonuses_by_buffs(tar_name=tar_name,
-                                                     prioritized_stats_names=prioritized_stats_names,
-                                                     sorted_active_buffs=tar_active_buffs,
-                                                     must_in_priority_seq=True)
-
-        # Non prioritized stats.
-        self._apply_prioritized_bonuses_by_buffs(tar_name=tar_name,
-                                                 prioritized_stats_names=all_prioritized_stats,
-                                                 sorted_active_buffs=tar_active_buffs,
-                                                 must_in_priority_seq=False)
-
-    # TODO: optimize
-    def refresh_stats_bonuses(self):
-        """
-        Creates all bonuses. (previous bonuses are discarded)
-
-        Note: Permanent buffs' bonuses can not be left since some of them have "dynamic" values (e.g. Malmortious AD).
-            However some are always static. E.g. items' stats. Keeping them intact might be a speed up.
-
-        :return: (None)
-        """
-        self.place_tars_and_empty_dct_in_dct(self.bonuses_dct, ensure_empty_dct=False)
-
-        for tar_name in self.all_target_names:
-            self.apply_bonuses_by_buffs(tar_name=tar_name)
+        return self.stat_after_filters(stat_value=val, stat_name=stat_name)
 
     def set_current_stats(self):
         """
@@ -926,19 +792,9 @@ class DmgReductionStats(StatRequest):
         :return: (float) final value of armor that attacker sees
         """
 
-        # Checks if stat is inside target's bonuses dict
-        # Since some stats don't exist in base_stats they can only be created by bonuses.
-        tar_bonuses = self.bonuses_dct[target]
-
         # percent_reduction calculation
         percent_reduction_name = self.DEFENSE_REDUCING_MR_AND_ARMOR_MAP[stat]['_percent_reduction']
-        if percent_reduction_name in tar_bonuses:
-            percent_reduction = self.request_stat(target_name=target,
-                                                  stat_name=percent_reduction_name)
-            # (Max value is 1)
-            percent_reduction = min(1, percent_reduction)
-        else:
-            percent_reduction = 0
+        percent_reduction = self.request_stat(target_name=target, stat_name=percent_reduction_name)
 
         # percent_penetration calculation
         percent_penetration_name = self.DEFENSE_REDUCING_MR_AND_ARMOR_MAP[stat]['_percent_penetration']
@@ -1019,13 +875,11 @@ class DmgReductionStats(StatRequest):
         # Initially it's set to percent physical dmg taken (by armor).
         value = 1 - self.percent_physical_reduction_by_armor(tar_name)
 
-        # If there are any bonuses to physical reduction..
-        if 'percent_physical_dmg_reduction' in self.bonuses_dct[tar_name]:
-            tar_percent_red_bonuses = self.bonuses_dct[tar_name]['percent_physical_dmg_reduction']['additive']
+        tar_percent_red_bonuses = self.stat_bonuses(tar_name=tar_name, stat_name='percent_physical_dmg_reduction', requested_type='additive')
 
-            for bonus_name in tar_percent_red_bonuses:
-                # .. they are multiplied.
-                value *= 1 - tar_percent_red_bonuses[bonus_name]
+        for bonus_name in tar_percent_red_bonuses:
+            # .. they are multiplied.
+            value *= 1 - tar_percent_red_bonuses[bonus_name]
 
         return value
 
@@ -1042,12 +896,10 @@ class DmgReductionStats(StatRequest):
         # Initially it's set to percent magic dmg taken (by mr).
         value = 1 - self.percent_magic_reduction_by_mr(tar_name)
 
-        # If there are any bonuses to magic dmg reduction..
-        if 'percent_magic_dmg_reduction' in self.bonuses_dct[tar_name]:
-            tar_percent_red_bonuses = self.bonuses_dct[tar_name]['percent_magic_dmg_reduction']['additive']
+        tar_percent_red_bonuses = self.stat_bonuses(tar_name=tar_name, stat_name='percent_magic_dmg_reduction', requested_type='additive')
 
-            for bonus_name in tar_percent_red_bonuses:
-                # .. they are multiplied.
-                value *= 1 - tar_percent_red_bonuses[bonus_name]
+        for bonus_name in tar_percent_red_bonuses:
+            # .. they are multiplied.
+            value *= 1 - tar_percent_red_bonuses[bonus_name]
 
         return value

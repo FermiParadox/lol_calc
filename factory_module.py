@@ -1216,8 +1216,7 @@ class RequestDataFromAPI(object):
         """
         Requests a page from API, after a brief delay.
 
-        Return:
-            (dct)
+        :return: (dict)
         """
 
         time.sleep(2)
@@ -6003,7 +6002,7 @@ if __name__ == '__main__':
                     print((champName, res))
 
     # STORING ALL CHAMPIONS DATA
-    if 0:
+    if 1:
         RequestAllAbilitiesFromAPI().store_all_champions_data()
     # REQUEST ITEMS API
     if 0:

@@ -468,6 +468,16 @@ def on_x_effects_base_deepcopy():
 
 
 # ----------------------------------------------------------
+EVERY_NTH_BASE = dict(
+    max_n=placeholder_int,  # value at which the effects occur
+    on_hit=placeholder_dict,
+    counter_duration=placeholder_float,
+    stacks_per_hit=placeholder_int,
+    stacks_per_movement_unit=placeholder_float,
+
+)
+
+# ----------------------------------------------------------
 ON_HIT_EFFECTS = on_x_effects_base_deepcopy()
 ON_BEING_HIT = on_x_effects_base_deepcopy()
 

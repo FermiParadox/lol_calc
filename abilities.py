@@ -448,9 +448,9 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
     }
 
     # ("abstract" class variables)
-    ABILITIES_ATTRIBUTES = None
-    ABILITIES_EFFECTS = None
-    ABILITIES_CONDITIONALS = None
+    ABILITIES_ATTRIBUTES = {}
+    ABILITIES_EFFECTS = {}
+    ABILITIES_CONDITIONALS = {}
 
     def __init__(self,
                  ability_lvls_dct,
@@ -538,8 +538,7 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         """
         Compares trigger value to checked value based on the operator.
 
-        Returns:
-            (bool)
+        :return: (bool)
         """
 
         return self.OPERATORS_STR_MAP[operator_as_str](checked_val, trig_val)
@@ -548,8 +547,7 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         """
         Determines trigger attribute owner.
 
-        Returns:
-            (str) e.g. 'player', 'enemy_1', ..
+        :return: (str) e.g. 'player', 'enemy_1', ..
         """
         if trig_dct['owner_type'] == 'player':
             return 'player'
@@ -560,8 +558,7 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         """
         Checks if ALL triggers for given condition are present.
 
-        Returns:
-            (bool)
+        :return: (bool)
         """
 
         triggers_dct = self.ABILITIES_CONDITIONALS[cond_name]['triggers']
@@ -639,9 +636,7 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
 
         :param modified_dct: It is the new dict given instead of the static class variable dict.
         :param obj_name: (str) ability or item name
-
-        Returns:
-            (None)
+        :return: (None)
         """
 
         # Then checks if new dict is empty.
@@ -665,11 +660,8 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         """
         Creates new buff dct or updates existing with changes caused by effects.
 
-        Args:
-            modified_dct: It is the new dict given instead of the static class variable dict.
-
-        Returns:
-            (None)
+        :param modified_dct: It is the new dict given instead of the static class variable dict.
+        :return: (None)
         """
 
         # Checks if modified dct is empty.
@@ -696,11 +688,8 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         """
         Returns the new value after modification.
 
-        Args:
-            mod_val: The value that is to be replaced, added, multiplied etc.
-
-        Returns:
-            (literal)
+        :param mod_val: The value that is to be replaced, added, multiplied etc.
+        :return: (literal)
         """
 
         # OPERATOR
@@ -727,9 +716,8 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         """
         Creates new properties' dct or updates existing with changes caused by condition-effects.
 
-
         :param modified_dct: It is the new dict given instead of the static class variable dict.
-        :param initial_dct: (dct) "ABILITIES_ATTRIBUTES['general_attributes']['w']", "ITEM_ATTRIBUTES['item_name']"
+        :param initial_dct: (dict) "ABILITIES_ATTRIBUTES['general_attributes']['w']", "ITEM_ATTRIBUTES['item_name']"
         :return: (None)
         """
 
@@ -753,19 +741,6 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
             mod_val=mod_val,
             old_val=modified_dct[modified_attr_name])
 
-    def initial_buff_or_dmg_dct(self, obj_name, dmgs_or_buffs):
-        """
-        Returns initial dict of a dmg or buff.
-
-
-        :param obj_name: (str) Buff or dmg name.
-        :param dmgs_or_buffs: (str) 'buffs', 'dmgs'
-        :return: (dict) Module dict of dmg or buff.
-        """
-
-        if obj_name in self.ABILITIES_ATTRIBUTES[dmgs_or_buffs]:
-            return
-
     @staticmethod
     def _check_condition_affects_object(searched_obj_name, cond_eff_dct):
         """
@@ -775,10 +750,7 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         :param cond_eff_dct: dict
         :return: bool
         """
-        if searched_obj_name == cond_eff_dct['obj_name']:
-            return True
-        else:
-            return False
+        return searched_obj_name == cond_eff_dct['obj_name']
 
     def _attrs_or_effs_base(self, obj_name, searched_obj_type, initial_dct, conditionals_dct):
         """
@@ -789,7 +761,6 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         :param obj_name: (str) name of the buff, dmg, or ability
         :param searched_obj_type: (str) 'general_attributes', 'ability_effect', 'buffs' or 'dmgs'
             Name of effect type being searched for.
-
         :return: (dict)
         """
 
@@ -847,8 +818,7 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         Checks if ability effects are affected by any conditionals.
         If not, returns member variable dict. Otherwise returns different version of the dict.
 
-        Returns:
-            (dict)
+        :return: (dict)
         """
 
         return self._attrs_or_effs_base(obj_name=ability_name,
@@ -873,8 +843,7 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         Checks if ability attributes are affected by any conditionals.
         If not, returns member variable dict. Otherwise returns different version of the dict.
 
-        Returns:
-            (dict)
+        :return: (dict)
         """
 
         return self._attrs_or_effs_base(obj_name=ability_name,
@@ -888,8 +857,7 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
 
         Buffs can be related to champion, item, mastery, summoner spells, dragon, baron.
 
-        Returns:
-            (dict)
+        :return: (dict)
         """
 
         if buff_name in self.ABILITIES_ATTRIBUTES['buffs']:
@@ -922,8 +890,7 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
 
         Buffs can be related to champion, item, mastery, summoner spells, dragon, baron.
 
-        Returns:
-            (dict)
+        :return: (dict)
         """
 
         if dmg_name in self.ABILITIES_ATTRIBUTES['dmgs']:
@@ -2214,7 +2181,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         self.refresh_stats_bonuses()
 
     # ON_X_EFFECTS
-    def _apply_on_x_effects_of_single_buff(self, buff_dct, x_eff_name):
+    def _apply_on_x_effects(self, on_x_dct):
         """
         Applies on x effects. X can be "on_action", "on_hit", "on_being_hit", "on_dealing_dmg" etc.
 
@@ -2227,49 +2194,60 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         :return: (None)
         """
+        # DMG CAUSED ON HIT.
+        for dmg_name in on_x_dct['cause_dmg']:
+
+            tar_of_dmg = self._target_of_dmg_by_name(dmg_name=dmg_name)
+            self.add_events(effect_name=dmg_name, start_time=self.current_time, tar_name=tar_of_dmg)
+
+        # BUFFS APPLIED ON HIT.
+        for buff_applied_on_hit in on_x_dct['apply_buff']:
+            tar_type = self.request_buff(buff_name=buff_applied_on_hit)['target_type']
+            tar_name = self.player_or_current_enemy(tar_type=tar_type)
+            self.add_buff(buff_name=buff_applied_on_hit, tar_name=tar_name)
+
+        # BUFFS REMOVED ON HIT.
+        for buff_removed_on_hit in on_x_dct['remove_buff']:
+            removed_buff_dct = self.request_buff(buff_name=buff_removed_on_hit)
+            tar_type = removed_buff_dct['target_type']
+            tar_name = self.player_or_current_enemy(tar_type=tar_type)
+            self.remove_buff(tar_name=tar_name, buff_name=buff_removed_on_hit, buff_dct=removed_buff_dct)
+            self.remove_event(tar_name=tar_name, event_name=buff_removed_on_hit)
+
+        # MODIFIED CDS.
+        cds_modifications_dct = on_x_dct['cds_modified']
+        for modified_action_cd_name in cds_modifications_dct:
+            reduction_value = cds_modifications_dct[modified_action_cd_name]
+            self.reduce_action_cd(action_name=modified_action_cd_name, reduction_value=reduction_value)
+
+    def apply_on_x_effects_of_single_buff(self, buff_dct, x_eff_name):
+        """
+        :param x_eff_name: "on_action", "on_hit", "on_being_hit", "on_dealing_dmg" etc.
+        :return: (None)
+        """
 
         if x_eff_name in buff_dct:
+            on_x_dct = buff_dct[x_eff_name]
 
-            on_hit_or_being_hit_dct = buff_dct[x_eff_name]
-            if on_hit_or_being_hit_dct:
-
-                # DMG CAUSED ON HIT.
-                for dmg_name in on_hit_or_being_hit_dct['cause_dmg']:
-
-                    tar_of_dmg = self._target_of_dmg_by_name(dmg_name=dmg_name)
-                    self.add_events(effect_name=dmg_name, start_time=self.current_time, tar_name=tar_of_dmg)
-
-                # BUFFS APPLIED ON HIT.
-                for buff_applied_on_hit in on_hit_or_being_hit_dct['apply_buff']:
-                    tar_type = self.request_buff(buff_name=buff_applied_on_hit)['target_type']
-                    tar_name = self.player_or_current_enemy(tar_type=tar_type)
-                    self.add_buff(buff_name=buff_applied_on_hit, tar_name=tar_name)
-
-                # BUFFS REMOVED ON HIT.
-                for buff_removed_on_hit in on_hit_or_being_hit_dct['remove_buff']:
-                    removed_buff_dct = self.request_buff(buff_name=buff_removed_on_hit)
-                    tar_type = removed_buff_dct['target_type']
-                    tar_name = self.player_or_current_enemy(tar_type=tar_type)
-                    self.remove_buff(tar_name=tar_name, buff_name=buff_removed_on_hit, buff_dct=removed_buff_dct)
-                    self.remove_event(tar_name=tar_name, event_name=buff_removed_on_hit)
-
-                # MODIFIED CDS.
-                cds_modifications_dct = on_hit_or_being_hit_dct['cds_modified']
-                for modified_action_cd_name in cds_modifications_dct:
-                    reduction_value = cds_modifications_dct[modified_action_cd_name]
-                    self.reduce_action_cd(action_name=modified_action_cd_name, reduction_value=reduction_value)
+            if on_x_dct:
+                self._apply_on_x_effects(on_x_dct=on_x_dct)
 
     def apply_on_hit_effects(self):
+        # If a buff is removed on-hit and has on-hit effects of its own,
+        # the "secondary" on-hit effects will be applied.
         for buff_name in sorted(self.active_buffs['player']):
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
-            self._apply_on_x_effects_of_single_buff(buff_dct=buff_dct, x_eff_name='on_hit')
+            # Contrary to above comment, n-th type buffs that were removed by a on-hit effect will be ignored.
+            if buff_name in self.active_buffs['player']:
+                self.apply_or_update_nth(buff_dct=buff_dct)
+            self.apply_on_x_effects_of_single_buff(buff_dct=buff_dct, x_eff_name='on_hit')
 
     def apply_on_being_hit_effects(self, target_name):
         for buff_name in sorted(self.active_buffs[target_name]):
             buff_dct = self.req_buff_dct_func(buff_name=buff_name)
 
-            self._apply_on_x_effects_of_single_buff(buff_dct=buff_dct, x_eff_name='on_being_hit')
+            self.apply_on_x_effects_of_single_buff(buff_dct=buff_dct, x_eff_name='on_being_hit')
 
     @staticmethod
     def _dmg_type_matches_expected_type(given_dmg_type, on_dealing_dmg_dct):
@@ -2348,7 +2326,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
                 if self._causes_of_death_match_expected(dmgs_that_caused_death=dmgs_that_caused_death, on_enemy_death_dct=on_enemy_death_dct):
 
-                    self._apply_on_x_effects_of_single_buff(buff_dct=buff_dct, x_eff_name='on_enemy_death')
+                    self.apply_on_x_effects_of_single_buff(buff_dct=buff_dct, x_eff_name='on_enemy_death')
 
     def apply_deaths_and_on_death_effects(self, examined_time):
         if examined_time in self._applied_dmgs:
@@ -2356,6 +2334,54 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
             if self._apply_death_to_all_viable_enemies():
                 self.on_enemy_death_effects(dmgs_that_caused_death=dmgs_that_caused_death)
+
+    # ON NTH HIT
+    # nth-type buffs are used for buffs that have a counter (named 'n') which increases on hit or movement.
+    # This includes both on-nth attack buffs of an ability as well as items with counter-stacks.
+    def insert_nth_related_in_actives_buffs(self, every_nth_dct, buff_dct_in_active_buffs):
+        """
+        Updates active buff dict of given buff with nth related data.
+
+        :return: (None)
+        """
+
+        buff_dct_in_active_buffs.update({
+            'max_n': every_nth_dct['max_n'],
+            'current_n': 0,
+            'counter_reset_time': self.current_time + every_nth_dct['counter_duration'],
+            'last_target': None,
+            'reset_on_aa_target_change': every_nth_dct['reset_on_aa_target_change']
+        })
+
+    @staticmethod
+    def _update_current_n(buff_dct_in_active_buffs, new_n=None):
+        """
+        Increments by 1 the n-counter or sets it to given value.
+
+        :return: (None)
+        """
+        if new_n is None:
+            buff_dct_in_active_buffs['current_n'] += 1
+        else:
+            buff_dct_in_active_buffs['current_n'] = new_n
+
+    def apply_or_update_nth(self, buff_dct):
+
+        if 'every_nth_hit' not in buff_dct:
+            return
+
+        every_nth_dct = buff_dct['every_nth_hit']
+        # (on_hit buffs are always owned by the player)
+        buff_dct_in_active_buffs = self.active_buffs['player']
+
+        # Compares current-n to expected.
+        if buff_dct_in_active_buffs['max_n'] >= every_nth_dct['max_n']:
+            self._apply_on_x_effects(on_x_dct=every_nth_dct['on_hit'])
+            # Resets counter
+            self._update_current_n(buff_dct_in_active_buffs=buff_dct_in_active_buffs, new_n=0)
+
+        else:
+            self._update_current_n(buff_dct_in_active_buffs=buff_dct_in_active_buffs)
 
     # -----------------------------------------------------
     def apply_ability_or_item_effects(self, eff_dct):
@@ -2747,9 +2773,6 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         self.add_abilities_and_items_passive_buffs(abilities_effects_dct_func=self.abilities_effects,
                                                    abilities_lvls=self.ability_lvls_dct)
 
-        # (Bonuses have to be applied here instead of in their normal methods for noting reasons)
-        self.refresh_stats_bonuses()
-
         # (current stats must be created after bonuses are applied otherwise initial hp will be incorrect)
         self.set_current_stats()
 
@@ -2823,7 +2846,6 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         events_lst_on_examined_time = self.events[examined_time]
 
         while events_lst_on_examined_time:
-            self.refresh_stats_bonuses()
 
             event_dct = events_lst_on_examined_time.pop(0)
             self.apply_single_event(event_dct=event_dct, only_temporary_dots=only_temporary_dots)
@@ -3235,10 +3257,11 @@ class SpecialItems(Actions):
 
     REVERSED_IMMOLATE_ITEMS_TO_DMG_NAME_MAP = {v: k for k, v in IMMOLATE_ITEMS_TO_DMG_NAME_MAP.items()}
 
+    # TODO: memo (it only has to be checked once, at the start; then it remains the same throught the instance)
     def immolate_buff(self):
         """
         Creates immolate buff based on highest priority item. Its dmg is the only dmg applied.
-        :return:
+        :return: (dict)
         """
 
         dot_attrs_dct = {'period': 1,
