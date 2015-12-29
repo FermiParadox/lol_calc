@@ -2345,9 +2345,17 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         :return: (None)
         """
 
+        max_n = every_nth_dct['max_n']
+
+        starting_n = every_nth_dct['starting_n']
+        if starting_n == 'max':
+            starting_n = max_n
+        else:
+            pass
+
         buff_dct_in_active_buffs.update({
-            'max_n': every_nth_dct['max_n'],
-            'current_n': 0,
+            'max_n': max_n,
+            'current_n': starting_n,
             'counter_reset_time': self.current_time + every_nth_dct['counter_duration'],
             'last_target': None,
             'reset_on_aa_target_change': every_nth_dct['reset_on_aa_target_change']
@@ -3257,7 +3265,7 @@ class SpecialItems(Actions):
 
     REVERSED_IMMOLATE_ITEMS_TO_DMG_NAME_MAP = {v: k for k, v in IMMOLATE_ITEMS_TO_DMG_NAME_MAP.items()}
 
-    # TODO: memo (it only has to be checked once, at the start; then it remains the same throught the instance)
+    # TODO: memo (it only has to be checked once, at the start; then it remains the same through the instance)
     def immolate_buff(self):
         """
         Creates immolate buff based on highest priority item. Its dmg is the only dmg applied.

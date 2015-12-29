@@ -1,4 +1,20 @@
 import importlib
+import os
+
+import palette
+
+
+# All available champion modules are stored.
+ALL_CHAMPIONS_TOTAL_ATTRIBUTES_CLASSES = {}
+for champ_name in palette.ALL_CHAMPIONS_NAMES:
+    champ_name = champ_name.lower()
+
+    # Filters out non implemented champions
+    if champ_name + '.py' in os.listdir('/home/black/Dev/PycharmProjects/WhiteProject/champions'):
+        player_champ_module = importlib.import_module('champions.' + champ_name)
+        player_champ_tot_attr_class = getattr(player_champ_module, 'ChampionAttributes')
+
+        ALL_CHAMPIONS_TOTAL_ATTRIBUTES_CLASSES.update({champ_name: player_champ_tot_attr_class})
 
 
 class UserSession(object):
@@ -7,17 +23,15 @@ class UserSession(object):
     def combiner_class(input_dct):
 
         player_champ_name = input_dct['selected_champions_dct']['player']
-        # TODO: Import all champions at top of module?
-        player_champ_module = importlib.import_module('champions.'+player_champ_name)
-        player_champ_tot_attr_class = getattr(player_champ_module, 'ChampionAttributes')
 
-        return player_champ_tot_attr_class(input_dct)
+        return ALL_CHAMPIONS_TOTAL_ATTRIBUTES_CLASSES[player_champ_name](input_dct)
 
     def reversed_combat_instance(self, input_dct, enemy_name):
         new_input_dct = {}
 
         enemy_champion = input_dct['selected_champions_dct'][enemy_name]
-        new_input_dct.update({'selected_champions_dct': {'player': enemy_champion, 'enemy_1': 'jax'}})
+        player_champion = input_dct['selected_champions_dct']['player']
+        new_input_dct.update({'selected_champions_dct': {'player': enemy_champion, 'enemy_1': player_champion}})
 
         player_lvl = input_dct['champion_lvls_dct']['player']
         enemy_lvl = input_dct['champion_lvls_dct'][enemy_name]

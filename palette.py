@@ -2,7 +2,11 @@ import copy
 import importlib
 import pprint
 
+import champion_ids
+
+
 # WARNING: Do not import dev mods (to avoid circular imports).
+# If they are to be imported, note in imported module that it should not import this module.
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -283,20 +287,12 @@ class FrozenKeysDict(dict):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-class SafeValueInsertionDict(dict):
-    """
-    Disallows creation of a non existing key through d[new_key] = val.
-    """
-    def __setitem__(self, key, value):
-        if key not in self:
-            raise KeyError('{}'.format(key))
-        dict.__setitem__(self, key, value)
-
-
-class SpecifiedKeysDict(SafeValueInsertionDict):
+class SpecifiedKeysDict(dict):
     """
     Allows creation of a dict only with specified keys.
     Keys can be removed or reinserted but only if they are within the allowed.
+
+    Allowed keys that were not explicitly given are set to a false-typed value.
     """
 
     MANDATORY_KEYS = set()
@@ -319,9 +315,9 @@ class SpecifiedKeysDict(SafeValueInsertionDict):
             raise UnexpectedValueError('Mandatory keys omitted: {}'.format(self.mandatory_keys_omitted))
 
         # Auto inserts optional keys with False-type value.
-        full_dct = {i: False for i in self.OPTIONAL_KEYS}
+        full_dct = {i: {} for i in self.OPTIONAL_KEYS}
         full_dct.update(given_dct)
-        super().__init__(**full_dct)
+        super().__init__(full_dct)
 
     def __setitem__(self, key, value):
         if key not in self.ALLOWED_KEYS:
@@ -358,6 +354,8 @@ ABILITY_SHORTCUTS = ('inn', ) + SPELL_SHORTCUTS
 EXTRA_SPELL_SHORTCUTS = ('q2', 'w2', 'e2', 'r2')
 ALL_POSSIBLE_SPELL_SHORTCUTS = SPELL_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
 ALL_POSSIBLE_ABILITIES_SHORTCUTS = ABILITY_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
+
+ALL_CHAMPIONS_NAMES = champion_ids.CHAMPION_IDS.values()
 
 
 # BUFF

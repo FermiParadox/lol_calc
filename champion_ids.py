@@ -1,3 +1,5 @@
+# DO NOT import 'palette'
+
 CHAMPION_IDS = {
       "35": "Shaco",
       "36": "DrMundo",
