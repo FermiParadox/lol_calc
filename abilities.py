@@ -1404,6 +1404,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         self.reversed_precombat_player_stats = {}
         self.reversed_precombat_enemy_buffs = {}
         self._applied_dmgs = {}
+        self._rotation_copy = copy.copy(self.rotation_lst)
 
         runes.RunesFinal.__init__(self,
                                   player_lvl=champion_lvls_dct['player'],
@@ -1960,11 +1961,11 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         else:
             self.add_action_cast_end_in_events(event_time=action_dct['cast_end'], event_name=action_name)
 
-    def _add_new_buff(self, buff_name, buff_dct, tar_name, initial_stacks_increment=1):
+    def _add_new_buff(self, buff_name, buff_attrs_dct, tar_name, initial_stacks_increment=1):
         """
         Inserts a new buff in active_buffs dictionary.
 
-        :param buff_dct: Dict containing all buff attributes (e.g. duration, on_hit etc)
+        :param buff_attrs_dct: Dict containing all buff attributes (e.g. duration, on_hit etc)
         :return: (None)
         """
 
@@ -1979,9 +1980,9 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         # DURATION
         # If non permanent buff.
-        if buff_dct['duration'] != 'permanent':
+        if buff_attrs_dct['duration'] != 'permanent':
 
-            buff_end = self.current_time + self.buff_duration(buff_dct=buff_dct)
+            buff_end = self.current_time + self.buff_duration(buff_dct=buff_attrs_dct)
             # ..creates and inserts its duration.
             buff_dct_in_active_buffs.update(dict(
                 ending_time=buff_end))
@@ -1998,8 +1999,8 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         buff_dct_in_active_buffs.update(dict(current_stacks=initial_stacks_increment))
 
         # SHIELD
-        if 'shield' in buff_dct:
-            shield_attrs_dct = buff_dct['shield']
+        if 'shield' in buff_attrs_dct:
+            shield_attrs_dct = buff_attrs_dct['shield']
             if shield_attrs_dct:
 
                 initial_shield_value = self.shield_or_dmg_value_after_mods(dmg_or_shield_dct=shield_attrs_dct,
@@ -2010,6 +2011,14 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
                 buff_dct_in_active_buffs.update({'shield': {'shield_type': shield_type,
                                                             'shield_value': initial_shield_value}})
+
+        # ON-NTH
+        if 'every_nth_hit' in buff_attrs_dct:
+            every_nth_dct = buff_attrs_dct['every_nth_hit']
+
+            if every_nth_dct:
+                self.insert_nth_related_in_actives_buffs(every_nth_dct=every_nth_dct,
+                                                         buff_dct_in_active_buffs=buff_dct_in_active_buffs)
 
     def _refresh_already_active_buff(self, buff_name, buff_dct, tar_name, stack_increment=1):
         """
@@ -2051,7 +2060,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         if buff_name not in self.active_buffs[tar_name]:
 
             self._add_new_buff(buff_name=buff_name,
-                               buff_dct=buff_dct,
+                               buff_attrs_dct=buff_dct,
                                tar_name=tar_name,
                                initial_stacks_increment=initial_stacks_increment)
 
@@ -2240,7 +2249,8 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
             # Contrary to above comment, n-th type buffs that were removed by a on-hit effect will be ignored.
             if buff_name in self.active_buffs['player']:
-                self.apply_or_update_nth(buff_dct=buff_dct)
+                self.apply_or_update_nth(buff_name=buff_name, buff_dct=buff_dct)
+
             self.apply_on_x_effects_of_single_buff(buff_dct=buff_dct, x_eff_name='on_hit')
 
     def apply_on_being_hit_effects(self, target_name):
@@ -2337,10 +2347,11 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
     # ON NTH HIT
     # nth-type buffs are used for buffs that have a counter (named 'n') which increases on hit or movement.
-    # This includes both on-nth attack buffs of an ability as well as items with counter-stacks.
+    # This includes both on-nth attack buffs of an ability (e.g. Jax R)
+    # as well as items with counter-stacks (e.g. static shiv).
     def insert_nth_related_in_actives_buffs(self, every_nth_dct, buff_dct_in_active_buffs):
         """
-        Updates active buff dict of given buff with nth related data.
+        Inserts nth related data into active buffs.
 
         :return: (None)
         """
@@ -2357,33 +2368,54 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             'max_n': max_n,
             'current_n': starting_n,
             'counter_reset_time': self.current_time + every_nth_dct['counter_duration'],
-            'last_target': None,
+            'last_target': self.current_enemy,
             'reset_on_aa_target_change': every_nth_dct['reset_on_aa_target_change']
         })
 
-    @staticmethod
-    def _update_current_n(buff_dct_in_active_buffs, new_n=None):
+    def _update_current_n(self, buff_dct_in_active_buffs, new_n=None):
         """
-        Increments by 1 the n-counter or sets it to given value.
+        If counter duration hasn't expired, increments by 1 the n-counter or sets it to given value.
 
         :return: (None)
         """
+
+        if buff_dct_in_active_buffs['counter_reset_time'] < self.current_time:
+            buff_dct_in_active_buffs['current_n'] = 0
+            return
+
         if new_n is None:
             buff_dct_in_active_buffs['current_n'] += 1
         else:
             buff_dct_in_active_buffs['current_n'] = new_n
 
-    def apply_or_update_nth(self, buff_dct):
+    def apply_or_update_nth(self, buff_name, buff_dct):
+        """
+        Applies on nth hit effects and updates the buff's dict in active buffs.
+
+        :param buff_dct: The dict containing all buff's attributes.
+        :return: (None)
+        """
 
         if 'every_nth_hit' not in buff_dct:
             return
 
         every_nth_dct = buff_dct['every_nth_hit']
         # (on_hit buffs are always owned by the player)
-        buff_dct_in_active_buffs = self.active_buffs['player']
+        buff_dct_in_active_buffs = self.active_buffs['player'][buff_name]
+
+        # TARGET-RESETTING COUNTERS
+        reset_on_aa_target_change = every_nth_dct['reset_on_aa_target_change']
+        if reset_on_aa_target_change:
+            # If enemy has changed resets stacks and noted target.
+            if self.current_enemy != buff_dct_in_active_buffs['last_target']:
+                buff_dct_in_active_buffs['last_target'] = self.current_enemy
+                buff_dct_in_active_buffs['current_n'] = 0
+                return
 
         # Compares current-n to expected.
-        if buff_dct_in_active_buffs['max_n'] >= every_nth_dct['max_n']:
+        # (on-nth are applied at n-1 stacks since during this hit it would reach n stacks anyway;
+        # applying +1 first and then resetting it to 0 would be redundant)
+        if (buff_dct_in_active_buffs['current_n'] + 1) >= every_nth_dct['max_n']:
             self._apply_on_x_effects(on_x_dct=every_nth_dct['on_hit'])
             # Resets counter
             self._update_current_n(buff_dct_in_active_buffs=buff_dct_in_active_buffs, new_n=0)
@@ -2737,17 +2769,6 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         # No action was available.
         return 'action_delayer'
 
-    def next_action_name(self):
-        if self.rotation_lst:
-            rot_followed = self.rotation_followed()
-            rot_len = len(rot_followed)
-
-            # Returns the next action in the rotation list.
-            return self.rotation_lst[rot_len]
-
-        else:
-            return self._next_action_name_by_priority()
-
     def _apply_runes_static_buff(self):
         if self.selected_runes:
             self.add_buff(buff_name='runes_buff', tar_name='player')
@@ -2803,8 +2824,18 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         self.note_precombat_active_buffs()
 
     def add_next_action(self):
+        """
+        Adds next action based on whether a specific or automatic rotation is chosen.
 
-        self.add_new_action(action_name=self.next_action_name())
+        :return: (None)
+        """
+        if not self.rotation_lst:
+            self.add_new_action(action_name=self._next_action_name_by_priority())
+
+        else:
+            # (if rotation copy has been emptied then there are no actions left to add)
+            if self._rotation_copy:
+                self.add_new_action(action_name=self._rotation_copy.pop())
 
     def apply_single_event(self, event_dct, only_temporary_dots):
         event_type = event_dct['event_type']
@@ -2887,19 +2918,18 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         while self.events:
             self.current_time = min(self.events)
 
-            self.apply_events_on_given_time(examined_time=self.current_time)
+            if not self.all_actions_in_rotation_applied():
+                self.apply_events_on_given_time(examined_time=self.current_time, only_temporary_dots=False)
+            else:
+                # After all actions are applied, permanent dots are not applied,
+                # so that they are not refreshed and combat can end.
+                self.apply_events_on_given_time(examined_time=self.current_time, only_temporary_dots=True)
 
             # (Deaths are applied after events at given time are fully applied,
             # so that dps is estimated more accurately.)
             self.apply_deaths_and_on_death_effects(examined_time=self.current_time)
 
             del self.events[self.current_time]
-
-            # After all actions are applied, permanent dots are not applied,
-            # so that the combat ends.
-            if self.all_actions_in_rotation_applied():
-                self.apply_events_on_given_time(examined_time=self.current_time, only_temporary_dots=True)
-                break
 
             if self.all_dead_or_max_time_exceeded():
                 break
