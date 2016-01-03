@@ -5,16 +5,14 @@ from kivy.uix.tabbedpanel import TabbedPanel
 from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.image import Image
 from kivy.uix.label import Label
 
 
 ALL_DATA = default_config.ALL_DATA
 
 
-class HorizontalBoxLayout(BoxLayout):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.orientation = 'horizontal'
 
 
 class VerticalBoxLayout(BoxLayout):
@@ -30,6 +28,7 @@ class SmallButton(Button):
         self.size_hint = (None, None)
 
 # ----------------------------------------------------------------------------------------------------------------------
+
 
 class ChampionLvlLabel(Label):
     def __init__(self, champ, **kwargs):

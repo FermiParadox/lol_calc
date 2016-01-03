@@ -1,0 +1,106 @@
+<HorizontalBoxLayout@BoxLayout>:
+    orientation: 'horizontal'
+
+
+<VerticalBoxLayout@BoxLayout>:
+    orientation: 'vertical'
+
+
+<ChampionNameMenu@ScrollViewLayout>
+
+<PlayerChampionAndLvl@HorizontalBoxLayout>
+    VerticalBoxLayout:
+
+        HorizontalBoxLayout:
+            Button:
+                on_release: print('placeholder lvl up')
+            Label:
+                text: 'lvl here'
+
+        Label:
+            text: 'player champ here'
+
+
+<PlayerItems@GridLayout>
+    cols: 3
+    rows: 2
+
+    Button
+    Button
+    Button
+    Button
+    Button
+    Button
+
+
+<SkillIncreaseWidget@AnchorLayout>:
+    anchor_x: 'center'
+    anchor_y: 'bottom'
+
+    Button:
+        size_hint: 0.5, 0.5
+        text: '+'
+
+<SkillDecreaseWidget@AnchorLayout>:
+    anchor_x: 'center'
+    anchor_y: 'top'
+
+    Button:
+        size_hint: 0.5, 0.5
+        text: '-'
+
+<SkillWidget@VerticalBoxLayout>:
+    ability_name: ''
+
+    SkillIncreaseWidget
+
+    Label:
+        text: root.ability_name
+    SkillDecreaseWidget
+
+
+<PlayerAbilitiesLvlsWidget@HorizontalBoxLayout>
+    SkillWidget:
+        ability_name: 'q'
+    SkillWidget
+        ability_name: 'w'
+    SkillWidget
+        ability_name: 'e'
+    SkillWidget
+        ability_name: 'r'
+
+<PlayerRotationPriorities@HorizontalBoxLayout>
+
+
+<PlayerExternalVariables@HorizontalBoxLayout>
+
+
+<MainWidget>:
+    do_default_tab: False
+
+    TabbedPanelItem:
+        text: 'General'
+
+        HorizontalBoxLayout:
+            VerticalBoxLayout:
+                PlayerChampionAndLvl
+                PlayerItems
+                PlayerAbilitiesLvlsWidget
+                PlayerRotationPriorities
+                PlayerExternalVariables
+
+            VerticalBoxLayout:
+                Label:
+                    text: 'vert box 2'
+            VerticalBoxLayout:
+                Label:
+                    text: 'vert box 3'
+
+    TabbedPanelItem:
+        text: 'Masteries'
+
+    TabbedPanelItem:
+        text: 'Runes'
+
+    TabbedPanelItem:
+        text: 'Enemies'

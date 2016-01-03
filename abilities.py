@@ -1894,7 +1894,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         # Checks if ability resets AA's cd_end, and applies it.
         self.check_and_reset_aa_cd(action_attrs_dct=action_attrs_dct)
 
-    def add_new_action(self, action_name):
+    def _add_new_action(self, action_name):
         """
         Inserts a new action.
 
@@ -1960,6 +1960,12 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             self.add_action_channel_end_in_events(event_time=action_dct['channel_end'], event_name=action_name)
         else:
             self.add_action_cast_end_in_events(event_time=action_dct['cast_end'], event_name=action_name)
+
+    def add_new_action_and_movement_since_previous_action(self, action_name):
+        self._add_new_action(action_name=action_name)
+
+        # (adds movement distance)
+        self.between_action_walking()
 
     def _add_new_buff(self, buff_name, buff_attrs_dct, tar_name, initial_stacks_increment=1):
         """
@@ -2369,10 +2375,11 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             'current_n': starting_n,
             'counter_reset_time': self.current_time + every_nth_dct['counter_duration'],
             'last_target': self.current_enemy,
-            'reset_on_aa_target_change': every_nth_dct['reset_on_aa_target_change']
+            'reset_on_aa_target_change': every_nth_dct['reset_on_aa_target_change'],
+            'movement_marker': self.total_movement
         })
 
-    def _update_current_n(self, buff_dct_in_active_buffs, new_n=None):
+    def _update_current_n(self, buff_dct_in_active_buffs, stacks_per_hit, new_n=None):
         """
         If counter duration hasn't expired, increments by 1 the n-counter or sets it to given value.
 
@@ -2384,9 +2391,16 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             return
 
         if new_n is None:
-            buff_dct_in_active_buffs['current_n'] += 1
+            buff_dct_in_active_buffs['current_n'] += stacks_per_hit
         else:
             buff_dct_in_active_buffs['current_n'] = new_n
+
+    def apply_every_nth_effects(self, every_nth_dct, buff_dct_in_active_buffs):
+        self._apply_on_x_effects(on_x_dct=every_nth_dct['on_hit'])
+        # Resets counter
+        self._update_current_n(buff_dct_in_active_buffs=buff_dct_in_active_buffs,
+                               stacks_per_hit=None,     # Not needed since new_n is provided
+                               new_n=0)
 
     def apply_or_update_nth(self, buff_name, buff_dct):
         """
@@ -2412,16 +2426,26 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                 buff_dct_in_active_buffs['current_n'] = 0
                 return
 
-        # Compares current-n to expected.
+        # MOVEMENT CAUSED STACKS
+        stacks_per_movement_unit = every_nth_dct['stacks_per_movement_unit']
+        if stacks_per_movement_unit:
+            # Current value of movement is deducted from stored value and stacks corresponding are applied.
+            distance_delta = self.total_movement - buff_dct_in_active_buffs['movement_marker']
+            buff_dct_in_active_buffs['current_n'] += int(distance_delta * stacks_per_movement_unit)
+            # (updates to new value the marker)
+            buff_dct_in_active_buffs['movement_marker'] = self.total_movement
+
+        # STACKS BY HIT
+        stacks_per_hit = every_nth_dct['stacks_per_hit']
         # (on-nth are applied at n-1 stacks since during this hit it would reach n stacks anyway;
         # applying +1 first and then resetting it to 0 would be redundant)
-        if (buff_dct_in_active_buffs['current_n'] + 1) >= every_nth_dct['max_n']:
-            self._apply_on_x_effects(on_x_dct=every_nth_dct['on_hit'])
-            # Resets counter
-            self._update_current_n(buff_dct_in_active_buffs=buff_dct_in_active_buffs, new_n=0)
+        if stacks_per_hit:
+            self._update_current_n(buff_dct_in_active_buffs=buff_dct_in_active_buffs,
+                                   stacks_per_hit=stacks_per_hit)
 
-        else:
-            self._update_current_n(buff_dct_in_active_buffs=buff_dct_in_active_buffs)
+        # CHECK AND APPLY NTH EFFECTS
+        if buff_dct_in_active_buffs['current_n'] >= every_nth_dct['max_n']:
+            self.apply_every_nth_effects(every_nth_dct, buff_dct_in_active_buffs)
 
     # -----------------------------------------------------
     def apply_ability_or_item_effects(self, eff_dct):
@@ -2572,12 +2596,6 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
                 # If everyone has died, stops applying following events.
                 if self.all_enemies_dead():
                     return
-
-    def apply_single_action(self, new_action):
-        self.add_new_action(new_action)
-
-        # (movement distance)
-        self.between_action_walking()
 
     def _actions_priorities_triggers_state(self, triggers_dct):
         """
@@ -2830,12 +2848,12 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         :return: (None)
         """
         if not self.rotation_lst:
-            self.add_new_action(action_name=self._next_action_name_by_priority())
+            self.add_new_action_and_movement_since_previous_action(action_name=self._next_action_name_by_priority())
 
         else:
             # (if rotation copy has been emptied then there are no actions left to add)
             if self._rotation_copy:
-                self.add_new_action(action_name=self._rotation_copy.pop())
+                self.add_new_action_and_movement_since_previous_action(action_name=self._rotation_copy.pop())
 
     def apply_single_event(self, event_dct, only_temporary_dots):
         event_type = event_dct['event_type']

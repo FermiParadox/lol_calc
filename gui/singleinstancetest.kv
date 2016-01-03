@@ -2,9 +2,12 @@
 #:kivy 1.9.0
 
 
+<HorizontalBoxLayout@BoxLayout>:
+    orientation: 'horizontal'
 
 <Items@GridLayout>:
     cols: 3
+    on_touch_up: print('hi')
     SmallButton
     SmallButton
     SmallButton
