@@ -667,6 +667,8 @@ def restricted_input(question_msg, input_type, characteristic=None, disallow_ent
     while 1:
         answer = input('\n' + question_msg + '\n')
 
+        _check_loop_exit(key=answer)
+
         # ENTER
         if answer == '':
             if disallow_enter is True:
@@ -677,7 +679,8 @@ def restricted_input(question_msg, input_type, characteristic=None, disallow_ent
 
         # Expected type (string)
         if input_type == 'str':
-            if re.match(r'^\w+$', answer):
+            # (ensures it's not a only-digits answers)
+            if re.match(r'^\w+$', answer) and not re.match(r'^\d+$', answer):
                 return answer
             else:
                 print_invalid_answer('\nString required.')
@@ -701,7 +704,7 @@ def restricted_input(question_msg, input_type, characteristic=None, disallow_ent
 
         # Wrong types
         else:
-            print_invalid_answer('\nWrong type; expected {}.'.format(input_type))
+            print_invalid_answer('\nExpected type is {}.'.format(input_type))
             continue
 
         # EXTRA CHARACTERISTICS CHECK
@@ -716,14 +719,14 @@ def restricted_input(question_msg, input_type, characteristic=None, disallow_ent
 
             elif characteristic == 'non_negative':
                 if answer_as_literal < 0:
-                    print_invalid_answer('\nNon negative answers not allowed.')
+                    print_invalid_answer('\nNegative answers not allowed.')
                     continue
                 else:
                     return answer_as_literal
 
             elif characteristic == 'non_positive':
                 if answer_as_literal > 0:
-                    print_invalid_answer('\nNon positive answers not allowed.')
+                    print_invalid_answer('\nPositive answers not allowed.')
                     continue
                 else:
                     return answer_as_literal
@@ -814,7 +817,7 @@ def suggest_attr_values(suggested_values_dct, modified_dct, restrict_choices=Fal
 
     Stores each chosen attribute value or repeats a choice.
 
-    :param attrs_with_lst_val: (None), (list) When given, attr names in this list will get a list-value selection.
+    :param attrs_with_lst_val: (None) or (list) When given, attr names in this list will get a list-value selection.
     """
 
     start_msg = '\n' + delimiter(40)
@@ -862,8 +865,7 @@ def _new_automatic_attr_dct_name(existing_names, first_synthetic, second_synthet
     """
     Creates a new name for an attr dct, ensuring no existing names are overwritten.
 
-    Returns:
-        (str) e.g.: 'q_dmg', 'q_dmg_1', ..
+    :return: (str) e.g.: 'q_dmg', 'q_dmg_1', ..
     """
 
     if second_synthetic != '':
@@ -2317,7 +2319,111 @@ class StatsDependencies(object):
         return self._stats_dependencies(obj_name=mastery_name, str_champion_or_item_or_mastery='mastery')
 
 
-class BuffsBase(object):
+class _BuffsAndDmgsBase(object):
+
+    @staticmethod
+    def ask_amount_of_buffs_or_dmgs(modified_dct, obj_name, buff_or_dmg_attrs, str_buff_or_dmg):
+        """
+        Asks dev for amount of buffs or dmgs for given ability or item, and creates necessary dicts based on answer.
+
+        :param obj_name: (str) ability or item name
+        :returns: (None)
+        """
+
+        start_msg = '\n'
+        start_msg += delimiter(num_of_lines=10)
+        start_msg += '\nHow many {}s in {}?'.format(str_buff_or_dmg, obj_name.upper())
+
+        num_of_dmgs_or_buffs = restricted_input(question_msg=start_msg,
+                                                input_type='int',
+                                                characteristic='non_negative',
+                                                disallow_enter=True)
+
+        for _ in range(num_of_dmgs_or_buffs):
+            new_buff_or_dmg_name = _new_automatic_attr_dct_name(existing_names=modified_dct,
+                                                                second_synthetic=str_buff_or_dmg,
+                                                                first_synthetic=obj_name)
+            modified_dct.update({new_buff_or_dmg_name: buff_or_dmg_attrs})
+
+        end_msg = '\n%s buffs selected.' % num_of_dmgs_or_buffs
+        print(end_msg)
+
+    @staticmethod
+    def _change_buffs_or_dmgs_names(modified_dct, str_buff_or_dmg):
+        """
+        Asks if buffs or dmgs name changes are needed,
+        and if so goes through every single name.
+
+        :return: (None)
+        """
+
+        # Does nothing if no buffs exist.
+        if modified_dct:
+
+            msg = delimiter(40)
+            msg += '\nChange {} names?'.format(str_buff_or_dmg)
+
+            change_name_answer = _y_n_question(question_str=msg)
+
+            if change_name_answer:
+                for previous_name in sorted(modified_dct):
+                    new_name_msg = delimiter(10)
+                    new_name_msg += '\nInsert new name for: %s. (press enter to skip)\n' % previous_name
+
+                    new_name = input(new_name_msg)
+
+                    if new_name == '':
+                        print('\nNot changed.')
+                    # If new name is selected, creates new buff with previous value,
+                    # .. then removes previous buff.
+                    else:
+                        modified_dct.update({new_name: modified_dct[previous_name]})
+                        del modified_dct[previous_name]
+
+    def change_buffs_names(self, modified_dct):
+        self._change_buffs_or_dmgs_names(modified_dct=modified_dct, str_buff_or_dmg='buff')
+
+    def change_dmgs_names(self, modified_dct):
+        self._change_buffs_or_dmgs_names(modified_dct=modified_dct, str_buff_or_dmg='buff')
+
+    @staticmethod
+    def _insert_on_hit_or_on_being_hit(buffs_dct, str_on_hit_or_on_being_hit, buffs_names, dmgs_names):
+        """
+        Inserts on-hit or on-being-hit effects inside given buff dict.
+
+        :param str_on_hit_or_on_being_hit: (str) 'on_hit' or 'on_being_hit'
+        :return: (None)
+        """
+        # (done later so that buffs' and dmgs' names are available)
+        for buff_name in buffs_dct:
+
+            if isinstance(buffs_dct[buff_name], str):
+                # (skips if expressed by method)
+                continue
+
+            buffs_dct[buff_name].update({str_on_hit_or_on_being_hit: palette.ON_HIT_EFFECTS})
+            buff_on_hit_or_on_being_hit_dct = buffs_dct[buff_name][str_on_hit_or_on_being_hit]
+            if _y_n_question('Does {} have {}?'.format(buff_name.upper(), str_on_hit_or_on_being_hit.upper())):
+
+                # ('reduce_cd' should be set manually since too few items have it)
+
+                suggest_lst_of_attr_values(modified_lst=buff_on_hit_or_on_being_hit_dct['apply_buff'],
+                                           suggested_values_lst=buffs_names,
+                                           extra_start_msg='APPLIED BUFFS {}.'.format(str_on_hit_or_on_being_hit))
+
+                suggest_lst_of_attr_values(modified_lst=buff_on_hit_or_on_being_hit_dct['cause_dmg'],
+                                           suggested_values_lst=dmgs_names,
+                                           extra_start_msg='CAUSED DMGS {}.'.format(str_on_hit_or_on_being_hit))
+
+                suggest_lst_of_attr_values(modified_lst=buff_on_hit_or_on_being_hit_dct['remove_buff'],
+                                           suggested_values_lst=buffs_names,
+                                           extra_start_msg='REMOVED BUFFS {}.'.format(str_on_hit_or_on_being_hit))
+
+            else:
+                buffs_dct[buff_name][str_on_hit_or_on_being_hit] = {}
+
+
+class BuffsBase(_BuffsAndDmgsBase):
 
     @staticmethod
     def buff_attributes():
@@ -2327,7 +2433,7 @@ class BuffsBase(object):
         :return: (dict)
         """
         dct = palette.buff_dct_base_deepcopy()
-        dct.update({i: palette.placeholder() for i in palette.OPTIONAL_BUFF_KEYS})
+        dct.update({i: palette.placeholder for i in palette.OPTIONAL_BUFF_KEYS})
 
         return dct
 
@@ -2340,7 +2446,7 @@ class BuffsBase(object):
         dot=(False, True),
         max_targets=(1, 2, 3, 4, 5, 'infinite'),
         usual_max_targets=(1, 2, 3, 4, 5),
-        shield=(False, True)
+        aura=(False, True)
     )
 
     @staticmethod
@@ -2360,79 +2466,15 @@ class BuffsBase(object):
 
     NTH_TUPLE = ('second', 'third', 'forth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth')
 
-    def _ask_amount_of_buffs(self, modified_dct, obj_name):
-        """
-        Asks dev for amount of buffs for given ability or item, and creates necessary dicts based on answer.
+    def ask_amount_of_buffs(self, modified_dct, obj_name):
+        self.ask_amount_of_buffs_or_dmgs(modified_dct=modified_dct,
+                                         obj_name=obj_name,
+                                         buff_or_dmg_attrs=self.buff_attributes(),
+                                         str_buff_or_dmg='buff')
 
-        Args:
-            obj_name: (str) ability or item name
-
-        Returns:
-            (None)
-        """
-
-        start_msg = '\n'
-        start_msg += delimiter(num_of_lines=10)
-        start_msg += '\nHow many buffs in %s?' % obj_name.upper()
-
-        # Repeat until valid answer is given.
-        while True:
-            num_of_buffs = input(start_msg + '\n')
-
-            _check_loop_exit(key=num_of_buffs)
-
-            try:
-                num_iter = range(int(num_of_buffs))
-
-                for _ in num_iter:
-                    new_buff_name = _new_automatic_attr_dct_name(existing_names=modified_dct, second_synthetic='buff',
-                                                                 first_synthetic=obj_name)
-                    modified_dct.update({new_buff_name: self.buff_attributes()})
-
-                end_msg = '\n%s buffs selected.' % num_of_buffs
-                print(end_msg)
-                break
-
-            except ValueError:
-                print_invalid_answer()
-                pass
-
-    @staticmethod
-    def _change_buff_names(modified_dct):
-        """
-        Asks if buff name change is needed,
-        and if so goes through every buff name.
-
-        Returns:
-            (None)
-        """
-
-        # Does nothing if no buffs exist.
-        if modified_dct:
-
-            msg = delimiter(40)
-            msg += '\nChange buff names?'
-
-            change_buffs_answer = _y_n_question(question_str=msg)
-
-            if change_buffs_answer:
-                for previous_buff_name in sorted(modified_dct):
-                    new_name_msg = delimiter(10)
-                    new_name_msg += '\nInsert new name for: %s. (press enter to skip)\n' % previous_buff_name
-
-                    new_name = input(new_name_msg)
-
-                    if new_name == '':
-                        print('\nNot changed.')
-                    # If new name is selected, creates new buff with previous value,
-                    # .. then removes previous buff.
-                    else:
-                        modified_dct.update({new_name: modified_dct[previous_buff_name]})
-                        del modified_dct[previous_buff_name]
-
-    def _ask_amount_of_buffs_and_change_names(self, modified_dct, obj_name):
-        self._ask_amount_of_buffs(modified_dct=modified_dct, obj_name=obj_name)
-        self._change_buff_names(modified_dct=modified_dct)
+    def ask_amount_of_buffs_and_change_names(self, modified_dct, obj_name):
+        self.ask_amount_of_buffs(modified_dct=modified_dct, obj_name=obj_name)
+        self.change_buffs_names(modified_dct=modified_dct)
 
 
 class StatsCreation(object):
@@ -2506,7 +2548,7 @@ class GenAttrsBase(object):
         return palette.GENERAL_ATTRIBUTES
 
 
-class DmgsBase(object):
+class DmgsBase(_BuffsAndDmgsBase):
 
     # Category names and required extra variables.
     AVAILABLE_DMG_CATEGORIES = dict(
@@ -2621,9 +2663,11 @@ class DmgsBase(object):
 
         pp.pprint(mods_dct)
 
-    def _create_shield(self, shield_dct, description_to_print):
-        if shield_dct:
-            shield_dct = {}
+    def create_shield(self, description_to_print):
+
+        shield_dct = {}
+
+        if _y_n_question(question_str='Does it contain a SHIELD?'):
 
             # Type
             shield_type = enumerated_question(question_str='Shield type?',
@@ -2642,6 +2686,18 @@ class DmgsBase(object):
 
             pp.pprint(description_to_print)
             self._create_shield_or_dmg_mods(mods_dct=shield_mods_dct)
+
+        return shield_dct
+
+    def ask_amount_of_dmgs(self, modified_dct, obj_name):
+        self.ask_amount_of_buffs_or_dmgs(modified_dct=modified_dct,
+                                         obj_name=obj_name,
+                                         buff_or_dmg_attrs=self.dmg_attributes(),
+                                         str_buff_or_dmg='dmg')
+
+    def ask_amount_of_dmgs_and_change_names(self, modified_dct, obj_name):
+        self.ask_amount_of_dmgs(modified_dct=modified_dct, obj_name=obj_name)
+        self.change_dmgs_names(modified_dct=modified_dct)
 
 
 class AbilitiesAttributesBase(GenAttrsBase):
@@ -2815,6 +2871,48 @@ class ItemAndMasteriesBase(object):
         # (buff_source of item buffs is always the item)
         disallowed = ('prohibit_cd_start', 'buff_source')
         return {k: v for k, v in BuffsBase().USUAL_BUFF_ATTR_VALUES.items() if k not in disallowed}
+
+    @staticmethod
+    def arithmetic_values_in_description(description_str):
+        """
+        Finds all numbers in description. Percent values are changed to decimal.
+
+        :return: (list)
+        """
+
+        arithmetic_vals = set()
+
+        pattern = re.compile(r'''
+        \d+                     # Starts with digits
+        (?:\.\d+)?              # .. may continue with dot and digits
+        \s?
+        %?                      # .. may end with %.
+        ''', re.VERBOSE)
+
+        matches = re.findall(pattern, description_str)
+
+        # Strings to floats.
+        for value in matches:
+            # Converts percent to decimal.
+            if '%' in value:
+                value = value.strip('% ')
+                value = float(value) / 100.
+                arithmetic_vals.add(value)
+
+            else:
+                arithmetic_vals.add(float(value))
+
+        # Converts floats to ints when needed (e.g. 1.0 -> 1)
+        final_values_set = set()
+        for value in arithmetic_vals:
+            val_as_int = int(value)
+            if val_as_int == value:
+                final_values_set.add(val_as_int)
+
+            else:
+                final_values_set.add(value)
+
+        return final_values_set
 
 
 class _ConditionalsBase(metaclass=abc.ABCMeta):
@@ -3896,7 +3994,7 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation, D
     @inner_loop_exit_handler
     def _run_buff_attr_creation_without_result_msg(self):
 
-        self._ask_amount_of_buffs_and_change_names(modified_dct=self.buffs_dct, obj_name=self.ability_name)
+        self.ask_amount_of_buffs_and_change_names(modified_dct=self.buffs_dct, obj_name=self.ability_name)
         print(delimiter(40))
 
         for buff_name in sorted(self.buffs_dct):
@@ -3915,9 +4013,7 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation, D
                                 modified_dct=self.buffs_dct[buff_name],
                                 extra_start_msg=usual_attrs_msg)
 
-            shield_dct = self.buffs_dct[buff_name]['shield']
-            if shield_dct:
-                self._create_shield(shield_dct=shield_dct, description_to_print=self.sanitized_tooltip)
+            self.buffs_dct[buff_name]['shield'] = self.create_shield(description_to_print=self.sanitized_tooltip)
 
     @repeat_cluster_decorator(cluster_name='BUFFS')
     def run_buff_attr_creation(self):
@@ -4570,47 +4666,6 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                                                 obj_description_str=self._item_description_str,
                                                 str_item_or_mastery='item')
 
-    def arithmetic_values_in_description(self):
-        """
-        Finds all numbers in item description. Percent values are changed to decimal.
-
-        :return: (list)
-        """
-
-        arithmetic_vals = set()
-
-        pattern = re.compile(r'''
-        \d+                     # Starts with digits
-        (?:\.\d+)?              # ..may continue with dot and digits
-        \s?
-        %?                      # .. may end with %.
-        ''', re.VERBOSE)
-
-        matches = re.findall(pattern, self._item_description_str)
-
-        # Strings to floats.
-        for value in matches:
-            # Converts percent to decimal.
-            if '%' in value:
-                value = value.strip('% ')
-                value = float(value) / 100.
-                arithmetic_vals.add(value)
-
-            else:
-                arithmetic_vals.add(float(value))
-
-        # Converts floats to ints when needed (e.g. 1.0 -> 1)
-        final_values_set = set()
-        for value in arithmetic_vals:
-            val_as_int = int(value)
-            if val_as_int == value:
-                final_values_set.add(val_as_int)
-
-            else:
-                final_values_set.add(value)
-
-        return final_values_set
-
     @staticmethod
     def _all_matches_between_given_tag(item_description, tag_str):
         return re.findall(r'<{tag_str}>(.+)</{tag_str}>'.format(tag_str=tag_str), item_description)
@@ -4777,7 +4832,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
             self._create_unique_or_non_unique_stats(obj_name=self.item_name,
                                                     modified_stats_dct=self.unique_item_stats[name_of_unique],
-                                                    possible_stat_values_lst=self.arithmetic_values_in_description())
+                                                    possible_stat_values_lst=self.arithmetic_values_in_description(description_str=self._item_description_str))
 
         print(delimiter(40))
         print('UNIQUE stats:')
@@ -4887,7 +4942,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         self.pprint_item_description()
 
         self.item_buffs = {}
-        self._ask_amount_of_buffs_and_change_names(modified_dct=self.item_buffs, obj_name=self.item_name)
+        self.ask_amount_of_buffs_and_change_names(modified_dct=self.item_buffs, obj_name=self.item_name)
 
         for buff_name in self.item_buffs:
             # Expressed by method.
@@ -4920,15 +4975,14 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
                                                extra_start_msg='Dmgs names?')
 
                 # SHIELD
-                shield_dct = self.item_buffs[buff_name]['shield']
-                self._create_shield(shield_dct=shield_dct, description_to_print=self._item_description_str)
+                self.item_buffs[buff_name]['shield'] = self.create_shield(description_to_print=self._item_description_str)
 
                 # Stats affected by buff.
                 self.item_buffs[buff_name]['stats'] = {}
                 suggest_affected_stats_attributes(obj_name=buff_name,
                                                   modified_stats_dct=self.item_buffs[buff_name]['stats'],
-                                                  possible_stat_values_lst=self.arithmetic_values_in_description(),
-                                                  possible_mod_values_lst=self.arithmetic_values_in_description())
+                                                  possible_stat_values_lst=self.arithmetic_values_in_description(description_str=self._item_description_str),
+                                                  possible_mod_values_lst=self.arithmetic_values_in_description(description_str=self._item_description_str))
 
             else:
                 self.item_buffs.update({buff_name: expression_way})
@@ -4937,30 +4991,16 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         dmgs_names = sorted(self.item_dmgs)
 
         # On hit
-        # (done later so that buffs' and dmgs' names are available)
-        for buff_name in self.item_buffs:
+        self._insert_on_hit_or_on_being_hit(buffs_dct=self.item_buffs,
+                                            str_on_hit_or_on_being_hit='on_hit',
+                                            buffs_names=buff_names,
+                                            dmgs_names=dmgs_names)
 
-            if isinstance(self.item_buffs[buff_name], str):
-                # (skips if expressed by method)
-                continue
-
-            self.item_buffs[buff_name].update(on_hit=palette.ON_HIT_EFFECTS)
-            buff_on_hit_dct = self.item_buffs[buff_name]['on_hit']
-            if _y_n_question('Does {} have ON HIT?'.format(buff_name.upper())):
-
-                # ('reduce_cd' should be set manually since too few items have it)
-
-                suggest_lst_of_attr_values(modified_lst=buff_on_hit_dct['apply_buff'], suggested_values_lst=buff_names,
-                                           extra_start_msg='APPLIED BUFFS on hit.')
-
-                suggest_lst_of_attr_values(modified_lst=buff_on_hit_dct['cause_dmg'], suggested_values_lst=dmgs_names,
-                                           extra_start_msg='CAUSED DMGS on hit.')
-
-                suggest_lst_of_attr_values(modified_lst=buff_on_hit_dct['remove_buff'], suggested_values_lst=buff_names,
-                                           extra_start_msg='REMOVED BUFFS on hit.')
-
-            else:
-                self.item_buffs[buff_name]['on_hit'] = {}
+        # On being hit
+        self._insert_on_hit_or_on_being_hit(buffs_dct=self.item_buffs,
+                                            str_on_hit_or_on_being_hit='on_being_hit',
+                                            buffs_names=buff_names,
+                                            dmgs_names=dmgs_names)
 
         print('BUFFS:')
         pp.pprint(self.item_buffs)
@@ -5125,12 +5165,22 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         self.inst = ExploreApiMasteries()
         self.raw_masteries_dct = self.inst.masteries_dct
         self.mastery_buffs = {}
+        self.mastery_dmgs = {}
+        self.mastery_description = self.inst.mastery_description(mastery_name=self.mastery_name, print_mode=False)[0]
 
     def print_mastery_description(self):
-        return self.inst.mastery_description(mastery_name=self.mastery_name, print_mode=True)
+        return self.mastery_description
 
     def mastery_buff_attributes(self):
         return self.item_or_buff_attributes()
+
+    @staticmethod
+    def mastery_dmg_attributes():
+        return DmgsBase.dmg_attributes()
+
+    @staticmethod
+    def usual_mastery_dmg_attrs_values():
+        return DmgsBase().usual_values_dmg_attrs()
 
     def possible_stats_names(self,):
         """
@@ -5202,14 +5252,34 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
                                                              available_stat_names=self.possible_stats_names(),
                                                              lst_of_values_tuples=self.possible_stat_values())
 
+    def create_mastery_dmgs(self):
+        print(fat_delimiter(40))
+        print('MASTERY: {}\n'.format(self.mastery_name))
+        self.print_mastery_description()
+
+        # (Resets if method is being repeated.)
+        self.mastery_dmgs = {}
+        self.ask_amount_of_dmgs_and_change_names(modified_dct=self.mastery_dmgs, obj_name=self.mastery_name)
+
+        for dmg_name in sorted(self.mastery_dmgs):
+            self.mastery_dmgs.update({dmg_name: self.mastery_dmg_attributes()})
+
+            dmg_msg = '\nMASTERY: {}, DMG: {}'.format(self.mastery_name, dmg_name)
+
+            suggest_attr_values(suggested_values_dct=self.usual_mastery_dmg_attrs_values(),
+                                modified_dct=self.mastery_dmgs[dmg_name], extra_start_msg=dmg_msg)
+            # Dmg source
+            self.mastery_dmgs[dmg_name]['dmg_source'] = 'masteries'
+
     def create_mastery_buffs(self):
 
         print(fat_delimiter(40))
         print('MASTERY: {}\n'.format(self.mastery_name))
         self.print_mastery_description()
 
+        # (Resets if method is being repeated.)
         self.mastery_buffs = {}
-        self._ask_amount_of_buffs_and_change_names(modified_dct=self.mastery_buffs, obj_name=self.mastery_name)
+        self.ask_amount_of_buffs_and_change_names(modified_dct=self.mastery_buffs, obj_name=self.mastery_name)
 
         for buff_name in sorted(self.mastery_buffs):
             self.mastery_buffs.update({buff_name: self.mastery_buff_attributes()})
@@ -5222,6 +5292,31 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
                                 modified_dct=self.mastery_buffs[buff_name], extra_start_msg=buff_msg)
             # Buff source
             self.mastery_buffs[buff_name]['buff_source'] = 'masteries'
+
+            # SHIELD
+            self.mastery_buffs[buff_name]['shield'] = self.create_shield(description_to_print=self.mastery_description)
+
+            # Stats affected by buff.
+            self.mastery_buffs[buff_name]['stats'] = {}
+            suggest_affected_stats_attributes(obj_name=buff_name,
+                                              modified_stats_dct=self.mastery_buffs[buff_name]['stats'],
+                                              possible_stat_values_lst=self.arithmetic_values_in_description(description_str=self.mastery_description),
+                                              possible_mod_values_lst=self.arithmetic_values_in_description(description_str=self.mastery_description))
+
+        buffs_names = sorted(self.mastery_buffs)
+        dmgs_names = sorted(self.mastery_dmgs)
+
+        # On hit
+        self._insert_on_hit_or_on_being_hit(buffs_dct=self.mastery_buffs,
+                                            str_on_hit_or_on_being_hit='on_hit',
+                                            buffs_names=buffs_names,
+                                            dmgs_names=dmgs_names)
+
+        # On being hit
+        self._insert_on_hit_or_on_being_hit(buffs_dct=self.mastery_buffs,
+                                            str_on_hit_or_on_being_hit='on_being_hit',
+                                            buffs_names=buffs_names,
+                                            dmgs_names=dmgs_names)
 
         pp.pprint(self.mastery_buffs)
         print(delimiter(80))
@@ -6002,7 +6097,7 @@ if __name__ == '__main__':
                     print((champName, res))
 
     # STORING ALL CHAMPIONS DATA
-    if 1:
+    if 0:
         RequestAllAbilitiesFromAPI().store_all_champions_data()
     # REQUEST ITEMS API
     if 0:
@@ -6024,7 +6119,7 @@ if __name__ == '__main__':
         print(ExploreApiAbilities().champion_id('dariu'))
 
     # CHAMPION MODULE CREATION
-    if 1:
+    if 0:
         ChampionModuleCreator(champion_name='pantheon').run_champ_module_creation()
 
     # FETCHING CASTABLE ABILITIES
@@ -6039,17 +6134,22 @@ if __name__ == '__main__':
         print(inst.non_unique_item_stats)
 
     # ITEM ATTRS, EFFECTS AND CONDITIONALS CREATION AND INSERTION
-    if 1:
+    if 0:
         inst = ItemsModuleCreator(item_name='skirmishers_sabre')
         inst.create_item()
     # Create all items.
-    if 1:
+    if 0:
         ItemsModuleCreator.create_not_created_items('enchantment')
 
     # PRETTY FORMAT OBJECT IN MODULE
     if 0:
         inst = ModuleCreatorBase()
         inst.pformat_obj_in_path('APP_RUNES_DCT', 'app_runes_database.py')
+
+    # MASTERIES REQUEST
+    if 0:
+        inst = RequestAllMasteriesFromAPI()
+        inst.store_all_masteries_from_api()
 
     # MASTERIES EXPLORATION
     # Tuple of values detection.
@@ -6068,7 +6168,7 @@ if __name__ == '__main__':
         inst = MasteryCreation(mastery_name='enchanted_armor')
         inst.create_and_return_mastery(print_mode=True)
 
-    if 0:
+    if 1:
         inst = MasteryModuleCreator()
         inst.create_all_mastery_dcts()
 

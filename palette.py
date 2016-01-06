@@ -493,6 +493,7 @@ ON_DEALING_DMG = {
 }
 ON_DEALING_DMG.update(on_x_effects_base_deepcopy())
 
+# (not used, probably never will be used since "_EFFECTS" dicts serve that purpose)
 ON_ACTION_EFFECTS = {
     'increase_counter_stat':
         {'counter_stat_name': placeholder,

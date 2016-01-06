@@ -2213,7 +2213,8 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         for dmg_name in on_x_dct['cause_dmg']:
 
             tar_of_dmg = self._target_of_dmg_by_name(dmg_name=dmg_name)
-            self.add_events(effect_name=dmg_name, start_time=self.current_time, tar_name=tar_of_dmg)
+            # (only_temporary_dots is irrelevant below since there are no on-hit dmgs that cause permanent dots)
+            self._apply_dmg_event(event_name=dmg_name, event_target=tar_of_dmg, only_temporary_dots=False)
 
         # BUFFS APPLIED ON HIT.
         for buff_applied_on_hit in on_x_dct['apply_buff']:
@@ -2414,6 +2415,9 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             return
 
         every_nth_dct = buff_dct['every_nth_hit']
+        if not every_nth_dct:
+            return
+
         # (on_hit buffs are always owned by the player)
         buff_dct_in_active_buffs = self.active_buffs['player'][buff_name]
 
@@ -2520,82 +2524,6 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             for dct_num, event_dct in enumerate(events_lst):
                 if (event_dct['event_name'] == event_name) and (event_dct['target_name'] == tar_name):
                     del events_lst[dct_num]
-
-    def apply_events_before_given_time(self, given_time):
-        """
-        Applies all events preceding given_time.
-
-        If a periodic event is refreshed and ticks before given_time,
-        then event_times changes and is checked again.
-        If all targets die, the loop stops.
-
-        :return: (None)
-        """
-
-        self.intermediate_events_changed = True
-
-        while self.intermediate_events_changed:
-
-            self.intermediate_events_changed = False
-
-            # If for loop ends with new events being added,
-            # then intermediate_events_changed will be set to true,
-            # and the for loop will repeat.
-
-            initial_events = sorted(self.events)
-
-            # EVENTS BEFORE ACTION
-            for event in initial_events:
-                # Checks if event's application time exceeds last action's application start.
-                # (cast_end and application start are different for channelled abilities)
-                if event <= given_time:
-
-                    # (must change to ensure buffs are checked)
-                    self.current_time = event
-
-                    self.remove_expired_buffs_and_refresh_bonuses()
-
-                    # Applies all dmg effects for all targets.
-                    for examined_tar in sorted(self.events[self.current_time]):
-                        if examined_tar == 'player':
-                            # (if all enemies are dead, focuses on last enemy)
-                            self.current_enemy = self.first_alive_enemy() or self.enemy_target_names[-1]
-                        else:
-                            self.current_enemy = examined_tar
-
-                        dmgs_occurring_at_given_time = self.events[self.current_time][examined_tar]
-                        for dmg_name in dmgs_occurring_at_given_time:
-                            dmg_dct = self.request_dmg(dmg_name=dmg_name)
-                            self.apply_dmg_or_heal(dmg_name=dmg_name, dmg_dct=dmg_dct, target_name=examined_tar)
-
-                            # (periodic events are refreshed only on alive targets;
-                            # player periodic events are always refreshed to ensure enemies' dps is fully applied)
-                            if self.is_alive(tar_name=examined_tar) or examined_tar == 'player':
-                                self.add_next_periodic_event(tar_name=examined_tar,
-                                                             dmg_name=dmg_name,
-                                                             dmg_dct=dmg_dct,
-                                                             only_temporary=False)
-
-                        # After dmg has been applied checks if target has died.
-                        self.apply_death(tar_name=examined_tar)
-                        self.on_enemy_death_effects(dmgs_that_caused_death=dmgs_occurring_at_given_time)
-
-                    # Deletes the event after it's applied.
-                    del self.events[self.current_time]
-
-                    # If new events are added it exits and checks them all over again.
-                    if self.intermediate_events_changed:
-                        break
-
-                # EXIT INNER LOOP
-                # Exits loop after all events prior to an action are applied.
-                else:
-                    break
-
-                # EXIT METHOD
-                # If everyone has died, stops applying following events.
-                if self.all_enemies_dead():
-                    return
 
     def _actions_priorities_triggers_state(self, triggers_dct):
         """
@@ -2855,7 +2783,29 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             if self._rotation_copy:
                 self.add_new_action_and_movement_since_previous_action(action_name=self._rotation_copy.pop())
 
+    def _apply_dmg_event(self, event_name, event_target, only_temporary_dots):
+        dmg_dct = self.request_dmg(dmg_name=event_name)
+        self.apply_dmg_or_heal(dmg_name=event_name, dmg_dct=dmg_dct, target_name=event_target)
+
+        self._applied_dmgs.setdefault(self.current_time, set())
+        self._applied_dmgs[self.current_time].add(event_name)
+
+        # (periodic events are refreshed only on alive targets;
+        # player periodic events are always refreshed to ensure enemies' dps is fully applied)
+        if self.is_alive(tar_name=event_target) or event_target == 'player':
+            self.add_next_periodic_event(tar_name=event_target,
+                                         dmg_name=event_name,
+                                         dmg_dct=dmg_dct,
+                                         only_temporary=only_temporary_dots)
+
     def apply_single_event(self, event_dct, only_temporary_dots):
+        """
+        Applies event given by its dict.
+        If only temporary dots are applied following periodic refreshing will not occur.
+
+        :param only_temporary_dots: (bool)
+        :return: (None)
+        """
         event_type = event_dct['event_type']
         event_name = event_dct['event_name']
         event_target = event_dct['target_name']
@@ -2863,19 +2813,9 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         self.set_current_enemy(examined_tar=event_target)
 
         if event_type == 'dmg':
-            dmg_dct = self.request_dmg(dmg_name=event_name)
-            self.apply_dmg_or_heal(dmg_name=event_name, dmg_dct=dmg_dct, target_name=event_target)
-
-            self._applied_dmgs.setdefault(self.current_time, set())
-            self._applied_dmgs[self.current_time].add(event_name)
-
-            # (periodic events are refreshed only on alive targets;
-            # player periodic events are always refreshed to ensure enemies' dps is fully applied)
-            if self.is_alive(tar_name=event_target) or event_target == 'player':
-                self.add_next_periodic_event(tar_name=event_target,
-                                             dmg_name=event_name,
-                                             dmg_dct=dmg_dct,
-                                             only_temporary=only_temporary_dots)
+            self._apply_dmg_event(event_name=event_name,
+                                  event_target=event_target,
+                                  only_temporary_dots=only_temporary_dots)
 
         elif event_type == 'buff_end':
             self.remove_buff(tar_name=event_target, buff_name=event_name)

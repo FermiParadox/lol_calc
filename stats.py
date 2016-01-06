@@ -70,7 +70,8 @@ for _champ_name in app_champions_base_stats.CHAMPION_BASE_STATS:
 
 
 # Stats by items or buffs that are not calculated by their own (special) method.
-NORMAL_STAT_NAMES = {'percent_healing_reduction'}
+NORMAL_STAT_NAMES = {'percent_healing_reduction', 'percent_dmg_dealt_increase'}
+
 
 # Extracted from rune_stat_names_map with: re.findall(r'\'(\w+)\'', s)
 RUNE_STAT_NAMES = frozenset({'ap', 'mr', 'mr_per_lvl', 'armor_per_lvl', 'crit_chance', 'ap_per_lvl', 'hp_per_lvl',
@@ -107,6 +108,8 @@ SPECIAL_STATS_SET = frozenset({'base_ad',
                                'missing_hp',
                                'missing_mp',
                                'champion_lvl',
+                               'game_time_in_minutes',
+                               'unique_enemies_killed'
                                } | DEFENSIVE_SPECIAL_STATS)
 
 
@@ -161,6 +164,30 @@ class NonExistingNormalStatError(Exception):
     in ALL_STANDARD_STAT_NAMES and current stats.
     """
     pass
+
+
+# (Very rough estimation)
+PLAYER_LVLING_TIMES_IN_MINUTES = {
+    1: 1,
+    2: 3,
+    3: 4,
+    4: 5,
+    5: 6,
+    6: 8,
+    7: 9,
+    8: 10,
+    9: 11,
+    10: 13,
+    11: 14,
+    12: 17,
+    13: 24,
+    14: 26,
+    15: 28,
+    16: 30,
+    17: 35,
+    18: 38
+}
+
 
 
 class StatCalculation(object):
@@ -656,6 +683,29 @@ class StatCalculation(object):
             val *= 1 - stat_bonuses[buff_name]
 
         return 1-val
+
+    def game_time_in_minutes(self, target_name=None):
+        """
+        Estimates game-time elapsed based on player's lvl.
+
+        :param target_name: Not needed. Used because of the way stat methods are called.
+        :return: (int)
+        """
+        return PLAYER_LVLING_TIMES_IN_MINUTES[self.player_lvl]
+
+    def unique_enemies_killed(self, target_name=None):
+        """
+        Estimates enemies killed based on game-time.
+
+        TODO: Make it dependent on champion type (e.g. assassins get their kills more easily)
+
+        :param target_name: Not needed. Used because of the way stat methods are called.
+        :return: (int)
+        """
+        # (assumes that an enemy is killed even at minute 0)
+        unique_enemies_killed = 1 + (self.game_time_in_minutes() // 8)
+
+        return min(5, unique_enemies_killed)
 
 
 class StatRequest(StatCalculation):

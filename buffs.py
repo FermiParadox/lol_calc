@@ -1028,8 +1028,7 @@ class DmgApplication(Counters, dmgs_buffs_categories.DmgCategories, metaclass=ab
         """
         Applies dmg or heal to either current_hp or the player's resource.
 
-        Returns:
-            (None)
+        :return: (None)
         """
 
         unmitigated_dmg_val = self.raw_dmg_value(dmg_name=dmg_name)
