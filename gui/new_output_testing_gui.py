@@ -1,8 +1,7 @@
 from kivy.app import App
 from kivy.uix.tabbedpanel import TabbedPanel
-from kivy.uix.gridlayout import GridLayout
-
-
+from kivy.uix.button import Button
+from kivy.uix.dropdown import DropDown
 
 
 class MainWidget(TabbedPanel):

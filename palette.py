@@ -58,28 +58,25 @@ class PlaceholderClass(object):
     Used for adding an extra layer of bug preventions when accidentally placeholders have not been removed.
 
     WARNING: Some accidental uses of a placeholder will not raise an exception as they should.
-        Only most common usages are covered.
+        Only most common usage is covered.
     """
 
-    def __init__(self, allowed_values=None, data_type=None):
+    def __init__(self, allowed_values=None, data_type=None, non_restricted_choice=False):
         self.__allowed_values = allowed_values
         self.__data_type = data_type
-
-    @staticmethod
-    def _property_val_base(class_arg_name):
-        # If a value was given..
-        if class_arg_name:
-            return type(class_arg_name)
-        else:
-            return NonIterableStr('Non given.')
+        self.__non_restricted_choice = non_restricted_choice
 
     @property
     def allowed_values(self):
-        return self._property_val_base(class_arg_name=self.__allowed_values)
+        return self.__allowed_values
 
     @property
     def allowed_type(self):
-        return self._property_val_base(class_arg_name=self.__data_type)
+        return self.__data_type
+
+    @property
+    def non_restricted_choice(self):
+        return self.__non_restricted_choice
 
 
 SUPPRESSED_MAGIC_METHODS = ('__bool__', '__eq__', '__ge__', '__gt__', '__le__', '__lt__', '__ne__')
@@ -487,8 +484,13 @@ ON_ENEMY_DEATH = {
 }
 ON_ENEMY_DEATH.update(on_x_effects_base_deepcopy())
 
+# WARNING:
+# On-dmg and on-dealing-dmg effects are used inside a dmg dict and inside a buff dict respectively.
+
+ON_DMG_EFFECTS = on_x_effects_base_deepcopy()
+
 ON_DEALING_DMG = {
-    'dmg_types': PlaceholderClass(['any', 'physical', 'magic', 'true']),
+    'dmg_types': PlaceholderClass(['any', 'physical', 'magic', 'true'], data_type=list, non_restricted_choice=True),
     'source_types_or_names': PlaceholderClass(['any', 'champion_abilities', 'champion_spells', 'summoner_spells'])
 }
 ON_DEALING_DMG.update(on_x_effects_base_deepcopy())

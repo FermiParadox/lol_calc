@@ -75,26 +75,39 @@
 <PlayerExternalVariables@HorizontalBoxLayout>
 
 
+<SingleEnemySelectionWidget@DropDown>
+    Button:
+        text: 'b 1'
+    Button:
+        text: 'b 2'
+    Button:
+        text: 'b 1'
+
+
+<EnemiesNames@VerticalBoxLayout>
+    SingleEnemySelectionWidget
+
 <MainWidget>:
     do_default_tab: False
 
     TabbedPanelItem:
         text: 'General'
 
-        HorizontalBoxLayout:
-            VerticalBoxLayout:
+        VerticalBoxLayout:
+            HorizontalBoxLayout:
                 PlayerChampionAndLvl
                 PlayerItems
                 PlayerAbilitiesLvlsWidget
                 PlayerRotationPriorities
                 PlayerExternalVariables
+                EnemiesNames
 
-            VerticalBoxLayout:
+            HorizontalBoxLayout:
                 Label:
-                    text: 'vert box 2'
-            VerticalBoxLayout:
+                    text: 'horiz box 2'
+            HorizontalBoxLayout:
                 Label:
-                    text: 'vert box 3'
+                    text: 'horiz box 3'
 
     TabbedPanelItem:
         text: 'Masteries'

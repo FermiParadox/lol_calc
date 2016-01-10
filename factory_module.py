@@ -22,6 +22,7 @@ import items_folder.items_data
 
 # Info regarding API structure at https://developer.riotgames.com/docs/data-dragon
 
+API_KEY = api_key.KEY
 
 # ===============================================================
 # ===============================================================
@@ -810,14 +811,14 @@ def _suggest_single_attr_value(attr_name, suggested_values_dct, modified_dct, re
     print(choice_msg)
 
 
-def suggest_attr_values(suggested_values_dct, modified_dct, restrict_choices=False, mute_exit_key_msgs=False,
-                        extra_start_msg='', attrs_with_lst_val=None):
+def suggest_attrs_values_of_dct(suggested_values_dct, modified_dct, restrict_choices=False, mute_exit_key_msgs=False,
+                                extra_start_msg='', attrs_with_lst_val=None):
     """
     READ: single suggestion method for more details.
 
     Stores each chosen attribute value or repeats a choice.
 
-    :param attrs_with_lst_val: (None) or (list) When given, attr names in this list will get a list-value selection.
+    :param attrs_with_lst_val: (None) or (a list) When given, attr names in this list will get a list-value selection.
     """
 
     start_msg = '\n' + delimiter(40)
@@ -843,9 +844,9 @@ def suggest_attr_values(suggested_values_dct, modified_dct, restrict_choices=Fal
                     modified_dct[curr_attr_name] = []
                     modified_lst = modified_dct[curr_attr_name]
 
-                    suggest_lst_of_attr_values(suggested_values_lst=suggested_values_lst,
-                                               modified_lst=modified_lst,
-                                               sort_suggested_lst=False)
+                    suggest_attr_values_of_list(suggested_values_lst=suggested_values_lst,
+                                                modified_lst=modified_lst,
+                                                sort_suggested_lst=False)
 
                 else:
                     # Single value.
@@ -959,8 +960,8 @@ def _auto_new_name_or_ask_name(existing_names, first_synthetic, second_synthetic
 
 
 # ---------------------------------------------------------------
-def suggest_lst_of_attr_values(suggested_values_lst, modified_lst, extra_start_msg='', stop_key=INNER_LOOP_KEY,
-                               error_key=OUTER_LOOP_KEY, sort_suggested_lst=True):
+def suggest_attr_values_of_list(suggested_values_lst, modified_lst, extra_start_msg='', stop_key=INNER_LOOP_KEY,
+                                error_key=OUTER_LOOP_KEY, sort_suggested_lst=True):
     """
     Suggests values from a list to dev. Dev has to pick all valid values in his single answer.
 
@@ -1032,8 +1033,8 @@ def enumerated_lst_creation(suggested_values_lst, extra_start_msg='', sort_sugge
     """
 
     lst = []
-    suggest_lst_of_attr_values(suggested_values_lst=suggested_values_lst, modified_lst=lst,
-                               extra_start_msg=extra_start_msg, sort_suggested_lst=sort_suggested_lst)
+    suggest_attr_values_of_list(suggested_values_lst=suggested_values_lst, modified_lst=lst,
+                                extra_start_msg=extra_start_msg, sort_suggested_lst=sort_suggested_lst)
 
     return lst
 
@@ -1168,26 +1169,12 @@ class RequestAbortedError(Exception):
 
 
 class RequestDataFromAPI(object):
-    """
-    Base class of RequestClasses(?).
 
-    Champion data do not derive from the final method of this class,
-    since multiple individual page requests must be combined.
-    """
-
-    @staticmethod
-    def request_abortion_handler(func):
-        """
-        Used for handling Abortion exceptions raised during Requests.
-        """
-
-        def wrapped(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except RequestAbortedError as exception_msg:
-                print(exception_msg)
-
-        return wrapped
+    RUNES_PAGE_URL = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key=" + API_KEY)
+    ITEMS_PAGE_URL = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/item?itemListData=all&api_key=" + API_KEY)
+    MASTERIES_PAGE_URL = ('https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/mastery?masteryListData=all&api_key=' + API_KEY)
+    VERSION_PAGE_URL = 'https://global.api.pvp.net/api/lol/static-data/eune/v1.2/versions?api_key=' + API_KEY
+    ALL_CHAMPION_DATA_URL = 'https://global.api.pvp.net/api/lol/static-data/eune/v1.2/champion?champData=all&api_key=' + API_KEY
 
     @staticmethod
     def _request_confirmation(requested_item):
@@ -1202,16 +1189,17 @@ class RequestDataFromAPI(object):
         start_msg = '\n' + fat_delimiter(num_of_lines=40)
         start_msg += '\nWARNING !!!'
         start_msg += fat_delimiter(num_of_lines=40)
-        start_msg += '\n\nAPI KEY USED: %s\n' % api_key.KEY
+        start_msg += '\n\nAPI KEY USED: %s\n' % API_KEY
         start_msg += '\nStart API requests (%s)?\n' % requested_item
 
         abort_msg = '\nData request ABORTED.\n'
 
         dev_start_question = input(start_msg)
         if dev_start_question == 'y':
-            pass
+            return True
         else:
-            raise RequestAbortedError(abort_msg)
+            print(abort_msg)
+            return False
 
     @staticmethod
     def request_single_page_from_api(page_url):
@@ -1229,131 +1217,114 @@ class RequestDataFromAPI(object):
 
         return json.loads(page_as_str)
 
-    def request_single_page_from_api_as_str(self, page_url, requested_item):
+    def request_single_page_from_api_as_str(self, page_url, requested_obj_name, request_confirmation):
         """
         Requests a page after confirmation of the dev.
 
-        Champion data requests are not derivatives of this method.
-
-        Returns:
-            (str)
+        :param page_url: (str)
+        :param requested_obj_name: (str)
+        :param request_confirmation: (bool)
+        :returns: (str)
         """
 
-        self._request_confirmation(requested_item=requested_item)
+        if request_confirmation:
+            if not self._request_confirmation(requested_item=requested_obj_name):
+                return
 
         page_as_dct = self.request_single_page_from_api(page_url=page_url)
         page_as_str = str(page_as_dct)
 
         return page_as_str
 
+    def request_versions_list(self, request_and_overwriting_confirmation=True):
 
-class RequestAllAbilitiesFromAPI(RequestDataFromAPI):
-    def _request_single_champ_from_api(self, champion_id):
-        """
-        Requests all data for a champion from api.
+        s = self.request_single_page_from_api_as_str(page_url=self.VERSION_PAGE_URL,
+                                                     requested_obj_name='API version',
+                                                     request_confirmation=request_and_overwriting_confirmation)
 
-        Each champion's full data is a page request of its own,
-        therefor (?)..
+        data_storage(targeted_module='api_version.py',
+                     obj_name='API_VERSIONS_LST',
+                     str_to_insert=s,
+                     force_write=not request_and_overwriting_confirmation)
 
-        Return:
-            (dct)
-        """
+    def request_champion_ids(self, request_and_overwriting_confirmation=True):
+        s = self.request_single_page_from_api_as_str(page_url=self.VERSION_PAGE_URL,
+                                                     requested_obj_name='champion IDs',
+                                                     request_confirmation=request_and_overwriting_confirmation)
 
-        page_url = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/champion/"
-                    + champion_id
-                    + "?champData=all&api_key="
-                    + api_key.KEY)
+        data_storage(targeted_module='champion_ids.py',
+                     obj_name='CHAMPION_IDS',
+                     str_to_insert=s,
+                     force_write=not request_and_overwriting_confirmation)
 
-        page_as_dct = self.request_single_page_from_api(page_url=page_url)
-
-        return page_as_dct
-
-    def _request_all_champions_from_api(self, max_champions=None):
-        """
-        Creates a dict containing champion data of all champions.
-
-        Returns:
-            (dct)
-        """
-
-        self._request_confirmation(requested_item='CHAMPION DATA')
-
-        all_champs_dct = {}
-        all_champs_as_str = None
-
-        for champs_requested, champ_id in enumerate(champion_ids.CHAMPION_IDS):
-
-            if max_champions is not None:
-                if champs_requested > max_champions:
-                    break
-
-            champ_name = champion_ids.CHAMPION_IDS[champ_id]
-            champ_name = champ_name.lower()
-            page_as_dct = self._request_single_champ_from_api(champion_id=champ_id)
-
-            all_champs_dct.update({champ_name: page_as_dct})
-
-            all_champs_as_str = str(all_champs_dct)
-
-        return all_champs_as_str
-
-    @RequestDataFromAPI.request_abortion_handler
-    def store_all_champions_data(self, max_champions=None):
+    def request_all_champions_data(self, request_and_overwriting_confirmation=True):
         """
         Stores all champions' data from API.
 
         Data stored is a dict with champion names as keywords,
         and champion ability content as value.
 
-        Returns:
-            (None)
+        :param request_and_overwriting_confirmation: (bool)
+        :return: (None)
         """
+
+        page_as_dct = self.request_single_page_from_api_as_str(page_url=self.ALL_CHAMPION_DATA_URL,
+                                                               requested_obj_name='all champion data',
+                                                               request_confirmation=request_and_overwriting_confirmation)
 
         data_storage(targeted_module='api_champions_database.py',
                      obj_name='ALL_CHAMPIONS_ATTR',
-                     str_to_insert=self._request_all_champions_from_api(max_champions=max_champions))
+                     str_to_insert=page_as_dct,
+                     force_write=not request_and_overwriting_confirmation)
 
-
-class RequestAllRunesFromAPI(RequestDataFromAPI):
-    RUNES_PAGE_URL = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key="
-                      + api_key.KEY)
-
-    @RequestDataFromAPI.request_abortion_handler
-    def store_all_runes_from_api(self):
+    def request_all_runes_from_api(self, request_and_overwriting_confirmation=True):
         page_as_str = self.request_single_page_from_api_as_str(page_url=self.RUNES_PAGE_URL,
-                                                               requested_item='RUNES')
+                                                               requested_obj_name='RUNES',
+                                                               request_confirmation=request_and_overwriting_confirmation)
 
         data_storage(targeted_module='api_runes_database.py',
                      obj_name='ALL_RUNES',
-                     str_to_insert=page_as_str)
+                     str_to_insert=page_as_str,
+                     force_write=not request_and_overwriting_confirmation)
 
-
-class RequestAllItemsFromAPI(RequestDataFromAPI):
-    ITEMS_PAGE_URL = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/item?itemListData=all&api_key=" +
-                      api_key.KEY)
-
-    @RequestDataFromAPI.request_abortion_handler
-    def store_all_items_from_api(self):
+    def request_all_items_from_api(self, request_and_overwriting_confirmation=True):
         page_as_str = self.request_single_page_from_api_as_str(page_url=self.ITEMS_PAGE_URL,
-                                                               requested_item='ITEMS')
+                                                               requested_obj_name='ITEMS',
+                                                               request_confirmation=request_and_overwriting_confirmation)
 
         data_storage(targeted_module='api_items_database.py',
                      obj_name='ALL_ITEMS',
-                     str_to_insert=page_as_str)
+                     str_to_insert=page_as_str,
+                     force_write=not request_and_overwriting_confirmation)
 
-
-class RequestAllMasteriesFromAPI(RequestDataFromAPI):
-    MASTERIES_PAGE_URL = ('https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/mastery?masteryListData=all&api_key='
-                          + api_key.KEY)
-
-    @RequestDataFromAPI.request_abortion_handler
-    def store_all_masteries_from_api(self):
+    def request_all_masteries_from_api(self, request_and_overwriting_confirmation=True):
         page_as_str = self.request_single_page_from_api_as_str(page_url=self.MASTERIES_PAGE_URL,
-                                                               requested_item='MASTERIES')
+                                                               requested_obj_name='MASTERIES',
+                                                               request_confirmation=request_and_overwriting_confirmation)
 
         data_storage(targeted_module=API_STORED_MASTERIES_MODULE,
                      obj_name='ALL_MASTERIES',
-                     str_to_insert=page_as_str)
+                     str_to_insert=page_as_str,
+                     force_write=not request_and_overwriting_confirmation)
+
+    def request_and_store_everything(self):
+        """
+        Requests all data from API and stores them.
+
+        Request-confirmation and overwriting existing stored data is done ONLY ONCE at the start.
+
+        :return: (None)
+        """
+        if not self._request_confirmation(requested_item='ALL API DATA'):
+            return
+
+        self.request_versions_list(request_and_overwriting_confirmation=False)
+        self.request_all_champions_data(request_and_overwriting_confirmation=False)
+        self.request_all_runes_from_api(request_and_overwriting_confirmation=False)
+        self.request_all_items_from_api(request_and_overwriting_confirmation=False)
+        self.request_all_masteries_from_api(request_and_overwriting_confirmation=False)
+
+        print('Requests complete.' + fat_delimiter(40))
 
 
 # ===============================================================
@@ -1413,8 +1384,8 @@ class _ExploreBase(object):
         """
         if string not in modified_dct:
             modified_dct.update(
-                {string: dict(
-                    frequency=1, )})
+                    {string: dict(
+                            frequency=1, )})
         else:
             modified_dct[string]['frequency'] += 1
 
@@ -2275,7 +2246,32 @@ class ExploreChampionsBaseStats(_ExploreBase):
 # ===============================================================
 #       ATTRIBUTE CREATION
 # ===============================================================
-# STATS DEPENDENCIES
+class PlaceholderTranslation(object):
+
+    # TODO: complete it
+    @staticmethod
+    def _____create_object_from_placeholder(given_placeholder, extra_start_msg):
+        """
+        Picks appropriate method for object creation based on given placeholder.
+
+        :param given_placeholder:
+        :return: (list), (dict) or (literal)
+        """
+
+        placeholder_type = given_placeholder.data_type
+
+        placeholder_allowed_values = given_placeholder.allowed_values
+
+        non_restricted_choice = given_placeholder.non_restricted_choice
+
+        if placeholder_type == list:
+            obj_returned = []
+
+            suggest_attr_values_of_list(suggested_values_lst={},
+                                        modified_lst=obj_returned,
+                                        extra_start_msg=extra_start_msg,)
+
+
 class StatsDependencies(object):
 
     @staticmethod
@@ -2387,40 +2383,105 @@ class _BuffsAndDmgsBase(object):
         self._change_buffs_or_dmgs_names(modified_dct=modified_dct, str_buff_or_dmg='buff')
 
     @staticmethod
-    def _insert_on_hit_or_on_being_hit(buffs_dct, str_on_hit_or_on_being_hit, buffs_names, dmgs_names):
+    def _insert_on_hit_or_being_hit_or_dmg(buffs_or_dmgs_dct, on_x_str, buffs_names, dmgs_names):
         """
         Inserts on-hit or on-being-hit effects inside given buff dict.
 
-        :param str_on_hit_or_on_being_hit: (str) 'on_hit' or 'on_being_hit'
+        :param on_x_str: (str) 'on_hit', 'on_being_hit', 'on_dmg'
         :return: (None)
         """
         # (done later so that buffs' and dmgs' names are available)
-        for buff_name in buffs_dct:
+        for buff_or_dmg_name in buffs_or_dmgs_dct:
 
-            if isinstance(buffs_dct[buff_name], str):
+            if isinstance(buffs_or_dmgs_dct[buff_or_dmg_name], str):
                 # (skips if expressed by method)
                 continue
 
-            buffs_dct[buff_name].update({str_on_hit_or_on_being_hit: palette.ON_HIT_EFFECTS})
-            buff_on_hit_or_on_being_hit_dct = buffs_dct[buff_name][str_on_hit_or_on_being_hit]
-            if _y_n_question('Does {} have {}?'.format(buff_name.upper(), str_on_hit_or_on_being_hit.upper())):
+            buffs_or_dmgs_dct[buff_or_dmg_name].update({on_x_str: palette.ON_HIT_EFFECTS})
+            buff_on_hit_or_on_being_hit_dct = buffs_or_dmgs_dct[buff_or_dmg_name][on_x_str]
+            if _y_n_question('Does {} have {}?'.format(buff_or_dmg_name.upper(), on_x_str.upper())):
 
                 # ('reduce_cd' should be set manually since too few items have it)
 
-                suggest_lst_of_attr_values(modified_lst=buff_on_hit_or_on_being_hit_dct['apply_buff'],
-                                           suggested_values_lst=buffs_names,
-                                           extra_start_msg='APPLIED BUFFS {}.'.format(str_on_hit_or_on_being_hit))
+                suggest_attr_values_of_list(modified_lst=buff_on_hit_or_on_being_hit_dct['apply_buff'],
+                                            suggested_values_lst=buffs_names,
+                                            extra_start_msg='APPLIED BUFFS {}.'.format(on_x_str))
 
-                suggest_lst_of_attr_values(modified_lst=buff_on_hit_or_on_being_hit_dct['cause_dmg'],
-                                           suggested_values_lst=dmgs_names,
-                                           extra_start_msg='CAUSED DMGS {}.'.format(str_on_hit_or_on_being_hit))
+                suggest_attr_values_of_list(modified_lst=buff_on_hit_or_on_being_hit_dct['cause_dmg'],
+                                            suggested_values_lst=dmgs_names,
+                                            extra_start_msg='CAUSED DMGS {}.'.format(on_x_str))
 
-                suggest_lst_of_attr_values(modified_lst=buff_on_hit_or_on_being_hit_dct['remove_buff'],
-                                           suggested_values_lst=buffs_names,
-                                           extra_start_msg='REMOVED BUFFS {}.'.format(str_on_hit_or_on_being_hit))
+                suggest_attr_values_of_list(modified_lst=buff_on_hit_or_on_being_hit_dct['remove_buff'],
+                                            suggested_values_lst=buffs_names,
+                                            extra_start_msg='REMOVED BUFFS {}.'.format(on_x_str))
 
             else:
-                buffs_dct[buff_name][str_on_hit_or_on_being_hit] = {}
+                buffs_or_dmgs_dct[buff_or_dmg_name][on_x_str] = {}
+
+    def insert_on_hit(self, buffs_or_dmgs_dct, buffs_names, dmgs_names):
+        self._insert_on_hit_or_being_hit_or_dmg(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
+                                                on_x_str='on_hit',
+                                                buffs_names=buffs_names,
+                                                dmgs_names=dmgs_names)
+
+    def insert_on_being_hit(self, buffs_or_dmgs_dct, buffs_names, dmgs_names):
+        self._insert_on_hit_or_being_hit_or_dmg(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
+                                                on_x_str='on_being_hit',
+                                                buffs_names=buffs_names,
+                                                dmgs_names=dmgs_names)
+
+    # WARNING: see palette for on-dmg and on-dealing-dmg differences.
+    def insert_on_dmg(self, buffs_or_dmgs_dct, buffs_names, dmgs_names):
+        self._insert_on_hit_or_being_hit_or_dmg(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
+                                                on_x_str='on_dmg',
+                                                buffs_names=buffs_names,
+                                                dmgs_names=dmgs_names)
+
+    # WARNING: see palette for on-dmg and on-dealing-dmg differences.
+    def insert_on_dealing_dmg(self, buffs_or_dmgs_dct, buffs_names, dmgs_names):
+        on_dealing_dmg_name = 'on_dealing_dmg'
+
+        self._insert_on_hit_or_being_hit_or_dmg(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
+                                                on_x_str=on_dealing_dmg_name,
+                                                buffs_names=buffs_names,
+                                                dmgs_names=dmgs_names)
+
+        on_dealing_dmg_dct = buffs_or_dmgs_dct[on_dealing_dmg_name]
+
+        # TRIGGERS
+        # Dmg-types
+        on_dealing_dmg_dct['dmg_types'] = []
+        suggest_attr_values_of_list(suggested_values_lst=palette.ON_DEALING_DMG['dmg_types'].allowed_values,
+                                    modified_lst=on_dealing_dmg_dct['dmg_types'],
+                                    extra_start_msg='DMG TYPES triggering the effects:')
+
+        # Source
+        on_dealing_dmg_dct['source_types_or_names'] = []
+        suggest_attr_values_of_list(suggested_values_lst=palette.ON_DEALING_DMG['source_types_or_names'].allowed_values,
+                                    modified_lst=on_dealing_dmg_dct['source_types_or_names'],
+                                    extra_start_msg='DMG SOURCE triggering the effects:')
+
+    def insert_all_on_x_effects_in_buff(self, buffs_or_dmgs_dct, buffs_names, dmgs_names):
+        """
+        Creates and inserts all buff related on-x effects.
+
+        :return: (None)
+        """
+
+        # On hit
+        self.insert_on_hit(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
+                           buffs_names=buffs_names,
+                           dmgs_names=dmgs_names)
+
+        # On being hit
+        self.insert_on_being_hit(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
+                                 buffs_names=buffs_names,
+                                 dmgs_names=dmgs_names)
+
+        # On dmg
+        self.insert_on_dealing_dmg(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
+                                   buffs_names=buffs_names,
+                                   dmgs_names=dmgs_names)
 
 
 class BuffsBase(_BuffsAndDmgsBase):
@@ -2438,21 +2499,21 @@ class BuffsBase(_BuffsAndDmgsBase):
         return dct
 
     USUAL_BUFF_ATTR_VALUES = dict(
-        target_type=('player', 'enemy'),
-        max_stacks=(1,),
-        duration=(1, 2, 3, 4, 5, 'permanent'),
-        prohibit_cd_start=(None, ),
-        buff_source=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS,
-        dot=(False, True),
-        max_targets=(1, 2, 3, 4, 5, 'infinite'),
-        usual_max_targets=(1, 2, 3, 4, 5),
-        aura=(False, True)
+            target_type=('player', 'enemy'),
+            max_stacks=(1,),
+            duration=(1, 2, 3, 4, 5, 'permanent'),
+            prohibit_cd_start=(None, ),
+            buff_source=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS,
+            dot=(False, True),
+            max_targets=(1, 2, 3, 4, 5, 'infinite'),
+            usual_max_targets=(1, 2, 3, 4, 5),
+            aura=(False, True)
     )
 
     @staticmethod
     def stat_mod_attributes():
         return dict(
-            placeholder_stat_1='placeholder')
+                placeholder_stat_1='placeholder')
 
     STAT_NAMES_IN_TOOLTIPS_TO_APP_MAP = {'attack damage': 'ad',
                                          'ability power': 'ap',
@@ -2482,8 +2543,8 @@ class StatsCreation(object):
     @staticmethod
     def _suggest_stats(stats_dct, stat_name, suggested_values_lst, suggest_mods_func):
         chosen_types_lst = []
-        suggest_lst_of_attr_values(suggested_values_lst=('additive', 'percent', 'multiplicative'),
-                                   modified_lst=chosen_types_lst)
+        suggest_attr_values_of_list(suggested_values_lst=('additive', 'percent', 'multiplicative'),
+                                    modified_lst=chosen_types_lst)
 
         for type_name in chosen_types_lst:
             stats_dct[stat_name].update({type_name: {}})
@@ -2491,9 +2552,9 @@ class StatsCreation(object):
             # (dict form effects for parameter below)
             eff_values_dct = {'stat_values': suggested_values_lst}
 
-            suggest_attr_values(suggested_values_dct=eff_values_dct,
-                                modified_dct=stats_dct[stat_name][type_name],
-                                extra_start_msg='AFFECTED STAT: {}'.format(stat_name))
+            suggest_attrs_values_of_dct(suggested_values_dct=eff_values_dct,
+                                        modified_dct=stats_dct[stat_name][type_name],
+                                        extra_start_msg='AFFECTED STAT: {}'.format(stat_name))
 
             # STAT MODS
             suggest_mods_func(stats_dct=stats_dct, affected_stat=stat_name)
@@ -2531,16 +2592,16 @@ class GenAttrsBase(object):
     COST_CATEGORIES = ('normal', 'per_hit', 'per_second', 'per_hit_or_single_tar_spell')
 
     USUAL_VALUES_GEN_ATTR = dict(
-        cast_time=(0.25, 0.5, 0),
-        travel_time=(0, 0.25, 0.5),
-        move_while_casting=(False, True),
-        dashed_distance=(None,),
-        channel_time=(None,),
-        resets_aa=(False, True),
-        toggled=(False, True),
-        independent_cast=(False, True),
-        base_cd=(),
-        range=()
+            cast_time=(0.25, 0.5, 0),
+            travel_time=(0, 0.25, 0.5),
+            move_while_casting=(False, True),
+            dashed_distance=(None,),
+            channel_time=(None,),
+            resets_aa=(False, True),
+            toggled=(False, True),
+            independent_cast=(False, True),
+            base_cd=(),
+            range=()
     )
 
     @staticmethod
@@ -2552,12 +2613,12 @@ class DmgsBase(_BuffsAndDmgsBase):
 
     # Category names and required extra variables.
     AVAILABLE_DMG_CATEGORIES = dict(
-        standard_dmg=None,
-        chain_decay=dict(
-            decay_coef='placeholder',
-            min_percent_dmg='placeholder',
-        ),
-        aa_dmg=None)
+            standard_dmg=None,
+            chain_decay=dict(
+                    decay_coef='placeholder',
+                    min_percent_dmg='placeholder',
+            ),
+            aa_dmg=None)
 
     @staticmethod
     def dmg_attributes():
@@ -2574,18 +2635,18 @@ class DmgsBase(_BuffsAndDmgsBase):
     def usual_values_dmg_attrs(self):
 
         return dict(
-            target_type=('enemy', 'player'),
-            dmg_category=sorted(self.AVAILABLE_DMG_CATEGORIES),
-            resource_type=('hp', 'mp', 'energy'),
-            dmg_source=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS,
-            life_conversion_type=('spellvamp', None, 'lifesteal'),
-            radius=(None, ),
-            dot=(False, True),
-            max_targets=(1, 2, 3, 4, 5, 'infinite'),
-            usual_max_targets=(1, 2, 3, 4, 5),
-            delay=(None,),
-            crit_type=palette.CRIT_TYPES,
-            heal_for_dmg_amount=(False, True)
+                target_type=('enemy', 'player'),
+                dmg_category=sorted(self.AVAILABLE_DMG_CATEGORIES),
+                resource_type=('hp', 'mp', 'energy'),
+                dmg_source=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS,
+                life_conversion_type=('spellvamp', None, 'lifesteal'),
+                radius=(None, ),
+                dot=(False, True),
+                max_targets=(1, 2, 3, 4, 5, 'infinite'),
+                usual_max_targets=(1, 2, 3, 4, 5),
+                delay=(None,),
+                crit_type=palette.CRIT_TYPES,
+                heal_for_dmg_amount=(False, True)
         )
 
     @staticmethod
@@ -2617,22 +2678,22 @@ class DmgsBase(_BuffsAndDmgsBase):
     def dmg_mod_contents():
 
         return dict(
-            player={},      # (e.g. 'player': {'stat1': value,} )
-            enemy={}
+                player={},      # (e.g. 'player': {'stat1': value,} )
+                enemy={}
         )
 
     @staticmethod
     def single_dmg_dct_template_in_factory():
         return dict(
-            dmg_type='placeholder',
-            abbr_in_effects='placeholder',
-            mod_1='placeholder',
+                dmg_type='placeholder',
+                abbr_in_effects='placeholder',
+                mod_1='placeholder',
         )
 
     @staticmethod
     def single_mod_dct_template_in_factory():
         return dict(
-            abbr_in_effects='placeholder',
+                abbr_in_effects='placeholder',
         )
 
     def _create_shield_or_dmg_mods(self, mods_dct):
@@ -2645,8 +2706,8 @@ class DmgsBase(_BuffsAndDmgsBase):
 
                 # NAMES
                 mods_names = []
-                suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES, modified_lst=mods_names,
-                                           extra_start_msg='Mods belonging to {}\n'.format(owner_type.upper()))
+                suggest_attr_values_of_list(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES, modified_lst=mods_names,
+                                            extra_start_msg='Mods belonging to {}\n'.format(owner_type.upper()))
 
                 if mods_names:
                     for mod_name in mods_names:
@@ -2829,7 +2890,7 @@ class ItemAndMasteriesBase(object):
 
                 if stat_type not in buff_stats_dct[stat_name]:
                     buff_stats_dct[stat_name].update(
-                        {stat_type: {'stat_mods': {}, 'stat_values': None}})
+                            {stat_type: {'stat_mods': {}, 'stat_values': None}})
 
                 buff_stats_dct[stat_name][stat_type]['stat_values'] = stat_vals
 
@@ -2954,10 +3015,10 @@ class _ConditionalsBase(metaclass=abc.ABCMeta):
         self.conditions_dct[con_name]['triggers'][trig_name].update({'trigger_type': trig_type})
 
         # Inserts trig contents.
-        suggest_attr_values(suggested_values_dct=self.trigger_setup_dct[trig_type],
-                            modified_dct=self.conditions_dct[con_name]['triggers'][trig_name],
-                            restrict_choices=True,
-                            attrs_with_lst_val=self.attrs_with_lst_val)
+        suggest_attrs_values_of_dct(suggested_values_dct=self.trigger_setup_dct[trig_type],
+                                    modified_dct=self.conditions_dct[con_name]['triggers'][trig_name],
+                                    restrict_choices=True,
+                                    attrs_with_lst_val=self.attrs_with_lst_val)
 
         print(delimiter(40))
         print('\nTRIGGER: {}'.format(trig_name))
@@ -2985,10 +3046,10 @@ class _ConditionalsBase(metaclass=abc.ABCMeta):
         self.conditions_dct[con_name]['effects'][eff_name].update({'effect_type': eff_type})
 
         # Inserts effect contents.
-        suggest_attr_values(suggested_values_dct=self.effect_setup_dct[eff_type],
-                            modified_dct=self.conditions_dct[con_name]['effects'][eff_name],
-                            restrict_choices=True,
-                            attrs_with_lst_val=self.attrs_with_lst_val)
+        suggest_attrs_values_of_dct(suggested_values_dct=self.effect_setup_dct[eff_type],
+                                    modified_dct=self.conditions_dct[con_name]['effects'][eff_name],
+                                    restrict_choices=True,
+                                    attrs_with_lst_val=self.attrs_with_lst_val)
 
         print(delimiter(40))
         print('\nEFFECT: {}'.format(eff_name))
@@ -3183,8 +3244,8 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
 
         modified_dct = self.general_attr_dct['cost']['standard_cost']
 
-        suggest_attr_values(suggested_values_dct={'cost_category': self.COST_CATEGORIES},
-                            modified_dct=modified_dct, restrict_choices=True)
+        suggest_attrs_values_of_dct(suggested_values_dct={'cost_category': self.COST_CATEGORIES},
+                                    modified_dct=modified_dct, restrict_choices=True)
 
     def fill_base_cd_values(self):
         """
@@ -3272,9 +3333,9 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
         extra_msg = '\nGENERAL ATTRIBUTE CREATION\n'
         extra_msg += self._champion_and_ability_msg()
 
-        suggest_attr_values(suggested_values_dct=self.USUAL_VALUES_SPELLS_GEN_ATTRS,
-                            modified_dct=self.general_attr_dct,
-                            extra_start_msg=extra_msg)
+        suggest_attrs_values_of_dct(suggested_values_dct=self.USUAL_VALUES_SPELLS_GEN_ATTRS,
+                                    modified_dct=self.general_attr_dct,
+                                    extra_start_msg=extra_msg)
 
     def _suggest_cd_reductions(self):
         """
@@ -3283,18 +3344,18 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
         :return: (None)
         """
         reduced_ability_names = []
-        suggest_lst_of_attr_values(modified_lst=reduced_ability_names,
-                                   suggested_values_lst=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
-                                   extra_start_msg='\nOn cast modifies cd of following abilities:',
-                                   sort_suggested_lst=False)
+        suggest_attr_values_of_list(modified_lst=reduced_ability_names,
+                                    suggested_values_lst=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
+                                    extra_start_msg='\nOn cast modifies cd of following abilities:',
+                                    sort_suggested_lst=False)
 
         # (removes placeholders to prepare for data insertion)
         self.general_attr_dct['cds_modified'] = {}
         # For each reduced ability, creates dict key and suggests values.
         for ability_name in reduced_ability_names:
 
-            suggest_attr_values(suggested_values_dct={ability_name: (1, )},
-                                modified_dct=self.general_attr_dct['cds_modified'])
+            suggest_attrs_values_of_dct(suggested_values_dct={ability_name: (1,)},
+                                        modified_dct=self.general_attr_dct['cds_modified'])
 
     @repeat_cluster_decorator(cluster_name='GENERAL ATTRIBUTES')
     def run_gen_attr_creation(self):
@@ -3313,8 +3374,8 @@ class GeneralAbilityAttributes(AbilitiesAttributesBase):
 
         print(msg)
 
-        suggest_attr_values(suggested_values_dct=dict(castable=(True, False)),
-                            modified_dct=self.general_attr_dct, restrict_choices=True)
+        suggest_attrs_values_of_dct(suggested_values_dct=dict(castable=(True, False)),
+                                    modified_dct=self.general_attr_dct, restrict_choices=True)
 
         if self.general_attr_dct['castable'] is True:
             self.general_attr_dct.update({k: v for k, v in self.general_attributes().items()})
@@ -3359,13 +3420,13 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
 
         # (e.g. ' {{ e1}} true damage' )
         p = re.compile(
-            r"""
-            \s\{\{\s\w\d{1,2}\s\}\}             # ' {{ e1 }}'
-            [^,.]*?                             # any characters in between excluding , and .
-            (?:true|magic|magical|physical)     # 'true', 'magic' (sometimes referred as 'magical') or 'physical'
-            \sdamage                            # ' damage'
+                r"""
+                \s\{\{\s\w\d{1,2}\s\}\}             # ' {{ e1 }}'
+                [^,.]*?                             # any characters in between excluding , and .
+                (?:true|magic|magical|physical)     # 'true', 'magic' (sometimes referred as 'magical') or 'physical'
+                \sdamage                            # ' damage'
 
-            """, re.IGNORECASE | re.VERBOSE)
+                """, re.IGNORECASE | re.VERBOSE)
         lst = p.findall(api_string)
 
         return lst
@@ -3400,16 +3461,16 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
 
         # 'damage over 2.5 seconds' or 'damage over {{ d1 }} seconds'
         pattern_1 = re.compile(
-            r"""
-            damage
-            \s
-            (?: over | for )
-            \s
-            ( \d+\.?\d* | \{\{\s \w\d{1,2} \s\}\} )          # ('4' or '2.3') or '{{ e1 }}'
-            \s
-            seconds
+                r"""
+                damage
+                \s
+                (?: over | for )
+                \s
+                ( \d+\.?\d* | \{\{\s \w\d{1,2} \s\}\} )          # ('4' or '2.3') or '{{ e1 }}'
+                \s
+                seconds
 
-            """, re.IGNORECASE | re.VERBOSE)
+                """, re.IGNORECASE | re.VERBOSE)
 
         result_1 = re.search(pattern_1, string)
 
@@ -3428,16 +3489,16 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
         string = self.sanitized_tooltip
 
         p = re.compile(
-            r"""
-            damage
-            \s
-            over
-            \s
-            ( \d+\.?\d* | \{\{\s \w\d{1,2} \s\}\} )          # ('4' or '2.3') or '{{ e1 }}'
-            \s
-            seconds
+                r"""
+                damage
+                \s
+                over
+                \s
+                ( \d+\.?\d* | \{\{\s \w\d{1,2} \s\}\} )          # ('4' or '2.3') or '{{ e1 }}'
+                \s
+                seconds
 
-            """, re.IGNORECASE | re.VERBOSE)
+                """, re.IGNORECASE | re.VERBOSE)
 
         results_found = re.findall(p, string)
 
@@ -3514,8 +3575,8 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
             # (creates appropriate arg form for method below)
             mod_attr_template = {'mod_stat_owner': ('player', 'enemy')}
             temp_mod_dct = {}
-            suggest_attr_values(suggested_values_dct=mod_attr_template, modified_dct=temp_mod_dct,
-                                mute_exit_key_msgs=True, extra_start_msg=mod_and_val_as_str)
+            suggest_attrs_values_of_dct(suggested_values_dct=mod_attr_template, modified_dct=temp_mod_dct,
+                                        mute_exit_key_msgs=True, extra_start_msg=mod_and_val_as_str)
 
             # Stores mod in dmg dct.
             owner_type = temp_mod_dct['mod_stat_owner']
@@ -3582,15 +3643,15 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
 
             print(msg)
 
-            suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attrs(),
-                                modified_dct=self.dmgs_dct[dmg_temp_name])
+            suggest_attrs_values_of_dct(suggested_values_dct=self.usual_values_dmg_attrs(),
+                                        modified_dct=self.dmgs_dct[dmg_temp_name])
 
             # Decay stabilization tar num.
             if self.dmgs_dct[dmg_temp_name]['dmg_category'] == 'chain_decay':
                 stabilized_num = self._stabilized_tar_num(dmg_dct=self.dmgs_dct[dmg_temp_name])
 
                 self.dmgs_dct[dmg_temp_name].update(dict(
-                    stabilized_tar_num=stabilized_num))
+                        stabilized_tar_num=stabilized_num))
 
     def modify_dmg_names(self):
         """
@@ -3647,9 +3708,9 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
                                                         first_synthetic=self.ability_name)
             self.dmgs_dct.update({new_dmg_name: self.dmg_attributes()})
             self._suggest_dmg_values(dmg_name=new_dmg_name)
-            suggest_attr_values(suggested_values_dct=self.usual_values_dmg_attrs(),
-                                modified_dct=self.dmgs_dct[new_dmg_name],
-                                extra_start_msg='\nManually inserted dmg.')
+            suggest_attrs_values_of_dct(suggested_values_dct=self.usual_values_dmg_attrs(),
+                                        modified_dct=self.dmgs_dct[new_dmg_name],
+                                        extra_start_msg='\nManually inserted dmg.')
             self.modify_dmg_names()
 
     def insert_dmg_category_related_attrs(self):
@@ -3738,8 +3799,8 @@ def suggest_affected_stats_attributes(obj_name, modified_stats_dct, possible_sta
 
     if _y_n_question(msg):
         modified_stats_names = []
-        suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
-                                   modified_lst=modified_stats_names)
+        suggest_attr_values_of_list(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
+                                    modified_lst=modified_stats_names)
 
         # Stat name
         for stat_modified in modified_stats_names:
@@ -3751,7 +3812,7 @@ def suggest_affected_stats_attributes(obj_name, modified_stats_dct, possible_sta
             for stat_type in STAT_TYPES:
                 if _y_n_question(buff_name_stat_name_msg+'\nIs there a {} bonus to the stat?'.format(stat_type.upper())):
                     modified_stats_dct[stat_modified].update(
-                        {stat_type: {'stat_mods': {}, }})
+                            {stat_type: {'stat_mods': {}, }})
                 else:
                     continue
 
@@ -3759,15 +3820,15 @@ def suggest_affected_stats_attributes(obj_name, modified_stats_dct, possible_sta
                 stat_vals = enumerated_question(question_str=buff_name_stat_name_msg+'\nStat values?',
                                                 choices_seq=possible_stat_values_lst)
                 modified_stats_dct[stat_modified][stat_type].update(
-                    {'stat_values': stat_vals})
+                        {'stat_values': stat_vals})
 
                 # MODS
                 modifier_name_question = buff_name_stat_name_msg + '\nDoes the stat have modifiers?'
                 if _y_n_question(modifier_name_question):
 
                     stat_modifiers_lst = []
-                    suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
-                                               modified_lst=stat_modifiers_lst)
+                    suggest_attr_values_of_list(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
+                                                modified_lst=stat_modifiers_lst)
 
                     for modifier in stat_modifiers_lst:
 
@@ -3784,7 +3845,7 @@ def suggest_affected_stats_attributes(obj_name, modified_stats_dct, possible_sta
 
                         # Inserts mod values.
                         modified_stats_dct[stat_modified][stat_type]['stat_mods'].update(
-                            {modifier: mod_vals})
+                                {modifier: mod_vals})
 
     else:
         print("\nDoesn't modify stats.")
@@ -4009,9 +4070,9 @@ class BuffAbilityAttributes(AbilitiesAttributesBase, BuffsBase, StatsCreation, D
 
             usual_attrs_msg = 'USUAL BUFF ATTRIBUTES\n'
             usual_attrs_msg += '\nBUFF: %s' % buff_name
-            suggest_attr_values(suggested_values_dct=self.USUAL_BUFF_ATTR_VALUES,
-                                modified_dct=self.buffs_dct[buff_name],
-                                extra_start_msg=usual_attrs_msg)
+            suggest_attrs_values_of_dct(suggested_values_dct=self.USUAL_BUFF_ATTR_VALUES,
+                                        modified_dct=self.buffs_dct[buff_name],
+                                        extra_start_msg=usual_attrs_msg)
 
             self.buffs_dct[buff_name]['shield'] = self.create_shield(description_to_print=self.sanitized_tooltip)
 
@@ -4163,7 +4224,7 @@ class AbilitiesAttributes(object):
         # GENERAL ATTRIBUTES
         for ability_name in palette.ABILITY_SHORTCUTS:
             self.final_abilities_attrs['general_attributes'].update(
-                {ability_name: self.initial_abilities_attrs[ability_name]['general']})
+                    {ability_name: self.initial_abilities_attrs[ability_name]['general']})
 
         # DMGS AND BUFFS
         for shortcut in palette.ABILITY_SHORTCUTS:
@@ -4261,9 +4322,9 @@ class EffectsBase(object):
                 dmg_names = Fetch().dmgs_names(obj_name=obj_name, champ_or_item=champ_or_item)
                 buffs_names = Fetch().buffs_names(obj_name=obj_name, champ_or_item=champ_or_item)
 
-            suggest_lst_of_attr_values(suggested_values_lst=dmg_names,
-                                       modified_lst=modified_eff_dct[application_type]['dmg'],
-                                       extra_start_msg=dmg_msg)
+            suggest_attr_values_of_list(suggested_values_lst=dmg_names,
+                                        modified_lst=modified_eff_dct[application_type]['dmg'],
+                                        extra_start_msg=dmg_msg)
 
             pp.pprint(modified_eff_dct[application_type]['dmg'])
 
@@ -4272,9 +4333,9 @@ class EffectsBase(object):
             buffs_applied_msg += '%s -- BUFFS APPLIED' % application_type
             buffs_applied_msg = buffs_applied_msg.upper()
 
-            suggest_lst_of_attr_values(suggested_values_lst=buffs_names,
-                                       modified_lst=modified_eff_dct[application_type]['buffs'],
-                                       extra_start_msg=buffs_applied_msg)
+            suggest_attr_values_of_list(suggested_values_lst=buffs_names,
+                                        modified_lst=modified_eff_dct[application_type]['buffs'],
+                                        extra_start_msg=buffs_applied_msg)
 
             pp.pprint(modified_eff_dct[application_type]['buffs'])
 
@@ -4283,18 +4344,18 @@ class EffectsBase(object):
             buff_removal_msg += '%s -- BUFFS REMOVED' % application_type
             buff_removal_msg = buff_removal_msg.upper()
 
-            suggest_lst_of_attr_values(suggested_values_lst=buffs_names,
-                                       modified_lst=modified_eff_dct[application_type]['remove_buff'],
-                                       extra_start_msg=buff_removal_msg)
+            suggest_attr_values_of_list(suggested_values_lst=buffs_names,
+                                        modified_lst=modified_eff_dct[application_type]['remove_buff'],
+                                        extra_start_msg=buff_removal_msg)
 
             pp.pprint(modified_eff_dct[application_type]['remove_buff'])
 
         # CD MODIFICATION
         lst_of_modified = []
         cd_mod_msg = '\nCDs MODIFIED ON CAST'
-        suggest_lst_of_attr_values(suggested_values_lst=palette.SPELL_SHORTCUTS,
-                                   modified_lst=lst_of_modified,
-                                   extra_start_msg=cd_mod_msg)
+        suggest_attr_values_of_list(suggested_values_lst=palette.SPELL_SHORTCUTS,
+                                    modified_lst=lst_of_modified,
+                                    extra_start_msg=cd_mod_msg)
 
         for cd_modified_name in lst_of_modified:
 
@@ -4395,64 +4456,64 @@ class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
     def trigger_setup_dct(self,):
 
         return dict(
-            buff=dict(
-                buff_name=self.available_buff_names(),
-                owner_type=self.TARGET_TYPES,
-                operator=self.COMPARISON_OPERATOR_STRINGS,
-                stacks=[str(i) for i in range(1, 10)],
-            ),
-            stat=dict(
-                stat_name=self.NON_PER_LVL_STAT_NAMES,
-                owner_type=self.TARGET_TYPES,
-                operator=self.COMPARISON_OPERATOR_STRINGS,
-                value=()
-            ),
-            spell_lvl=dict(
-                spell_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
-                operator=self.COMPARISON_OPERATOR_STRINGS,
-                lvl=ALLOWED_ABILITY_LVLS
-            ),
-            on_cd=dict(
-                spell_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS
-            ))
+                buff=dict(
+                        buff_name=self.available_buff_names(),
+                        owner_type=self.TARGET_TYPES,
+                        operator=self.COMPARISON_OPERATOR_STRINGS,
+                        stacks=[str(i) for i in range(1, 10)],
+                ),
+                stat=dict(
+                        stat_name=self.NON_PER_LVL_STAT_NAMES,
+                        owner_type=self.TARGET_TYPES,
+                        operator=self.COMPARISON_OPERATOR_STRINGS,
+                        value=()
+                ),
+                spell_lvl=dict(
+                        spell_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
+                        operator=self.COMPARISON_OPERATOR_STRINGS,
+                        lvl=ALLOWED_ABILITY_LVLS
+                ),
+                on_cd=dict(
+                        spell_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS
+                ))
 
     @property
     def effect_setup_dct(self):
 
         dct = dict(
-            ability_effect=dict(
-                obj_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
-                # Contains spell effect categories
-                lst_category=palette.spell_effects()['player']['actives'],
-                mod_operation=('append', 'remove'),
-            ),
+                ability_effect=dict(
+                        obj_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
+                        # Contains spell effect categories
+                        lst_category=palette.spell_effects()['player']['actives'],
+                        mod_operation=('append', 'remove'),
+                ),
 
-            ability_attr=dict(
-                obj_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
-                attr_name=self.available_attr_names,
-                mod_operation=('multiply', 'add', 'remove'),
-                formula_type=self.FORMULA_TYPE,
-            ),
+                ability_attr=dict(
+                        obj_name=palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
+                        attr_name=self.available_attr_names,
+                        mod_operation=('multiply', 'add', 'remove'),
+                        formula_type=self.FORMULA_TYPE,
+                ),
 
-            buff_attr=dict(
-                obj_name=self.available_buff_names(),
-                buff_attr_name=self.available_buff_attr_names,
-                mod_operation=('multiply', 'add', 'remove'),
-                formula_type=self.FORMULA_TYPE
-            ),
+                buff_attr=dict(
+                        obj_name=self.available_buff_names(),
+                        buff_attr_name=self.available_buff_attr_names,
+                        mod_operation=('multiply', 'add', 'remove'),
+                        formula_type=self.FORMULA_TYPE
+                ),
 
-            buff_on_hit=dict(
-                buff_name=self.available_buff_names(),
-                lst_category=ON_HIT_EFFECTS,
-                mod_operation=('append', 'remove'),
-            ),
+                buff_on_hit=dict(
+                        buff_name=self.available_buff_names(),
+                        lst_category=ON_HIT_EFFECTS,
+                        mod_operation=('append', 'remove'),
+                ),
 
-            dmg_attr=dict(
-                dmg_name=self.available_dmg_names(),
-                attr_name=self.available_dmg_attr_names,
-                mod_operation=('multiply', 'add', 'remove'),
-                formula_type=self.FORMULA_TYPE,
-            ),
+                dmg_attr=dict(
+                        dmg_name=self.available_dmg_names(),
+                        attr_name=self.available_dmg_attr_names,
+                        mod_operation=('multiply', 'add', 'remove'),
+                        formula_type=self.FORMULA_TYPE,
+                ),
         )
 
         return dct
@@ -4460,16 +4521,16 @@ class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
     @staticmethod
     def constant_values_dct():
         return dict(
-            values_tpl=()
+                values_tpl=()
         )
 
     @staticmethod
     def formula_contents_dct():
         return dict(
-            x_formula=(),
-            x_type=('buff', 'stat'),
-            x_name=(),
-            x_owner=('player', 'enemy', None),
+                x_formula=(),
+                x_type=('buff', 'stat'),
+                x_name=(),
+                x_owner=('player', 'enemy', None),
         )
 
     def _remove_prev_formula_keys(self, con_name, eff_name):
@@ -4495,33 +4556,33 @@ class _ItemsAndAbilitiesConditionalsBase(_ConditionalsBase):
             else:
                 suggested_dct = self.constant_values_dct()
 
-            suggest_attr_values(suggested_values_dct=suggested_dct,
-                                modified_dct=self.conditions_dct[con_name]['effects'][eff_name],)
+            suggest_attrs_values_of_dct(suggested_values_dct=suggested_dct,
+                                        modified_dct=self.conditions_dct[con_name]['effects'][eff_name], )
 
         # Buffs/dmgs (names)
         else:
             self.conditions_dct[con_name]['effects'][eff_name].update({'names_lst': []})
             cat = self.conditions_dct[con_name]['effects'][eff_name]['category']
             if cat in ('buffs', 'remove_buff'):
-                suggest_lst_of_attr_values(suggested_values_lst=self.available_buff_names(),
-                                           modified_lst=self.conditions_dct[con_name]['effects'][eff_name]['names_lst'])
+                suggest_attr_values_of_list(suggested_values_lst=self.available_buff_names(),
+                                            modified_lst=self.conditions_dct[con_name]['effects'][eff_name]['names_lst'])
             # ('modifies_cd')
             elif 'cd' in cat:
                 self.conditions_dct[con_name]['effects'][eff_name].update({'names_dct': {}})
 
-                suggest_lst_of_attr_values(suggested_values_lst=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS,
-                                           modified_lst=self.conditions_dct[con_name]['effects'][eff_name]['names_lst'])
+                suggest_attr_values_of_list(suggested_values_lst=palette.ALL_POSSIBLE_ABILITIES_SHORTCUTS,
+                                            modified_lst=self.conditions_dct[con_name]['effects'][eff_name]['names_lst'])
                 # ( {'q': (1,2..), }
                 cd_mod_suggested_dct = {i: (1, 2, 3) for i in
                                         self.conditions_dct[con_name]['effects'][eff_name]['names_lst']}
 
-                suggest_attr_values(suggested_values_dct=cd_mod_suggested_dct,
-                                    modified_dct=self.conditions_dct[con_name]['effects'][eff_name]['names_dct'])
+                suggest_attrs_values_of_dct(suggested_values_dct=cd_mod_suggested_dct,
+                                            modified_dct=self.conditions_dct[con_name]['effects'][eff_name]['names_dct'])
                 # (deletes list since it was used only temporarily to create the cd modification dct)
                 del self.conditions_dct[con_name]['effects'][eff_name]['names_lst']
             else:
-                suggest_lst_of_attr_values(suggested_values_lst=self.available_dmg_names(),
-                                           modified_lst=self.conditions_dct[con_name]['effects'][eff_name]['names_lst'])
+                suggest_attr_values_of_list(suggested_values_lst=self.available_dmg_names(),
+                                            modified_lst=self.conditions_dct[con_name]['effects'][eff_name]['names_lst'])
 
         print(delimiter(40))
         print('\nEFFECT: {}'.format(eff_name))
@@ -4751,7 +4812,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         """
 
         auto_created_stats = self._automatic_non_unique_stats_names_and_values(
-            given_description_str=self._item_description_str)
+                given_description_str=self._item_description_str)
 
         print(delimiter(20))
         print('\nAutocreated NON UNIQUE stats:')
@@ -4789,8 +4850,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
     @staticmethod
     def _create_unique_or_non_unique_stats(obj_name, modified_stats_dct, possible_stat_values_lst):
         modified_stats_names = []
-        suggest_lst_of_attr_values(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
-                                   modified_lst=modified_stats_names)
+        suggest_attr_values_of_list(suggested_values_lst=stats.NON_PER_LVL_STAT_NAMES,
+                                    modified_lst=modified_stats_names)
 
         # Stat name
         for stat_modified in modified_stats_names:
@@ -4843,14 +4904,14 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         self.item_gen_attrs = {}
 
         # Castable
-        suggest_attr_values(suggested_values_dct=dict(castable=(True, False)),
-                            modified_dct=self.item_gen_attrs, restrict_choices=True)
+        suggest_attrs_values_of_dct(suggested_values_dct=dict(castable=(True, False)),
+                                    modified_dct=self.item_gen_attrs, restrict_choices=True)
 
         # (if castable continues inserting the rest of the keys)
         if self.item_gen_attrs['castable'] is True:
             self.item_gen_attrs.update({k: v for k, v in self.general_attributes().items()})
 
-            suggest_attr_values(suggested_values_dct=self.USUAL_VALUES_GEN_ATTR, modified_dct=self.item_gen_attrs)
+            suggest_attrs_values_of_dct(suggested_values_dct=self.USUAL_VALUES_GEN_ATTR, modified_dct=self.item_gen_attrs)
 
         pp.pprint(self.item_gen_attrs)
 
@@ -4886,8 +4947,8 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
             self.item_dmgs[new_dmg_name]['dmg_values'] = dmg_val
             # Rest of dmg attributes
-            suggest_attr_values(suggested_values_dct=self.usual_item_values_dmg_attrs(),
-                                modified_dct=self.item_dmgs[new_dmg_name],)
+            suggest_attrs_values_of_dct(suggested_values_dct=self.usual_item_values_dmg_attrs(),
+                                        modified_dct=self.item_dmgs[new_dmg_name], )
 
             # Dot.
             if self.item_dmgs[new_dmg_name]['dot']:
@@ -4960,19 +5021,19 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
                 # Buff attrs (excluding stats)
                 buff_msg = '\nITEM: {}, BUFF: {}'.format(self.item_name, buff_name)
-                suggest_attr_values(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
-                                    modified_dct=self.item_buffs[buff_name], extra_start_msg=buff_msg)
+                suggest_attrs_values_of_dct(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
+                                            modified_dct=self.item_buffs[buff_name], extra_start_msg=buff_msg)
 
                 # DOT
                 if self.item_buffs[buff_name]['dot']:
                     self.item_buffs[buff_name]['dot'] = {'dmg_names': []}
-                    suggest_attr_values(suggested_values_dct={k: v for k, v in self.BUFF_DOT_ATTRS.items() if k != 'dmg_names'},
-                                        modified_dct=self.item_buffs[buff_name]['dot'],
-                                        extra_start_msg='Dot attrs: ')
+                    suggest_attrs_values_of_dct(suggested_values_dct={k: v for k, v in self.BUFF_DOT_ATTRS.items() if k != 'dmg_names'},
+                                                modified_dct=self.item_buffs[buff_name]['dot'],
+                                                extra_start_msg='Dot attrs: ')
 
-                    suggest_lst_of_attr_values(suggested_values_lst=list(self.item_dmgs),
-                                               modified_lst=self.item_buffs[buff_name]['dot']['dmg_names'],
-                                               extra_start_msg='Dmgs names?')
+                    suggest_attr_values_of_list(suggested_values_lst=list(self.item_dmgs),
+                                                modified_lst=self.item_buffs[buff_name]['dot']['dmg_names'],
+                                                extra_start_msg='Dmgs names?')
 
                 # SHIELD
                 self.item_buffs[buff_name]['shield'] = self.create_shield(description_to_print=self._item_description_str)
@@ -4990,17 +5051,10 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         buff_names = sorted(self.item_buffs)
         dmgs_names = sorted(self.item_dmgs)
 
-        # On hit
-        self._insert_on_hit_or_on_being_hit(buffs_dct=self.item_buffs,
-                                            str_on_hit_or_on_being_hit='on_hit',
-                                            buffs_names=buff_names,
-                                            dmgs_names=dmgs_names)
-
-        # On being hit
-        self._insert_on_hit_or_on_being_hit(buffs_dct=self.item_buffs,
-                                            str_on_hit_or_on_being_hit='on_being_hit',
-                                            buffs_names=buff_names,
-                                            dmgs_names=dmgs_names)
+        # On x effects
+        self.insert_all_on_x_effects_in_buff(buffs_or_dmgs_dct=self.item_buffs,
+                                             buffs_names=buff_names,
+                                             dmgs_names=dmgs_names)
 
         print('BUFFS:')
         pp.pprint(self.item_buffs)
@@ -5155,10 +5209,10 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
     """
 
     BASE_MASTERY_DCT = dict(
-        stats=None,
-        buffs={},
-        dmgs={},
-        stats_dependencies={})
+            stats=None,
+            buffs={},
+            dmgs={},
+            stats_dependencies={})
 
     def __init__(self, mastery_name):
         self.mastery_name = mastery_name
@@ -5212,9 +5266,9 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         possible_stat_values = self.possible_stat_values()
 
         selected_names_lst = []
-        suggest_lst_of_attr_values(suggested_values_lst=possible_stat_names,
-                                   modified_lst=selected_names_lst,
-                                   sort_suggested_lst=False)
+        suggest_attr_values_of_list(suggested_values_lst=possible_stat_names,
+                                    modified_lst=selected_names_lst,
+                                    sort_suggested_lst=False)
         stats_dct = {}
 
         if selected_names_lst == ['']:
@@ -5228,9 +5282,9 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         for stat_name in stats_dct:
             msg = '\nSTAT NAME: {}\n'.format(stat_name)
             chosen_types_lst = []
-            suggest_lst_of_attr_values(suggested_values_lst=('additive', 'percent', 'multiplicative'),
-                                       modified_lst=chosen_types_lst,
-                                       extra_start_msg=msg)
+            suggest_attr_values_of_list(suggested_values_lst=('additive', 'percent', 'multiplicative'),
+                                        modified_lst=chosen_types_lst,
+                                        extra_start_msg=msg)
 
             for type_name in chosen_types_lst:
                 stats_dct[stat_name].update({type_name: {}})
@@ -5238,9 +5292,9 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
                 # (dict form effects for parameter below)
                 eff_values_dct = {'stat_values': possible_stat_values}
 
-                suggest_attr_values(suggested_values_dct=eff_values_dct,
-                                    modified_dct=stats_dct[stat_name][type_name],
-                                    extra_start_msg=msg)
+                suggest_attrs_values_of_dct(suggested_values_dct=eff_values_dct,
+                                            modified_dct=stats_dct[stat_name][type_name],
+                                            extra_start_msg=msg)
 
         return stats_dct
 
@@ -5266,8 +5320,8 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
 
             dmg_msg = '\nMASTERY: {}, DMG: {}'.format(self.mastery_name, dmg_name)
 
-            suggest_attr_values(suggested_values_dct=self.usual_mastery_dmg_attrs_values(),
-                                modified_dct=self.mastery_dmgs[dmg_name], extra_start_msg=dmg_msg)
+            suggest_attrs_values_of_dct(suggested_values_dct=self.usual_mastery_dmg_attrs_values(),
+                                        modified_dct=self.mastery_dmgs[dmg_name], extra_start_msg=dmg_msg)
             # Dmg source
             self.mastery_dmgs[dmg_name]['dmg_source'] = 'masteries'
 
@@ -5288,8 +5342,8 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
             # Stats affected by buff.
             self.suggest_buff_affected_stats_of_mastery(buff_name=buff_name)
             # Rest of buff attrs.
-            suggest_attr_values(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
-                                modified_dct=self.mastery_buffs[buff_name], extra_start_msg=buff_msg)
+            suggest_attrs_values_of_dct(suggested_values_dct=self.usual_item_or_mastery_buff_attrs_values(),
+                                        modified_dct=self.mastery_buffs[buff_name], extra_start_msg=buff_msg)
             # Buff source
             self.mastery_buffs[buff_name]['buff_source'] = 'masteries'
 
@@ -5306,17 +5360,10 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         buffs_names = sorted(self.mastery_buffs)
         dmgs_names = sorted(self.mastery_dmgs)
 
-        # On hit
-        self._insert_on_hit_or_on_being_hit(buffs_dct=self.mastery_buffs,
-                                            str_on_hit_or_on_being_hit='on_hit',
-                                            buffs_names=buffs_names,
-                                            dmgs_names=dmgs_names)
-
-        # On being hit
-        self._insert_on_hit_or_on_being_hit(buffs_dct=self.mastery_buffs,
-                                            str_on_hit_or_on_being_hit='on_being_hit',
-                                            buffs_names=buffs_names,
-                                            dmgs_names=dmgs_names)
+        # On x effects
+        self.insert_all_on_x_effects_in_buff(buffs_or_dmgs_dct=self.mastery_buffs,
+                                             buffs_names=buffs_names,
+                                             dmgs_names=dmgs_names)
 
         pp.pprint(self.mastery_buffs)
         print(delimiter(80))
@@ -5363,30 +5410,30 @@ class RotationPriorityConditional(_ConditionalsBase):
     def trigger_setup_dct(self):
 
         return dict(
-            active_buffs=dict(
-                buff_names=self._priority_trigger_buffs(),
-                owner_type=self.TARGET_TYPES,
-                stacks_at_least=(1, 2, 3, 4, 5,),
-            ),
+                active_buffs=dict(
+                        buff_names=self._priority_trigger_buffs(),
+                        owner_type=self.TARGET_TYPES,
+                        stacks_at_least=(1, 2, 3, 4, 5,),
+                ),
 
-            previous_action=dict(
-                obj_name=ALL_POSSIBLE_ACTIONS,
-            ),
+                previous_action=dict(
+                        obj_name=ALL_POSSIBLE_ACTIONS,
+                ),
         )
 
     @property
     def effect_setup_dct(self):
         return dict(
-            top_priority=dict(
-                obj_name=ALL_POSSIBLE_ACTIONS
-            ),
-            priority_fragment=dict(
-                priority_fragment_lst=ALL_POSSIBLE_ACTIONS
-            ),
-            consecutive_action=dict(
-                preceding_action=ALL_POSSIBLE_ACTIONS,
-                succeeding_action=ALL_POSSIBLE_ACTIONS
-            )
+                top_priority=dict(
+                        obj_name=ALL_POSSIBLE_ACTIONS
+                ),
+                priority_fragment=dict(
+                        priority_fragment_lst=ALL_POSSIBLE_ACTIONS
+                ),
+                consecutive_action=dict(
+                        preceding_action=ALL_POSSIBLE_ACTIONS,
+                        succeeding_action=ALL_POSSIBLE_ACTIONS
+                )
         )
 
     @property
@@ -5400,10 +5447,10 @@ class SkillsLvlUps(object):
     @staticmethod
     def lvl_priorities_dct_base():
         return dict(
-            spells_lvl_up_queue='list_placeholder',
-            at_least_one_lvl_in_each=(True, False),
-            max_spells_lvl_ups='varying_placeholder',
-            automatically_lvled_up='varying_placeholder'
+                spells_lvl_up_queue='list_placeholder',
+                at_least_one_lvl_in_each=(True, False),
+                max_spells_lvl_ups='varying_placeholder',
+                automatically_lvled_up='varying_placeholder'
         )
 
     @staticmethod
@@ -5420,7 +5467,7 @@ class SkillsLvlUps(object):
 
         if auto_lvled_up_spells_exist:
             spell_names_lst = []
-            suggest_lst_of_attr_values(suggested_values_lst=palette.SPELL_SHORTCUTS, modified_lst=spell_names_lst)
+            suggest_attr_values_of_list(suggested_values_lst=palette.SPELL_SHORTCUTS, modified_lst=spell_names_lst)
 
             for spell_name in spell_names_lst:
                 q_msg = 'Give champ lvls (tuple) at which {} is auto lvled up.'.format(spell_name.upper())
@@ -5448,7 +5495,7 @@ class SkillsLvlUps(object):
             suggested_values_dct = {i: () for i in palette.SPELL_SHORTCUTS}
             dct = {}
 
-            suggest_attr_values(suggested_values_dct=suggested_values_dct, modified_dct=dct)
+            suggest_attrs_values_of_dct(suggested_values_dct=suggested_values_dct, modified_dct=dct)
 
             return dct
 
@@ -5461,8 +5508,8 @@ class SkillsLvlUps(object):
 
         msg = 'Highest to lowest priority spell lvling up?'
         spells_lvl_up_queue_lst = []
-        suggest_lst_of_attr_values(suggested_values_lst=palette.SPELL_SHORTCUTS,
-                                   modified_lst=spells_lvl_up_queue_lst, extra_start_msg=msg)
+        suggest_attr_values_of_list(suggested_values_lst=palette.SPELL_SHORTCUTS,
+                                    modified_lst=spells_lvl_up_queue_lst, extra_start_msg=msg)
 
         dct['spells_lvl_up_queue'] = spells_lvl_up_queue_lst
 
@@ -5613,7 +5660,7 @@ class ModuleCreatorBase(object):
         else:
 
             if type(new_obj_as_dct_or_str_or_func) in (dict, str):
-                    new_obj_as_dct_or_str = new_obj_as_dct_or_str_or_func
+                new_obj_as_dct_or_str = new_obj_as_dct_or_str_or_func
             else:
                 new_obj_as_dct_or_str = new_obj_as_dct_or_str_or_func(*func_args)
 
@@ -5668,26 +5715,26 @@ class ModuleCreatorBase(object):
 class ChampionsBaseStats(ModuleCreatorBase):
 
     BASE_STATS_API_TO_APP_NAME_MAP = dict(
-        hp='hp',
-        hpregenperlevel='hp5',
-        mpperlevel='mp_per_lvl',
-        spellblock='mr',
-        attackdamageperlevel='ad_per_lvl',
-        critperlevel='crit_chance_per_lvl',
-        crit='crit_chance',
-        attackdamage='ad',
-        mpregen='mp5',
-        movespeed='move_speed',
-        hpperlevel='hp_per_lvl',
-        attackspeedoffset='att_speed_offset',
-        hpregen='hp5',
-        mp='mp',
-        attackspeedperlevel='att_speed_per_lvl',
-        mpregenperlevel='mp5_per_lvl',
-        attackrange='range',
-        armor='armor',
-        armorperlevel='armor_per_lvl',
-        spellblockperlevel='mr_per_lvl',
+            hp='hp',
+            hpregenperlevel='hp5',
+            mpperlevel='mp_per_lvl',
+            spellblock='mr',
+            attackdamageperlevel='ad_per_lvl',
+            critperlevel='crit_chance_per_lvl',
+            crit='crit_chance',
+            attackdamage='ad',
+            mpregen='mp5',
+            movespeed='move_speed',
+            hpperlevel='hp_per_lvl',
+            attackspeedoffset='att_speed_offset',
+            hpregen='hp5',
+            mp='mp',
+            attackspeedperlevel='att_speed_per_lvl',
+            mpregenperlevel='mp5_per_lvl',
+            attackrange='range',
+            armor='armor',
+            armorperlevel='armor_per_lvl',
+            spellblockperlevel='mr_per_lvl',
     )
 
     @staticmethod
@@ -5760,10 +5807,10 @@ class ChampionModuleCreator(ModuleCreatorBase):
         """
 
         priority_lst = []
-        suggest_lst_of_attr_values(suggested_values_lst=('AA',) + palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
-                                   modified_lst=priority_lst,
-                                   extra_start_msg='ACTION PRIORITY TUPLE',
-                                   sort_suggested_lst=False)
+        suggest_attr_values_of_list(suggested_values_lst=('AA',) + palette.ALL_POSSIBLE_SPELL_SHORTCUTS,
+                                    modified_lst=priority_lst,
+                                    extra_start_msg='ACTION PRIORITY TUPLE',
+                                    sort_suggested_lst=False)
 
         priority_tpl = tuple(priority_lst)
 
@@ -6098,10 +6145,10 @@ if __name__ == '__main__':
 
     # STORING ALL CHAMPIONS DATA
     if 0:
-        RequestAllAbilitiesFromAPI().store_all_champions_data()
+        RequestDataFromAPI().request_all_champions_data()
     # REQUEST ITEMS API
     if 0:
-        RequestAllItemsFromAPI().store_all_items_from_api()
+        RequestDataFromAPI().request_all_items_from_api()
 
     # EXPLORING CHAMPION ABILITIES AND TOOLTIPS
     if 0:
@@ -6148,8 +6195,8 @@ if __name__ == '__main__':
 
     # MASTERIES REQUEST
     if 0:
-        inst = RequestAllMasteriesFromAPI()
-        inst.store_all_masteries_from_api()
+        inst = RequestDataFromAPI()
+        inst.request_all_masteries_from_api()
 
     # MASTERIES EXPLORATION
     # Tuple of values detection.
