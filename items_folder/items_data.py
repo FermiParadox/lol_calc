@@ -2434,6 +2434,9 @@ ITEMS_CONDITIONALS = {
     'wits_end': {},
     'youmuus_ghostblade': {}}
 
+# e.g. {'3011': 'some_name', }
+# (item name is lower case, and has no whitespaces or special characters)
+ITEMS_IDS_TO_NAMES_MAP = {str(ITEMS_ATTRIBUTES[k]['secondary_data']['id']): k for k in ITEMS_ATTRIBUTES}
 
 ITEMS_NAMES = ITEMS_ATTRIBUTES.keys()
 ITEMS_NAMES = palette.x_to_x_dct(seq=ITEMS_NAMES)

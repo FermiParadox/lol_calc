@@ -11,26 +11,27 @@
 <PlayerChampionAndLvl@HorizontalBoxLayout>
     VerticalBoxLayout:
 
-        HorizontalBoxLayout:
-            Button:
-                on_release: print('placeholder lvl up')
-            Label:
-                text: 'lvl here'
+        VerticalBoxLayout:
+            spacing: 5
 
-        Label:
-            text: 'player champ here'
+            ChampionButton
+            ChampionLvlsDropDownList:
+                text: '1'
+            Label
+
+
 
 
 <PlayerItems@GridLayout>
     cols: 3
     rows: 2
 
-    Button
-    Button
-    Button
-    Button
-    Button
-    Button
+    ItemButton
+    ItemButton
+    ItemButton
+    ItemButton
+    ItemButton
+    ItemButton
 
 
 <SkillIncreaseWidget@AnchorLayout>:
