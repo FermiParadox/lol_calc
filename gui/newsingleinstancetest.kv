@@ -1,3 +1,5 @@
+#: import output_testing_gui output_testing_gui
+
 <HorizontalBoxLayout@BoxLayout>:
     orientation: 'horizontal'
 
@@ -8,15 +10,16 @@
 
 <ChampionNameMenu@ScrollViewLayout>
 
+
 <PlayerChampionAndLvl@HorizontalBoxLayout>
     VerticalBoxLayout:
 
         VerticalBoxLayout:
             spacing: 5
 
-            ChampionButton
-            ChampionLvlsDropDownList:
-                text: '1'
+            ChampionButton:
+                id: champion_button
+            ChampionLvlsDropDownList
             Label
 
 
@@ -50,24 +53,42 @@
         size_hint: 0.5, 0.5
         text: '-'
 
-<SkillWidget@VerticalBoxLayout>:
+<NonUltSkillWidget@VerticalBoxLayout>:
+
     ability_name: ''
+    champion_name: output_testing_gui.selected_champion
 
-    SkillIncreaseWidget
+    Image:
+        source: output_testing_gui.spell_icon_path(champion_name=root.champion_name, ability_name=root.ability_name)
+        pos_hint_y:
+            'top'
+    NonUltimateAbilityLvlsDropDownList
+    Widget
+    Widget
+    Widget
 
-    Label:
-        text: root.ability_name
-    SkillDecreaseWidget
+<UltSkillWidget@VerticalBoxLayout>:
 
+    ability_name: ''
+    champion_name: output_testing_gui.selected_champion
+
+    Image:
+        source: output_testing_gui.spell_icon_path(champion_name=root.champion_name, ability_name=root.ability_name)
+        pos_hint_y:
+            'top'
+    UltimateAbilityLvlsDropDownList
+    Widget
+    Widget
+    Widget
 
 <PlayerAbilitiesLvlsWidget@HorizontalBoxLayout>
-    SkillWidget:
+    NonUltSkillWidget:
         ability_name: 'q'
-    SkillWidget
+    NonUltSkillWidget
         ability_name: 'w'
-    SkillWidget
+    NonUltSkillWidget
         ability_name: 'e'
-    SkillWidget
+    UltSkillWidget
         ability_name: 'r'
 
 <PlayerRotationPriorities@HorizontalBoxLayout>
@@ -96,7 +117,7 @@
 
         VerticalBoxLayout:
             HorizontalBoxLayout:
-                PlayerChampionAndLvl
+                PlayerChampionAndLvl:
                 PlayerItems
                 PlayerAbilitiesLvlsWidget
                 PlayerRotationPriorities
@@ -118,3 +139,14 @@
 
     TabbedPanelItem:
         text: 'Enemies'
+
+
+
+
+
+        canvas.after:
+            Color:
+                rgba: (1,0,0,.5)
+            Rectangle:
+                pos: self.pos
+                size: self.size

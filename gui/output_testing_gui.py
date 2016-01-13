@@ -1,4 +1,5 @@
 import os
+import json
 from kivy.uix.popup import Popup
 from kivy.uix.gridlayout import GridLayout
 from kivy.app import App
@@ -6,6 +7,7 @@ from kivy.uix.tabbedpanel import TabbedPanel
 from kivy.uix.button import Button as BaseButton
 from kivy.uix.dropdown import DropDown
 from kivy.core.window import Window
+from kivy.properties import NumericProperty
 
 import champion_ids
 from items_folder.items_data import ITEMS_IDS_TO_NAMES_MAP
@@ -13,20 +15,47 @@ from items_folder.items_data import ITEMS_IDS_TO_NAMES_MAP
 
 Window.size = (1000, 700)
 
-
-IMAGE_PATH_BASE = '/home/black/Downloads/dragontail-5.24.2/5.24.2/img/'
+# ----------------------------------------------------------------------------------------------------------------------
+PATH_BASE = '/home/black/Downloads/dragontail-5.24.2/5.24.2/'
+IMAGE_PATH_BASE = PATH_BASE + 'img/'
 CHAMPION_IMAGE_PATH_BASE = IMAGE_PATH_BASE + 'champion/'
+SPELL_IMAGE_PATH_BASE = IMAGE_PATH_BASE + 'spell/'
 ITEM_IMAGE_PATH_BASE = IMAGE_PATH_BASE + 'item/'
 
+CHAMPION_DATA_PATH_BASE = PATH_BASE + 'data/en_US/champion/'
 
+
+# ----------------------------------------------------------------------------------------------------------------------
+selected_champion = 'Jax'
+selected_spell_lvls = {'q': 0, 'w': 0, 'e': 0, 'r': 0}
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 class Button(BaseButton):
     def __init__(self, **kwargs):
         super().__init__(border=(0, 0, 0, 0), **kwargs)
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+def spell_icon_path(champion_name, ability_name):
+
+    champion_json_path = CHAMPION_DATA_PATH_BASE + champion_name + '.json'
+    with open(champion_json_path) as opened_file:
+        champ_json_as_str = opened_file.read()
+
+    ability_index = 'qwer'.index(ability_name)
+    ability_id = json.loads(champ_json_as_str)['data'][champion_name]['spells'][ability_index]['id']
+
+    return SPELL_IMAGE_PATH_BASE + ability_id + '.png'
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 class DropDownList(Button):
 
+    initial_text = 'Default text'
+
     def __init__(self, list_contents, **kwargs):
+        self.text = self.initial_text
         self.dropdown_instance = DropDown()
         self.list_contents = list_contents    # List; each element contains the callable widget and its kwargs
         super().__init__(**kwargs)
@@ -57,13 +86,11 @@ class DropDownList(Button):
 
 class LvlsDropDownList(DropDownList):
 
-    def __init__(self, min_max_range, **kwargs):
-        """
-        :param min_max_range: (list) Contains min and max values.
-        """
-        self.min_lvl = min_max_range[0]
-        self.max_lvl = min_max_range[1]
-        super().__init__(list_contents=self.list_contents(), size_hint_y=None, height=15, **kwargs)
+    min_lvl = NumericProperty()
+    max_lvl = NumericProperty()
+
+    def __init__(self, **kwargs):
+        super().__init__(text=str(self.min_lvl), list_contents=self.list_contents(), size_hint=(None, None), height=15, width=50, **kwargs)
 
     def list_contents(self):
         """
@@ -86,11 +113,24 @@ class LvlsDropDownList(DropDownList):
 
 
 class ChampionLvlsDropDownList(LvlsDropDownList):
+    min_lvl = 1
+    max_lvl = 18
 
     def __init__(self, **kwargs):
-        super().__init__(min_max_range=[1, 18], **kwargs)
+        super().__init__(**kwargs)
 
 
+class NonUltimateAbilityLvlsDropDownList(LvlsDropDownList):
+    min_lvl = 0
+    max_lvl = 5
+
+
+class UltimateAbilityLvlsDropDownList(LvlsDropDownList):
+    min_lvl = 0
+    max_lvl = 3
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 class PopupGridlayoutButton(Button):
 
     def __init__(self, grid_contents,
@@ -149,7 +189,8 @@ class PopupGridlayoutButton(Button):
 class ChampionButton(PopupGridlayoutButton):
 
     def __init__(self, **kwargs):
-        super().__init__(text='select \nchampion',
+        super().__init__(text=selected_champion,
+                         background_normal=CHAMPION_IMAGE_PATH_BASE + '/' + selected_champion + '.png',
                          square_a=60,
                          grid_contents=self.champion_buttons_and_kwargs(),
                          **kwargs)
@@ -209,10 +250,7 @@ class ItemButton(PopupGridlayoutButton):
                     'text': ITEMS_IDS_TO_NAMES_MAP[item_id],
                 })
 
-            # Buttons are added only if the item has been created in the app.
-
             button_background_path = ITEM_IMAGE_PATH_BASE + item_id + '.png'
-
             kwargs.update({
                 'background_normal': button_background_path,
             })
@@ -220,6 +258,9 @@ class ItemButton(PopupGridlayoutButton):
             lst.append([Button, kwargs])
 
         return lst
+
+
+
 
 
 class MainWidget(TabbedPanel):
