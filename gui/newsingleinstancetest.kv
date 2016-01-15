@@ -7,122 +7,108 @@
 <VerticalBoxLayout@BoxLayout>:
     orientation: 'vertical'
 
-
-<ChampionNameMenu@ScrollViewLayout>
-
-
-<PlayerChampionAndLvl@HorizontalBoxLayout>
-    VerticalBoxLayout:
-
-        VerticalBoxLayout:
-            spacing: 5
-
-            ChampionButton:
-                id: champion_button
-            ChampionLvlsDropDownList
-            Label
-
-
-
-
-<PlayerItems@GridLayout>
-    cols: 3
-    rows: 2
-
-    ItemButton
-    ItemButton
-    ItemButton
-    ItemButton
-    ItemButton
-    ItemButton
-
-
-<SkillIncreaseWidget@AnchorLayout>:
-    anchor_x: 'center'
-    anchor_y: 'bottom'
-
-    Button:
-        size_hint: 0.5, 0.5
-        text: '+'
-
-<SkillDecreaseWidget@AnchorLayout>:
-    anchor_x: 'center'
-    anchor_y: 'top'
-
-    Button:
-        size_hint: 0.5, 0.5
-        text: '-'
-
-<NonUltSkillWidget@VerticalBoxLayout>:
-
-    ability_name: ''
-    champion_name: output_testing_gui.selected_champion
-
-    Image:
-        source: output_testing_gui.spell_icon_path(champion_name=root.champion_name, ability_name=root.ability_name)
-        pos_hint_y:
-            'top'
-    NonUltimateAbilityLvlsDropDownList
-    Widget
-    Widget
-    Widget
-
-<UltSkillWidget@VerticalBoxLayout>:
-
-    ability_name: ''
-    champion_name: output_testing_gui.selected_champion
-
-    Image:
-        source: output_testing_gui.spell_icon_path(champion_name=root.champion_name, ability_name=root.ability_name)
-        pos_hint_y:
-            'top'
-    UltimateAbilityLvlsDropDownList
-    Widget
-    Widget
-    Widget
-
-<PlayerAbilitiesLvlsWidget@HorizontalBoxLayout>
-    NonUltSkillWidget:
-        ability_name: 'q'
-    NonUltSkillWidget
-        ability_name: 'w'
-    NonUltSkillWidget
-        ability_name: 'e'
-    UltSkillWidget
-        ability_name: 'r'
+<SquareImage@Image>
+    size_hint: None, None
+    width: 40
+    height: 40
 
 <PlayerRotationPriorities@HorizontalBoxLayout>
 
-
 <PlayerExternalVariables@HorizontalBoxLayout>
 
-
-<SingleEnemySelectionWidget@DropDown>
-    Button:
-        text: 'b 1'
-    Button:
-        text: 'b 2'
-    Button:
-        text: 'b 1'
-
-
-<EnemiesNames@VerticalBoxLayout>
-    SingleEnemySelectionWidget
+<EnemiesNames@HorizontalBoxLayout>
 
 <MainWidget>:
     do_default_tab: False
+    id: main_widget
+    player_champion: ''
+
 
     TabbedPanelItem:
         text: 'General'
 
-        VerticalBoxLayout:
-            HorizontalBoxLayout:
-                PlayerChampionAndLvl:
-                PlayerItems
-                PlayerAbilitiesLvlsWidget
-                PlayerRotationPriorities
-                PlayerExternalVariables
-                EnemiesNames
+        HorizontalBoxLayout:
+            VerticalBoxLayout:
+
+                HorizontalBoxLayout:
+
+                    VerticalBoxLayout:
+
+                        VerticalBoxLayout:
+                            spacing: 5
+
+                            ChampionButton:
+                                id: player_champion_button
+                                on_text: main_widget.player_champion = self.text
+
+                            LvlsDropdownButton:
+                                min_max: 1, 18
+                                id: player_champion_lvl
+                                size_hint_x: None
+                                width: player_champion_button.width
+                            Label:
+                                size_hint_x: None
+                                width: player_champion_button.width
+                                text: player_champion_button.text
+
+                GridLayout:
+                    cols: 3
+                    ItemButton
+                    ItemButton
+                    ItemButton
+                    ItemButton
+                    ItemButton
+                    ItemButton
+                GridLayout:
+                    id: skills_widget
+                    cols: 4
+                    pos_hint_y: 'top'
+                    spacing: 2
+                    padding: 5
+                    SquareImage:
+                        id: q_image
+                        spell_name: 'q'
+                        source: output_testing_gui.spell_icon_path(champion_name=main_widget.player_champion, ability_name=self.spell_name)
+                    SquareImage:
+                        id: w_image
+                        spell_name: 'w'
+                        source: output_testing_gui.spell_icon_path(champion_name=main_widget.player_champion, ability_name=self.spell_name)
+                    SquareImage:
+                        id: e_image
+                        spell_name: 'e'
+                        source: output_testing_gui.spell_icon_path(champion_name=main_widget.player_champion, ability_name=self.spell_name)
+                    SquareImage:
+                        id: r_image
+                        spell_name: 'r'
+                        source: output_testing_gui.spell_icon_path(champion_name=main_widget.player_champion, ability_name=self.spell_name)
+                    LvlsDropdownButton:
+                        id: q_lvl_button
+                        min_max: 0, 5
+                    LvlsDropdownButton:
+                        id: w_lvl_button
+                        min_max: 0, 5
+                    LvlsDropdownButton:
+                        id: e_lvl_button
+                        min_max: 0, 5
+                    LvlsDropdownButton:
+                        id: r_lvl_button
+                        min_max: 0, 3
+
+
+
+                PlayerRotationPriorities:
+                    size_hint_y: 0.2
+                PlayerExternalVariables:
+                    size_hint_y: 0.2
+                EnemiesNames:
+                    size_hint_y: 0.2
+                Button:
+                    text: 'DONT PUSH \nTHIS BUTTON'
+                    size_hint_x: 0.5
+                    background_color: (1,0,0,1)
+                    on_release: print(main_widget.player_champion)
+                    on_release: print(r_lvl_button.lvl)
+
 
             HorizontalBoxLayout:
                 Label:
@@ -139,11 +125,6 @@
 
     TabbedPanelItem:
         text: 'Enemies'
-
-
-
-
-
         canvas.after:
             Color:
                 rgba: (1,0,0,.5)
