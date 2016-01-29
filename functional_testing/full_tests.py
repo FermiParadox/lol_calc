@@ -131,7 +131,7 @@ def test_run_time(repetitions, sort_by='tottime', count_of_shown_functions=5):
         results_run.strip_dirs().sort_stats(sort_by).print_stats(count_of_shown_functions)
 
 
-class TestCases(object):
+class AllFunctionalTests(object):
 
     def __init__(self):
         # Used to ensure storage and comparison are separate runs.
@@ -434,10 +434,10 @@ class TestCases(object):
 
 if __name__ == '__main__':
     if 1:
-        inst = TestCases().run_combat_and_show_results()
+        inst = AllFunctionalTests().run_combat_and_show_results()
 
     if 0:
-        inst = TestCases().naked_combat_and_results(rotation_lst=['AA'], all_champs_lvls=1)
+        inst = AllFunctionalTests().naked_combat_and_results(rotation_lst=['AA'], all_champs_lvls=1)
 
     # RUN DURATION
     if 1:
@@ -447,16 +447,13 @@ if __name__ == '__main__':
     # Different instances
     if 0:
         reps = 10
-        TestCases().display_single_user_multi_combats_differences(repetitions=reps)
-        TestCases().display_multi_users_differences(repetitions=reps)
+        AllFunctionalTests().display_single_user_multi_combats_differences(repetitions=reps)
+        AllFunctionalTests().display_multi_users_differences(repetitions=reps)
     # Different runs:
     if 1:
         reps = 10
-        TestCases().multiple_runs_output_comparison(repetitions=reps)
+        AllFunctionalTests().multiple_runs_output_comparison(repetitions=reps)
 
     # MEMORY
     if 0:
-        inst = TestCases().test_memory_usage()
-
-    # dps: 377.36, dmg: 3771.25, 2423 movement, 240 movement/sec, 0.6sec / 100 rotations (enemy-sourced buffs and stats)
-    # dps: 424, dmg: 4242, move: 2422, move/sec: 242, survivability: 14.77, heals: 874 (fixed bugs, change items)
+        inst = AllFunctionalTests().test_memory_usage()

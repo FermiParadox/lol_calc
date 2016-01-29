@@ -18,6 +18,9 @@ from palette import placeholder
 plt.rcParams['font.size'] = 12
 
 
+TEMP_COMBAT_RESULT_IMAGES_DIRECTORY = 'temp_combat_result_images'
+
+
 BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS = set()
 BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS.update(items_data_module.ITEMS_BUFFS_AND_DMGS_EXPRESSED_BY_METHOD)
 
@@ -3395,6 +3398,7 @@ class VisualRepresentation(Presets):
 
     PLAYER_STATS_DISPLAYED = ('ap', 'ad', 'armor', 'mr', 'current_hp', 'mp', 'att_speed', 'cdr')
     ENEMY_STATS_DISPLAYED = ('armor', 'mr', 'physical_dmg_taken', 'magic_dmg_taken', 'current_hp')
+    PLAYER_STATS_HEADERS = ('PLAYER STATS', 'PRE', 'POST')
 
     def __init__(self,
                  rotation_lst,
@@ -3412,6 +3416,9 @@ class VisualRepresentation(Presets):
                  selected_runes,
                  enemies_originating_dmg_data,
                  _reversed_combat_mode):
+
+        # (created only if instance is run in image-creation mode)
+        self.temp_combat_results_image_name = None
 
         Presets.__init__(self,
                          rotation_lst=rotation_lst,
@@ -3607,17 +3614,8 @@ class VisualRepresentation(Presets):
 
         self.add_actions_on_plot(subplot_obj=subplot_obj, annotated=False)
 
-    def subplot_player_stats_table(self, subplot_obj):
-        """
-        Subplots player's pre and post combat stats.
-
-        Stat values are rounded.
-
-        Returns:
-            (None)
-        """
-
-        table_lst = [('PLAYER STATS', 'PRE', 'POST'), ]
+    def player_stats_table(self):
+        table_lst = [self.PLAYER_STATS_HEADERS, ]
 
         # Creates lines.
         for stat_name in self.PLAYER_STATS_DISPLAYED:
@@ -3633,24 +3631,26 @@ class VisualRepresentation(Presets):
             # Inserts in data to be displayed
             table_lst.append(line_tpl)
 
+        return table_lst
+
+    def subplot_player_stats_table(self, subplot_obj):
+        """
+        Subplots player's pre and post combat stats.
+
+        Stat values are rounded.
+
+        :returns: (None)
+        """
+
         subplot_obj.axis('off')
         table_obj = subplot_obj.table(
-            cellText=table_lst,
+            cellText=self.player_stats_table(),
             cellLoc='left',
             loc='center')
 
         self.__set_table_font_size(table_obj=table_obj)
 
-    def subplot_enemy_stats_table(self, subplot_obj):
-        """
-        Subplots player's pre combat stats.
-
-        Stat values are rounded.
-
-        Returns:
-            (None)
-        """
-
+    def enemy_stats_table(self):
         table_lst = []
 
         for tar_name in self.enemy_target_names:
@@ -3670,16 +3670,28 @@ class VisualRepresentation(Presets):
                 # Inserts in data to be displayed
                 table_lst.append(line_tpl)
 
+        return table_lst
+
+    def subplot_enemy_stats_table(self, subplot_obj):
+        """
+        Subplots player's pre combat stats.
+
+        Stat values are rounded.
+
+        Returns:
+            (None)
+        """
+
         subplot_obj.axis('off')
 
         table_obj = subplot_obj.table(
-            cellText=table_lst,
+            cellText=self.enemy_stats_table(),
             cellLoc='left',
             loc='center')
 
         self.__set_table_font_size(table_obj=table_obj)
 
-    def subplot_preset_and_results_table(self, subplot_obj):
+    def preset_and_results_table(self):
 
         # Rotation
         table_lst = [('ROTATION',), (self.rotation_followed(),)]
@@ -3703,16 +3715,19 @@ class VisualRepresentation(Presets):
         combat_duration_str = 'Fight duration: {}'.format(self.combat_duration)
         table_lst.append((combat_duration_str,))
 
+        return table_lst
+
+    def subplot_preset_and_results_table(self, subplot_obj):
+
         subplot_obj.axis('off')
         table_obj = subplot_obj.table(
-            cellText=table_lst,
+            cellText=self.preset_and_results_table(),
             cellLoc='left',
             loc='center')
 
         self.__set_table_font_size(table_obj=table_obj)
 
-    def represent_results_visually(self):
-
+    def _create_results_visual_representation(self):
         gs_main = gridspec.GridSpec(6, 6)
 
         # Graphs
@@ -3729,7 +3744,16 @@ class VisualRepresentation(Presets):
         self.subplot_preset_and_results_table(subplot_obj=plt.figure(1).add_subplot(gs_main[5, 4:6]))
 
         plt.figure(1).set_size_inches(11, 8, forward=True)
+
+    def store_results_as_image(self):
+        self._create_results_visual_representation()
+
+        # Creates image name in a way that would be unique
+        # so that it does not overwrite accidentally images from other instances.
+        self.temp_combat_results_image_name = '{}/temp_image_{}.png'.format(TEMP_COMBAT_RESULT_IMAGES_DIRECTORY, id(self))
+        plt.savefig(self.temp_combat_results_image_name)
+
+    def represent_results_visually(self):
+
+        self._create_results_visual_representation()
         plt.show()
-
-        return
-

@@ -126,4 +126,8 @@ class UserSession(object):
 
         return instance
 
+    def create_instance_and_return_image_name(self, input_dct):
+        instance = self.instance_after_combat(input_dct=input_dct)
+        instance.store_results_as_image()
 
+        return instance.temp_combat_results_image_name

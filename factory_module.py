@@ -640,7 +640,7 @@ def enumerated_question(question_str, choices_seq, restrict_choices=False):
     return chosen_val_to_literal(answer)
 
 
-def restricted_input(question_msg, input_type, characteristic=None, disallow_enter=False):
+def restricted_input(question_msg, input_type, characteristic=None, disallow_enter=False, max_=None, min_=None):
     """
     Repeats question until valid type answer is given.
 
@@ -707,6 +707,14 @@ def restricted_input(question_msg, input_type, characteristic=None, disallow_ent
         else:
             print_invalid_answer('\nExpected type is {}.'.format(input_type))
             continue
+
+        # MIN, MAX
+        if max_ is not None:
+            if answer_as_literal > max_:
+                continue
+        if min_ is not None:
+            if answer_as_literal < min_:
+                continue
 
         # EXTRA CHARACTERISTICS CHECK
         if characteristic is not None:
@@ -936,8 +944,7 @@ def _auto_new_name_or_ask_name(existing_names, first_synthetic, second_synthetic
     Creates automatically a new name, that doesn't overwriting existing names.
     Then asks dev for name change.
 
-    Returns:
-        (str)
+    Returns: (str)
     """
 
     # Auto name
@@ -2112,7 +2119,15 @@ class ExploreApiMasteries(_ExploreBase):
 
             self.masteries_dct.update({mastery_name: mastery_dct})
 
-    def mastery_tree(self, mastery_name):
+    def mastery_category(self, mastery_name):
+        """
+        Returns mastery's category.
+
+        There are 3 mastery trees.
+
+        :param mastery_name: (str)
+        :return: (str)
+        """
         return self.masteries_dct[mastery_name]['masteryTree']
 
     def prereq_mastery(self, mastery_name):
@@ -2341,7 +2356,7 @@ class _BuffsAndDmgsBase(object):
                                                                 first_synthetic=obj_name)
             modified_dct.update({new_buff_or_dmg_name: buff_or_dmg_attrs})
 
-        end_msg = '\n%s buffs selected.' % num_of_dmgs_or_buffs
+        end_msg = '\n{} {}s selected.'.format(num_of_dmgs_or_buffs, str_buff_or_dmg)
         print(end_msg)
 
     @staticmethod
@@ -2380,73 +2395,13 @@ class _BuffsAndDmgsBase(object):
         self._change_buffs_or_dmgs_names(modified_dct=modified_dct, str_buff_or_dmg='buff')
 
     def change_dmgs_names(self, modified_dct):
-        self._change_buffs_or_dmgs_names(modified_dct=modified_dct, str_buff_or_dmg='buff')
+        self._change_buffs_or_dmgs_names(modified_dct=modified_dct, str_buff_or_dmg='dmg')
 
     @staticmethod
-    def _insert_on_hit_or_being_hit_or_dmg(buffs_or_dmgs_dct, on_x_str, buffs_names, dmgs_names):
-        """
-        Inserts on-hit or on-being-hit effects inside given buff dict.
+    def insert_on_dealing_dmg_triggers(buffs_or_dmgs_dct, buff_name):
 
-        :param on_x_str: (str) 'on_hit', 'on_being_hit', 'on_dmg'
-        :return: (None)
-        """
-        # (done later so that buffs' and dmgs' names are available)
-        for buff_or_dmg_name in buffs_or_dmgs_dct:
-
-            if isinstance(buffs_or_dmgs_dct[buff_or_dmg_name], str):
-                # (skips if expressed by method)
-                continue
-
-            buffs_or_dmgs_dct[buff_or_dmg_name].update({on_x_str: palette.ON_HIT_EFFECTS})
-            buff_on_hit_or_on_being_hit_dct = buffs_or_dmgs_dct[buff_or_dmg_name][on_x_str]
-            if _y_n_question('Does {} have {}?'.format(buff_or_dmg_name.upper(), on_x_str.upper())):
-
-                # ('reduce_cd' should be set manually since too few items have it)
-
-                suggest_attr_values_of_list(modified_lst=buff_on_hit_or_on_being_hit_dct['apply_buff'],
-                                            suggested_values_lst=buffs_names,
-                                            extra_start_msg='APPLIED BUFFS {}.'.format(on_x_str))
-
-                suggest_attr_values_of_list(modified_lst=buff_on_hit_or_on_being_hit_dct['cause_dmg'],
-                                            suggested_values_lst=dmgs_names,
-                                            extra_start_msg='CAUSED DMGS {}.'.format(on_x_str))
-
-                suggest_attr_values_of_list(modified_lst=buff_on_hit_or_on_being_hit_dct['remove_buff'],
-                                            suggested_values_lst=buffs_names,
-                                            extra_start_msg='REMOVED BUFFS {}.'.format(on_x_str))
-
-            else:
-                buffs_or_dmgs_dct[buff_or_dmg_name][on_x_str] = {}
-
-    def insert_on_hit(self, buffs_or_dmgs_dct, buffs_names, dmgs_names):
-        self._insert_on_hit_or_being_hit_or_dmg(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
-                                                on_x_str='on_hit',
-                                                buffs_names=buffs_names,
-                                                dmgs_names=dmgs_names)
-
-    def insert_on_being_hit(self, buffs_or_dmgs_dct, buffs_names, dmgs_names):
-        self._insert_on_hit_or_being_hit_or_dmg(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
-                                                on_x_str='on_being_hit',
-                                                buffs_names=buffs_names,
-                                                dmgs_names=dmgs_names)
-
-    # WARNING: see palette for on-dmg and on-dealing-dmg differences.
-    def insert_on_dmg(self, buffs_or_dmgs_dct, buffs_names, dmgs_names):
-        self._insert_on_hit_or_being_hit_or_dmg(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
-                                                on_x_str='on_dmg',
-                                                buffs_names=buffs_names,
-                                                dmgs_names=dmgs_names)
-
-    # WARNING: see palette for on-dmg and on-dealing-dmg differences.
-    def insert_on_dealing_dmg(self, buffs_or_dmgs_dct, buffs_names, dmgs_names):
-        on_dealing_dmg_name = 'on_dealing_dmg'
-
-        self._insert_on_hit_or_being_hit_or_dmg(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
-                                                on_x_str=on_dealing_dmg_name,
-                                                buffs_names=buffs_names,
-                                                dmgs_names=dmgs_names)
-
-        on_dealing_dmg_dct = buffs_or_dmgs_dct[on_dealing_dmg_name]
+        buffs_or_dmgs_dct[buff_name]['on_dealing_dmg'] = {}
+        on_dealing_dmg_dct = buffs_or_dmgs_dct[buff_name]['on_dealing_dmg']
 
         # TRIGGERS
         # Dmg-types
@@ -2461,6 +2416,64 @@ class _BuffsAndDmgsBase(object):
                                     modified_lst=on_dealing_dmg_dct['source_types_or_names'],
                                     extra_start_msg='DMG SOURCE triggering the effects:')
 
+    @staticmethod
+    def create_causes_of_death(on_enemy_death_dct, dmgs_names):
+        on_enemy_death_dct['causes_of_death'] = []
+        suggest_attr_values_of_list(suggested_values_lst=['any', ] + dmgs_names,
+                                    modified_lst=on_enemy_death_dct['causes_of_death'],
+                                    extra_start_msg='DMG NAMES triggering the ON_ENEMY_DEATH effect:')
+
+    def _insert_on_x_base(self, buffs_or_dmgs_dct, on_x_str, buffs_names, dmgs_names):
+        """
+        Inserts on-x effects of each buff or dmg.
+
+        :param on_x_str: (str) 'on_hit', 'on_being_hit', 'on_dmg', 'on_dealing_dmg', 'on_enemy_death'
+        :return: (None)
+        """
+        on_x_base_dicts_map = {
+            'on_hit': palette.ON_HIT_EFFECTS,
+            'on_being_hit': palette.ON_BEING_HIT,
+            'on_dmg': palette.ON_DMG_EFFECTS,
+            'on_dealing_dmg': palette.ON_DEALING_DMG,
+            'on_enemy_death': palette.ON_ENEMY_DEATH,
+        }
+
+        on_x_base_dct = on_x_base_dicts_map[on_x_str]
+
+        # (done later so that buffs' and dmgs' names are available)
+        for buff_or_dmg_name in buffs_or_dmgs_dct:
+
+            if isinstance(buffs_or_dmgs_dct[buff_or_dmg_name], str):
+                # (skips if expressed by method)
+                continue
+
+            buffs_or_dmgs_dct[buff_or_dmg_name].update({on_x_str: on_x_base_dct})
+            on_x_dct_of_buff = buffs_or_dmgs_dct[buff_or_dmg_name][on_x_str]
+            if _y_n_question('Does {} have {}?'.format(buff_or_dmg_name.upper(), on_x_str.upper())):
+
+                # ('reduce_cd' should be set manually since too few items have it)
+
+                suggest_attr_values_of_list(modified_lst=on_x_dct_of_buff['apply_buff'],
+                                            suggested_values_lst=buffs_names,
+                                            extra_start_msg='APPLIED BUFFS {}.'.format(on_x_str))
+
+                suggest_attr_values_of_list(modified_lst=on_x_dct_of_buff['cause_dmg'],
+                                            suggested_values_lst=dmgs_names,
+                                            extra_start_msg='CAUSED DMGS {}.'.format(on_x_str))
+
+                suggest_attr_values_of_list(modified_lst=on_x_dct_of_buff['remove_buff'],
+                                            suggested_values_lst=buffs_names,
+                                            extra_start_msg='REMOVED BUFFS {}.'.format(on_x_str))
+
+                if on_x_str == 'on_dealing_dmg':
+                    self.insert_on_dealing_dmg_triggers(buffs_or_dmgs_dct=buffs_or_dmgs_dct, buff_name=buff_or_dmg_name)
+
+                if on_x_str == 'on_enemy_death':
+                    self.create_causes_of_death(on_enemy_death_dct=on_x_dct_of_buff, dmgs_names=dmgs_names)
+
+            else:
+                buffs_or_dmgs_dct[buff_or_dmg_name][on_x_str] = {}
+
     def insert_all_on_x_effects_in_buff(self, buffs_or_dmgs_dct, buffs_names, dmgs_names):
         """
         Creates and inserts all buff related on-x effects.
@@ -2468,18 +2481,9 @@ class _BuffsAndDmgsBase(object):
         :return: (None)
         """
 
-        # On hit
-        self.insert_on_hit(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
-                           buffs_names=buffs_names,
-                           dmgs_names=dmgs_names)
-
-        # On being hit
-        self.insert_on_being_hit(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
-                                 buffs_names=buffs_names,
-                                 dmgs_names=dmgs_names)
-
-        # On dmg
-        self.insert_on_dealing_dmg(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
+        for on_x_str in ['on_hit', 'on_being_hit', 'on_dealing_dmg', 'on_enemy_death']:
+            self._insert_on_x_base(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
+                                   on_x_str=on_x_str,
                                    buffs_names=buffs_names,
                                    dmgs_names=dmgs_names)
 
@@ -2628,7 +2632,7 @@ class DmgsBase(_BuffsAndDmgsBase):
         :return: (dict)
         """
         dct = palette.dmg_dct_base_deepcopy()
-        dct.update({i: palette.placeholder() for i in palette.OPTIONAL_DMG_KEYS})
+        dct.update({i: palette.placeholder for i in palette.OPTIONAL_DMG_KEYS})
 
         return dct
 
@@ -2696,7 +2700,7 @@ class DmgsBase(_BuffsAndDmgsBase):
                 abbr_in_effects='placeholder',
         )
 
-    def _create_shield_or_dmg_mods(self, mods_dct):
+    def _create_shield_mods_or_dmg_mods(self, mods_dct):
 
         if _y_n_question(question_str='Dmg has mods?'):
             mods_dct.update(self.dmg_mod_contents())
@@ -2746,7 +2750,7 @@ class DmgsBase(_BuffsAndDmgsBase):
             shield_mods_dct = shield_dct['shield_mods']
 
             pp.pprint(description_to_print)
-            self._create_shield_or_dmg_mods(mods_dct=shield_mods_dct)
+            self._create_shield_mods_or_dmg_mods(mods_dct=shield_mods_dct)
 
         return shield_dct
 
@@ -2759,6 +2763,64 @@ class DmgsBase(_BuffsAndDmgsBase):
     def ask_amount_of_dmgs_and_change_names(self, modified_dct, obj_name):
         self.ask_amount_of_dmgs(modified_dct=modified_dct, obj_name=obj_name)
         self.change_dmgs_names(modified_dct=modified_dct)
+
+    @inner_loop_exit_handler
+    def _create_object_single_dmg(self, dmgs_dct, obj_name, dmg_attrs, usual_dmg_attrs_values,
+                                  pprint_obj_description_func, choose_expression_way=False):
+        """
+        Creates a single dmg for given object.
+
+        :param dmgs_dct: (dict)
+        :param obj_name: (str) Item or mastery name.
+        :param usual_dmg_attrs_values: (dict) k: attr name, v: its usual value.
+        :param choose_expression_way: (bool)
+        :return: (None)
+        """
+        # Dmg name
+        new_dmg_name = _auto_new_name_or_ask_name(existing_names=dmgs_dct,
+                                                  first_synthetic='{}_dmg'.format(obj_name))
+
+        # (msg)
+        print(fat_delimiter(40))
+        print('\nDMG NAME: {}'.format(new_dmg_name))
+
+        # (default way of expression; to be changed if a different way of expression is to be used)
+        dmgs_dct.update({new_dmg_name: 'normally'})
+
+        if choose_expression_way:
+            expression_way = enumerated_question("Expressed by: (if expressed by another item, insert item name)",
+                                                 choices_seq=('normally', 'by_method'))
+            if expression_way == 'by_method':
+                dmgs_dct.update({new_dmg_name: 'expressed_by_method'})
+
+            # Expressed by the item.
+            else:
+                dmgs_dct.update({new_dmg_name: expression_way})
+
+        if dmgs_dct[new_dmg_name] == 'normally':
+            # (creates new_dmg_name dct)
+            dmgs_dct.update({new_dmg_name: dmg_attrs})
+            # Dmg value
+            dmg_val = restricted_input(question_msg='Dmg value?\n', input_type='num', disallow_enter=True)
+
+            dmgs_dct[new_dmg_name]['dmg_values'] = dmg_val
+            # Rest of dmg attributes
+            suggest_attrs_values_of_dct(suggested_values_dct=usual_dmg_attrs_values,
+                                        modified_dct=dmgs_dct[new_dmg_name], )
+
+            # Dot.
+            if dmgs_dct[new_dmg_name]['dot']:
+                dot_buff = restricted_input('Name of dot-buff?', input_type='str', disallow_enter=True)
+
+                dmgs_dct[new_dmg_name]['dot'] = {'buff_name': dot_buff}
+
+            # Dmg mods.
+            pprint_obj_description_func()
+            mods_dct = dmgs_dct[new_dmg_name]['mods']
+            self._create_shield_mods_or_dmg_mods(mods_dct=mods_dct)
+
+        print(delimiter(40))
+        pp.pprint(dmgs_dct[new_dmg_name])
 
 
 class AbilitiesAttributesBase(GenAttrsBase):
@@ -2819,7 +2881,7 @@ class ItemAndMasteriesBase(object):
         pp.pprint(obj_description_str)
 
     @staticmethod
-    def item_or_buff_attributes():
+    def item_or_mastery_buff_attributes():
         return {k: v for k, v in BuffsBase.buff_attributes().items() if k != 'prohibit_cd_start'}
 
     @staticmethod
@@ -3520,8 +3582,7 @@ class DmgAbilityAttributes(AbilitiesAttributesBase, DmgsBase):
         """
         Allows dev to choose between possible values from ability's 'effect' list.
 
-        Returns:
-            (None)
+        :returns: (None)
         """
 
         ability_dct = ExploreApiAbilities().champion_abilities(champion_name=self.champion_name,
@@ -4702,7 +4763,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
         return dct
 
-    def usual_item_values_dmg_attrs(self):
+    def usual_item_dmg_attrs_values(self):
         """
         Creates usual values for item dmg attributes.
 
@@ -4711,12 +4772,12 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
         dct = {k: v for k, v in self.usual_values_dmg_attrs().items() if k != 'dmg_source'}
 
-        dct.update({'dmg_type': ('magic', 'physical', 'true', 'AA')})
+        dct.update({'dmg_type': palette.DMG_TYPES})
 
         return dct
 
     def item_buff_attributes(self):
-        dct = {k: v for k, v in self.item_or_buff_attributes().items() if k != 'buff_source'}
+        dct = {k: v for k, v in self.item_or_mastery_buff_attributes().items() if k != 'buff_source'}
         dct.update({'buff_source': self.item_name})
 
         return dct
@@ -4915,73 +4976,38 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
 
         pp.pprint(self.item_gen_attrs)
 
-    @repeat_cluster_decorator(cluster_name='ITEM DMG MODS')
-    def _create_dmg_mods(self, dmg_name):
-        self.pprint_item_description()
-
-        mods_dct = self.item_dmgs[dmg_name]['mods']
-        self._create_shield_or_dmg_mods(mods_dct=mods_dct)
-
-    @inner_loop_exit_handler
-    def _create_item_single_dmg(self):
-        # Dmg name
-        new_dmg_name = _auto_new_name_or_ask_name(existing_names=self.item_dmgs,
-                                                  first_synthetic='{}_dmg'.format(self.item_name))
-
-        # (msg)
-        print(fat_delimiter(40))
-        print('\nDMG NAME: {}'.format(new_dmg_name))
-
-        expression_way = enumerated_question("Expressed by: (if expressed by another item, insert item name)",
-                                             choices_seq=('normally', 'by_method'))
-
-        if expression_way == 'by_method':
-            self.item_dmgs.update({new_dmg_name: 'expressed_by_method'})
-
-        elif expression_way == 'normally':
-            # (creates new_dmg_name dct)
-            self.item_dmgs.update({new_dmg_name: self.item_dmg_attrs()})
-            # Dmg value
-            dmg_val = restricted_input(question_msg='Dmg value?\n', input_type='num', characteristic='non_negative',
-                                       disallow_enter=True)
-
-            self.item_dmgs[new_dmg_name]['dmg_values'] = dmg_val
-            # Rest of dmg attributes
-            suggest_attrs_values_of_dct(suggested_values_dct=self.usual_item_values_dmg_attrs(),
-                                        modified_dct=self.item_dmgs[new_dmg_name], )
-
-            # Dot.
-            if self.item_dmgs[new_dmg_name]['dot']:
-                dot_buff = restricted_input('Name of dot-buff?', input_type='str', disallow_enter=True)
-
-                self.item_dmgs[new_dmg_name]['dot'] = {'buff_name': dot_buff}
-
-            # Inserts dmg mods.
-            self._create_dmg_mods(dmg_name=new_dmg_name)
-
-        # Expressed by item.
-        else:
-            self.item_dmgs.update({new_dmg_name: expression_way})
-
-        print(delimiter(40))
-        pp.pprint(self.item_dmgs[new_dmg_name])
-
     @repeat_cluster_decorator(cluster_name='ITEM DMGS')
     @inner_loop_exit_handler
     def create_item_dmgs(self):
 
         # Prints item description.
-        print(fat_delimiter(40))
+        print(fat_delimiter(80))
         self.pprint_item_description()
-
-        # Number of dmgs
-        num_of_dmgs = restricted_input(question_msg='Number of dmgs?\n', input_type='int',
-                                       characteristic='non_negative', disallow_enter=True)
 
         # Resets item_dmgs dct.
         self.item_dmgs = {}
-        for _ in range(num_of_dmgs):
-            self._create_item_single_dmg()
+        self.ask_amount_of_dmgs_and_change_names(modified_dct=self.item_dmgs, obj_name=self.item_name)
+
+        for dmg_name in self.item_dmgs:
+            # Expressed by method.
+            print(fat_delimiter(40))
+            print('DMG: {}'.format(dmg_name))
+            expression_way = enumerated_question("Expressed by: (if expressed by another item, insert item name)",
+                                                 choices_seq=('normally', 'by_method'))
+
+            if expression_way == 'by_method':
+                self.item_dmgs.update({dmg_name: 'expressed_by_method'})
+
+            elif expression_way == 'normally':
+                # Expressed normally.
+                self.item_dmgs.update({dmg_name: self.item_dmg_attrs()})
+
+                # Buff attrs (excluding stats)
+                dmg_msg = '\nITEM: {}, DMG: {}'.format(self.item_name, dmg_name)
+                suggest_attrs_values_of_dct(suggested_values_dct=self.usual_item_dmg_attrs_values(),
+                                            modified_dct=self.item_dmgs[dmg_name], extra_start_msg=dmg_msg)
+
+                self.item_dmgs[dmg_name]['dmg_source'] = self.item_name
 
         # Prints all dmgs
         print('DMGS:')
@@ -5209,10 +5235,15 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
     """
 
     BASE_MASTERY_DCT = dict(
-            stats=None,
-            buffs={},
-            dmgs={},
-            stats_dependencies={})
+        stats=None,
+        buffs={},
+        dmgs={},
+        stats_dependencies={},
+        tree_coordinates={'category_num': palette.placeholder_int,
+                          'tier': palette.placeholder_int,
+                          'position_num_in_tier': palette.placeholder_int,
+                          }
+    )
 
     def __init__(self, mastery_name):
         self.mastery_name = mastery_name
@@ -5220,21 +5251,26 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         self.raw_masteries_dct = self.inst.masteries_dct
         self.mastery_buffs = {}
         self.mastery_dmgs = {}
+        self.tree_coordinates = {}
         self.mastery_description = self.inst.mastery_description(mastery_name=self.mastery_name, print_mode=False)[0]
 
     def print_mastery_description(self):
         return self.mastery_description
 
     def mastery_buff_attributes(self):
-        return self.item_or_buff_attributes()
+        return self.item_or_mastery_buff_attributes()
 
     @staticmethod
     def mastery_dmg_attributes():
-        return DmgsBase.dmg_attributes()
+        dct = {k: v for k, v in DmgsBase.dmg_attributes().items() if k != 'dmg_source'}
+
+        return dct
 
     @staticmethod
     def usual_mastery_dmg_attrs_values():
-        return DmgsBase().usual_values_dmg_attrs()
+        dct = {k: v for k, v in DmgsBase().usual_values_dmg_attrs().items() if k != 'dmg_source'}
+        dct.update({'dmg_type': palette.DMG_TYPES})
+        return dct
 
     def possible_stats_names(self,):
         """
@@ -5307,6 +5343,12 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
                                                              lst_of_values_tuples=self.possible_stat_values())
 
     def create_mastery_dmgs(self):
+        """
+        Creates all dmgs of a mastery.
+
+        :return: (None)
+        """
+
         print(fat_delimiter(40))
         print('MASTERY: {}\n'.format(self.mastery_name))
         self.print_mastery_description()
@@ -5316,16 +5358,40 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         self.ask_amount_of_dmgs_and_change_names(modified_dct=self.mastery_dmgs, obj_name=self.mastery_name)
 
         for dmg_name in sorted(self.mastery_dmgs):
+            dmg_dct = self.mastery_dmgs[dmg_name]
+            # Expressed by method.
+            print(fat_delimiter(40))
+            print('DMG: {}'.format(dmg_name))
+
+            # Expressed normally.
             self.mastery_dmgs.update({dmg_name: self.mastery_dmg_attributes()})
 
             dmg_msg = '\nMASTERY: {}, DMG: {}'.format(self.mastery_name, dmg_name)
-
             suggest_attrs_values_of_dct(suggested_values_dct=self.usual_mastery_dmg_attrs_values(),
-                                        modified_dct=self.mastery_dmgs[dmg_name], extra_start_msg=dmg_msg)
-            # Dmg source
-            self.mastery_dmgs[dmg_name]['dmg_source'] = 'masteries'
+                                        modified_dct=dmg_dct, extra_start_msg=dmg_msg)
+
+            # (the rest of the attrs)
+            dmg_dct['dmg_source'] = 'masteries'
+
+            dmg_dct['mods'] = {}
+            self._create_shield_mods_or_dmg_mods(mods_dct=dmg_dct['mods'])
+
+            dmg_dct['dmg_values'] =
+
+
+
+            # On-kill
+
+
+
+
 
     def create_mastery_buffs(self):
+        """
+        Creates all buffs of a mastery.
+
+        :return: (None)
+        """
 
         print(fat_delimiter(40))
         print('MASTERY: {}\n'.format(self.mastery_name))
@@ -5368,6 +5434,35 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         pp.pprint(self.mastery_buffs)
         print(delimiter(80))
 
+    def create_tree_coordinates(self):
+        print(fat_delimiter(40))
+        print('MASTERY: {}\n'.format(self.mastery_name))
+        print('Creating tree location.')
+
+        min_tree_cat = 1
+        max_tree_cat = 3
+        tree_cat_q = 'Branch number? ({} to {})'.format(min_tree_cat, max_tree_cat)
+        tree_category = restricted_input(question_msg=tree_cat_q, min_=min_tree_cat, max_=max_tree_cat, input_type='int')
+
+        min_tier = 1
+        max_tier = 6
+        tier_q = 'Tier? ({} top, {} bottom)'.format(min_tier, max_tier)
+        tier = restricted_input(question_msg=tier_q, min_=min_tier, max_=max_tier, input_type='int')
+
+        min_position_in_tier = 1
+        max_position_in_tier = 3
+        position_in_tier_q = 'Position in tier? ({} to {})'.format(min_position_in_tier, max_position_in_tier)
+        position_in_tier = restricted_input(question_msg=position_in_tier_q,
+                                            min_=min_position_in_tier,
+                                            max_=max_position_in_tier,
+                                            input_type='int')
+
+        self.tree_coordinates = {
+            'category_num': tree_category,
+            'tier': tier,
+            'position_num_in_tier': position_in_tier
+        }
+
     def create_and_return_mastery(self, print_mode=False):
         dct = copy.deepcopy(self.BASE_MASTERY_DCT)
 
@@ -5378,10 +5473,16 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         pp.pprint(dct['stats'])
         print(delimiter(80))
 
+        self.create_mastery_dmgs()
+        dct['dmgs'] = self.mastery_dmgs
+
         self.create_mastery_buffs()
         dct['buffs'] = self.mastery_buffs
 
         dct['stats_dependencies'] = StatsDependencies().mastery_stats_dependencies(mastery_name=self.mastery_name)
+
+        self.create_tree_coordinates()
+        dct['tree_coordinates'] = self.tree_coordinates
 
         return _return_or_pprint_complex_obj(given_dct=dct, print_mode=print_mode)
 
@@ -6101,7 +6202,7 @@ class MasteryModuleCreator(ModuleCreatorBase):
 
             print(fat_delimiter(80))
             print('\nMASTERY: {}'.format(mastery_name))
-            ExploreApiMasteries().mastery_description(mastery_name=mastery_name, print_mode=True)
+            MasteryCreation(mastery_name=mastery_name).print_mastery_description()
 
             if _y_n_question(question_str='Mastery contains data?'):
                 mastery_creation_func = MasteryCreation(mastery_name).create_and_return_mastery
@@ -6149,6 +6250,10 @@ if __name__ == '__main__':
     # REQUEST ITEMS API
     if 0:
         RequestDataFromAPI().request_all_items_from_api()
+
+    # REQUEST ALL DATA FROM API
+    if 0:
+        RequestDataFromAPI().request_and_store_everything()
 
     # EXPLORING CHAMPION ABILITIES AND TOOLTIPS
     if 0:

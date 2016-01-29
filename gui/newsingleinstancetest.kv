@@ -22,103 +22,139 @@
     do_default_tab: False
     id: main_widget
     player_champion: ''
+    player_lvl: '1'
+    player_items: {}
+    rotation: []
+    runes: {}
+    masteries: {}
+    enemies_names: {}
+    skills_lvls: {}
 
+    on_server_status: server_label.text = 'Server: {}'.format(main_widget.server_status)
+    on_server_status: server_label.color = (0, 1, 0, 1) if main_widget.server_status == 'online' else (1,0,0,1)
 
     TabbedPanelItem:
         text: 'General'
 
-        HorizontalBoxLayout:
-            VerticalBoxLayout:
+        VerticalBoxLayout:
+            Label:
+                id: server_label
+                size_hint_y: 0.1
+                text: 'Checking server status...'
+                color: (1,1,0,1)
 
-                HorizontalBoxLayout:
+            HorizontalBoxLayout:
+                VerticalBoxLayout:
+                    size_hint_x: .25
 
-                    VerticalBoxLayout:
+                    HorizontalBoxLayout:
 
                         VerticalBoxLayout:
-                            spacing: 5
 
-                            ChampionButton:
-                                id: player_champion_button
-                                on_text: main_widget.player_champion = self.text
+                            VerticalBoxLayout:
+                                spacing: 5
 
-                            LvlsDropdownButton:
-                                min_max: 1, 18
-                                id: player_champion_lvl
-                                size_hint_x: None
-                                width: player_champion_button.width
-                            Label:
-                                size_hint_x: None
-                                width: player_champion_button.width
-                                text: player_champion_button.text
+                                ChampionButton:
+                                    id: player_champion_button
+                                    on_text: main_widget.player_champion = self.text
 
-                GridLayout:
-                    cols: 3
-                    ItemButton
-                    ItemButton
-                    ItemButton
-                    ItemButton
-                    ItemButton
-                    ItemButton
-                GridLayout:
-                    id: skills_widget
-                    cols: 4
-                    pos_hint_y: 'top'
-                    spacing: 2
-                    padding: 5
-                    SquareImage:
-                        id: q_image
-                        spell_name: 'q'
-                        source: output_testing_gui.spell_icon_path(champion_name=main_widget.player_champion, ability_name=self.spell_name)
-                    SquareImage:
-                        id: w_image
-                        spell_name: 'w'
-                        source: output_testing_gui.spell_icon_path(champion_name=main_widget.player_champion, ability_name=self.spell_name)
-                    SquareImage:
-                        id: e_image
-                        spell_name: 'e'
-                        source: output_testing_gui.spell_icon_path(champion_name=main_widget.player_champion, ability_name=self.spell_name)
-                    SquareImage:
-                        id: r_image
-                        spell_name: 'r'
-                        source: output_testing_gui.spell_icon_path(champion_name=main_widget.player_champion, ability_name=self.spell_name)
-                    LvlsDropdownButton:
-                        id: q_lvl_button
-                        min_max: 0, 5
-                    LvlsDropdownButton:
-                        id: w_lvl_button
-                        min_max: 0, 5
-                    LvlsDropdownButton:
-                        id: e_lvl_button
-                        min_max: 0, 5
-                    LvlsDropdownButton:
-                        id: r_lvl_button
-                        min_max: 0, 3
+                                LvlsDropdownButton:
+                                    min_max: 1, 18
+                                    id: player_champion_lvl
+                                    size_hint_x: None
+                                    width: player_champion_button.width
+                                    on_lvl: main_widget.player_lvl = self.text
+                                Label:
+                                    size_hint_x: None
+                                    width: player_champion_button.width
+                                    text: player_champion_button.text
 
-
-
-                PlayerRotationPriorities:
-                    size_hint_y: 0.2
-                PlayerExternalVariables:
-                    size_hint_y: 0.2
-                EnemiesNames:
-                    size_hint_y: 0.2
-                Button:
-                    text: 'DONT PUSH \nTHIS BUTTON'
-                    size_hint_x: 0.5
-                    background_color: (1,0,0,1)
-                    on_release: print(main_widget.player_champion)
-                    on_release: print(r_lvl_button.lvl)
+                    GridLayout:
+                        cols: 3
+                        ItemButton:
+                            on_obj_name: main_widget.player_items['item_1'] = self.obj_name
+                        ItemButton:
+                            on_obj_name: main_widget.player_items['item_2'] = self.obj_name
+                        ItemButton:
+                            on_obj_name: main_widget.player_items['item_3'] = self.obj_name
+                        ItemButton:
+                            on_obj_name: main_widget.player_items['item_4'] = self.obj_name
+                        ItemButton:
+                            on_obj_name: main_widget.player_items['item_5'] = self.obj_name
+                        ItemButton:
+                            on_obj_name: main_widget.player_items['item_6'] = self.obj_name
+                    GridLayout:
+                        id: skills_widget
+                        cols: 4
+                        pos_hint_y: 'top'
+                        spacing: 2
+                        padding: 5
+                        SquareImage:
+                            id: q_image
+                            spell_name: 'q'
+                            source: output_testing_gui.spell_icon_path(champion_name=main_widget.player_champion, ability_name=self.spell_name)
+                        SquareImage:
+                            id: w_image
+                            spell_name: 'w'
+                            source: output_testing_gui.spell_icon_path(champion_name=main_widget.player_champion, ability_name=self.spell_name)
+                        SquareImage:
+                            id: e_image
+                            spell_name: 'e'
+                            source: output_testing_gui.spell_icon_path(champion_name=main_widget.player_champion, ability_name=self.spell_name)
+                        SquareImage:
+                            id: r_image
+                            spell_name: 'r'
+                            source: output_testing_gui.spell_icon_path(champion_name=main_widget.player_champion, ability_name=self.spell_name)
+                        LvlsDropdownButton:
+                            id: q_lvl_button
+                            min_max: 0, 5
+                            on_lvl: main_widget.skills_lvls['q'] = self.lvl
+                        LvlsDropdownButton:
+                            id: w_lvl_button
+                            min_max: 0, 5
+                            on_lvl: main_widget.skills_lvls['w'] = self.lvl
+                        LvlsDropdownButton:
+                            id: e_lvl_button
+                            min_max: 0, 5
+                            on_lvl: main_widget.skills_lvls['e'] = self.lvl
+                        LvlsDropdownButton:
+                            id: r_lvl_button
+                            min_max: 0, 3
+                            on_lvl: main_widget.skills_lvls['r'] = self.lvl
 
 
-            HorizontalBoxLayout:
-                Label:
-                    text: 'horiz box 2'
-            HorizontalBoxLayout:
-                Label:
-                    text: 'horiz box 3'
+
+                    PlayerRotationPriorities:
+                        size_hint_y: 0.1
+                    PlayerExternalVariables:
+                        size_hint_y: 0.1
+                    EnemiesNames:
+                        size_hint_y: 0.1
+                    Button:
+                        text: "DON'T PUSH \nTHIS BUTTON"
+                        size_hint_x: 0.7
+                        background_color: (1,0,0,1)
+                        on_release:
+                            if main_widget.server_status == 'online': root.request_results({'player_champion': main_widget.player_champion})
+                            else: print('server is offline, bro')
+                    VerticalBoxLayout:
+                        padding: 10
+                        Button:
+                            size_hint: 0.8, 0.3
+                            text: 'Send bug report'
+                        TextInput:
+                            hint_text: '(extra comments)'
+
+                Image:
+                    #source: main_widget.results
 
     TabbedPanelItem:
         text: 'Masteries'
+        HorizontalBoxLayout:
+            VerticalBoxLayout:
+
+            VerticalBoxLayout
+            VerticalBoxLayout
 
     TabbedPanelItem:
         text: 'Runes'

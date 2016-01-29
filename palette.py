@@ -355,6 +355,10 @@ ALL_POSSIBLE_ABILITIES_SHORTCUTS = ABILITY_SHORTCUTS + EXTRA_SPELL_SHORTCUTS
 ALL_CHAMPIONS_NAMES = champion_ids.CHAMPION_IDS.values()
 
 
+DMG_TYPES = ('magic', 'physical', 'true', 'AA')
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 # BUFF
 BUFF_DCT_BASE = dict(
     buff_source=placeholder,

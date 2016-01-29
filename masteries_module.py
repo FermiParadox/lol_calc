@@ -221,4 +221,3 @@ class MasteriesProperties(MasteriesValidation):
                 all_m_stats_deps |= m_stats_dep
 
         return all_m_stats_deps
-

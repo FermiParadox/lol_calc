@@ -1,5 +1,6 @@
 import os
 import json
+import requests
 from functools import partial
 from kivy.uix.popup import Popup
 from kivy.uix.gridlayout import GridLayout
@@ -11,16 +12,24 @@ from kivy.uix.tabbedpanel import TabbedPanel
 from kivy.uix.button import Button as BaseButton
 from kivy.uix.dropdown import DropDown
 from kivy.core.window import Window
+from kivy.modules import inspector
 from kivy.properties import ListProperty, StringProperty, DictProperty, NumericProperty
+from kivy.clock import Clock
 
 import champion_ids
 from items_folder.items_data import ITEMS_IDS_TO_NAMES_MAP
 
 
-Window.size = (1050, 700)
+Window.size = (1050, 800)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
-PATH_BASE = '/home/black/Downloads/dragontail-5.24.2/5.24.2/'
+HOST_URL = 'http://localhost:64000'
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+DRAGONTAIL_VERSION = '6.1.1'
+PATH_BASE = '/home/black/Downloads/dragontail-{0}/{0}/'.format(DRAGONTAIL_VERSION)
 IMAGE_PATH_BASE = PATH_BASE + 'img/'
 CHAMPION_IMAGE_PATH_BASE = IMAGE_PATH_BASE + 'champion/'
 SPELL_IMAGE_PATH_BASE = IMAGE_PATH_BASE + 'spell/'
@@ -34,6 +43,9 @@ class Button(BaseButton):
     """
     Removes border from all buttons.
     """
+
+    obj_name = StringProperty()
+
     def __init__(self, **kwargs):
         super().__init__(border=(0, 0, 0, 0), **kwargs)
 
@@ -132,6 +144,8 @@ class LvlsDropdownButton(DropdownButton):
 # ----------------------------------------------------------------------------------------------------------------------
 class PopupGridlayoutButton(Button):
 
+    obj_name = StringProperty()
+
     def __init__(self,
                  grid_contents,
                  square_a=None,
@@ -152,11 +166,14 @@ class PopupGridlayoutButton(Button):
     def set_button_image_and_text(self, widg):
         self.background_normal = widg.background_normal
         self.text = widg.text
+        self.obj_name = widg.obj_name
 
     def insert_widgets_in_grid(self):
         """
         Inserts all widgets in the dropdown menu
         and binds whichever are buttons into displaying their image and text as "selected".
+
+        Kwargs that normally aren't present in a widget are to start with "_". They are added after the normal kwargs.
 
         :return:
         """
@@ -197,7 +214,7 @@ class ChampionButton(PopupGridlayoutButton):
         lst = []
 
         for champ_name in sorted(champion_ids.CHAMPION_IDS.values()):
-            kwargs = {
+            kwargs_dct = {
                 'text': champ_name,
                 }
 
@@ -205,11 +222,11 @@ class ChampionButton(PopupGridlayoutButton):
             if champ_name.lower() + '.py' in os.listdir('/home/black/Dev/PycharmProjects/WhiteProject/champions'):
                 button_background_path = CHAMPION_IMAGE_PATH_BASE + champ_name + '.png'
 
-                kwargs.update({
+                kwargs_dct.update({
                     'background_normal': button_background_path,
                 })
 
-                lst.append([Button, kwargs])
+                lst.append([Button, kwargs_dct])
 
         return lst
 
@@ -240,14 +257,17 @@ class ItemButton(PopupGridlayoutButton):
 
         for item_id in sorted(ITEMS_IDS_TO_NAMES_MAP):
             kwargs = {}
+            item_name = ITEMS_IDS_TO_NAMES_MAP[item_id]
+
             if self.UPDATE_MAIN_TEXT_TO_SELECTED_BUTTON_TEXT:
                 kwargs.update({
-                    'text': ITEMS_IDS_TO_NAMES_MAP[item_id],
+                    'text': item_name
                 })
 
             button_background_path = ITEM_IMAGE_PATH_BASE + item_id + '.png'
             kwargs.update({
                 'background_normal': button_background_path,
+                'obj_name': item_name
             })
 
             lst.append([Button, kwargs])
@@ -256,9 +276,31 @@ class ItemButton(PopupGridlayoutButton):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+class MasteriesWidget(BoxLayout):
+    pass
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 class MainWidget(TabbedPanel):
 
     selected_spell_lvls = DictProperty({'q': 0, 'w': 0, 'e': 0, 'r': 0})
+    server_status = StringProperty()
+    results = ListProperty()
+
+    def request_results(self, params_dct):
+        self.results = requests.get(HOST_URL, params=params_dct).content
+        print(type(requests.get(HOST_URL, params=params_dct).content))
+
+    def refresh_server_status(self, *args):
+        try:
+            r = requests.get(HOST_URL)
+            self.server_status = 'online'
+        except requests.ConnectionError:
+            self.server_status = 'offline'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        Clock.schedule_interval(self.refresh_server_status, 5)
 
 
 class NewSingleInstanceTestApp(App):
