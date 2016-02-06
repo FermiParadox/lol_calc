@@ -1,13 +1,53 @@
 import copy
 
 
+EMPTY_DATA = dict(
+
+    selected_champions_dct=dict(
+        player='',
+        enemy_1='melee_creep',),
+
+    champion_lvls_dct=dict(
+        player=1,
+        enemy_1=1,
+        enemy_2=1,
+        enemy_3=1
+    ),
+
+    ability_lvls_dct={},
+
+    max_targets_dct={},
+
+    max_combat_time=10,
+
+    rotation_lst=[],
+    chosen_items_dct={'player': [],
+                      'enemy_1': [],
+                      'enemy_2': [],
+                      'enemy_3': [],
+                      'enemy_4': [],
+                      'enemy_5': [], },
+    initial_enemies_total_stats=None,
+    initial_active_buffs=None,
+    initial_current_stats={},
+
+    _reversed_combat_mode=False,
+
+    selected_summoner_spells=[],
+
+    selected_runes=dict(),
+
+    selected_masteries_dct=dict(),
+
+    enemies_originating_dmg_data=None,
+)
+
+
 ALL_DATA = dict(
 
     selected_champions_dct=dict(
         player='jax',
-        enemy_1='jax',
-        enemy_2='jax',
-        enemy_3='jax'),
+        enemy_1='melee_creep',),
 
     champion_lvls_dct=dict(
         player=18,

@@ -4,6 +4,17 @@ import os
 import palette
 
 
+def _add_champion_and_attr_class(champion_name, modified_dct):
+    """
+    Inserts champion name as key and his attrs' class as value.
+
+    :return: (None)
+    """
+    player_champ_module = importlib.import_module('champions.' + champion_name)
+    player_champ_tot_attr_class = getattr(player_champ_module, 'ChampionAttributes')
+
+    modified_dct.update({champion_name: player_champ_tot_attr_class})
+
 # All available champion modules are stored.
 ALL_CHAMPIONS_TOTAL_ATTRIBUTES_CLASSES = {}
 for champ_name in palette.ALL_CHAMPIONS_NAMES:
@@ -11,10 +22,10 @@ for champ_name in palette.ALL_CHAMPIONS_NAMES:
 
     # Filters out non implemented champions
     if champ_name + '.py' in os.listdir('/home/black/Dev/PycharmProjects/WhiteProject/champions'):
-        player_champ_module = importlib.import_module('champions.' + champ_name)
-        player_champ_tot_attr_class = getattr(player_champ_module, 'ChampionAttributes')
+        _add_champion_and_attr_class(champion_name=champ_name, modified_dct=ALL_CHAMPIONS_TOTAL_ATTRIBUTES_CLASSES)
 
-        ALL_CHAMPIONS_TOTAL_ATTRIBUTES_CLASSES.update({champ_name: player_champ_tot_attr_class})
+# Adds melee_creep.
+_add_champion_and_attr_class(champion_name='melee_creep', modified_dct=ALL_CHAMPIONS_TOTAL_ATTRIBUTES_CLASSES)
 
 
 class UserSession(object):
@@ -130,4 +141,4 @@ class UserSession(object):
         instance = self.instance_after_combat(input_dct=input_dct)
         instance.store_results_as_image()
 
-        return instance.temp_combat_results_image_name
+        return instance.temp_combat_results_image_path

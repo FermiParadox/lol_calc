@@ -2439,3 +2439,10 @@ CHAMPION_BASE_STATS = {
              'mr': 30.0,
              'mr_per_lvl': 0.0,
              'range': 575.0}}
+
+
+# Melee creep
+MELEE_CREEP_STATS = {k: 0 for k in CHAMPION_BASE_STATS['aatrox']}
+MELEE_CREEP_STATS['hp'] = 400
+MELEE_CREEP_STATS['base_att_speed'] = 1
+CHAMPION_BASE_STATS.update({'melee_creep': MELEE_CREEP_STATS})

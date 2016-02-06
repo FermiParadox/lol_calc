@@ -3,6 +3,7 @@ import copy
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import abc
+import os
 
 import buffs
 import timers
@@ -323,7 +324,7 @@ class EnemiesDmgToPlayer(EventsGeneral):
         :return:
         """
 
-        all_enemies_total_dmg = 0
+        all_enemies_total_dmg = 0.1     # (Small non 0 value in order to avoid ZeroDivisionError)
         all_enemies_magic_dmg = 0
         all_enemies_physical_dmg = 0
         all_enemies_true_dmg = 0
@@ -342,7 +343,8 @@ class EnemiesDmgToPlayer(EventsGeneral):
             all_enemies_added_dps += dmg_data_dct['dps']
 
             source_dct = dmg_data_dct['source']
-            all_enemies_aa_dmg += source_dct['AA']
+            if 'AA' in source_dct:
+                all_enemies_aa_dmg += source_dct['AA']
 
         average_dps = all_enemies_added_dps / total_enemies
         percent_magic = all_enemies_magic_dmg / all_enemies_total_dmg
@@ -2866,10 +2868,16 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         """
         Checks and stores how long the combat lasted. Combat end is defined as "when the last action's cast ended".
 
+        If combat duration is 0, sets it to a very small amount to avoid ZeroDivisionErrors.
+
         :return: (None)
         """
 
-        self.combat_duration = self._last_action_end()
+        last_action_end_time = self._last_action_end()
+        if last_action_end_time:
+            self.combat_duration = self._last_action_end()
+        else:
+            self.combat_duration = 0.00000000001
 
     def _main_combat(self):
 
@@ -3418,7 +3426,7 @@ class VisualRepresentation(Presets):
                  _reversed_combat_mode):
 
         # (created only if instance is run in image-creation mode)
-        self.temp_combat_results_image_name = None
+        self.temp_combat_results_image_path = None
 
         Presets.__init__(self,
                          rotation_lst=rotation_lst,
@@ -3656,8 +3664,8 @@ class VisualRepresentation(Presets):
         for tar_name in self.enemy_target_names:
             tar_lvl = self.champion_lvls_dct[tar_name]
             tar_champ = self.selected_champions_dct[tar_name]
-            table_lst.append(('%s' % tar_name.upper(), ''))
-            table_lst.append((tar_champ.upper(), 'Lvl: %s' % tar_lvl))
+            table_lst.append((tar_name.upper(), ''))
+            table_lst.append((tar_champ.upper(), 'Lvl: {}'.format(tar_lvl)))
 
             # Creates lines.
             for stat_name in self.ENEMY_STATS_DISPLAYED:
@@ -3749,9 +3757,12 @@ class VisualRepresentation(Presets):
         self._create_results_visual_representation()
 
         # Creates image name in a way that would be unique
-        # so that it does not overwrite accidentally images from other instances.
-        self.temp_combat_results_image_name = '{}/temp_image_{}.png'.format(TEMP_COMBAT_RESULT_IMAGES_DIRECTORY, id(self))
-        plt.savefig(self.temp_combat_results_image_name)
+        # so that it does not overwrite accidentally images from other concurrent instances.
+        self.temp_combat_results_image_path = '{}/temp_image_{}.png'.format(TEMP_COMBAT_RESULT_IMAGES_DIRECTORY, id(self))
+        plt.savefig(self.temp_combat_results_image_path)
+
+    def delete_stored_results_image(self):
+        os.remove(self.temp_combat_results_image_path)
 
     def represent_results_visually(self):
 

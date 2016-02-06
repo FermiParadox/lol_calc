@@ -189,7 +189,6 @@ PLAYER_LVLING_TIMES_IN_MINUTES = {
 }
 
 
-
 class StatCalculation(object):
 
     """
@@ -216,6 +215,8 @@ class StatCalculation(object):
         self.player_lvl = self.champion_lvls_dct['player']
 
         self.selected_champions_dct = selected_champions_dct
+        # Filters out enemies that were not selected.
+        self.selected_champions_dct = {k: v for k, v in self.selected_champions_dct.items() if v}
 
         self.player_current_resource_name = ''
 

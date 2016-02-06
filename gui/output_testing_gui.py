@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+
 from functools import partial
 from kivy.uix.popup import Popup
 from kivy.uix.gridlayout import GridLayout
@@ -39,6 +40,12 @@ CHAMPION_DATA_PATH_BASE = PATH_BASE + 'data/en_US/champion/'
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+PLAYER_AND_ENEMIES_LST = ['player', ]
+PLAYER_AND_ENEMIES_LST += ['enemy_{}'.format(i) for i in range(1, 5)]
+SPELL_SHORTCUTS = ['q', 'w', 'e', 'r']
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 class Button(BaseButton):
     """
     Removes border from all buttons.
@@ -59,6 +66,9 @@ def spell_icon_path(champion_name, ability_name):
     :param ability_name: (str) 'q', 'w', 'e', 'r'
     :return: (str)
     """
+    # (champ name might be given with first letter being lowercase, while the path expects it as uppercase)
+    champion_name = champion_name.capitalize()
+
     try:
         champion_json_path = CHAMPION_DATA_PATH_BASE + champion_name + '.json'
         with open(champion_json_path) as opened_file:
@@ -283,24 +293,54 @@ class MasteriesWidget(BoxLayout):
 # ----------------------------------------------------------------------------------------------------------------------
 class MainWidget(TabbedPanel):
 
-    selected_spell_lvls = DictProperty({'q': 0, 'w': 0, 'e': 0, 'r': 0})
     server_status = StringProperty()
-    results = ListProperty()
 
-    def request_results(self, params_dct):
-        self.results = requests.get(HOST_URL, params=params_dct).content
-        print(type(requests.get(HOST_URL, params=params_dct).content))
+    def all_preset_params(self):
+        return {
+            'selected_champions_dct': self.selected_champions_dct,
+            'ability_lvls_dct': self.ability_lvls_dct,
+            'champion_lvls_dct': self.champion_lvls_dct,
+            'max_combat_time': self.max_combat_time,
+            'chosen_items_dct': self.chosen_items_dct,
+            'selected_summoner_spells': self.selected_summoner_spells,
+            'rotation_lst': self.rotation_lst,
+        }
+
+    def preset_dct_as_str(self):
+        """
+        Converts dict to be sent through request's "params" to a string.
+
+        :return: (str)
+        """
+        return str(self.all_preset_params())
+
+    def __init__(self, **kwargs):
+        self.results = ''
+        super().__init__(**kwargs)
+        self.refresh_server_status()
+        Clock.schedule_interval(self.refresh_server_status, 10)
 
     def refresh_server_status(self, *args):
         try:
-            r = requests.get(HOST_URL)
+            requests.get(HOST_URL)
             self.server_status = 'online'
         except requests.ConnectionError:
             self.server_status = 'offline'
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        Clock.schedule_interval(self.refresh_server_status, 5)
+    def request_results(self, params_dct):
+        self.refresh_server_status()
+        if self.server_status == 'online':
+            r = requests.get(HOST_URL, params=params_dct).text
+            self.results = r
+            print(type(r))
+            print(r)
+            self.ids.server_message_label.text = "There ya go!"
+            self.ids.server_message_label.color = (0,1,0,1)
+        else:
+            self.ids.server_message_label.text = "Can't bro, server is offline."
+            self.ids.server_message_label.color = (1,0,0,1)
+
+
 
 
 class NewSingleInstanceTestApp(App):
