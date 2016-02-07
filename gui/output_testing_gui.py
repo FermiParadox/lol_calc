@@ -82,6 +82,15 @@ def spell_icon_path(champion_name, ability_name):
         return ''
 
 
+def item_icon_path(item_id):
+    return ITEM_IMAGE_PATH_BASE + item_id + '.png'
+
+
+def champion_icon_path(champ_name):
+    # (champ name starts with uppercase in non-app data)
+    return CHAMPION_IMAGE_PATH_BASE + champ_name.capitalize() + '.png'
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 class DropdownButton(Button):
 
@@ -209,11 +218,16 @@ class PopupGridlayoutButton(Button):
 
 class ChampionButton(PopupGridlayoutButton):
 
+    initial_champion = StringProperty()
+
     def __init__(self, **kwargs):
         super().__init__(square_a=60,
                          grid_contents=self.champion_buttons_and_kwargs(),
                          **kwargs)
         self.height = self.width = 70
+
+    def on_initial_champion(self, *args):
+        self.background_normal = champion_icon_path(champ_name=self.initial_champion)
 
     @staticmethod
     def champion_buttons_and_kwargs():
@@ -230,7 +244,7 @@ class ChampionButton(PopupGridlayoutButton):
 
             # Buttons are added only if the champion has been created in the app.
             if champ_name.lower() + '.py' in os.listdir('/home/black/Dev/PycharmProjects/WhiteProject/champions'):
-                button_background_path = CHAMPION_IMAGE_PATH_BASE + champ_name + '.png'
+                button_background_path = champion_icon_path(champ_name=champ_name)
 
                 kwargs_dct.update({
                     'background_normal': button_background_path,
@@ -274,7 +288,7 @@ class ItemButton(PopupGridlayoutButton):
                     'text': item_name
                 })
 
-            button_background_path = ITEM_IMAGE_PATH_BASE + item_id + '.png'
+            button_background_path = item_icon_path(item_id=item_id)
             kwargs.update({
                 'background_normal': button_background_path,
                 'obj_name': item_name

@@ -2764,6 +2764,13 @@ class DmgsBase(_BuffsAndDmgsBase):
         self.ask_amount_of_dmgs(modified_dct=modified_dct, obj_name=obj_name)
         self.change_dmgs_names(modified_dct=modified_dct)
 
+    @staticmethod
+    def create_dot_attr_of_dmg(dmg_dct):
+
+        if dmg_dct['dot']:
+            dot_buff_name = restricted_input('Name of dot-buff?', input_type='str', disallow_enter=True)
+            dmg_dct['dot'] = {'buff_name': dot_buff_name}
+
     @inner_loop_exit_handler
     def _create_object_single_dmg(self, dmgs_dct, obj_name, dmg_attrs, usual_dmg_attrs_values,
                                   pprint_obj_description_func, choose_expression_way=False):
@@ -2809,10 +2816,7 @@ class DmgsBase(_BuffsAndDmgsBase):
                                         modified_dct=dmgs_dct[new_dmg_name], )
 
             # Dot.
-            if dmgs_dct[new_dmg_name]['dot']:
-                dot_buff = restricted_input('Name of dot-buff?', input_type='str', disallow_enter=True)
-
-                dmgs_dct[new_dmg_name]['dot'] = {'buff_name': dot_buff}
+            self.create_dot_attr_of_dmg(dmg_dct=dmgs_dct[new_dmg_name])
 
             # Dmg mods.
             pprint_obj_description_func()
@@ -5373,12 +5377,10 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
             # (the rest of the attrs)
             dmg_dct['dmg_source'] = 'masteries'
 
+            dmg_dct['dmg_values'] = restricted_input(question_msg='Dmg values?\n', input_type='tuple', disallow_enter=True)
+
             dmg_dct['mods'] = {}
             self._create_shield_mods_or_dmg_mods(mods_dct=dmg_dct['mods'])
-
-            dmg_dct['dmg_values'] =
-
-
 
             # On-kill
 

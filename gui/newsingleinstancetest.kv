@@ -97,6 +97,7 @@
 
                                 ChampionButton:
                                     id: player_champion_button
+                                    initial_champion: main_widget.selected_champions_dct['player']
                                     on_text: main_widget.player_champion = self.text.lower()
 
                                 LvlsDropdownButton:
