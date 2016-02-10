@@ -2332,6 +2332,14 @@ class StatsDependencies(object):
 
 class _BuffsAndDmgsBase(object):
 
+    ON_X_BASE_DICTS_MAP = {
+            'on_hit': palette.ON_HIT_EFFECTS,
+            'on_being_hit': palette.ON_BEING_HIT,
+            'on_dmg': palette.ON_DMG_EFFECTS,
+            'on_dealing_dmg': palette.ON_DEALING_DMG,
+            'on_enemy_death': palette.ON_ENEMY_DEATH,
+        }
+
     @staticmethod
     def ask_amount_of_buffs_or_dmgs(modified_dct, obj_name, buff_or_dmg_attrs, str_buff_or_dmg):
         """
@@ -2430,15 +2438,8 @@ class _BuffsAndDmgsBase(object):
         :param on_x_str: (str) 'on_hit', 'on_being_hit', 'on_dmg', 'on_dealing_dmg', 'on_enemy_death'
         :return: (None)
         """
-        on_x_base_dicts_map = {
-            'on_hit': palette.ON_HIT_EFFECTS,
-            'on_being_hit': palette.ON_BEING_HIT,
-            'on_dmg': palette.ON_DMG_EFFECTS,
-            'on_dealing_dmg': palette.ON_DEALING_DMG,
-            'on_enemy_death': palette.ON_ENEMY_DEATH,
-        }
 
-        on_x_base_dct = on_x_base_dicts_map[on_x_str]
+        on_x_base_dct = self.ON_X_BASE_DICTS_MAP[on_x_str]
 
         # (done later so that buffs' and dmgs' names are available)
         for buff_or_dmg_name in buffs_or_dmgs_dct:
@@ -2474,18 +2475,26 @@ class _BuffsAndDmgsBase(object):
             else:
                 buffs_or_dmgs_dct[buff_or_dmg_name][on_x_str] = {}
 
-    def insert_all_on_x_effects_in_buff(self, buffs_or_dmgs_dct, buffs_names, dmgs_names):
+    def insert_all_on_x_effects_in_buff(self, buffs_dct, buffs_names, dmgs_names):
         """
         Creates and inserts all buff related on-x effects.
 
         :return: (None)
         """
 
-        for on_x_str in ['on_hit', 'on_being_hit', 'on_dealing_dmg', 'on_enemy_death']:
-            self._insert_on_x_base(buffs_or_dmgs_dct=buffs_or_dmgs_dct,
+        non_dmg_on_x = [i for i in self.ON_X_BASE_DICTS_MAP if i != 'on_dmg']
+
+        for on_x_str in non_dmg_on_x:
+            self._insert_on_x_base(buffs_or_dmgs_dct=buffs_dct,
                                    on_x_str=on_x_str,
                                    buffs_names=buffs_names,
                                    dmgs_names=dmgs_names)
+
+    def create_on_dmg_effects(self, dmgs_dct, buffs_names, dmgs_names):
+        self._insert_on_x_base(buffs_or_dmgs_dct=dmgs_dct,
+                               on_x_str='on_dmg',
+                               buffs_names=buffs_names,
+                               dmgs_names=dmgs_names)
 
 
 class BuffsBase(_BuffsAndDmgsBase):
@@ -5082,7 +5091,7 @@ class ItemAttrCreation(GenAttrsBase, DmgsBase, BuffsBase, EffectsBase, ItemAndMa
         dmgs_names = sorted(self.item_dmgs)
 
         # On x effects
-        self.insert_all_on_x_effects_in_buff(buffs_or_dmgs_dct=self.item_buffs,
+        self.insert_all_on_x_effects_in_buff(buffs_dct=self.item_buffs,
                                              buffs_names=buff_names,
                                              dmgs_names=dmgs_names)
 
@@ -5258,6 +5267,14 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         self.tree_coordinates = {}
         self.mastery_description = self.inst.mastery_description(mastery_name=self.mastery_name, print_mode=False)[0]
 
+    @property
+    def mastery_buffs_names(self):
+        return sorted(self.mastery_buffs)
+
+    @property
+    def mastery_dmgs_names(self):
+        return sorted(self.mastery_dmgs)
+
     def print_mastery_description(self):
         return self.mastery_description
 
@@ -5382,12 +5399,6 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
             dmg_dct['mods'] = {}
             self._create_shield_mods_or_dmg_mods(mods_dct=dmg_dct['mods'])
 
-            # On-kill
-
-
-
-
-
     def create_mastery_buffs(self):
         """
         Creates all buffs of a mastery.
@@ -5429,7 +5440,7 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
         dmgs_names = sorted(self.mastery_dmgs)
 
         # On x effects
-        self.insert_all_on_x_effects_in_buff(buffs_or_dmgs_dct=self.mastery_buffs,
+        self.insert_all_on_x_effects_in_buff(buffs_dct=self.mastery_buffs,
                                              buffs_names=buffs_names,
                                              dmgs_names=dmgs_names)
 
@@ -5480,6 +5491,10 @@ class MasteryCreation(BuffsBase, DmgsBase, ItemAndMasteriesBase):
 
         self.create_mastery_buffs()
         dct['buffs'] = self.mastery_buffs
+
+        self.create_on_dmg_effects(dmgs_dct=self.mastery_dmgs,
+                                   buffs_names=self.mastery_buffs_names,
+                                   dmgs_names=self.mastery_dmgs_names)
 
         dct['stats_dependencies'] = StatsDependencies().mastery_stats_dependencies(mastery_name=self.mastery_name)
 

@@ -181,17 +181,26 @@
                         TextInput:
                             hint_text: '(extra comments)'
 
-                Image:
+                AsyncImage:
                     id: results_image
-                    source: ""
+                    on_source: print('yyyyy')
 
     TabbedPanelItem:
         text: 'Masteries'
-        HorizontalBoxLayout:
-            VerticalBoxLayout:
+        VerticalBoxLayout:
+            MasteriesWidget:
+                padding: 30
+                id: masteries_widg
+            AnchorLayout:
+                size_hint_y: 0.2
+                anchor_x: 'center'
+                Button:
+                    size_hint: None, None
+                    height: 40
+                    width: 200
+                    text: 'clear all'
+                    on_release: masteries_widg.reset_masteries_lvls()
 
-            VerticalBoxLayout
-            VerticalBoxLayout
 
     TabbedPanelItem:
         text: 'Runes'

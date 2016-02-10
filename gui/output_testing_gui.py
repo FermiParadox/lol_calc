@@ -2,6 +2,7 @@ import os
 import json
 import requests
 
+from pprint import pprint as pp
 from functools import partial
 from kivy.uix.popup import Popup
 from kivy.uix.gridlayout import GridLayout
@@ -10,6 +11,7 @@ from kivy.uix.widget import Widget
 from kivy.uix.boxlayout import BoxLayout
 from kivy.app import App
 from kivy.uix.tabbedpanel import TabbedPanel
+from kivy.uix.label import Label
 from kivy.uix.button import Button as BaseButton
 from kivy.uix.dropdown import DropDown
 from kivy.core.window import Window
@@ -28,15 +30,19 @@ Window.size = (1050, 800)
 HOST_URL = 'http://localhost:64000'
 
 
+# PATHS
 # ----------------------------------------------------------------------------------------------------------------------
 DRAGONTAIL_VERSION = '6.1.1'
-PATH_BASE = '/home/black/Downloads/dragontail-{0}/{0}/'.format(DRAGONTAIL_VERSION)
+PATH_BASE = '/home/black/Downloads/dragontail-{version}/{version}/'.format(version=DRAGONTAIL_VERSION)
 IMAGE_PATH_BASE = PATH_BASE + 'img/'
 CHAMPION_IMAGE_PATH_BASE = IMAGE_PATH_BASE + 'champion/'
 SPELL_IMAGE_PATH_BASE = IMAGE_PATH_BASE + 'spell/'
 ITEM_IMAGE_PATH_BASE = IMAGE_PATH_BASE + 'item/'
+MASTERY_IMAGE_PATH_BASE = IMAGE_PATH_BASE + 'mastery/'
 
 CHAMPION_DATA_PATH_BASE = PATH_BASE + 'data/en_US/champion/'
+
+MASTERIES_JSON_PATH = PATH_BASE + '/data/en_US/mastery.json'
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -57,29 +63,98 @@ class Button(BaseButton):
         super().__init__(border=(0, 0, 0, 0), **kwargs)
 
 
+class SquareButton(Button):
+
+    def __init__(self, square_a=50, **kwargs):
+        super().__init__(size_hint=(None, None), width=square_a, height=square_a, **kwargs)
+
+
 # ----------------------------------------------------------------------------------------------------------------------
+def empty_str_on_file_not_found_error(func):
+    """
+    Decorator that handles FileNotFoundError and returns an empty string instead of raising an error.
+    """
+    def wrapped(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except FileNotFoundError:
+            return ''
+
+    return wrapped
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+with open(MASTERIES_JSON_PATH) as masteries_file:
+    masteries_as_str = masteries_file.read()
+
+    # (includes tree as well)
+    _ALL_MASTERIES_DATA_DCT = json.loads(masteries_as_str)
+    # (includes only dicts of each mastery)
+    MASTERIES_DCT = _ALL_MASTERIES_DATA_DCT['data']
+    MASTERIES_TREE_DCT = _ALL_MASTERIES_DATA_DCT['tree']
+
+MASTERIES_CATEGORIES = ('Ferocity', 'Cunning', 'Resolve')
+
+MAX_MASTERY_TIER = 6
+MAX_TOTAL_MASTERIES_POINTS = 30
+
+MASTERIES_TIERS_MAP = {}
+for branch_name in MASTERIES_TREE_DCT:
+    MASTERIES_TIERS_MAP.update({branch_name: {}})
+    for tier_number, tier_lst in enumerate(MASTERIES_TREE_DCT[branch_name], start=1):
+
+        for elem in tier_lst:
+            if elem:
+                MASTERIES_TIERS_MAP[branch_name].update({elem['masteryId']: tier_number})
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+@empty_str_on_file_not_found_error
+def mastery_image_path(mastery_id, gray):
+    """
+    Returns given mastery's image path.
+
+    :param mastery_id: (str) or (int)
+    :param gray: (bool)
+    :return: (str) Path in dragontail.
+    """
+
+    mastery_id = str(mastery_id)
+
+    if gray:
+        mastery_path = MASTERY_IMAGE_PATH_BASE + 'gray_' + mastery_id + '.png'
+    else:
+        mastery_path = MASTERY_IMAGE_PATH_BASE + mastery_id + '.png'
+
+    return mastery_path
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+@empty_str_on_file_not_found_error
 def spell_icon_path(champion_name, ability_name):
     """
     Returns path of the icon.
-    If path is incorrect returns empty string (in order to display a white image in kivy without raising exceptions).
-    :param champion_name: (str) e.g. 'Jax', 'KogMaw'
+
+    :param champion_name: (str) e.g. 'jax', 'Jax', 'KogMaw'
     :param ability_name: (str) 'q', 'w', 'e', 'r'
     :return: (str)
     """
+    # THIS WILL RAISE EXCEPTIONS on champs like KogMaw.
+    # TODO: make it check dir with everything lower() and adjust champ_name to the match
+
     # (champ name might be given with first letter being lowercase, while the path expects it as uppercase)
     champion_name = champion_name.capitalize()
 
-    try:
-        champion_json_path = CHAMPION_DATA_PATH_BASE + champion_name + '.json'
-        with open(champion_json_path) as opened_file:
-            champ_json_as_str = opened_file.read()
+    champion_json_path = CHAMPION_DATA_PATH_BASE + champion_name + '.json'
+    with open(champion_json_path) as opened_file:
+        champ_json_as_str = opened_file.read()
 
-        ability_index = 'qwer'.index(ability_name)
-        ability_id = json.loads(champ_json_as_str)['data'][champion_name]['spells'][ability_index]['id']
+    ability_index = 'qwer'.index(ability_name)
+    ability_id = json.loads(champ_json_as_str)['data'][champion_name]['spells'][ability_index]['id']
 
-        return SPELL_IMAGE_PATH_BASE + ability_id + '.png'
-    except FileNotFoundError:
-        return ''
+    return SPELL_IMAGE_PATH_BASE + ability_id + '.png'
 
 
 def item_icon_path(item_id):
@@ -228,6 +303,7 @@ class ChampionButton(PopupGridlayoutButton):
 
     def on_initial_champion(self, *args):
         self.background_normal = champion_icon_path(champ_name=self.initial_champion)
+        self.text = self.initial_champion
 
     @staticmethod
     def champion_buttons_and_kwargs():
@@ -300,8 +376,216 @@ class ItemButton(PopupGridlayoutButton):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+class _MasteryButton(Button):
+
+    mastery_lvl = NumericProperty(0)
+
+    def __init__(self, mastery_id,  masteries_lvls, **kwargs):
+        self.mastery_id = mastery_id
+        self.normal_image_path = mastery_image_path(mastery_id=mastery_id, gray=False)
+        self.gray_image_path = mastery_image_path(mastery_id=mastery_id, gray=True)
+        self.masteries_lvls = masteries_lvls
+        self.masteries_lvls.update({self.mastery_id: 0})
+        self.max_lvl = self.mastery_max_lvl(mastery_id=self.mastery_id)
+        self.mastery_branch, self.mastery_tier = self.mastery_branch_and_tier(mastery_id=self.mastery_id)
+
+        square_a = 50
+        super().__init__(size_hint=(None, None), height=square_a, width=square_a, **kwargs)
+        self.text_size = self.size[0], self.size[1] + 30
+        self.text = str(self.mastery_lvl)
+
+        self.update_mastery_image()
+
+    def on_mastery_lvl(self, *args):
+        self.masteries_lvls[self.mastery_id] = self.mastery_lvl
+        self.text = str(self.mastery_lvl)
+
+    @staticmethod
+    def mastery_max_lvl(mastery_id):
+        mastery_id = str(mastery_id)
+
+        return MASTERIES_DCT[mastery_id]['ranks']
+
+    @staticmethod
+    def mastery_branch_and_tier(mastery_id):
+        """
+        Returns a both branch and tier of a mastery.
+
+        :param mastery_id:
+        :return: (tuple) Contains branch and tier.
+        """
+        for branch_name in MASTERIES_TREE_DCT:
+            for tier_num, tier_lst in enumerate(MASTERIES_TREE_DCT[branch_name], start=1):
+
+                for elem in tier_lst:
+                    if elem:
+
+                        if elem['masteryId'] == mastery_id:
+                            return branch_name, tier_num
+
+        else:
+            raise KeyError('Non existent mastery id: {}'.format(mastery_id))
+
+    @staticmethod
+    def tier_max_lvl(tier):
+        if tier % 2 == 0:
+            return 1
+        else:
+            return 5
+
+    def previous_tier_max_lvl(self, tier):
+        return self.tier_max_lvl(tier=tier-1)
+
+    def previous_tier_lvls(self):
+        tot_lvls = 0
+        previous_tier = self.mastery_tier - 1
+
+        for mast_id, tier_n in MASTERIES_TIERS_MAP[self.mastery_branch].items():
+            if tier_n == previous_tier:
+                tot_lvls += self.masteries_lvls[mast_id]
+
+        return tot_lvls
+
+    def current_tier_lvls(self):
+        tot_lvls = 0
+        for mast_id, tier_n in MASTERIES_TIERS_MAP[self.mastery_branch].items():
+            if tier_n == self.mastery_tier:
+                tot_lvls += self.masteries_lvls[mast_id]
+
+        return tot_lvls
+
+    def current_total_masteries_points(self):
+
+        tot_lvls = 0
+        for branch_name in MASTERIES_TIERS_MAP:
+            for mastery_id in MASTERIES_TIERS_MAP[branch_name]:
+                tot_lvls += self.masteries_lvls[mastery_id]
+
+        return tot_lvls
+
+    def reset_current_tier(self):
+        for mast_id, tier_n in MASTERIES_TIERS_MAP[self.mastery_branch].items():
+            if tier_n == self.mastery_tier:
+                self.masteries_lvls[mast_id] = 0
+
+    def previous_tiers_filled(self):
+        # Tier 1 masteries have no previous requirements.
+        if self.mastery_tier == 1:
+            return True
+
+        else:
+            if self.previous_tier_max_lvl(tier=self.mastery_tier) == self.previous_tier_lvls():
+                return True
+            else:
+                return False
+
+    def current_tier_filled(self):
+        if self.current_tier_lvls() == self.max_lvl:
+            return True
+        else:
+            return False
+
+    def following_tier_has_contents(self):
+        if self.mastery_tier == MAX_MASTERY_TIER:
+            return False
+
+        else:
+            following_tier = self.mastery_tier + 1
+
+            for mast_id, tier_n in MASTERIES_TIERS_MAP[self.mastery_branch].items():
+                if tier_n == following_tier:
+                    if self.masteries_lvls[mast_id]:
+                        return True
+
+            else:
+                return False
+
+    def update_mastery_image(self):
+        if self.mastery_lvl:
+            path = self.normal_image_path
+        else:
+            path = self.gray_image_path
+
+        self.background_normal = path
+
+    def on_release(self):
+        """
+        Increases lvl of mastery based on its current value, up to its maximum value.
+
+        :return: (None)
+        """
+
+        # Disables button functionality if masteries' points requirements aren't met.
+        if self.previous_tiers_filled():
+            if not self.current_tier_filled():
+                if self.current_total_masteries_points() < MAX_TOTAL_MASTERIES_POINTS:
+
+                    current_mastery_lvl = self.mastery_lvl
+                    if current_mastery_lvl < self.max_lvl:
+
+                        self.mastery_lvl = current_mastery_lvl + 1
+                        self.update_mastery_image()
+
+
+class _MasteriesTierWidget(BoxLayout):
+
+    reset_signal = NumericProperty()
+
+    def __init__(self, masteries_in_tier_lst, masteries_lvls, **kwargs):
+        self.masteries_in_tier_lst = masteries_in_tier_lst
+        self.masteries_lvls = masteries_lvls
+        super().__init__(orientation='horizontal', **kwargs)
+        self.populate_widg()
+
+    def populate_widg(self):
+        self.add_widget(Label())
+        for elem in self.masteries_in_tier_lst:
+            if elem:
+                mastery_id = elem['masteryId']
+                mastery_button = _MasteryButton(mastery_id=mastery_id, masteries_lvls=self.masteries_lvls)
+
+                self.add_widget(mastery_button)
+
+            else:
+                self.add_widget(Label())
+        self.add_widget(Label())
+
+
+class _MasteriesBranch(BoxLayout):
+
+    def __init__(self, branch_name, masteries_lvls, **kwargs):
+
+        self.branch_name = branch_name
+        self.masteries_lvls = masteries_lvls
+
+        super().__init__(orientation='vertical', **kwargs)
+        self.populate_branch()
+
+    def populate_branch(self):
+        branch_contents_lst = MASTERIES_TREE_DCT[self.branch_name]
+
+        for tier_lst in branch_contents_lst:
+            tier_widg = _MasteriesTierWidget(masteries_in_tier_lst=tier_lst, masteries_lvls=self.masteries_lvls)
+            self.add_widget(tier_widg)
+
+
 class MasteriesWidget(BoxLayout):
-    pass
+    masteries_lvls = DictProperty()
+
+    def __init__(self, **kwargs):
+        super().__init__(orientation='horizontal', **kwargs)
+        self.repopulate_masteries_widget()
+
+    def repopulate_masteries_widget(self):
+        self.clear_widgets()
+        for branch_name in MASTERIES_CATEGORIES:
+            self.add_widget(_MasteriesBranch(branch_name=branch_name, masteries_lvls=self.masteries_lvls))
+
+    def reset_masteries_lvls(self, *args):
+        for i in self.masteries_lvls:
+            self.masteries_lvls[i] = 0
+
+        self.repopulate_masteries_widget()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -350,6 +634,7 @@ class MainWidget(TabbedPanel):
             print(r)
             self.ids.server_message_label.text = "There ya go!"
             self.ids.server_message_label.color = (0,1,0,1)
+            self.ids.results_image.source = self.results
         else:
             self.ids.server_message_label.text = "Can't bro, server is offline."
             self.ids.server_message_label.color = (1,0,0,1)
