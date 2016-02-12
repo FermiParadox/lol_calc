@@ -12,6 +12,17 @@
     width: 40
     height: 40
 
+<Tooltip>
+    font_size: 12
+    text_size: 400, None
+
+    canvas.before:
+        Color:
+            rgba: (0,0,0,.8)
+        Rectangle:
+            pos: self.x - 150, self.y - 50
+            size: (400, 200)
+
 <PlayerRotation@VerticalBoxLayout>
     selected_rotation: []
     starting_text: '(no spells selected, \nrotation will be automatic)'

@@ -376,7 +376,11 @@ class ItemButton(PopupGridlayoutButton):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-class _MasteryButton(Button):
+class Tooltip(Label):
+    pass
+
+
+class SingleMasteryWidget(Button):
 
     mastery_lvl = NumericProperty(0)
 
@@ -387,6 +391,8 @@ class _MasteryButton(Button):
         self.masteries_lvls = masteries_lvls
         self.masteries_lvls.update({self.mastery_id: 0})
         self.max_lvl = self.mastery_max_lvl(mastery_id=self.mastery_id)
+        self.mastery_app_name = MASTERIES_DCT[self.mastery_id]['name']
+        self.mastery_description_pieces = MASTERIES_DCT[self.mastery_id]['description']
         self.mastery_branch, self.mastery_tier = self.mastery_branch_and_tier(mastery_id=self.mastery_id)
 
         square_a = 50
@@ -396,9 +402,33 @@ class _MasteryButton(Button):
 
         self.update_mastery_image()
 
+        self.tooltip = Tooltip()
+        Window.bind(mouse_pos=self.on_mouse_pos)
+
+    def update_mastery_description(self):
+        # (description on 0 lvl is the same as 1 lvl)
+        description_index = max(self.mastery_lvl - 1, 0)
+
+        description = self.mastery_app_name + '\n\n'
+        description += self.mastery_description_pieces[description_index]
+        description = description.replace('<br><br>', '\n')
+
+        self.tooltip.text = description
+
+    def on_mouse_pos(self, *args):
+        mouse_pos = Window.mouse_pos
+        self.tooltip.pos = mouse_pos[0] + self.width, mouse_pos[1] + self.height
+        self.remove_widget(self.tooltip)
+
+        if self.collide_point(*self.to_widget(*mouse_pos)):
+            self.update_mastery_description()
+            self.add_widget(self.tooltip)
+
     def on_mastery_lvl(self, *args):
         self.masteries_lvls[self.mastery_id] = self.mastery_lvl
         self.text = str(self.mastery_lvl)
+
+        self.on_mouse_pos()
 
     @staticmethod
     def mastery_max_lvl(mastery_id):
@@ -542,9 +572,8 @@ class _MasteriesTierWidget(BoxLayout):
         for elem in self.masteries_in_tier_lst:
             if elem:
                 mastery_id = elem['masteryId']
-                mastery_button = _MasteryButton(mastery_id=mastery_id, masteries_lvls=self.masteries_lvls)
-
-                self.add_widget(mastery_button)
+                single_mastery_widg = SingleMasteryWidget(mastery_id=mastery_id, masteries_lvls=self.masteries_lvls)
+                self.add_widget(single_mastery_widg)
 
             else:
                 self.add_widget(Label())
