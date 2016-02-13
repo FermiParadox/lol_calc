@@ -47,7 +47,7 @@ ALL_DATA = dict(
 
     selected_champions_dct=dict(
         player='jax',
-        enemy_1='melee_creep',),
+        enemy_1='jax',),
 
     champion_lvls_dct=dict(
         player=18,

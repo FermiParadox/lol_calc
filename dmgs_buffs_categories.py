@@ -105,6 +105,8 @@ class DmgCategories(BuffCategories):
     -limited_chain_decay: Incorporated into chain_decay.
     """
 
+    LIMITED_BONUSES_STATS = frozenset({'current_hp', 'current_mp'})
+
     def aa_dmg_value(self):
         """
         Returns the AVERAGE value of AA dmg, after applying crit change and crit mod.
@@ -142,6 +144,24 @@ class DmgCategories(BuffCategories):
                 index = self.effect_lvl_by_champ_lvl(seq_of_values=given_mod_seq_or_val)
                 return given_mod_seq_or_val[index]
 
+    def _filtered_mod_stat_value(self, stat_name, stat_value):
+        """
+        Allows only positive values for given stats to be applied as bonuses.
+
+        (e.g. if current_hp drops below 0, bonus dmg based on it shouldn't apply as usual because it will be negative,
+        that is, it will heal instead of increase dmg value)
+
+        :param stat_name:
+        :param stat_value:
+        :return: (float)
+        """
+
+        if stat_name in self.LIMITED_BONUSES_STATS:
+            if stat_value < 0:
+                return 0
+
+        return stat_value
+
     def shield_or_dmg_value_after_mods(self, dmg_or_shield_dct, mods_dct, value):
         if mods_dct:
 
@@ -159,7 +179,11 @@ class DmgCategories(BuffCategories):
                         additive_mod_val = mod_dct['additive']
                         additive_mod_val = self._dmg_or_shield_mod_value(given_mod_seq_or_val=additive_mod_val,
                                                                          dmg_or_shield_dct=dmg_or_shield_dct)
-                        value += additive_mod_val * self.req_stats_func(target_name=owner, stat_name=mod_name)
+
+                        mod_stat_val = self.req_stats_func(target_name=owner, stat_name=mod_name)
+
+                        value += additive_mod_val * self._filtered_mod_stat_value(stat_name=mod_name,
+                                                                                  stat_value=mod_stat_val)
 
                 for mod_name in sorted(owner_mods_dct):
                     mod_dct = owner_mods_dct[mod_name]
