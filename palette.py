@@ -1,6 +1,8 @@
 import copy
 import importlib
 import pprint
+import os
+import re
 
 import champion_ids
 
@@ -91,6 +93,59 @@ placeholder_float = PlaceholderClass(data_type=float)
 placeholder_bool = PlaceholderClass(data_type=bool)
 placeholder_set = PlaceholderClass(data_type=set)
 placeholder_str = PlaceholderClass(data_type=str)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+def all_modules_in_project():
+    """
+    Finds all modules imported in the current working directory tree.
+
+    :return: (None)
+    """
+
+    project_directories = set()
+    project_files = set()
+
+    modules_imported = set()
+
+    for path, dirs_names, files_names_in_dir in os.walk(os.getcwd()):
+        project_directories |= set(dirs_names)
+
+        for file_name in files_names_in_dir:
+            if file_name.endswith('.py'):
+
+                project_files.add(file_name[:-3])
+
+                with open(path + '/' + file_name, 'r') as opened_file:
+                    file_lines = opened_file.readlines()
+
+                    for line in file_lines:
+
+                        # import XXX
+                        match = re.match(r'import\s([\w\.]+)', line)
+                        if match:
+                            modules_imported.add(match.groups()[0])
+
+                        # from XXX
+                        match = re.match(r'from\s([\w\.]+)', line)
+                        if match:
+                            modules_imported.add(match.groups()[0])
+
+    # Removes XXX that were matched as follows `import proj_dir. .. .XXX`
+    for module in modules_imported.copy():
+        matched = re.match(r'(\w+)\.', module)
+        if matched:
+            pre_dot = matched.groups()[0]
+
+            if pre_dot in project_directories:
+                modules_imported.remove(module)
+
+            else:
+                # Replaces `xxx.yyy` with `xxx`
+                modules_imported.remove(module)
+                modules_imported.add(pre_dot)
+
+    return modules_imported - project_files - project_directories
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -253,23 +308,6 @@ def compare_complex_object(obj_1, obj_2):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-def x_to_x_dct(seq):
-    """
-    Used to ensure change to a string is forced in distant locations in code as well.
-
-    Allows replacing:
-        `if 'x' in some_iterable:`
-
-    with this:
-        `if name.x in some_iterable:`
-
-    :return: (dict) Each value is the same as its key, that is k1==v1, k2==v2 etc.
-    """
-
-    return {i: i for i in seq}
-
-
-# ----------------------------------------------------------------------------------------------------------------------
 class FrozenKeysDict(dict):
     """Disallows insertion of new keys and deletion of existing keys once the dict has been created. """
 
@@ -281,6 +319,58 @@ class FrozenKeysDict(dict):
 
     def __setitem__(self, key, value):
         raise NotAllowedOperationError
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+def x_to_x_dct(seq):
+    """
+    Used to ensure change to a string is forced in distant locations in code as well.
+
+    e.g.
+    Allows replacing:
+        `if 'x' in some_iterable`
+
+    with this:
+        `if name.x in some_iterable`
+
+    :return: (dict) Each value is the same as its key, that is k1==v1, k2==v2 etc.
+    """
+
+    return {i: i for i in seq}
+
+
+class XToX(FrozenKeysDict):
+    """
+    Used to ensure object names are within allowed names.
+    Makes the verification process easier by allowing different ways of using the names.
+
+    Allows replacing:
+        `if 'x' in some_iterable`
+
+    with either of the following:
+        `if allowed_vals.x in some_iterable`
+        `if 'allowed_vals['x'] in some_iterable`
+
+    """
+
+    def __init__(self, seq):
+        d = x_to_x_dct(seq=seq)
+        super().__init__(**d)
+        self.turn_keys_into_properties()
+
+    def turn_keys_into_properties(self):
+        """
+        Converts all dict keys into properties.
+        Raises exception if given property shouldn't be inserted because it conflicts with an existing property.
+
+        :return:
+        """
+        for k, v in self.items():
+            if k in dir(self):
+                raise UnexpectedValueError('{} already exists as dict-class property.'.format(k))
+
+            else:
+                setattr(self, k, v)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -665,4 +755,6 @@ def fat_delimiter(num_of_lines):
 
 
 if __name__ == '__main__':
-    print()
+
+    from pprint import pprint as pp
+    pp(all_modules_in_project())

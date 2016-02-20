@@ -21,7 +21,7 @@ for champ_name in palette.ALL_CHAMPIONS_NAMES:
     champ_name = champ_name.lower()
 
     # Filters out non implemented champions
-    if champ_name + '.py' in os.listdir('/home/black/Dev/PycharmProjects/WhiteProject/champions'):
+    if champ_name + '.py' in os.listdir(os.getcwd() + '/champions'):
         _add_champion_and_attr_class(champion_name=champ_name, modified_dct=ALL_CHAMPIONS_TOTAL_ATTRIBUTES_CLASSES)
 
 # Adds melee_creep.
@@ -141,4 +141,4 @@ class UserSession(object):
         instance = self.instance_after_combat(input_dct=input_dct)
         instance.store_results_as_image()
 
-        return instance.temp_combat_results_image_path
+        return instance.temp_image_name

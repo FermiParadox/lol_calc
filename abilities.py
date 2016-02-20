@@ -19,7 +19,8 @@ from palette import placeholder
 plt.rcParams['font.size'] = 12
 
 
-TEMP_COMBAT_RESULT_IMAGES_DIRECTORY = 'temp_combat_result_images'
+CURRENT_WORKING_DIRECTORY = os.path.dirname(os.getcwd())
+TEMP_COMBAT_RESULT_IMAGES_DIRECTORY = CURRENT_WORKING_DIRECTORY + '/img'
 
 
 BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS = set()
@@ -1374,11 +1375,11 @@ BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS.update(SummonerSpells.SUMMONER_SPELLS_BUFF
 
 SUMMONER_SPELLS_BUFFS_NAMES_TO_SPELL_MAP = palette.items_or_masteries_buffs_or_dmgs_names_dct(
     str_buffs_or_dmgs='buffs', attrs_dct=SummonerSpells.SUMMONER_SPELLS_ATTRIBUTES_BASE)
-SUMMONER_SPELLS_BUFFS_NAMES = palette.x_to_x_dct(seq=SUMMONER_SPELLS_BUFFS_NAMES_TO_SPELL_MAP)
+SUMMONER_SPELLS_BUFFS_NAMES = palette.XToX(seq=SUMMONER_SPELLS_BUFFS_NAMES_TO_SPELL_MAP)
 
 SUMMONER_SPELLS_DMGS_NAMES_TO_SPELL_MAP = palette.items_or_masteries_buffs_or_dmgs_names_dct(
     str_buffs_or_dmgs='dmgs', attrs_dct=SummonerSpells.SUMMONER_SPELLS_ATTRIBUTES_BASE)
-SUMMONER_SPELLS_DMGS_NAMES = palette.x_to_x_dct(seq=SUMMONER_SPELLS_DMGS_NAMES_TO_SPELL_MAP)
+SUMMONER_SPELLS_DMGS_NAMES = palette.XToX(seq=SUMMONER_SPELLS_DMGS_NAMES_TO_SPELL_MAP)
 
 
 class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABCMeta):
@@ -3427,6 +3428,7 @@ class VisualRepresentation(Presets):
 
         # (created only if instance is run in image-creation mode)
         self.temp_combat_results_image_path = None
+        self.temp_image_name = None
 
         Presets.__init__(self,
                          rotation_lst=rotation_lst,
@@ -3699,9 +3701,35 @@ class VisualRepresentation(Presets):
 
         self.__set_table_font_size(table_obj=table_obj)
 
+    def rotation_followed_as_single_str(self, chars_limit):
+        """
+        Turns rotation into a string, which is separated by new lines based on char limited provided.
+
+        :return: (str)
+        """
+        rot_lst = self.rotation_followed()
+
+        lines_lst = []
+        line_as_str = ''
+
+        for action_name in rot_lst:
+            # (splits the str with comma after each new action name)
+            if line_as_str:
+                line_as_str += ', '
+
+            if len(line_as_str) + len(action_name) + 2 <= chars_limit:
+                line_as_str += action_name
+
+            else:
+                lines_lst.append(line_as_str)
+                line_as_str = ''
+        return '\n'.join(lines_lst)
+
     def preset_and_results_table(self):
 
         # Rotation
+        # TODO: enable below statement and disable the currently active when image-saving bug is fixed
+        #table_lst = [('ROTATION',), (self.rotation_followed_as_single_str(chars_limit=50),)]
         table_lst = [('ROTATION',), (self.rotation_followed(),)]
 
         # Dps
@@ -3728,12 +3756,20 @@ class VisualRepresentation(Presets):
     def subplot_preset_and_results_table(self, subplot_obj):
 
         subplot_obj.axis('off')
-        table_obj = subplot_obj.table(
+
+        table_obj = plt.table(
             cellText=self.preset_and_results_table(),
             cellLoc='left',
             loc='center')
 
-        self.__set_table_font_size(table_obj=table_obj)
+        table_properties = table_obj.properties()
+        cells = table_properties['celld']
+        rotation_cell = cells[(1, 0)]
+        rotation_cell.set_height(rotation_cell.get_height()*2)
+
+        table_subplot_obj = subplot_obj.add_table(table_obj)
+
+        self.__set_table_font_size(table_obj=table_subplot_obj)
 
     def _create_results_visual_representation(self):
         gs_main = gridspec.GridSpec(6, 6)
@@ -3758,7 +3794,8 @@ class VisualRepresentation(Presets):
 
         # Creates image name in a way that would be unique
         # so that it does not overwrite accidentally images from other concurrent instances.
-        self.temp_combat_results_image_path = '{}/temp_image_{}.png'.format(TEMP_COMBAT_RESULT_IMAGES_DIRECTORY, id(self))
+        self.temp_image_name = 'temp_image_{}.png'.format(id(self))
+        self.temp_combat_results_image_path = '{}/{}'.format(TEMP_COMBAT_RESULT_IMAGES_DIRECTORY, self.temp_image_name)
         plt.savefig(self.temp_combat_results_image_path)
 
     def delete_stored_results_image(self):

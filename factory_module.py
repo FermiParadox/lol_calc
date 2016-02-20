@@ -1097,7 +1097,7 @@ def ability_num(ability_name):
 
 
 # ---------------------------------------------------------------
-ALLOWED_STATS_NAMES = stats.ALL_POSSIBLE_STAT_NAMES
+ALLOWED_STATS_NAMES = stats.STATS
 
 
 def check_stat_name_validity(stat_name):

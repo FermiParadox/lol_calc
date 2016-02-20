@@ -2,11 +2,31 @@ from flask import Flask, request, send_file
 import copy
 import ast
 import pprint
+import os
 
 import user_instance_settings
+import champion_ids
 import functional_testing.default_config as default_config
+from items_folder.items_data import ITEMS_IDS_TO_NAMES_MAP
+
 
 app = Flask(__name__)
+
+
+CHAMPION_IDS = champion_ids.CHAMPION_IDS.values()
+
+
+CHAMPIONS_FILES_NAMES = os.listdir(os.getcwd() + '/champions')
+CREATED_CHAMPIONS_IDS = []
+for champ_name in CHAMPION_IDS:
+    if champ_name.lower() + '.py' in CHAMPIONS_FILES_NAMES:
+        CREATED_CHAMPIONS_IDS.append(champ_name)
+
+
+CREATED_CHAMPIONS_NAMES_AND_ITEMS_IDS_TO_NAMES_MAP = {
+    'created_champions_ids': CREATED_CHAMPIONS_IDS,
+    'items_ids_to_names_map': ITEMS_IDS_TO_NAMES_MAP,
+}
 
 
 ALLOWED_PRESET_KEYS = ['selected_champions_dct',
@@ -40,16 +60,18 @@ def filled_and_refined_combat_preset(given_dct):
 def index():
     r = request.args.to_dict()
 
-    if 'input_as_str' in r:
+    if 'input_as_str' in r.keys():
         input_dct = ast.literal_eval(r['input_as_str'])
         input_dct = filled_and_refined_combat_preset(given_dct=input_dct)
-        pprint.pprint(input_dct)
         try:
             im_name = user_instance_settings.UserSession().create_instance_and_return_image_name(input_dct=input_dct)
             return im_name
         except ImportError as err:
 
             return '{}'.format(err)
+
+    elif 'created_champions_names_and_items_ids_to_names_map' in r.keys():
+        return str(CREATED_CHAMPIONS_NAMES_AND_ITEMS_IDS_TO_NAMES_MAP)
 
     else:
         return ''

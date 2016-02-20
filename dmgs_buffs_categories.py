@@ -1,5 +1,8 @@
-import palette
 import copy
+
+import palette
+from stats import STATS
+
 
 _AA_DMG_DCT = copy.deepcopy(palette.DMG_DCT_BASE)
 _AA_DMG_DCT['delay'] = None
@@ -105,7 +108,7 @@ class DmgCategories(BuffCategories):
     -limited_chain_decay: Incorporated into chain_decay.
     """
 
-    LIMITED_BONUSES_STATS = frozenset({'current_hp', 'current_mp'})
+    LIMITED_BONUSES_STATS = frozenset({STATS['current_hp'], })
 
     def aa_dmg_value(self):
         """

@@ -113,10 +113,13 @@ SPECIAL_STATS_SET = frozenset({'base_ad',
                                } | DEFENSIVE_SPECIAL_STATS)
 
 
-ALL_POSSIBLE_STAT_NAMES = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_BONUS_STATS | (ALL_RESOURCE_NAMES - {None})
+# (all possible stats' names)
+STATS = ALL_STANDARD_STAT_NAMES | SPECIAL_STATS_SET | ALLOWED_BONUS_STATS | (ALL_RESOURCE_NAMES - {None})
+STATS = palette.XToX(seq=STATS)
 
-ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE = {i for i in ALL_POSSIBLE_STAT_NAMES if not i.startswith('current_')}
-NON_PER_LVL_STAT_NAMES = sorted(i for i in ALL_POSSIBLE_STAT_NAMES if 'per_lvl' not in i)
+
+ALL_POSSIBLE_STAT_NAMES_EXCLUDING_CURRENT_TYPE = {i for i in STATS if not i.startswith('current_')}
+NON_PER_LVL_STAT_NAMES = sorted(i for i in STATS if 'per_lvl' not in i)
 
 
 def ensure_allowed_stats_names(iterable):
@@ -126,7 +129,7 @@ def ensure_allowed_stats_names(iterable):
     :return:
     """
     for i in iterable:
-        if i not in ALL_POSSIBLE_STAT_NAMES:
+        if i not in STATS:
             raise palette.UnexpectedValueError(i)
 
 
@@ -153,7 +156,7 @@ ensure_allowed_stats_names(STATS_UPPER_LIMITS)
 # Enemy base stats' names.
 _ENEMY_BASE_STATS_NAMES = {'hp', 'ap', 'armor', 'mr', 'hp5'}
 # (ensure they are allowed)
-if _ENEMY_BASE_STATS_NAMES - ALL_POSSIBLE_STAT_NAMES:
+if _ENEMY_BASE_STATS_NAMES - STATS.keys():
     raise palette.UnexpectedValueError
 _ENEMY_BASE_STATS_NAMES |= DEFENSIVE_NORMAL_STATS
 
