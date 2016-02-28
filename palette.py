@@ -12,6 +12,18 @@ import champion_ids
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# PATHS
+
+# WARNING: project-path assumes palette is in the project folder itself.
+CURRENT_FILE_PATH = os.path.abspath(__file__)
+PROJECT_PATH = os.path.dirname(CURRENT_FILE_PATH)
+PROJECT_PARENT_PATH = os.path.dirname(PROJECT_PATH)
+
+
+FILES_IN_CHAMPIONS_DIR = os.listdir(os.path.join(PROJECT_PATH, 'champions'))
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 class UnexpectedValueError(Exception):
     """
     NOT TO BE HANDLED!
@@ -108,7 +120,7 @@ def all_modules_in_project():
 
     modules_imported = set()
 
-    for path, dirs_names, files_names_in_dir in os.walk(os.getcwd()):
+    for path, dirs_names, files_names_in_dir in os.walk(PROJECT_PATH):
         project_directories |= set(dirs_names)
 
         for file_name in files_names_in_dir:

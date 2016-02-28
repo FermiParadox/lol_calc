@@ -14,9 +14,6 @@ import subprocess
 import pprint
 
 
-PROJECT_PATH = '/home/black/Dev/PycharmProjects/WhiteProject'
-
-
 def _combat_loop_instance(data_dct):
     """
     Creates a combat loop instance and returns it after the combat.

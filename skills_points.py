@@ -1,6 +1,7 @@
 import palette
 
 
+# TODO memo
 class SkillsLvlUp(object):
 
     DEFAULT_MAX_SPELL_POINTS = dict(

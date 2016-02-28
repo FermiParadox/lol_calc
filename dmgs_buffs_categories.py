@@ -108,7 +108,7 @@ class DmgCategories(BuffCategories):
     -limited_chain_decay: Incorporated into chain_decay.
     """
 
-    LIMITED_BONUSES_STATS = frozenset({STATS['current_hp'], })
+    NON_NEGATIVE_BONUSES_STATS = frozenset({STATS['current_hp'], })
 
     def aa_dmg_value(self):
         """
@@ -159,7 +159,7 @@ class DmgCategories(BuffCategories):
         :return: (float)
         """
 
-        if stat_name in self.LIMITED_BONUSES_STATS:
+        if stat_name in self.NON_NEGATIVE_BONUSES_STATS:
             if stat_value < 0:
                 return 0
 

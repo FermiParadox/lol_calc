@@ -4,6 +4,9 @@ import os
 import palette
 
 
+
+
+
 def _add_champion_and_attr_class(champion_name, modified_dct):
     """
     Inserts champion name as key and his attrs' class as value.
@@ -21,7 +24,7 @@ for champ_name in palette.ALL_CHAMPIONS_NAMES:
     champ_name = champ_name.lower()
 
     # Filters out non implemented champions
-    if champ_name + '.py' in os.listdir(os.getcwd() + '/champions'):
+    if champ_name + '.py' in palette.FILES_IN_CHAMPIONS_DIR:
         _add_champion_and_attr_class(champion_name=champ_name, modified_dct=ALL_CHAMPIONS_TOTAL_ATTRIBUTES_CLASSES)
 
 # Adds melee_creep.

@@ -19,10 +19,6 @@ from palette import placeholder
 plt.rcParams['font.size'] = 12
 
 
-CURRENT_WORKING_DIRECTORY = os.path.dirname(os.getcwd())
-TEMP_COMBAT_RESULT_IMAGES_DIRECTORY = CURRENT_WORKING_DIRECTORY + '/img'
-
-
 BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS = set()
 BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS.update(items_data_module.ITEMS_BUFFS_AND_DMGS_EXPRESSED_BY_METHOD)
 
@@ -1371,6 +1367,7 @@ class SummonerSpells(ConditionalsTranslator):
 
         self.summoner_spell_effects.update(self._SUMMONER_SPELLS_EFFECTS_BASE)
 
+
 BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS.update(SummonerSpells.SUMMONER_SPELLS_BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS)
 
 SUMMONER_SPELLS_BUFFS_NAMES_TO_SPELL_MAP = palette.items_or_masteries_buffs_or_dmgs_names_dct(
@@ -1410,7 +1407,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         self.reversed_precombat_player_stats = {}
         self.reversed_precombat_enemy_buffs = {}
         self._applied_dmgs = {}
-        self._rotation_copy = copy.copy(self.rotation_lst)
+        self._reverse_rotation_copy = self.rotation_lst[::-1]
 
         runes.RunesFinal.__init__(self,
                                   player_lvl=champion_lvls_dct['player'],
@@ -1593,9 +1590,33 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         return sufficiency
 
+    def remove_buff_end(self, buff_name):
+        """
+        Removes buff_end from events.
+
+        :param buff_name:
+        :return: (None)
+        """
+        for event_time in sorted(self.events):
+            events_at_given_time = self.events[event_time]
+
+            for list_num, event_dict in enumerate(events_at_given_time):
+                event_type = event_dict['event_type']
+                event_name = event_dict['event_name']
+
+                if event_type == 'buff_end':
+                    if event_name == buff_name:
+                        del events_at_given_time[list_num]
+                        return
+
     def remove_buff(self, tar_name, buff_name, buff_dct=None):
         """
         Removes a buff from target's active buffs.
+
+        Additionally removes buff's-end.
+        The alternative would be to ignore buff-end if the buff doesn't exist but this could cause bugs.
+        (e.g. if buff_1 is removed but its end isn't,
+        a further application of buff_1 can be accidentally removed because of the obsolete buff-end)
 
         :param tar_name:
         :param buff_name:
@@ -1611,8 +1632,13 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
             self.change_action_cd_before_buff_removal(buff_dct=buff_dct)
 
-        # REMOVAL
+        # REMOVAL OF BUFF
         del self.active_buffs[tar_name][buff_name]
+
+        # REMOVAL OF BUFF-END
+        # (..that possibly could follow;
+        # used when buffs are prematurely removed e.g. by on_x effects)
+        self.remove_buff_end(buff_name=buff_name)
 
     def remove_one_stack_from_buff(self, buff_owner, buff_name):
         """
@@ -1848,15 +1874,13 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
     def change_buff_duration_in_events(self, new_end_time, buff_name, tar_name):
         """
-        Detects and removes old buff end event, and creates a new event.
+        Removes old buff end event, and creates a new event.
+
+        :return: (None)
         """
 
-        # DEL OLD EVENT
-        list_with_old_buff_end = self.events[self.old_buff_end_in_events(buff_name=buff_name, tar_name=tar_name)]
-
-        for event_dct_num, event_dct in enumerate(list_with_old_buff_end):
-            if (event_dct['event_name'] == buff_name) and (event_dct['target_name'] == tar_name):
-                del list_with_old_buff_end[event_dct_num]
+        # DEL OLD BUFF-END EVENT
+        self.remove_buff_end(buff_name=buff_name)
 
         # INSERT NEW EVENT
         self.add_buff_end_in_events(buff_end_time=new_end_time, buff_name=buff_name, tar_name=tar_name)
@@ -2490,7 +2514,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
             tar_act_buffs = self.active_buffs[tar_of_buff]
 
             if buff_name_to_remove in tar_act_buffs:
-                del tar_act_buffs[buff_name_to_remove]
+                self.remove_buff(tar_name=tar_of_buff, buff_name=buff_name_to_remove)
 
     def apply_action_effects(self, action_name):
         """
@@ -2684,16 +2708,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         return new_priorities_lst
 
-    def rotation_followed(self):
-        rot = []
-
-        for action_time in sorted(self.actions_dct):
-            action_name = self.actions_dct[action_time]['action_name']
-            rot.append(action_name)
-
-        return rot
-
-    def _next_action_name_by_priority(self):
+    def next_action_name_by_priority(self):
         """
         Determines next action based on actions' priorities.
 
@@ -2720,6 +2735,15 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         # No action was available.
         return 'action_delayer'
+
+    def rotation_followed(self):
+        rot = []
+
+        for action_time in sorted(self.actions_dct):
+            action_name = self.actions_dct[action_time]['action_name']
+            rot.append(action_name)
+
+        return rot
 
     def _apply_runes_static_buff(self):
         if self.selected_runes:
@@ -2782,12 +2806,12 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         :return: (None)
         """
         if not self.rotation_lst:
-            self.add_new_action_and_movement_since_previous_action(action_name=self._next_action_name_by_priority())
+            self.add_new_action_and_movement_since_previous_action(action_name=self.next_action_name_by_priority())
 
         else:
             # (if rotation copy has been emptied then there are no actions left to add)
-            if self._rotation_copy:
-                self.add_new_action_and_movement_since_previous_action(action_name=self._rotation_copy.pop())
+            if self._reverse_rotation_copy:
+                self.add_new_action_and_movement_since_previous_action(action_name=self._reverse_rotation_copy.pop())
 
     def _apply_dmg_event(self, event_name, event_target, only_temporary_dots):
         dmg_dct = self.request_dmg(dmg_name=event_name)
@@ -3405,6 +3429,9 @@ class Presets(SpecialItems):
 
 class VisualRepresentation(Presets):
 
+    # (`img` dir is set in project parent because it's required in the server)
+    TEMP_COMBAT_RESULT_IMAGES_DIRECTORY = os.path.join(palette.PROJECT_PARENT_PATH, 'img')
+
     PLAYER_STATS_DISPLAYED = ('ap', 'ad', 'armor', 'mr', 'current_hp', 'mp', 'att_speed', 'cdr')
     ENEMY_STATS_DISPLAYED = ('armor', 'mr', 'physical_dmg_taken', 'magic_dmg_taken', 'current_hp')
     PLAYER_STATS_HEADERS = ('PLAYER STATS', 'PRE', 'POST')
@@ -3723,14 +3750,16 @@ class VisualRepresentation(Presets):
             else:
                 lines_lst.append(line_as_str)
                 line_as_str = ''
+        else:
+            # (after for loop ends any remaining line_as_str needs to be added)
+            lines_lst.append(line_as_str)
+
         return '\n'.join(lines_lst)
 
     def preset_and_results_table(self):
 
         # Rotation
-        # TODO: enable below statement and disable the currently active when image-saving bug is fixed
-        #table_lst = [('ROTATION',), (self.rotation_followed_as_single_str(chars_limit=50),)]
-        table_lst = [('ROTATION',), (self.rotation_followed(),)]
+        table_lst = [('ROTATION',), (self.rotation_followed_as_single_str(chars_limit=50),)]
 
         # Dps
         dps_value = self.combat_results['player']['dps']
@@ -3795,8 +3824,9 @@ class VisualRepresentation(Presets):
         # Creates image name in a way that would be unique
         # so that it does not overwrite accidentally images from other concurrent instances.
         self.temp_image_name = 'temp_image_{}.png'.format(id(self))
-        self.temp_combat_results_image_path = '{}/{}'.format(TEMP_COMBAT_RESULT_IMAGES_DIRECTORY, self.temp_image_name)
+        self.temp_combat_results_image_path = os.path.join(self.TEMP_COMBAT_RESULT_IMAGES_DIRECTORY, self.temp_image_name)
         plt.savefig(self.temp_combat_results_image_path)
+        plt.close()
 
     def delete_stored_results_image(self):
         os.remove(self.temp_combat_results_image_path)
