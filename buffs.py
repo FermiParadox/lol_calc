@@ -61,17 +61,6 @@ class BuffsGeneral(stats.DmgReductionStats, targeting.Targeting,
         # Used for calling from apply_buff method.
         return self._items_static_stats_buff_dct
 
-    @abc.abstractproperty
-    def castable_spells_shortcuts(self):
-        """
-        Contains champion spells that can be casted.
-
-        To be overridden for champions that castablility is dynamic (e.g. Volibear).
-
-        :return: seq
-        """
-        pass
-
     @abc.abstractmethod
     def add_buff(self, buff_name, tar_name, stack_increment=1, initial_stacks_increment=1):
         return

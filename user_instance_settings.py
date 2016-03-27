@@ -59,6 +59,8 @@ class UserSession(object):
         new_input_dct.update({'chosen_items_dct': {'player': enemy_items, }})
 
         new_input_dct.update({'_reversed_combat_mode': True})
+        new_input_dct.update({'ability_lvls_dct': {}})
+        new_input_dct.update({'rotation_lst': []})
 
         for key in input_dct:
             if key not in new_input_dct:

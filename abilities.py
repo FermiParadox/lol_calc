@@ -473,7 +473,8 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         self.current_target_num = None
         self.action_on_cd_func = action_on_cd_func
 
-        self.__castable_spells_shortcuts = None
+        self.castable_spells_shortcuts = None
+        self.not_castable_spells_shortcuts = None
 
         EnemiesDmgToPlayer.__init__(self,
                                     enemies_originating_dmg_data=enemies_originating_dmg_data,
@@ -521,7 +522,7 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         elif x_type == 'ability_lvl':
             return self.ability_lvls_dct[x_name]
 
-    def _x_formula_to_value(self, x_formula, x_name, x_type, x_owner):
+    def _unsafe_x_formula_to_value(self, x_formula, x_name, x_type, x_owner):
         """
         Converts condition trigger formula to value.
 
@@ -534,7 +535,10 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         """
 
         x = self._x_value(x_name, x_type, x_owner)
-        return eval(x_formula)
+        if type(x_formula) is palette.TrustedStr:
+            return eval(x_formula)
+        else:
+            raise palette.UnexpectedValueError('Non trusted string given.')
 
     def _trigger_value_comparison(self, operator_as_str, trig_val, checked_val):
         """
@@ -733,10 +737,11 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
         if con_eff_dct['formula_type'] == 'constant_value':
             mod_val = con_eff_dct['values_tpl']
         else:
-            mod_val = self._x_formula_to_value(x_formula=con_eff_dct['x_formula'],
-                                               x_name=con_eff_dct['x_name'],
-                                               x_type=con_eff_dct['x_type'],
-                                               x_owner=con_eff_dct['x_owner'],)
+            x_formula = palette.TrustedStr(con_eff_dct['x_formula'])
+            mod_val = self._unsafe_x_formula_to_value(x_formula=x_formula,
+                                                      x_name=con_eff_dct['x_name'],
+                                                      x_type=con_eff_dct['x_type'],
+                                                      x_owner=con_eff_dct['x_owner'], )
 
         modified_dct[modified_attr_name] = self._modified_attr_value(
             mod_operation=mod_operation,
@@ -919,16 +924,28 @@ class ConditionalsTranslator(EnemiesDmgToPlayer):
                                         initial_dct=initial_dct['dmgs'][dmg_name],
                                         conditionals_dct=conditionals_dct)
 
-    @property
-    def castable_spells_shortcuts(self):
-        if self.__castable_spells_shortcuts:
-            pass
-        # Else creates contents.
-        else:
-            spells_set = set(self.ABILITIES_ATTRIBUTES['general_attributes']) & set(palette.ALL_POSSIBLE_SPELL_SHORTCUTS)
-            self.__castable_spells_shortcuts = tuple(i for i in spells_set)
+    def create_castable_and_non_castable_spells_shortcuts(self):
+        """
+        Creates player's castable and not castable spells.
 
-        return self.__castable_spells_shortcuts
+        WARNING: Assumes that conditionally castable spells are always set to `castable: True`
+        and the conditional turns them off where needed.
+
+        :return: (None)
+        """
+        self.castable_spells_shortcuts = set()
+        self.not_castable_spells_shortcuts = set()
+
+        for ability_name, ability_dct in self.ABILITIES_ATTRIBUTES['general_attributes'].items():
+
+            if ability_name != 'inn':
+                if ability_dct['castable']:
+                    if self.ability_lvls_dct[ability_name]:
+
+                        self.castable_spells_shortcuts.add(ability_name)
+                        continue
+
+                self.not_castable_spells_shortcuts.add(ability_name)
 
 
 class SummonerSpells(ConditionalsTranslator):
@@ -2603,6 +2620,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         else:
             return True
 
+    # TODO memo (static result throughout instance)
     def _items_and_summoner_spells_priorities_lst(self):
         """
         Creates a list with castable items and summoner spells
@@ -2712,7 +2730,7 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         """
         Determines next action based on actions' priorities.
 
-        :return:
+        :return: (str) action name or 'action_delayer'
         """
 
         # After each action application, priority is recalculated.
@@ -2720,6 +2738,9 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
 
         # Tries all actions until it manages to apply one (then recalculates priority).
         for action_name in current_priority_sequence:
+
+            if action_name in self.not_castable_spells_shortcuts:
+                continue
 
             # CD
             if self._action_cd_end(action_name=action_name) > self.current_time:
@@ -2806,12 +2827,14 @@ class Actions(SummonerSpells, timers.Timers, runes.RunesFinal, metaclass=abc.ABC
         :return: (None)
         """
         if not self.rotation_lst:
-            self.add_new_action_and_movement_since_previous_action(action_name=self.next_action_name_by_priority())
+            next_action = self.next_action_name_by_priority()
+            self.add_new_action_and_movement_since_previous_action(action_name=next_action)
 
         else:
             # (if rotation copy has been emptied then there are no actions left to add)
             if self._reverse_rotation_copy:
-                self.add_new_action_and_movement_since_previous_action(action_name=self._reverse_rotation_copy.pop())
+                next_action = self._reverse_rotation_copy.pop()
+                self.add_new_action_and_movement_since_previous_action(action_name=next_action)
 
     def _apply_dmg_event(self, event_name, event_target, only_temporary_dots):
         dmg_dct = self.request_dmg(dmg_name=event_name)
@@ -3412,6 +3435,7 @@ class Presets(SpecialItems):
                               enemies_originating_dmg_data=enemies_originating_dmg_data)
 
         self._setup_ability_lvls()
+        self.create_castable_and_non_castable_spells_shortcuts()
 
     def _setup_ability_lvls(self):
         """

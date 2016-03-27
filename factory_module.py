@@ -1,6 +1,7 @@
 import re
+import os
 import time
-import urllib.request
+import requests
 import json
 import pprint as pp
 import copy
@@ -8,6 +9,7 @@ import importlib
 import abc
 import ast
 import collections
+from distutils.version import LooseVersion
 
 import api_champions_database
 import api_masteries_database
@@ -16,7 +18,6 @@ import api_key
 import palette
 from palette import delimiter, fat_delimiter, ON_HIT_EFFECTS
 import stats
-import api_items_database
 import items_folder.items_data
 
 
@@ -26,7 +27,8 @@ API_KEY = api_key.KEY
 
 # ===============================================================
 # ===============================================================
-# Objects in champion module (exact strings are re.matched inside module) (???)
+# Objects in champion module
+# (exact strings are `re.matched` in various functions below when reading/writing from respective modules)
 CHAMPION_MODULES_FOLDER_NAME = 'champions'
 ITEMS_MODULES_FOLDER_NAME = 'items_folder'
 ITEMS_DATA_MODULE_NAME = 'items_data'
@@ -75,6 +77,8 @@ child_class_as_str = """class ChampionAttributes(abilities.VisualRepresentation)
         for i in external_vars_dct:
             setattr(ChampionAttributes, i, external_vars_dct[i])"""
 
+
+API_DATA_FOLDER = 'api_data_folder'
 
 ALL_POSSIBLE_ACTIONS = (
     ('AA', ) +
@@ -262,11 +266,16 @@ def full_or_partial_match_in_iterable(searched_name, iterable):
     tot_partial_matches = len(partial_matches_lst)
     if tot_partial_matches == 1:
         return partial_matches_lst[0]
-    elif tot_partial_matches > 1:
-        error_msg = '{} partial matches found instead of one: {}'.format(tot_partial_matches, partial_matches_lst)
+
+    # NO MATCH ERROR
+    error_msg = 'Searched for {}.'.format(searched_name)
+
+    if tot_partial_matches > 1:
+        error_msg += '\n{} partial matches found instead of one: {}'.format(tot_partial_matches, partial_matches_lst)
         raise KeyError(error_msg)
     else:
-        raise KeyError('No full or partial match.')
+        error_msg += '\nNo full or partial match.'
+        raise KeyError(error_msg)
 
 
 # ---------------------------------------------------------------
@@ -1177,6 +1186,8 @@ class RequestAbortedError(Exception):
 
 class RequestDataFromAPI(object):
 
+    _ALL_CHAMPS_DATA_NAME = 'all champion data'
+
     RUNES_PAGE_URL = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/rune?runeListData=all&api_key=" + API_KEY)
     ITEMS_PAGE_URL = ("https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/item?itemListData=all&api_key=" + API_KEY)
     MASTERIES_PAGE_URL = ('https://eune.api.pvp.net/api/lol/static-data/eune/v1.2/mastery?masteryListData=all&api_key=' + API_KEY)
@@ -1188,8 +1199,8 @@ class RequestDataFromAPI(object):
         """
         Asks dev if he wants to proceed with data requests from API with given API key.
 
-        Args:
-            requested_item: (str) Name of requested item from API, e.g. RUNES, ITEMS, ABILITIES.
+        :param requested_item: (str) Name of requested item from API, e.g. RUNES, ITEMS, ABILITIES.
+        :return: (bool)
         """
 
         # Messages
@@ -1208,21 +1219,58 @@ class RequestDataFromAPI(object):
             print(abort_msg)
             return False
 
-    @staticmethod
-    def request_single_page_from_api(page_url):
+    def request_single_page_from_api(self, page_url, request_confirmation, requested_obj_name):
         """
         Requests a page from API, after a brief delay.
 
         :return: (dict)
         """
 
+        if request_confirmation:
+            if not self._request_confirmation(requested_item=requested_obj_name):
+                return
         time.sleep(2)
         print('\nRequest time: \n%s' % time.asctime())
 
-        page_as_bytes_type = urllib.request.urlopen(page_url).read()
-        page_as_str = page_as_bytes_type.decode('utf-8')
+        return requests.get(page_url)
 
-        return json.loads(page_as_str)
+    @staticmethod
+    def store_json(data_category, json_obj, version):
+        """
+        Stores json requested from API into local file.
+
+        :param data_category: (str) 'masteries', 'MASTERIES', 'runes', etc.
+        :param json_obj:
+        :param version: (str) e.g. '6.1.1'
+        :return: (None)
+        """
+
+        data_category = data_category.lower().replace(' ', '_')
+
+        file_name = '{}/{}/{}.{}'.format(API_DATA_FOLDER, data_category, version, 'json')
+
+        with open(file_name, 'w+') as f:
+            json.dump(json_obj, f, indent=4, sort_keys=True)
+
+    def request_return_and_store_single_page(self, page_url, request_confirmation, requested_obj_name):
+        """
+        Returns request and stores json.
+
+        :param page_url: (str)
+        :param request_confirmation: (bool)
+        :param requested_obj_name:
+        :return:
+        """
+        r = self.request_single_page_from_api(page_url=page_url,
+                                              requested_obj_name=requested_obj_name,
+                                              request_confirmation=request_confirmation)
+
+        json_obj = r.json()
+        version = json_obj['version'].replace('.', '_')
+
+        self.store_json(data_category=requested_obj_name, json_obj=json_obj, version=version)
+
+        return r
 
     def request_single_page_from_api_as_str(self, page_url, requested_obj_name, request_confirmation):
         """
@@ -1234,14 +1282,11 @@ class RequestDataFromAPI(object):
         :returns: (str)
         """
 
-        if request_confirmation:
-            if not self._request_confirmation(requested_item=requested_obj_name):
-                return
+        r = self.request_return_and_store_single_page(page_url=page_url,
+                                                      request_confirmation=request_confirmation,
+                                                      requested_obj_name=requested_obj_name)
 
-        page_as_dct = self.request_single_page_from_api(page_url=page_url)
-        page_as_str = str(page_as_dct)
-
-        return page_as_str
+        return r.text
 
     def request_versions_list(self, request_and_overwriting_confirmation=True):
 
@@ -1276,7 +1321,7 @@ class RequestDataFromAPI(object):
         """
 
         page_as_dct = self.request_single_page_from_api_as_str(page_url=self.ALL_CHAMPION_DATA_URL,
-                                                               requested_obj_name='all champion data',
+                                                               requested_obj_name=self._ALL_CHAMPS_DATA_NAME,
                                                                request_confirmation=request_and_overwriting_confirmation)
 
         data_storage(targeted_module='api_champions_database.py',
@@ -1678,16 +1723,40 @@ class ExploreApiAbilities(_ExploreApiAbilitiesAndRecommendedItemsBase):
 
 class ExploreApiItems(_ExploreBase):
 
+    API_ITEM_DATA_DIR = os.path.join('api_data_folder', 'items')
+    MANDATORY_MAP_ID = 1
+    DISALLOWED_ITEM_TAGS = ('trinket', 'consumable', )
+
     def __init__(self):
-        self.item_related_api_data = api_items_database.ALL_ITEMS
+        self.item_related_api_data = self.json_as_dict(version=self.latest_version())
         # All items, INCLUDING items not usable in summoners rift (they are excluded below, so might cause bugs if used)
         self.all_items_dct_by_id = self.item_related_api_data['data']
         # (there is a method below more suitable for returning item dict, that does not require exact name match)
         self.usable_items_by_name_dct = self._usable_items_dct_by_name()
         self.total_usable_items = len(self.usable_items_by_name_dct)
 
-    MANDATORY_MAP_ID = 1
-    DISALLOWED_ITEM_TAGS = ('trinket', 'consumable', )
+    def latest_version(self):
+
+        items_json_files_names = os.listdir(self.API_ITEM_DATA_DIR)
+        items_json_files_names = [i for i in items_json_files_names if '.json' in i]
+
+        latest_ver_str = '0'
+        for ver_str in items_json_files_names:
+
+            if LooseVersion(ver_str) > LooseVersion(latest_ver_str):
+                latest_ver_str = ver_str
+
+        return os.path.splitext(latest_ver_str)[0]
+
+    def latest_major_update_num(self):
+        None
+
+
+    def json_as_dict(self, version):
+        file_path = os.path.join(self.API_ITEM_DATA_DIR, version, '.json')
+
+        with open(file_path) as f:
+            return json.load(f)
 
     def _usable_items_dct_by_name(self):
         """
@@ -6192,6 +6261,27 @@ class ItemsModuleCreator(ModuleCreatorBase):
                     creation_instance = ItemsModuleCreator(item_name=item_name)
                     creation_instance.create_item()
 
+    @staticmethod
+    def update_created_items():
+        if not _y_n_question(question_str="Update all created items' SECONDARY data?"):
+            return
+
+        for item_name in items_folder.items_data.ITEMS_ATTRIBUTES:
+
+            items_module = Fetch().imported_items_module()
+            existing_data_dct = getattr(items_module, ITEMS_ATTRS_DCT_NAME)
+
+            secondary_data_dict = ItemAttrCreation(item_name=item_name).item_secondary_data_dct()
+            existing_data_dct[item_name]['secondary_data'] = secondary_data_dict
+
+            tar_module_path = '/'.join((ITEMS_MODULES_FOLDER_NAME, ITEMS_DATA_MODULE_NAME)) + '.py'
+
+            ModuleCreatorBase().insert_object_in_module(obj_name=ITEMS_ATTRS_DCT_NAME,
+                                                        new_obj_as_dct_or_str_or_func=existing_data_dct,
+                                                        replacement_question_msg='', width=1,
+                                                        targeted_module_path_str=tar_module_path,
+                                                        verify_replacement=False)
+
 
 class MasteryModuleCreator(ModuleCreatorBase):
 
@@ -6337,7 +6427,7 @@ if __name__ == '__main__':
         inst = MasteryCreation(mastery_name='enchanted_armor')
         inst.create_and_return_mastery(print_mode=True)
 
-    if 1:
+    if 0:
         inst = MasteryModuleCreator()
         inst.create_all_mastery_dcts()
 
@@ -6356,3 +6446,7 @@ if __name__ == '__main__':
     # SKILL LVL UP PRIORITIES.
     if 0:
         ChampionModuleCreator('jax').run_single_element_creation(SPELL_LVL_UP_PRIORITIES_NAME)
+
+    # UPDATE ITEMS SECONDARY DATA
+    if 1:
+        ItemsModuleCreator.update_created_items()
