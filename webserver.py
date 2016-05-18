@@ -17,10 +17,12 @@ app = Flask(__name__)
 CHAMPION_IDS = champion_ids.CHAMPION_IDS.values()
 
 
+# TODO remove below; code exists in abilities.py
 CHAMPIONS_FILES_NAMES = os.listdir(palette.PROJECT_PATH + '/champions')
 CREATED_CHAMPIONS_IDS = []
 for champ_name in CHAMPION_IDS:
     if champ_name.lower() + '.py' in CHAMPIONS_FILES_NAMES:
+        # TODO fix below; it doesn't contain IDs.
         CREATED_CHAMPIONS_IDS.append(champ_name)
 
 CREATED_CHAMPIONS_NAMES_AND_ITEMS_IDS_TO_NAMES_MAP = {
@@ -41,7 +43,7 @@ def filled_and_refined_combat_preset(given_dct):
     """
     Completes missing data in order to create a valid combat preset dict.
 
-    Fills whatever is missing in order to create a valid preset dict.Removes empty key-values.
+    Fills whatever is missing in order to create a valid preset dict. Removes empty key-values.
 
     :param given_dct:
     :return: (dict)

@@ -124,3 +124,7 @@ CHAMPION_IDS = {
       "254": "Vi",
       "50": "Swain"
    }
+
+
+CHAMPION_NAMES_TO_IDS_MAP = {v: k for k, v in CHAMPION_IDS.items()}
+
