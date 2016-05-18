@@ -59,13 +59,13 @@ ALL_DATA = dict(
         enemy_3=16
     ),
 
-    ability_lvls_dct={'q': 5, 'w':5, 'e': 5, 'r': 3},
+    ability_lvls_dct={'q': 5, 'w': 5, 'e': 5, 'r': 3},
 
     max_targets_dct={},
 
     max_combat_time=10,
 
-    rotation_lst=['w', 'AA'],
+    rotation_lst=[],
     chosen_items_dct={'player': ['blade_of_the_ruined_king', 'trinity_force', 'youmuus_ghostblade', 'sunfire_cape',
                                  'guinsoos_rageblade', 'the_black_cleaver', 'last_whisper'],
                       'enemy_1': ['blade_of_the_ruined_king', 'chain_vest', 'chain_vest'],

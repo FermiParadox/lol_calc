@@ -8,6 +8,7 @@ import os
 import buffs
 import timers
 import runes
+import champion_ids
 from champions import app_champions_base_stats
 import palette
 import skills_points
@@ -18,7 +19,18 @@ from palette import placeholder
 # Sets font size on all plt graphs.
 plt.rcParams['font.size'] = 12
 
+# ----------------------------------------------------------------------------------------------------------------------
+# TODO move to appropriate module
+CHAMPION_IDS = champion_ids.CHAMPION_IDS.values()
 
+CHAMPIONS_FILES_NAMES = os.listdir(palette.PROJECT_PATH + '/champions')
+CREATED_CHAMPIONS_IDS = []
+for champ_name in CHAMPION_IDS:
+    if champ_name.lower() + '.py' in CHAMPIONS_FILES_NAMES:
+        CREATED_CHAMPIONS_IDS.append(champion_ids.CHAMPION_NAMES_TO_IDS_MAP[champ_name])
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS = set()
 BUFFS_AND_DMGS_IMPLEMENTED_BY_METHODS.update(items_data_module.ITEMS_BUFFS_AND_DMGS_EXPRESSED_BY_METHOD)
 

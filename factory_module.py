@@ -1247,7 +1247,11 @@ class RequestDataFromAPI(object):
 
         data_category = data_category.lower().replace(' ', '_')
 
-        file_name = '{}/{}/{}.{}'.format(API_DATA_FOLDER, data_category, version, 'json')
+        if version:
+            file_name = '{}/{}/{}.{}'.format(API_DATA_FOLDER, data_category, version, 'json')
+        else:
+            # (used when version isn't required, e.g. when a list of the versions is requested)
+            file_name = '{}/{}/{}.{}'.format(API_DATA_FOLDER, data_category, 'versions', 'json')
 
         with open(file_name, 'w+') as f:
             json.dump(json_obj, f, indent=4, sort_keys=True)
@@ -1266,7 +1270,11 @@ class RequestDataFromAPI(object):
                                               request_confirmation=request_confirmation)
 
         json_obj = r.json()
-        version = json_obj['version'].replace('.', '_')
+        if type(json_obj) is dict:
+            version = json_obj['version'].replace('.', '_')
+        # (when requesting the API versions list, a list is returned and its version is irrelevant)
+        else:
+            version = None
 
         self.store_json(data_category=requested_obj_name, json_obj=json_obj, version=version)
 
@@ -1291,10 +1299,10 @@ class RequestDataFromAPI(object):
     def request_versions_list(self, request_and_overwriting_confirmation=True):
 
         s = self.request_single_page_from_api_as_str(page_url=self.VERSION_PAGE_URL,
-                                                     requested_obj_name='API version',
+                                                     requested_obj_name='API versions',
                                                      request_confirmation=request_and_overwriting_confirmation)
 
-        data_storage(targeted_module='api_version.py',
+        data_storage(targeted_module='api_versions.py',
                      obj_name='API_VERSIONS_LST',
                      str_to_insert=s,
                      force_write=not request_and_overwriting_confirmation)
@@ -1474,6 +1482,8 @@ class _ExploreBase(object):
         name = name.strip('_')
 
         return name
+
+    def latest_major_update_num(self):
 
 
 class _ExploreApiAbilitiesAndRecommendedItemsBase(_ExploreBase):
@@ -1747,10 +1757,6 @@ class ExploreApiItems(_ExploreBase):
                 latest_ver_str = ver_str
 
         return os.path.splitext(latest_ver_str)[0]
-
-    def latest_major_update_num(self):
-        None
-
 
     def json_as_dict(self, version):
         file_path = os.path.join(self.API_ITEM_DATA_DIR, version, '.json')
@@ -6361,6 +6367,10 @@ if __name__ == '__main__':
     # REQUEST ALL DATA FROM API
     if 0:
         RequestDataFromAPI().request_and_store_everything()
+
+    # REQUESTING VERSIONS
+    if 1:
+        RequestDataFromAPI().request_versions_list()
 
     # EXPLORING CHAMPION ABILITIES AND TOOLTIPS
     if 0:
