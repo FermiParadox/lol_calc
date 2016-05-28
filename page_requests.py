@@ -24,18 +24,18 @@ def fixed_dict(given_dct):
     dct = copy.deepcopy(default_config.EMPTY_DATA)
 
     selected_player_champ = champion_ids.CHAMPION_IDS[given_dct['player_champion']]
-    dct['selected_champions_dct'].update({'player': selected_player_champ})
+    dct['selected_champions_dct'].update({'player': selected_player_champ.lower()})
 
     dct['champion_lvls_dct'].update({'player': given_dct['champion_lvls_dct']['player']})
 
-    selected_items = [items_data_module.ITEMS_IDS_TO_NAMES_MAP[i] for i in given_dct['player_items']]
+    selected_items = [items_data_module.ITEMS_IDS_TO_NAMES_MAP[i] for i in given_dct['player_items'] if i]
     dct['chosen_items_dct'].update(player=selected_items)
 
     dct['ability_lvls_dct'] = given_dct['ability_lvls_dct']
 
+    return dct
+
 
 def results_image_name(given_dct):
-    return user_instance_settings.UserSession().create_instance_and_return_image_name(input_dct=given_dct)
-
-
-
+    dct = fixed_dict(given_dct)
+    return user_instance_settings.UserSession().create_instance_and_return_image_name(input_dct=dct)

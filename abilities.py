@@ -3466,7 +3466,7 @@ class Presets(SpecialItems):
 class VisualRepresentation(Presets):
 
     # (`img` dir is set in project parent because it's required in the server)
-    TEMP_COMBAT_RESULT_IMAGES_DIRECTORY = os.path.join(palette.PROJECT_PARENT_PATH, 'img')
+    TEMP_COMBAT_RESULT_IMAGES_DIRECTORY = os.path.join(palette.PROJECT_PARENT_PATH, 'static/image')
 
     PLAYER_STATS_DISPLAYED = ('ap', 'ad', 'armor', 'mr', 'current_hp', 'mp', 'att_speed', 'cdr')
     ENEMY_STATS_DISPLAYED = ('armor', 'mr', 'physical_dmg_taken', 'magic_dmg_taken', 'current_hp')
