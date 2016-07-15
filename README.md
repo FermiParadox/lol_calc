@@ -4,7 +4,7 @@
 This is a program ("MyLoLCalc2" for short) intended to calculate the damage output (along with other metrics) of any setup for League of Legends (a popular MMO game). 
 
 ###  What's League of Legends ###
-In League of Legends ("LoL" for short), the player can choose between many different items, runes, masteries, and abilities and is matched against other players with the same options. All those options allow a vast amount of possible setups, called "builds". 
+In League of Legends ("LoL" for short), the player can choose between many different items, runes, masteries, abilities, and use order of spells and is matched against other players with the same options. All those options allow a vast amount of possible setups, called "builds". 
 
 ### Does it work ###
 Yes, however it's not complete. And also it's outdated. LoL changes very often. There are probably many more bugs to fix, but it's functional and for given builds it produces exactly the expected results. 
@@ -14,6 +14,8 @@ MyLoLCalc**2** was practically my first program created on Python (actually it's
 I'm not a professional programmer and this project was not my full time job. However it got to a functional state, it was maintainable (perhaps excluding portions of "factory" module) and preliminary timing testing indicated it was also fast enough for production. 
 
 
+### How to run it ###
+Assuming all dependencies are installed, run  `functional_testing/full_tests.py`. Modify `functional_testing/default_config.py` to test other builds.
 
 
 ### Current state ###
