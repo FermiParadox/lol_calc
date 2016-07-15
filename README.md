@@ -1,7 +1,7 @@
 # README #
 
 ### What's this ###
-This is a program ("MyFirstLoLCalc2" for short) intended to calculate the damage output (along with other metrics) of any setup for League of Legends (a popular MMO game). 
+This is a program ("MyLoLCalc2" for short) intended to calculate the damage output (along with other metrics) of any setup for League of Legends (a popular MMO game). 
 
 ###  What's League of Legends ###
 In League of Legends ("LoL" for short), the player can choose between many different items, runes, masteries, and abilities and is matched against other players with the same options. All those options allow a vast amount of possible setups, called "builds". 
@@ -10,7 +10,7 @@ In League of Legends ("LoL" for short), the player can choose between many diffe
 Yes, however it's not complete. And also it's outdated. LoL changes very often. There are probably many more bugs to fix, but it's functional and for given builds it produces exactly the expected results. 
 
 ### Dog ate your unit tests? ###
-MyFirstLoLCalc**2** was (practically) my first program created on Python (actually it's my first program on *any* language). Its first version MyFirstLoLCalc**1** was abandoned very early since there were some fundamental bugs. 
+MyLoLCalc**2** was (practically) my first program created on Python (actually it's my first program on *any* language). Its first version MyLoLCalc**1** was abandoned very early since there were some fundamental bugs. 
 I'm not a professional programmer and this project was not my full time job. However it got to a functional state, it was maintainable (perhaps excluding portions of "factory" module) and preliminary timing tests indicated it was also fast enough. 
 
 
