@@ -8,6 +8,7 @@ In League of Legends ("LoL" for short), the player can choose among many differe
 
 ### Does it work ###
 Yes, however it's not complete. And also it's outdated. LoL changes very often. There are probably many more bugs to fix, but it's functional and for given builds it produces exactly the expected results. 
+You can check the `results_example.png` to get an idea of some of the results. Note that this output was purely for testing. Nearly no front-end development took place.
 
 ### Dog ate your unit tests? ###
 MyLoLCalc**2** was practically my first program created on Python (actually it's my first program on *any* language). Its first version MyLoLCalc**1** was abandoned very early since there were some fundamental bugs. 
