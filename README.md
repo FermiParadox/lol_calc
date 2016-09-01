@@ -23,7 +23,7 @@ Assuming all dependencies are installed, run  `functional_testing/full_tests.py`
 The whole project was abandoned due to third parties involved. 
 
 
-### Licence###
+### MIT Licence###
 Check the `LICENCE.TXT` file.
 
 
