@@ -12,7 +12,7 @@ You can check the `results_example.png` to get an idea of some of the results. N
 
 ### Dog ate your unit tests? ###
 MyLoLCalc**2** was practically my first program created on Python (actually it's my first program on *any* language). Its first version MyLoLCalc**1** was abandoned very early since there were some fundamental bugs. 
-I'm not a professional programmer and this project was not my full time job. However it got to a functional state, it was maintainable (perhaps excluding portions of "factory" module which I'd rather rewrite than refactor) and preliminary timing testing indicated it was also fast enough for production. 
+I'm not a professional programmer and this project was not my full time job. However it got to a functional state, it was maintainable (perhaps excluding portions of "factory" module which I'd rather rewrite than refactor) and preliminary timing testing indicated that it _might_ have been fast enough for production (might be wrong on that). 
 
 
 ### How to run it ###
