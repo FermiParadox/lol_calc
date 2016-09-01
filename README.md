@@ -4,7 +4,7 @@
 This is a program ("MyLoLCalc2" for short) intended to calculate the damage output (along with other metrics) of any setup for League of Legends (a popular MMO game). 
 
 ###  What's League of Legends ###
-In League of Legends ("LoL" for short), the player can choose between many different items, runes, masteries, abilities, and use order of spells and is matched against other players with the same options. All those options allow a vast amount of possible setups, called "builds". 
+In League of Legends ("LoL" for short), the player can choose among many different items, runes, masteries, abilities, and use order of spells and is matched against other players with the same options. All those options allow a vast amount of possible setups, called "builds". 
 
 ### Does it work ###
 Yes, however it's not complete. And also it's outdated. LoL changes very often. There are probably many more bugs to fix, but it's functional and for given builds it produces exactly the expected results. 
