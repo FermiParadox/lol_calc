@@ -356,6 +356,7 @@ class StatCalculation(object):
             tar_lvl = self.champion_lvls_dct[tar_name]
             per_lvl_bonus = tar_base_stats_dct[base_stat_per_lvl_name]
             # TODO: replace copyrighted function below (use non linear fitting)
+            # Formula by http://leagueoflegends.wikia.com/wiki/Attack_speed#Example, licence: CC BY SA
             value += per_lvl_bonus * (7/400*(tar_lvl**2-1) + 267/400*(tar_lvl-1))
 
         return value
@@ -621,6 +622,7 @@ class StatCalculation(object):
 
         """
         # TODO avoid copyrighted formula
+        # Formula by http://leagueoflegends.wikia.com/wiki/Movement_speed#Calculations, licence CC BY SA
         if (415 < unfiltered_stat) and (unfiltered_stat < 490):
             return unfiltered_stat*0.8 + 83
         elif unfiltered_stat > 490:
