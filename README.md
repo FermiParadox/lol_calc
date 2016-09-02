@@ -16,7 +16,10 @@ I'm not a professional programmer and this project was not my full time job. How
 
 
 ### How to run it ###
+Works on python 3.4 and 3.5 (though i haven't tested 3.5 for additional bugs), 
 Assuming all dependencies are installed, run  `functional_testing/full_tests.py`. Modify `functional_testing/default_config.py` to test other builds.
+
+On Ubuntu, try to run that file, and the errors for missing dependencies along with a couple of easy searches should be enough to help you install whatever is missing.
 
 
 ### Current state ###
