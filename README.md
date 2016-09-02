@@ -8,10 +8,11 @@ In League of Legends ("LoL" for short), the player can choose among many differe
 
 ### Does it work ###
 Yes, however it's not complete. And also it's outdated. LoL changes very often. There are probably many more bugs to fix, but it's functional and for given builds it produces exactly the expected results. 
+You can check the `results_example.png` to get an idea of some of the results. Note that this output was purely for testing. Nearly no front-end development took place.
 
 ### Dog ate your unit tests? ###
 MyLoLCalc**2** was practically my first program created on Python (actually it's my first program on *any* language). Its first version MyLoLCalc**1** was abandoned very early since there were some fundamental bugs. 
-I'm not a professional programmer and this project was not my full time job. However it got to a functional state, it was maintainable (perhaps excluding portions of "factory" module which I'd rather rewrite than refactor) and preliminary timing testing indicated it was also fast enough for production. 
+I'm not a professional programmer and this project was not my full time job. However it got to a functional state, it was maintainable (perhaps excluding portions of "factory" module which I'd rather rewrite than refactor) and preliminary timing testing indicated that it _might_ have been fast enough for production (might be wrong on that). 
 
 
 ### How to run it ###
@@ -22,8 +23,8 @@ Assuming all dependencies are installed, run  `functional_testing/full_tests.py`
 The whole project was abandoned due to third parties involved. 
 
 
-### By using the software, you accept the following ###
-THE SOFTWARE IS PROVIDED “AS IS”, WITH NO WARRANTY OF ANY KIND, NEITHER EXPRESS NOR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR OR COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+### MIT Licence###
+Check the `LICENCE.TXT` file.
 
 
 ### Disclaimer of endorsement###
