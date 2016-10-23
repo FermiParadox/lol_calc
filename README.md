@@ -27,8 +27,15 @@ Assuming all dependencies are installed, run  `functional_testing/full_tests.py`
 The whole project was abandoned due to third parties involved. 
 
 
-### MIT Licence###
-Check the `LICENCE.TXT` file.
+###Licence###
+The MyLoLCalc2 (the Software) is under MIT licence (check the `LICENCE.TXT` file).
+
+The following are not considered part of the Software:
+all data from LoL and LoL API, like champions', items', masteries' description,
+icons, stats and/or anything else that belongs to Riot,
+along with any metadata and derivatives from the aforementioned materials;
+those are Riot's property and are **not** under MIT.
+
 
 
 ### Disclaimer of endorsement###
