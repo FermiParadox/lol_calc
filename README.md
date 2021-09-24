@@ -15,7 +15,7 @@ I'm not a professional programmer and this project was not my full time job. How
 
 
 ### How to run it
-Works on python 3.4 and 3.5 (though i haven't tested 3.5 for additional bugs), 
+Works on python 3.4 to 3.8. (excluding Kivy) 
 
 On Ubuntu, try to run `functional_testing/full_tests.py`, and the errors for missing dependencies along with a couple of easy searches should be enough to help you install whatever is missing.
 
