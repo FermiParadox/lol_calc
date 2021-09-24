@@ -1,7 +1,8 @@
+# NOTE: this is my co-worker's code.
+#   Everything else in the project was created by me.
 from flask import Flask, request, send_file
 import copy
 import ast
-import pprint
 import os
 
 import user_instance_settings
@@ -77,6 +78,7 @@ def index():
 
     else:
         return ''
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=64000)

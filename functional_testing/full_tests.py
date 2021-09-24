@@ -7,7 +7,7 @@ import cProfile
 import ast
 import pstats
 import pandas
-import memory_profiler
+# import memory_profiler
 import multiprocessing
 import sys
 import subprocess
@@ -173,11 +173,11 @@ class AllFunctionalTests(object):
 
         return post_combat_instance
 
-    # MEMORY
-    # TODO: Check if below method actually works.
-    @memory_profiler.profile
-    def test_memory_usage(self, data_dct=None):
-        return self.run_combat_without_showing_results(data_dct=data_dct)
+    # # MEMORY
+    # # TODO: Check if below method actually works.
+    # @memory_profiler.profile
+    # def test_memory_usage(self, data_dct=None):
+    #     return self.run_combat_without_showing_results(data_dct=data_dct)
 
     def run_combat_and_show_results(self, data_dct=None):
 

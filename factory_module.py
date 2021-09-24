@@ -1484,6 +1484,7 @@ class _ExploreBase(object):
         return name
 
     def latest_major_update_num(self):
+        raise NotImplementedError
 
 
 class _ExploreApiAbilitiesAndRecommendedItemsBase(_ExploreBase):
