@@ -277,7 +277,7 @@ class EnemiesDmgToPlayer(EventsGeneral):
     """
 
     DPS_BY_ENEMIES_DMG_BASE = _DPS_BY_ENEMIES_DMG_BASE
-    DPS_ENHANCER_COEF = 2   # (used to make player take dmg of e.g. 2 enemies)
+    DPS_ENHANCER_COEF = 1   # (used to make player take dmg of e.g. 2 enemies)
 
     FLAT_SURVIVABILITY_FACTORS = dict(
         flash=1
@@ -3600,7 +3600,6 @@ class VisualRepresentation(Presets):
             plt.axvline(x=x_var, color='grey', linestyle='dashed', alpha=0.6)
 
     def subplot_dmg_graph(self, subplot_obj):
-
         subplot_obj.grid(b=True)
 
         # Line at y=0, and at x=0.
@@ -3649,9 +3648,9 @@ class VisualRepresentation(Presets):
             color_counter_var += 1
 
         self.add_actions_on_plot(subplot_obj=subplot_obj, annotated=True)
+        plt.legend()
 
     def subplot_resource_vamp_lifesteal_graph(self, subplot_obj):
-
         subplot_obj.grid(b=True)
 
         # Line at y=0.
@@ -3663,10 +3662,6 @@ class VisualRepresentation(Presets):
 
         # LIFESTEAL, SPELLVAMP, RESOURCE
         stat_color_map = {'lifesteal': 'orange', 'spellvamp': 'g', 'resource': 'b'}
-
-        # Places initial value of resource.
-        subplot_obj.plot([0], self.request_stat(target_name='player', stat_name=self.RESOURCE_USED),
-                         color=stat_color_map['resource'], marker='.')
 
         for examined in stat_color_map:
 
@@ -3686,6 +3681,7 @@ class VisualRepresentation(Presets):
             subplot_obj.plot(x_val, y_val, color=stat_color_map[examined], marker='.', label=examined)
 
         self.add_actions_on_plot(subplot_obj=subplot_obj, annotated=False)
+        plt.legend()
 
     def player_stats_table(self):
         table_lst = [self.PLAYER_STATS_HEADERS, ]
@@ -3694,10 +3690,10 @@ class VisualRepresentation(Presets):
         for stat_name in self.PLAYER_STATS_DISPLAYED:
 
             precombat_value = self.combat_results['player']['pre_combat_stats'][stat_name]
-            precombat_value = precombat_value
+            precombat_value = round(precombat_value, 5)
 
             postcombat_value = self.combat_results['player']['post_combat_stats'][stat_name]
-            postcombat_value = postcombat_value
+            postcombat_value = round(postcombat_value, 5)
 
             line_tpl = (stat_name+': ', precombat_value, postcombat_value)
 
@@ -3709,9 +3705,7 @@ class VisualRepresentation(Presets):
     def subplot_player_stats_table(self, subplot_obj):
         """
         Subplots player's pre and post combat stats.
-
         Stat values are rounded.
-
         :returns: (None)
         """
 
@@ -3813,7 +3807,7 @@ class VisualRepresentation(Presets):
             metric_str = '{}: {}'.format(metric_name, val)
             table_lst.append((metric_str, ))
 
-        combat_duration_str = 'Fight duration: {}'.format(self.combat_duration)
+        combat_duration_str = 'Fight duration: {:.2f}'.format(self.combat_duration)
         table_lst.append((combat_duration_str,))
 
         return table_lst
@@ -3868,6 +3862,5 @@ class VisualRepresentation(Presets):
         os.remove(self.temp_combat_results_image_path)
 
     def represent_results_visually(self):
-
         self._create_results_visual_representation()
         plt.show()

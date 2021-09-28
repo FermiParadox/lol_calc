@@ -21,9 +21,7 @@ def _combat_loop_instance(data_dct):
     :return:
     """
     user_instance = user_instance_settings.UserSession()
-
     combat_instance = user_instance.instance_after_combat(data_dct)
-
     return combat_instance
 
 
@@ -36,9 +34,7 @@ def _single_user_multiple_combats_instances_lst(repetitions):
     """
 
     data = default_config.ALL_DATA
-
     combat_instances_lst = []
-
     user_instance = user_instance_settings.UserSession()
 
     for i in range(repetitions):
@@ -60,9 +56,7 @@ def _multiprocessed_single_user_multiple_combats(repetitions):
     """
 
     data = default_config.ALL_DATA
-
     processes_lst = []
-
     user_instance = user_instance_settings.UserSession()
 
     for i in range(repetitions):
@@ -86,9 +80,7 @@ def _single_combat_multiple_users_instances_lst(repetitions):
     :param repetitions: (int)
     :return: (list) List of instances.
     """
-
     data = default_config.ALL_DATA
-
     combat_instances_lst = []
 
     for i in range(repetitions):
@@ -437,7 +429,7 @@ if __name__ == '__main__':
         inst = AllFunctionalTests().naked_combat_and_results(rotation_lst=['AA'], all_champs_lvls=1)
 
     # RUN DURATION
-    if 1:
+    if 0:
         test_run_time(repetitions=50, sort_by='tottime', count_of_shown_functions=20)
 
     # CONSISTENCY
@@ -447,7 +439,7 @@ if __name__ == '__main__':
         AllFunctionalTests().display_single_user_multi_combats_differences(repetitions=reps)
         AllFunctionalTests().display_multi_users_differences(repetitions=reps)
     # Different runs:
-    if 1:
+    if 0:
         reps = 10
         AllFunctionalTests().multiple_runs_output_comparison(repetitions=reps)
 
