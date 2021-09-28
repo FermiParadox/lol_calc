@@ -6,7 +6,7 @@ In the game League of Legends ("LoL" for short), the player can choose among hun
 
 ### Does it work 
 Yes, however it's not complete. And also it's outdated. LoL changes very often. There are probably many more bugs to fix, but it's functional and for given builds it produces exactly the expected results. 
-You can check the ![results_example.png](https://bitbucket.org/fermiparadox/lol_calc/src/master/results_example.png) to get an idea of some of the results. Note that this output was purely for testing. Nearly no front-end development took place.
+You can check the [`results_example.png`](https://bitbucket.org/fermiparadox/lol_calc/src/398514c96458/results_example.png?at=master) to get an idea of some of the results. Note that this output was purely for testing. Nearly no front-end development took place.
 
 
 ### No unit tests?
