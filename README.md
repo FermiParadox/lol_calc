@@ -23,7 +23,7 @@ it was maintainable (perhaps excluding portions of "factory" module which I'd ra
 
 
 ### How to run it
-Works on python 3.4 to 3.8. (excluding Kivy) 
+Works on python 3.8 (excluding Kivy).
 
 Install dependencies and run  `functional_testing/full_tests.py` and you'll get an image 
 similar to `results_example.png`. Modify `functional_testing/default_config.py` to test other builds.
