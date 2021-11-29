@@ -28,6 +28,7 @@ Works on python 3.8 (excluding Kivy).
 Install dependencies and run  `functional_testing/full_tests.py` and you'll get an image 
 similar to `results_example.png`. Modify `functional_testing/default_config.py` to test other builds.
 
+![image](https://user-images.githubusercontent.com/10809024/143953108-fbb38688-dfab-4c4d-bbe7-48fc44a0f616.png)
 
 ### Current state
 The whole project was abandoned due to external issues. 
