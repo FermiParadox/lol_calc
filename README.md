@@ -10,8 +10,8 @@ All those options allow a vast amount of possible setups, called "builds".
 **Yes.** It's functional and for given builds it produces 
 exactly the expected results. **But it's incomplete and outdated**. 
 
-Check [`results_example.png`](https://bitbucket.org/fermiparadox/lol_calc/src/master/results_example.png) 
-to see some of the results. Note that this output was purely for testing. 
+Check `results_example.png` to see some of the results. 
+Note that this output was purely for testing. 
 Nearly no front-end development took place.
 
 
