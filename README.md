@@ -14,6 +14,7 @@ Check `results_example.png` to see some of the results.
 Note that this output was purely for testing. 
 Nearly no front-end development took place.
 
+![image](https://user-images.githubusercontent.com/10809024/143953108-fbb38688-dfab-4c4d-bbe7-48fc44a0f616.png)
 
 ### No unit tests?
 MyLoLCalc**2** was practically my 1st program created on Python (actually it's my 1st program on *any* language). 
@@ -28,7 +29,6 @@ Works on python 3.8 (excluding Kivy).
 Install dependencies and run  `functional_testing/full_tests.py` and you'll get an image 
 similar to `results_example.png`. Modify `functional_testing/default_config.py` to test other builds.
 
-![image](https://user-images.githubusercontent.com/10809024/143953108-fbb38688-dfab-4c4d-bbe7-48fc44a0f616.png)
 
 ### Current state
 The whole project was abandoned due to external issues. 
