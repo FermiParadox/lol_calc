@@ -16,12 +16,6 @@ Nearly no front-end development took place.
 
 ![image](https://user-images.githubusercontent.com/10809024/143953108-fbb38688-dfab-4c4d-bbe7-48fc44a0f616.png)
 
-### No unit tests?
-MyLoLCalc**2** was practically my 1st program created on Python (actually it's my 1st program on *any* language). 
-Its 1st version MyLoLCalc**1** was abandoned very early since there were some fundamental bugs. 
-I'm not a professional programmer and this project was not my full time job. However, it got to a functional state, 
-it was maintainable (perhaps excluding portions of "factory" module which I'd rather rewrite than refactor). 
-
 
 ### How to run it
 Works on python 3.8 (excluding Kivy).
@@ -32,6 +26,13 @@ similar to `results_example.png`. Modify `functional_testing/default_config.py` 
 
 ### Current state
 The whole project was abandoned due to external issues. 
+
+
+### No unit tests?
+MyLoLCalc**2** was practically my 1st program created on Python (actually it's my 1st program on *any* language). 
+Its 1st version MyLoLCalc**1** was abandoned very early since there were some fundamental bugs. 
+I'm not a professional programmer and this project was not my full time job. However, it got to a functional state, 
+it was maintainable (perhaps excluding portions of "factory" module which I'd rather rewrite than refactor). 
 
 
 # Licence 
