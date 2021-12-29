@@ -1,5 +1,5 @@
 # Licence
-The MyLoLCalc2 (the Software) is under MIT licence.
+Unless otherwise noted, MyLoLCalc2 (the Software) is under MIT licence.
 
 The following are not considered part of the Software:
 all data from LoL and LoL API, like champions', items', masteries' description,
