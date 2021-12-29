@@ -36,7 +36,7 @@ it was maintainable (perhaps excluding portions of "factory" module which I'd ra
 
 
 # Licence 
-The MyLoLCalc2 (the Software) is under MIT licence.
+The MyLoLCalc2 (the Software) is under CC0. Check `LICENSE_NON_LOL`.
 
 The following are not considered part of the Software:
 all data from LoL and LoL API, like champions', items', masteries' description,
