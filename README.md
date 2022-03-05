@@ -1,6 +1,8 @@
 # MyLoLCalc2
 It calculates the damage output (along with other metrics) of any setup for League of Legends. 
 
+![image](https://user-images.githubusercontent.com/10809024/143953108-fbb38688-dfab-4c4d-bbe7-48fc44a0f616.png)
+
 ###  What's League of Legends 
 "LoL" for short, is a popular game. The player can choose among hundreds of items, runes, masteries, 
 abilities, and use-order of spells and is matched against other players with the same options. 
@@ -14,7 +16,6 @@ Check `results_example.png` to see some of the results.
 Note that this output was purely for testing. 
 Nearly no front-end development took place.
 
-![image](https://user-images.githubusercontent.com/10809024/143953108-fbb38688-dfab-4c4d-bbe7-48fc44a0f616.png)
 
 
 ### How to run it
