@@ -39,11 +39,11 @@ it was maintainable (perhaps excluding portions of "factory" module which I'd ra
 # Licence 
 Unless otherwise noted, the code is under CC0. Check the LICENSE folder.
 
-The following are not considered part of the Software:
+The following are **not** considered part of the Software:
 all data from LoL and LoL API, like champions', items', masteries' description,
 icons, stats and/or anything else that belongs to Riot,
 along with any metadata and derivatives from the aforementioned materials;
-those are Riot's property and are **not** under MIT.
+those are Riot's property.
 
 
 
